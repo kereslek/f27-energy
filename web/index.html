@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>F27 lakástérkép</title>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a65; --line: #d9d7cf;
+  --wall: #22324a; --room: #ffffff; --pink: #e0438f; --ok: #2f9e62; --bad: #d64545;
+  --warn: #d98a1c; --off: #9a9893; --window: #6cc3d9;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1e2125; --ink: #ecebe6; --muted: #9b9a94; --line: #34383e;
+    --wall: #9fb4d6; --room: #22262b; --pink: #ff6fb0;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
+h1 { font-size: 20px; margin: 0; }
+.sub { color: var(--muted); font-size: 13px; }
+.banner { margin: 0 16px; padding: 8px 12px; border-radius: 8px; background: #fde8c8; color: #6b4300; font-size: 13px; }
+.banner[hidden] { display: none; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px; }
+@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+svg { width: 100%; height: auto; display: block; }
+.room { fill: var(--room); stroke: var(--wall); stroke-width: 4; }
+.roomlabel { font-size: 13px; font-style: italic; fill: var(--muted); }
+.roomtemp { font-size: 17px; font-weight: 600; fill: var(--ink); }
+.win { stroke: var(--window); stroke-width: 6; }
+.door { stroke: var(--panel); stroke-width: 6; }
+.marker circle { stroke: var(--panel); stroke-width: 2; }
+.marker text { font-size: 10px; font-weight: 700; fill: #fff; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.marker { cursor: pointer; }
+.fixed rect { fill: none; stroke: var(--muted); stroke-dasharray: 3 3; }
+.fixed text { font-size: 10px; fill: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td { padding: 5px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.p { font-weight: 700; color: var(--pink); width: 34px; }
+td.v { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+form { display: flex; gap: 8px; flex-wrap: wrap; }
+input[type=password] { flex: 1 1 180px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+button { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--ink); color: var(--bg); font: inherit; cursor: pointer; }
+button.ghost { background: transparent; color: var(--ink); }
+.msg { color: var(--bad); font-size: 13px; min-height: 1.2em; margin-top: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>F27 lakástérkép</h1>
+  <span class="sub" id="stamp">nincs betöltött adat</span>
+</header>
+<p class="banner" id="demo" hidden>DEMO mód: kitalált értékek, nem a lakás valós állapota.</p>
+<main>
+  <section class="card">
+    <svg id="plan" viewBox="160 20 340 600" role="img" aria-label="A lakás sematikus alaprajza az eszközökkel"></svg>
+    <div class="legend" id="legend"></div>
+  </section>
+  <aside>
+    <div class="card" id="login">
+      <form id="pwform">
+        <input type="password" id="pw" placeholder="Adatjelszó" autocomplete="current-password" required>
+        <button type="submit">Megnyitás</button>
+        <button type="button" class="ghost" id="demobtn">Demo</button>
+      </form>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <table id="list"><tbody></tbody></table>
+    </div>
+  </aside>
+</main>
+<script>
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+const ROOMS = {
+  nagyszoba: { x: 280, y: 48,  w: 195, h: 280, label: "nagy szoba", sensor: "2" },
+  bm:        { x: 255, y: 328, w: 78,  h: 32,  label: "BM" },
+  furdo:     { x: 255, y: 360, w: 78,  h: 95,  label: "fürdő", sensor: "4" },
+  kisszoba:  { x: 333, y: 328, w: 142, h: 264, label: "kis szoba", sensor: "1" },
+  wc:        { x: 255, y: 455, w: 43,  h: 50,  label: "WC" },
+  tarolo:    { x: 298, y: 455, w: 35,  h: 50,  label: "tár.", ly: 472 },
+  eloszoba:  { x: 255, y: 505, w: 78,  h: 87,  label: "előszoba" },
+  konyha:    { x: 180, y: 450, w: 75,  h: 142, label: "konyha" }
+};
+const WINDOWS = [[305, 48, 350, 48], [405, 48, 460, 48], [198, 592, 238, 592], [380, 592, 425, 592]];
+const DOORS = [[288, 328, 318, 328], [362, 328, 412, 328], [272, 592, 308, 592], [318, 400, 333, 430]];
+
+let config = null;
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, parent) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+
+// --- értékek ------------------------------------------------------------
+function scaled(dev, code) {
+  if (!dev || !dev.status || !(code in dev.status)) return null;
+  const v = dev.status[code];
+  if (typeof v !== "number") return v;
+  const meta = dev.meta && dev.meta[code];
+  if (meta && typeof meta.scale === "number") return v / Math.pow(10, meta.scale);
+  if (/temp/.test(code) && Math.abs(v) > 60) return v / 10;  // ha nincs specifikáció
+  return v;
+}
+function firstOf(dev, codes) {
+  for (const c of codes) { const v = scaled(dev, c); if (v !== null && v !== undefined) return v; }
+  return null;
+}
+const temp = (d) => firstOf(d, ["va_temperature", "temp_current", "temperature"]);
+const hum = (d) => firstOf(d, ["va_humidity", "humidity_value", "humidity"]);
+function isOpen(d) {
+  const v = firstOf(d, ["doorcontact_state", "contact_state"]);
+  return v === null ? null : !!v;
+}
+function phaseA(b64) {  // TONGOU/dlq: feszültség 2B/10, áram 3B/1000, teljesítmény 3B/1000 kW
+  try {
+    const b = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    if (b.length < 8) return null;
+    return (b[5] << 16) | (b[6] << 8) | b[7];  // nyers érték W-ban (= kW/1000)
+  } catch { return null; }
+}
+function power(d) {
+  const w = firstOf(d, ["cur_power", "power"]);
+  if (typeof w === "number") return w;
+  const pa = d && d.status && d.status.phase_a;
+  return typeof pa === "string" ? phaseA(pa) : null;
+}
+function stoveKw(d) {
+  if (!d || !d.status) return null;
+  return ["switch_1", "switch_2", "switch_3"].filter((c) => d.status[c] === true).length;
+}
+function tempColor(t) {
+  if (t === null) return "var(--room)";
+  const stops = [[16, "#9cc3ec"], [19, "#bfe3e0"], [21, "#cfeac0"], [23, "#f7dc9b"], [25, "#f3a37f"]];
+  for (const [lim, c] of stops) if (t < lim) return c;
+  return "#e9776d";
+}
+const fmt = (v, d = 1) => (v === null || v === undefined) ? "?" : Number(v).toFixed(d).replace(".", ",");
+
+function describe(c, d) {
+  if (!d) return { text: "nincs párosítva", color: "var(--off)" };
+  if (d.online === false) return { text: "offline", color: "var(--off)" };
+  switch (c.role) {
+    case "thermo": {
+      const t = temp(d), h = hum(d);
+      return { text: `${fmt(t)} °C, ${fmt(h, 0)} %`, color: c.pink === "3" ? "var(--warn)" : "var(--ok)" };
+    }
+    case "contact": {
+      const o = isOpen(d);
+      return o === null ? { text: "?", color: "var(--off)" }
+        : o ? { text: "NYITVA", color: "var(--bad)" } : { text: "zárva", color: "var(--ok)" };
+    }
+    case "breaker": {
+      const w = power(d), on = d.status && (d.status.switch ?? d.status.switch_1);
+      return { text: `${on === false ? "KI, " : ""}${fmt(w, 0)} W`, color: w > 50 ? "var(--warn)" : "var(--ok)" };
+    }
+    case "switch3": {
+      const k = stoveKw(d);
+      return { text: `${k ?? "?"} / 3 kW`, color: k ? "var(--warn)" : "var(--ok)" };
+    }
+    default:
+      return { text: "online", color: "var(--ok)" };
+  }
+}
+
+// --- rajz -----------------------------------------------------------------
+function draw(data) {
+  const svg = $("plan");
+  svg.textContent = "";
+  const devs = (data && data.devices) || {};
+  for (const [key, r] of Object.entries(ROOMS)) {
+    const t = r.sensor ? temp(devs[r.sensor]) : null;
+    const off = r.sensor && devs[r.sensor] && devs[r.sensor].online === false;
+    el("rect", { x: r.x, y: r.y, width: r.w, height: r.h, class: "room", style: `fill:${off ? "var(--room)" : tempColor(t)}` }, svg);
+    const big = r.w >= 100;
+    const ly = r.ly ?? (r.y + (r.sensor ? r.h / 2 - 6 : r.h / 2 + 4));
+    const lbl = el("text", { x: r.x + r.w / 2, y: ly, "text-anchor": "middle", class: "roomlabel" }, svg);
+    lbl.textContent = r.label;
+    if (t !== null) {
+      const tt = el("text", { x: r.x + r.w / 2, y: ly + (big ? 20 : 16), "text-anchor": "middle", class: "roomtemp",
+        style: big ? "" : "font-size:12px" }, svg);
+      tt.textContent = `${fmt(t)} °C${off ? "?" : ""}`;
+      if (off) { const ti = el("title", {}, tt); ti.textContent = "A hőmérő offline, ez az utolsó ismert érték."; }
+    }
+  }
+  for (const [x1, y1, x2, y2] of DOORS) el("line", { x1, y1, x2, y2, class: "door" }, svg);
+  for (const [x1, y1, x2, y2] of WINDOWS) el("line", { x1, y1, x2, y2, class: "win" }, svg);
+  const st = el("text", { x: 377, y: 36, "text-anchor": "middle", class: "roomlabel" }, svg); st.textContent = "Ferenc krt.";
+  const ud = el("text", { x: 300, y: 612, "text-anchor": "middle", class: "roomlabel" }, svg); ud.textContent = "belső udvar";
+
+  for (const f of config.fixed) {
+    const g = el("g", { class: "fixed" }, svg);
+    if (f.id === "W") el("rect", { x: f.pos[0] - 22, y: f.pos[1] - 16, width: 44, height: 22, rx: 3 }, g);
+    const t = el("text", { x: f.pos[0], y: f.pos[1], "text-anchor": "middle" }, g);
+    t.textContent = { W: "kályha", GAS: "gáz", BOJ: "bojler", FT: "fűtőtest" }[f.id] || f.id;
+    const ti = el("title", {}, g); ti.textContent = f.label;
+  }
+
+  const rows = $("list").tBodies[0];
+  rows.textContent = "";
+  for (const c of config.devices) {
+    const d = devs[c.pink];
+    const info = describe(c, d);
+    const g = el("g", { class: "marker", transform: `translate(${c.pos[0]},${c.pos[1]})` }, svg);
+    if (c.role === "breaker") el("rect", { x: -8, y: -8, width: 16, height: 16, rx: 3, fill: info.color }, g);
+    else el("circle", { r: c.pink.length > 1 ? 10 : 8.5, fill: info.color }, g);
+    const tx = el("text", {}, g); tx.textContent = c.role === "breaker" ? "k" + c.pink.slice(1) : c.pink;
+    const ti = el("title", {}, g); ti.textContent = `${c.pink}: ${c.label}: ${info.text}`;
+
+    const tr = rows.insertRow();
+    tr.insertCell().textContent = c.pink; tr.cells[0].className = "p";
+    const nc = tr.insertCell();
+    const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = info.color;
+    nc.append(dot, c.label);
+    const vc = tr.insertCell(); vc.className = "v"; vc.textContent = info.text;
+  }
+  if (data && data.generated_at) {
+    $("stamp").textContent = "pillanatkép: " + new Date(data.generated_at).toLocaleString("hu-HU");
+  }
+}
+
+function legend() {
+  const items = [["#9cc3ec", "< 16 °C"], ["#bfe3e0", "16-19"], ["#cfeac0", "19-21"], ["#f7dc9b", "21-23"], ["#f3a37f", "23-25"], ["#e9776d", "25+ °C"]];
+  $("legend").innerHTML = items.map(([c, t]) => `<span><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
+    + `<span><span class="dot" style="background:var(--bad)"></span>nyitva</span><span><span class="dot" style="background:var(--off)"></span>nincs adat</span>`;
+}
+
+// --- visszafejtés (WebCrypto, egyezik az f27/crypto.py formátummal) ---------
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function decrypt(env, password) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: unb64(env.salt), iterations: env.iter, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(env.iv) }, key, unb64(env.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+async function openWith(password) {
+  const res = await fetch("data/latest.json.enc", { cache: "no-store" });
+  if (!res.ok) throw new Error("Még nincs adat. Futtasd az Eszközfelderítés workflow-t.");
+  let data;
+  try { data = await decrypt(await res.json(), password); }
+  catch { throw new Error("Hibás jelszó."); }
+  $("demo").hidden = true;
+  draw(data);
+  try { sessionStorage.setItem("f27pw", password); } catch {}
+}
+
+$("pwform").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("msg").textContent = "Visszafejtés...";
+  try { await openWith($("pw").value); $("msg").textContent = ""; }
+  catch (err) { $("msg").textContent = err.message; }
+});
+$("demobtn").addEventListener("click", async () => {
+  const data = await (await fetch("demo.json")).json();
+  $("demo").hidden = false;
+  draw(data);
+});
+
+(async function init() {
+  config = await (await fetch("config/devices.json")).json();
+  legend();
+  draw(null);
+  let saved = null;
+  try { saved = sessionStorage.getItem("f27pw"); } catch {}
+  if (saved) openWith(saved).catch(() => {});
+})();
+</script>
+</body>
+</html>

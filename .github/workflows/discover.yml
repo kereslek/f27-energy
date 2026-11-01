@@ -1,0 +1,50 @@
+name: Eszközfelderítés
+
+# Kézzel indítható: Actions fül > Eszközfelderítés > Run workflow.
+# Kiolvassa a Tuya eszközlistát, párosítja a pink számokhoz, és
+# TITKOSÍTVA commitolja a data/ mappába. A log publikus, ezért a
+# script oda csak párosítási eredményt ír, mérési értéket nem.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-write
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Függőségek
+        run: pip install -r requirements.txt
+
+      - name: Felderítés
+        env:
+          TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
+          TUYA_ACCESS_SECRET: ${{ secrets.TUYA_ACCESS_SECRET }}
+          TUYA_ENDPOINT: ${{ secrets.TUYA_ENDPOINT }}
+          TUYA_UID: ${{ secrets.TUYA_UID }}
+          F27_DATA_PASSWORD: ${{ secrets.F27_DATA_PASSWORD }}
+        run: python -m f27.discover
+
+      - name: Commit (csak titkosított fájlok)
+        run: |
+          git config user.name "f27-bot"
+          git config user.email "f27-bot@users.noreply.github.com"
+          git add data/*.enc
+          if git diff --cached --quiet; then
+            echo "Nincs változás."
+          else
+            git commit -m "data: eszközfelderítés $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi

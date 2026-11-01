@@ -1,0 +1,47 @@
+name: Térkép (Pages)
+
+# A web/ mappát, a config/devices.json-t és a TITKOSÍTOTT data/*.enc
+# fájlokat publikálja GitHub Pages-re. A böngészőben jelszóval nyílik.
+
+on:
+  push:
+    paths: ["web/**", "config/**", "data/**", ".github/workflows/pages.yml"]
+  workflow_run:
+    workflows: ["Eszközfelderítés"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Pages csak az alapértelmezett ágról telepíthet.
+    if: github.ref_name == github.event.repository.default_branch || github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Oldal összeállítása
+        run: |
+          mkdir -p _site/data _site/config
+          cp -r web/. _site/
+          cp config/devices.json _site/config/
+          cp data/*.enc _site/data/ 2>/dev/null || true
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

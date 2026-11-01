@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+_site/
+.env
+# nyílt (titkosítatlan) adat soha ne kerüljön fel
+data/*.json
+!data/.gitkeep

@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-11-01T18:00:00+00:00",
+  "source": "DEMO, kitalált értékek",
+  "devices": {
+    "1":  {"name": "F27 - Hőmérő - Kis szoba", "online": true, "status": {"va_temperature": 236, "va_humidity": 41, "battery_percentage": 80}, "meta": {"va_temperature": {"scale": 1, "unit": "℃"}, "va_humidity": {"scale": 0, "unit": "%"}}},
+    "2":  {"name": "F27 - Hőmérő - Nagyszoba", "online": true, "status": {"va_temperature": 205, "va_humidity": 44, "battery_percentage": 60}, "meta": {"va_temperature": {"scale": 1, "unit": "℃"}, "va_humidity": {"scale": 0, "unit": "%"}}},
+    "3":  {"name": "F27 - Hőmérő - Cserépkályha mögött", "online": true, "status": {"va_temperature": 384, "va_humidity": 25}, "meta": {"va_temperature": {"scale": 1, "unit": "℃"}, "va_humidity": {"scale": 0, "unit": "%"}}},
+    "4":  {"name": "F27 - Hőmérő - Fürdőszoba", "online": false, "status": {"va_temperature": 223, "va_humidity": 63}, "meta": {"va_temperature": {"scale": 1, "unit": "℃"}, "va_humidity": {"scale": 0, "unit": "%"}}},
+    "5":  {"name": "F27 - bejárati ajtó", "online": true, "status": {"doorcontact_state": false, "battery_percentage": 100}},
+    "6":  {"name": "F27 - tároló helyiség", "online": true, "status": {"doorcontact_state": false}},
+    "7":  {"name": "F27 - Konyha ablak", "online": true, "status": {"doorcontact_state": false}},
+    "8":  {"name": "F27 - Kis szoba - ablak", "online": true, "status": {"doorcontact_state": true}},
+    "9":  {"name": "F27 - Nagy szoba - bal ablak", "online": true, "status": {"doorcontact_state": false}},
+    "10": {"name": "F27 - Nagy szoba - jobb ablak", "online": true, "status": {"doorcontact_state": false}},
+    "P":  {"name": "Cserépkályha kapcsoló (új)", "online": true, "status": {"switch_1": true, "switch_2": true, "switch_3": false}},
+    "X5": {"name": "Cserépkályha kismegszakító (5.)", "online": true, "status": {"switch": true, "cur_power": 19870}, "meta": {"cur_power": {"scale": 1, "unit": "W"}}},
+    "X7": {"name": "Fürdőszoba bojler (melegvíz) (7.)", "online": true, "status": {"switch": true, "cur_power": 0}, "meta": {"cur_power": {"scale": 1, "unit": "W"}}},
+    "X8": {"name": "Konyhai főzőlap és sütő (8.)", "online": true, "status": {"switch": true, "cur_power": 0}, "meta": {"cur_power": {"scale": 1, "unit": "W"}}},
+    "X9": {"name": "Klíma kismegszakító (9.)", "online": true, "status": {"switch": true, "cur_power": 6420}, "meta": {"cur_power": {"scale": 1, "unit": "W"}}},
+    "G":  {"name": "Gateway", "online": true, "status": {}}
+  }
+}
