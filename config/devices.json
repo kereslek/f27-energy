@@ -13,10 +13,10 @@
     {"pink": "10", "role": "contact", "room": "nagyszoba", "label": "Nagy szoba jobb ablak",      "match": ["nagy szoba - jobb ablak"],          "pos": [430, 48]},
     {"pink": "11", "role": "ac_ir",   "room": "kisszoba",  "label": "Klíma (Gree, IR)",           "match": ["klíma"], "exclude": ["kismegszakító"], "pos": [340, 500]},
     {"pink": "P",  "role": "switch3", "room": "nagyszoba", "label": "Cserépkályha kapcsoló (LUXION)", "match": ["cserépkályha kapcsoló"],        "pos": [314, 318]},
-    {"pink": "X5", "role": "breaker", "room": "eloszoba",  "label": "Kör 5: cserépkályha",        "match": ["cserépkályha kismegszakító"],       "pos": [266, 566]},
-    {"pink": "X7", "role": "breaker", "room": "eloszoba",  "label": "Kör 7: bojler",              "match": ["bojler"],                           "pos": [284, 566]},
-    {"pink": "X8", "role": "breaker", "room": "eloszoba",  "label": "Kör 8: főzőlap és sütő",     "match": ["főzőlap"],                          "pos": [302, 566]},
-    {"pink": "X9", "role": "breaker", "room": "eloszoba",  "label": "Kör 9: klíma",               "match": ["klíma kismegszakító"],              "pos": [320, 566]},
+    {"pink": "X5", "role": "breaker", "room": "eloszoba",  "label": "Kör 5: cserépkályha",        "match": ["cserépkályha kismegszakító"],       "pos": [306, 562]},
+    {"pink": "X7", "role": "breaker", "room": "eloszoba",  "label": "Kör 7: bojler",              "match": ["bojler"],                           "pos": [322, 562]},
+    {"pink": "X8", "role": "breaker", "room": "eloszoba",  "label": "Kör 8: főzőlap és sütő",     "match": ["főzőlap"],                          "pos": [306, 578]},
+    {"pink": "X9", "role": "breaker", "room": "eloszoba",  "label": "Kör 9: klíma",               "match": ["klíma kismegszakító"],              "pos": [322, 578]},
     {"pink": "G",  "role": "gateway", "room": "kisszoba",  "label": "Zigbee + IR gateway",        "match": ["gateway", "átjáró"],                "pos": [458, 560]}
   ],
   "fixed": [

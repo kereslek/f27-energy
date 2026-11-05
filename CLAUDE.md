@@ -34,14 +34,14 @@ A fő probléma a tulaj szerint: a vendégek túlfűtik a lakást, sokat megy a 
 | Fürdő | 3,67 + 3,74 | belső | Az eredeti alaprajz "BM"-je és "fürdő"-je valójában **egyetlen helyiség**, nincs előtér. Egyik fala vastag és szűkíti a teret (a kályha felőli, északi fal; a tulaj megerősítette). Kb. 7 m², csak a nagy szobából érhető el (az előszobából és a tárolóból nincs ajtó, fal választja el). Sarokkád, fali WC, mosdó, magasan a falon elektromos fűtőpanel. Bojler az álmennyezet felett. |
 | WC | 0,83 | belső | Kb. 79 × 105 cm. Külön kis WC, a bejárattal szemben, az előszobából nyílik. Fali WC, fölötte csempézett párkányon pici kézmosó, fehér metrócsempe, patchwork padló, szellőző. |
 | Tároló | ~1,15 | belső | Kb. 107 × 107 cm, a WC-nél szélesebb. A tulaj **privát** tárolója, az előszobából nyílik. Ajtóérzékelő (6). |
-| Előszoba | 3,43 | belső udvar felé bejárat | Bejárati ajtó (5), villanyelosztó és mérők (X). Innen nyílik a WC, a tároló, a konyha és (a bejárattal szemben, befelé nyíló ajtóval) a kis szoba. |
+| Előszoba | 3,43 | belső udvar felé bejárat | Bejárati ajtó (5). A villanyelosztó (okos kismegszakítók) és a mérők (X) belépve rögtön jobbra, az előszoba keleti falán. Innen nyílik a WC, a tároló, a konyha és (a bejárattal szemben, befelé nyíló ajtóval) a kis szoba. |
 | Konyha | 4,64 | belső udvar, 1 ablak (7) | Sütő, főzőlap, mikró, mosógép, hűtő |
 
 A nagy szoba és a kis szoba között kétszárnyú ajtó van.
 
 ### Berendezés (fotók és a tulaj szerint, 2026.11.05)
 
-Égtájak az alaprajz szerint: észak = Ferenc krt. Mindenhol sötét tölgy halszálka parketta, krém falak, a keleti fal mindkét szobában zsályazöld díszfal, zsályazöld vászonfüggönyök, kristálycsillárok.
+Égtájak az alaprajz szerint: észak = Ferenc krt. Padló: a nagy szobában, a kis szobában és az előszobában kb. 100 éves, vékony szálú, sötétbarna halszálka parketta; a konyhában sötétbarna járólap; a fürdőben és a WC-ben patchwork mintás csempe. Krém falak, a keleti fal mindkét szobában zsályazöld díszfal, zsályazöld vászonfüggönyök, kristálycsillárok.
 
 - **Nagy szoba:** nyugati falon franciaágy (fehér pálcás fejvég), majdnem a fal közepén, kicsit a fürdő felé tolva, fölötte ezüst keretes tükör. ÉNy-i sarok: Thonet hintaszék, állólámpa, polcok, macramé futóborostyán. Az ablakok között békeliliom és zöld üvegballon. A 10-es ablak alatt szürke L-alakú sarokkanapé ívlámpával, előtte kerek sötét dohányzóasztal szőnyegen. Keleti (zöld) fal: TV, fehér komód, déli végén íróasztal monitorral. Déli fal: kétszárnyú ajtó a kis szobába, tőle nyugatra a cserépkályha (sötét bordó-barna domborműves csempe, esztergált sarokoszlopok), DNy-on ajtó a fürdőbe.
 - **Kis szoba:** a bejárati ajtóval szemben nyílik, az ajtó befelé nyílik. Nyugati fal: fehér üvegajtós szekrények, sárgaréz tölcséres gramofon Singer varrógépasztalon, mellette a két zöldre festett Windsor-szék (ez a "Green Chair", a lakás névadója), fölötte magasan a Gree klíma. Keleti (zöld) fal: kanapéágy, fölötte fekvő, fehér keretes tükör (majdnem az asztalig ér) kis polccal; étkezőasztal a falhoz tolva, 4 fő, szükség esetén 5. Déli fal: ablak, alatta a gázkonvektor, DK-i sarokban fehér vitrin, tetején a Zigbee gateway.
@@ -90,7 +90,7 @@ Megjegyzés: a Wi-Fi-s elemes hőmérők sokat alszanak, ritkábban jelentenek, 
 
 ## 5. Villamos energia
 
-### Mérők (előszoba, X)
+### Mérők (előszoba, X: belépve rögtön jobbra)
 
 | Mérő | Gyártási szám | Szerep |
 |---|---|---|

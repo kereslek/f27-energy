@@ -92,6 +92,8 @@ const ROOMS = {
 };
 // Vastag fal (a fürdő északi fala a kályha felől, szűkíti a fürdőt; a tulaj megerősítette).
 const THICK = [[255, 328, 33, 14], [318, 328, 15, 14]]; // rés az ajtónak (x 288-318)
+// Villanyelosztó (kismegszakítók + mérők): belépve rögtön jobbra, az előszoba keleti falán.
+const PANEL = [327, 556, 5, 34];
 const WINDOWS = [[305, 48, 350, 48], [405, 48, 460, 48], [198, 592, 238, 592], [380, 592, 425, 592]];
 // Ajtók: nagy szoba > fürdő (a kályha és az ágy között; a fürdő CSAK innen érhető el),
 // kétszárnyú ajtó, bejárat, WC és privát tároló az előszobából,
@@ -200,6 +202,7 @@ function draw(data) {
     }
   }
   for (const [x, y, w, h] of THICK) el("rect", { x, y, width: w, height: h, fill: "var(--wall)" }, svg);
+  { const [x, y, w, h] = PANEL; const g = el("rect", { x, y, width: w, height: h, rx: 1, fill: "#9aa3ad", stroke: "var(--wall)", "stroke-width": 1.5 }, svg); const t = el("title", {}, g); t.textContent = "Villanyelosztó és mérők"; }
   for (const [x1, y1, x2, y2] of DOORS) el("line", { x1, y1, x2, y2, class: "door" }, svg);
   for (const [x1, y1, x2, y2] of WINDOWS) el("line", { x1, y1, x2, y2, class: "win" }, svg);
   const st = el("text", { x: 377, y: 36, "text-anchor": "middle", class: "roomlabel" }, svg); st.textContent = "Ferenc krt.";
