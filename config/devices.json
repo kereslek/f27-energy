@@ -17,7 +17,7 @@
     {"pink": "X7", "role": "breaker", "room": "eloszoba",  "label": "Kör 7: bojler",              "match": ["bojler"],                           "pos": [284, 566]},
     {"pink": "X8", "role": "breaker", "room": "eloszoba",  "label": "Kör 8: főzőlap és sütő",     "match": ["főzőlap"],                          "pos": [302, 566]},
     {"pink": "X9", "role": "breaker", "room": "eloszoba",  "label": "Kör 9: klíma",               "match": ["klíma kismegszakító"],              "pos": [320, 566]},
-    {"pink": "G",  "role": "gateway", "room": "kisszoba",  "label": "Zigbee + IR gateway",        "match": ["gateway", "átjáró"],                "pos": [462, 345]}
+    {"pink": "G",  "role": "gateway", "room": "kisszoba",  "label": "Zigbee + IR gateway",        "match": ["gateway", "átjáró"],                "pos": [458, 560]}
   ],
   "fixed": [
     {"id": "W",   "label": "Cserépkályha, 3 × 1 kW, hőtárolós", "room": "nagyszoba", "pos": [345, 300]},

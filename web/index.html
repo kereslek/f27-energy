@@ -83,7 +83,7 @@ button.ghost { background: transparent; color: var(--ink); }
 const NS = "http://www.w3.org/2000/svg";
 const ROOMS = {
   nagyszoba: { x: 280, y: 48,  w: 195, h: 280, label: "nagy szoba", sensor: "2" },
-  bm:        { x: 255, y: 328, w: 78,  h: 32,  label: "BM" },
+  bm:        { x: 255, y: 328, w: 78,  h: 32,  label: "BM előtér" },
   furdo:     { x: 255, y: 360, w: 78,  h: 95,  label: "fürdő", sensor: "4" },
   kisszoba:  { x: 333, y: 328, w: 142, h: 264, label: "kis szoba", sensor: "1" },
   wc:        { x: 255, y: 455, w: 43,  h: 50,  label: "WC" },
@@ -92,7 +92,11 @@ const ROOMS = {
   konyha:    { x: 180, y: 450, w: 75,  h: 142, label: "konyha" }
 };
 const WINDOWS = [[305, 48, 350, 48], [405, 48, 460, 48], [198, 592, 238, 592], [380, 592, 425, 592]];
-const DOORS = [[288, 328, 318, 328], [362, 328, 412, 328], [272, 592, 308, 592], [318, 400, 333, 430]];
+// Ajtók: nagy szoba > BM (a kályha és az ágy között; a fürdő CSAK innen érhető el),
+// BM > fürdő átjáró, kétszárnyú ajtó, bejárat, WC és privát tároló az előszobából,
+// kis szoba ajtaja az előszobából (befelé nyílik), konyha ajtaja az előszobából. Előszoba és fürdő között nincs ajtó.
+const DOORS = [[288, 328, 318, 328], [272, 360, 318, 360], [362, 328, 412, 328], [272, 592, 308, 592],
+  [262, 505, 290, 505], [302, 505, 328, 505], [333, 515, 333, 553], [255, 522, 255, 556]];
 
 let config = null;
 const $ = (id) => document.getElementById(id);
