@@ -109,16 +109,19 @@ Szolgáltató: MVM Next, elosztó: ELMŰ Hálózati Kft. Tarifa: lakossági, rez
 | A1 kedvezményes energia | 5,11 |
 | B kedvezményes energia | 2,05 |
 | Lakossági piaci ár (A1 vagy B, keret felett) | 31,80 |
-| Átviteli díj (2024-től) | 6,80 |
-| Elosztói forgalmi díj A1 (2024-től) | 16,60 |
-| Elosztói forgalmi díj B (2024-től) | 9,38 |
+| Átviteli díj (2024-es számlák) | 6,80 |
+| Elosztói forgalmi díj A1 (2024-es számlák) | 16,60 |
+| Elosztói forgalmi díj B (2024-es számlák) | 9,38 |
+| Átviteli díj (2026-os számlák) | 3,39 |
+| Elosztói forgalmi díj A1 (2026-os számlák) | 20,01 |
+| Elosztói forgalmi díj B (2026-os számlák) | 12,79 |
 | Elosztói alapdíj | A1 120,5 Ft/hó, B 39,5 Ft/hó |
 
 Mindkét mérőnek havi kedvezményes kerete van, a számlákon kb. 190-220 kWh/hó/mérő. Felette piaci ár.
 
 ### Valós és becsült mérőállások
 
-**A 2024.10.09-i diktálás óta minden számla becsült ("Becs")!** A havi kb. 23 442 Ft-os részszámlák a szolgáltató becslései, a valóság az éves elszámolón csapódik le.
+**A 2024.10.09-i diktálás után sokáig csak becsült ("Becs") számla jött; 2025.09.10-én volt egy diktálás (A1 52 099, B 60 479), azóta megint minden részszámla becsült.** A havi kb. 23 442 Ft-os részszámlák a szolgáltató becslései, a valóság az éves elszámolón csapódik le.
 
 | Dátum | A1 (…7754) | B (…4809) | Forrás |
 |---|---|---|---|
@@ -134,6 +137,17 @@ Megfigyelés: 2024.10.09 óta a B mérő kb. 2,2-szer gyorsabban pörög, mint a
 Feldolgozott számlák (PDF, számlaszámok privát): 2023.12-2024.01, 2024.10-11, 2025.03-04, 2025.10-11, 2026.01-02, 2026.09-10.
 
 ## 6. Gáz
+
+### Számlák a Gmailből (feldolgozva 2026.11.05)
+
+A tulaj Gmail fiókjából kibontott MVM számla-PDF-ek, csak az F27 felhasználási hely (más ingatlanok számlái is oda érkeznek, azokat kihagytuk). Részletes adat a session scratchpadjében volt, a repóba csak ez az összesítés kerül.
+
+- **Villany:** a villanyszámlák többsége a számlafizető postafiókjába megy, a tulajéban csak 5 F27 villanyszámla van (2025.09-2026.02). A1 197-227 kWh/hó, B 397-457 kWh/hó (becsült), ebből B-n 183-215 kWh/hó piaci áron. Nyári elszámoló (2025.07.09-09.10): A1 592 kWh 64 nap alatt, ebből 150 kWh keret feletti (klíma), B 182 kWh (kb. 2,8 kWh/nap, csak bojler).
+- **B mérő valós átlaga:** 2024.10.09 és 2025.09.10 (diktált) között 5 337 kWh 336 nap alatt = kb. 15,9 kWh/nap, kb. 477 kWh/hó. A becsült részszámlák (397-457 kWh/hó) ennél kevesebbet számláznak: nagy pótlás várható a következő villany-elszámolón.
+- **Gáz elszámolási évek (korrigált m³):** 2023.07-2024.07: 341; 2024.07-2025.07: 381; 2025.07-2026.07: 470 (+24%). A havi gáz-részszámlák mind becsültek.
+- **Gáz valós havi pontok a diktálásokból:** 2025.08.01-12.31: 156 m³; 2026.01: 140 m³ (a részszámla erre a hónapra 68 m³-t becsült); 2026.02: 119 m³; 2026.03-07.22: 44 m³.
+- **Gázmérő csere:** 2025.06.02 (régi mérő záró 8 220 m³, új mérő 1 m³-ről indult).
+- **Gáz ára 2026:** bruttó kb. 2,87 Ft/MJ (kb. 12 Ft/kWh hő 85%-os hatásfokkal) + kb. 973 Ft/hó alapdíj. Kifizetett gáz (számla kelte szerint): 2025: 49 689 Ft, 2026 eddig: 50 101 Ft.
 
 - Rezsicsökkentett lakossági, keret 1729 m³/év, ennek harmadát sem használja a lakás.
 - Éves elszámolók: **2024.07-2025.07: 374 m³; 2025.07-2026.07: 463 m³** (+24%).
@@ -188,6 +202,8 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 - A takarító bevonható érkezés előtti beállításokba.
 
 ## 11. Nyitott kérdések
+
+- A 2024.05-2025.08 és 2026.03-tól érkezett F27 villanyszámlák (a számlafizető postafiókjában vannak): továbbítás vagy hozzáférés kell.
 
 - A mérőfotók dátumai (a tulaj pótolja).
 - A fürdő fali fűtőtestjének köre.
