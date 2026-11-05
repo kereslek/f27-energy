@@ -33,8 +33,8 @@ A fő probléma a tulaj szerint: a vendégek túlfűtik a lakást, sokat megy a 
 | BM | 3,67 | belső | A fürdő előtere. **Csak a nagy szobából nyílik**, a cserépkályha és az ágy közötti ajtón. Itt a kályhakapcsoló (P). |
 | Kis szoba ("szoba", 3,52 × 5,69) | 19,75 | belső udvar, 1 ablak (8) | Étkezőasztal, kanapéágy. Klíma (11), gázkonvektor az ablak alatt (8). Az Airbnb ezt hívja "Bedroom 1"-nek. |
 | Fürdő | 3,74 | belső | A BM-mel együtt egy kb. 7-9 m²-es fürdő, csak a nagy szobából érhető el (az előszobából és a tárolóból nincs ajtó, fal választja el). Sarokkád, fali WC, mosdó, magasan a falon elektromos fűtőpanel. Bojler az álmennyezet felett. |
-| WC | 0,83 | belső | Külön kis WC, a bejárattal szemben, az előszobából nyílik. Fali WC, fölötte kis kézmosó, fehér csempe. |
-| Tároló | ~1,15 | belső | A tulaj **privát** tárolója, az előszobából nyílik. Ajtóérzékelő (6). |
+| WC | 0,83 | belső | Kb. 79 × 105 cm. Külön kis WC, a bejárattal szemben, az előszobából nyílik. Fali WC, fölötte csempézett párkányon pici kézmosó, fehér metrócsempe, patchwork padló, szellőző. |
+| Tároló | ~1,15 | belső | Kb. 107 × 107 cm, a WC-nél szélesebb. A tulaj **privát** tárolója, az előszobából nyílik. Ajtóérzékelő (6). |
 | Előszoba | 3,43 | belső udvar felé bejárat | Bejárati ajtó (5), villanyelosztó és mérők (X). Innen nyílik a WC, a tároló, a konyha és (a bejárattal szemben, befelé nyíló ajtóval) a kis szoba. |
 | Konyha | 4,64 | belső udvar, 1 ablak (7) | Sütő, főzőlap, mikró, mosógép, hűtő |
 
@@ -46,10 +46,10 @@ A nagy szoba és a kis szoba között kétszárnyú ajtó van.
 
 - **Nagy szoba:** nyugati falon franciaágy (fehér pálcás fejvég), majdnem a fal közepén, kicsit a fürdő felé tolva, fölötte ezüst keretes tükör. ÉNy-i sarok: Thonet hintaszék, állólámpa, polcok, macramé futóborostyán. Az ablakok között békeliliom és zöld üvegballon. A 10-es ablak alatt szürke L-alakú sarokkanapé ívlámpával, előtte kerek sötét dohányzóasztal szőnyegen. Keleti (zöld) fal: TV, fehér komód, déli végén íróasztal monitorral. Déli fal: kétszárnyú ajtó a kis szobába, tőle nyugatra a cserépkályha (sötét bordó-barna domborműves csempe, esztergált sarokoszlopok), DNy-on ajtó a BM felé.
 - **Kis szoba:** a bejárati ajtóval szemben nyílik, az ajtó befelé nyílik. Nyugati fal: fehér üvegajtós szekrények, sárgaréz tölcséres gramofon Singer varrógépasztalon, mellette a két zöldre festett Windsor-szék (ez a "Green Chair", a lakás névadója), fölötte magasan a Gree klíma. Keleti (zöld) fal: kanapéágy, fölötte fekvő, fehér keretes tükör (majdnem az asztalig ér) kis polccal; étkezőasztal a falhoz tolva, 4 fő, szükség esetén 5. Déli fal: ablak, alatta a gázkonvektor, DK-i sarokban fehér vitrin, tetején a Zigbee gateway.
-- **Konyha:** fehér kazettás szekrények fekete kagylófogantyúval, sötétbarna munkalap, kerek mosogató, mosógép, szabadon álló villanytűzhely (sütő + kerámialap), mikró a felső szekrényben, fűszercserepek falisínen, kék függöny. A hűtő a sarokban, 90 fokkal elfordítva a pultsorhoz képest.
+- **Konyha:** a nyugati fal mentén az ablaktól északra: kávésarok, kerek mosogató fekete hattyúnyakú csapteleppel, mosógép, szabadon álló villanytűzhely (sütő + kerámialap), keskeny nyitott polcoszlop, majd az ÉNy-i sarokban a hűtő 90 fokkal elfordítva. Fehér kazettás szekrények fekete kagylófogantyúval, szürke márványmintás munkalap, mikró a felső szekrényben, fűszercserepek falisínen, kék függöny, sötétbarna járólap.
 - **Fürdő (BM + fürdő):** csak a nagy szobából, a kályha és az ágy közötti ajtón. Fehér metrócsempe, patchwork mintás padló és kádburkolat, aszimmetrikus sarokkád a túlsó végén, mellette fali WC csempézett előfalon, lambériás mosdószekrény tükörrel, magas lambériás szekrény nyitott polcokkal, törölközőpolc, magasan a falon fehér elektromos fűtőpanel.
 - **Középen két kb. 1 m²-es helyiség,** mindkettő az előszobából nyílik: a külön kis WC (a bejárattal szemben, kézmosóval) és a tulaj **privát tárolója** (6-os nyitásérzékelő). A tároló és a fürdő között fal van.
-- **Hűtő:** inox kombinált hűtő sötétbarna szekrényfülkében, fölötte polc borosládákkal és befőttesüvegekkel; a szomszédos falon fekete keretes fotófal.
+- **Hűtő:** Beko inox kombinált hűtő, sötét wenge keretben; fölötte nyitott wenge doboz fehér polccal, rajta kék-fehér porcelán urnák, befőttesüvegek, növény.
 - **Nagy szoba, ágy mögötti fal:** krém damaszt tapéta.
 
 ## 3. Eszközök és a pink számok a térképen
