@@ -4,7 +4,7 @@
     {"pink": "1",  "role": "thermo",  "room": "kisszoba",  "label": "Hőmérő, kis szoba",          "match": ["hőmérő - kis szoba"],               "pos": [462, 452]},
     {"pink": "2",  "role": "thermo",  "room": "nagyszoba", "label": "Hőmérő, nagy szoba",         "match": ["hőmérő - nagyszoba", "hőmérő - nagy szoba"], "pos": [462, 140]},
     {"pink": "3",  "role": "thermo",  "room": "nagyszoba", "label": "Hőmérő, cserépkályha mögött", "match": ["cserépkályha mögött"],              "pos": [380, 312]},
-    {"pink": "4",  "role": "thermo",  "room": "furdo",     "label": "Hőmérő, fürdő",              "match": ["hőmérő - fürdőszoba"],              "pos": [312, 372]},
+    {"pink": "4",  "role": "thermo",  "room": "furdo",     "label": "Hőmérő, fürdő",              "match": ["hőmérő - fürdőszoba"],              "pos": [312, 360]},
     {"pink": "5",  "role": "contact", "room": "eloszoba",  "label": "Bejárati ajtó",              "match": ["bejárati ajtó"],                    "pos": [292, 592]},
     {"pink": "6",  "role": "contact", "room": "tarolo",    "label": "Tároló ajtó (privát)",              "match": ["tároló helyiség"],                  "pos": [312, 494]},
     {"pink": "7",  "role": "contact", "room": "konyha",    "label": "Konyha ablak",               "match": ["konyha ablak"],                     "pos": [218, 592]},
@@ -12,7 +12,7 @@
     {"pink": "9",  "role": "contact", "room": "nagyszoba", "label": "Nagy szoba bal ablak",       "match": ["nagy szoba - bal ablak"],           "pos": [327, 48]},
     {"pink": "10", "role": "contact", "room": "nagyszoba", "label": "Nagy szoba jobb ablak",      "match": ["nagy szoba - jobb ablak"],          "pos": [430, 48]},
     {"pink": "11", "role": "ac_ir",   "room": "kisszoba",  "label": "Klíma (Gree, IR)",           "match": ["klíma"], "exclude": ["kismegszakító"], "pos": [340, 500]},
-    {"pink": "P",  "role": "switch3", "room": "bm",        "label": "Cserépkályha kapcsoló (LUXION)", "match": ["cserépkályha kapcsoló"],        "pos": [314, 318]},
+    {"pink": "P",  "role": "switch3", "room": "nagyszoba", "label": "Cserépkályha kapcsoló (LUXION)", "match": ["cserépkályha kapcsoló"],        "pos": [314, 318]},
     {"pink": "X5", "role": "breaker", "room": "eloszoba",  "label": "Kör 5: cserépkályha",        "match": ["cserépkályha kismegszakító"],       "pos": [266, 566]},
     {"pink": "X7", "role": "breaker", "room": "eloszoba",  "label": "Kör 7: bojler",              "match": ["bojler"],                           "pos": [284, 566]},
     {"pink": "X8", "role": "breaker", "room": "eloszoba",  "label": "Kör 8: főzőlap és sütő",     "match": ["főzőlap"],                          "pos": [302, 566]},
@@ -22,7 +22,7 @@
   "fixed": [
     {"id": "W",   "label": "Cserépkályha, 3 × 1 kW, hőtárolós", "room": "nagyszoba", "pos": [345, 300]},
     {"id": "GAS", "label": "Gázkonvektor (Lampart Gála 50)",   "room": "kisszoba",  "pos": [405, 576]},
-    {"id": "BOJ", "label": "Bojler (Hajdu ZV120, álmennyezet)", "room": "furdo",     "pos": [277, 378]},
+    {"id": "BOJ", "label": "Bojler (Hajdu ZV120, álmennyezet)", "room": "furdo",     "pos": [276, 364]},
     {"id": "FT",  "label": "Fürdő fali fűtőtest (kör ismeretlen)", "room": "furdo",  "pos": [285, 447]}
   ]
 }
