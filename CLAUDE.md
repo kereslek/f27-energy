@@ -127,14 +127,39 @@ Mindkét mérőnek havi kedvezményes kerete van, a számlákon kb. 190-220 kWh/
 |---|---|---|---|
 | 2023.12.13 | 46 953 | 51 378 | számla (diktált) |
 | 2024.01.08 | 47 120 | 52 183 | számla (diktált) |
-| 2024.10.09 | 49 694 | 55 142 | MVM portál, fogyasztó által diktált |
+| 2024.10.09 | ~~49 694~~ **hibás** | 55 142 | ügyfél által diktált; az A1 érték túl magas volt (a 2025.02.15-i leolvasás kisebb) |
+| 2025.01.11 | ~~50 250~~ **hibás** | 56 935 | diktált; A1 szintén túl magas |
+| 2025.02.15 | 49 689 | 58 216 | **hálózati engedélyes leolvasása** (helyes) |
+| 2025.07.08 | 51 507 | 60 297 | diktált |
+| 2025.09.10 | 52 099 | 60 479 | diktált |
+| 2026.01.13 | 52 929 | 62 294 | diktált |
+| 2026.05.20 | 53 622 | 64 476 | leolvasott |
+| 2026.09.13 | 54 831 | 64 955 | diktált |
 | 2026.10.15 | 55 123 | 65 404 | számla, **becsült** |
 
 Dátum nélküli mérőfotók (az EXIF elveszett, a dátumokat a tulaj később pótolja): A1 48 336,4; 49 406,5; 49 762; 50 327; 50 531,4 (B 59 176); 52 529 (B 60 975); 54 128,9 (B 64 698,6); 55 025,6.
 
-Megfigyelés: 2024.10.09 óta a B mérő kb. 2,2-szer gyorsabban pörög, mint az A1. Mivel az A1 nagyjából a kedvezményes keret körül mozog, a B fogyasztás durván fele keret feletti, piaci áras.
+A hibás 2024-25-ös A1 diktálás miatt 2025 májusában az MVM egy évre visszamenőleg újraszámolt. A dátum nélküli mérőfotók a helyes (leolvasott) sorral egyeznek.
 
-Feldolgozott számlák (PDF, számlaszámok privát): 2023.12-2024.01, 2024.10-11, 2025.03-04, 2025.10-11, 2026.01-02, 2026.09-10.
+### Villanyszámlák feldolgozva (2026.11.05)
+
+23 egyedi F27 villanyszámla (2024.11-2026.10 kelte; a tulaj feltöltéseiből és a Gmailből), a fogyasztás 2024.05.09-től folyamatosan lefedett. Hiányzó számlák: 2024.05-10 és 2025.04 kelte. A kedvezményes keret 2 523 kWh/év/mérő (6,91 kWh/nap).
+
+| Év | A1 kWh | B kWh | A1 keret felett | B keret felett | Becsült bruttó költség |
+|---|---|---|---|---|---|
+| 2024 | 2 325 | 4 778 | 0 | 2 249 (47%) | kb. 280 000 Ft |
+| 2025 | 3 449 | 5 376 | 927 | 2 854 (53%) | kb. 389 000 Ft |
+| 2026.01-09.13 | 1 982 | 2 835 | 220 | 1 073 (38%) | kb. 185 000 Ft |
+
+Napi átlagok valós állások között: B nyáron (csak bojler) 2,8-4,7 kWh/nap (kb. 1 420 kWh/év), fűtési szezonban 14,5-37 kWh/nap (csúcs 2025.01.11-02.15: 36,6). A1 télen 5,5-6,6, nyáron 9-10,4 kWh/nap (klíma hűtés kb. +4 kWh/nap).
+
+Bruttó egységárak (2026, rendszerhasználati díjjal): A1 kereten belül 36,2, felett 70,1; B kereten belül 23,2, felett 60,9 Ft/kWh.
+
+**Kályha 2025-ben:** kb. 3 950 kWh, ebből kb. 2 850 kWh keret felett; villanyköltsége kb. 200 000 Ft. Ugyanez a hő gázból kb. 47 000 Ft lenne. Minden kályháról gázra terelt kWh kb. 49 Ft, klímára terelt kb. 37 Ft megtakarítás.
+
+A becsült részszámlák miatt nagy kilengések: tavaszi pótlás (2026.05.22: +50 212 Ft), őszi visszatérítés (2026.09.18: -35 992 Ft).
+
+
 
 ## 6. Gáz
 
@@ -142,8 +167,7 @@ Feldolgozott számlák (PDF, számlaszámok privát): 2023.12-2024.01, 2024.10-1
 
 A tulaj Gmail fiókjából kibontott MVM számla-PDF-ek, csak az F27 felhasználási hely (más ingatlanok számlái is oda érkeznek, azokat kihagytuk). Részletes adat a session scratchpadjében volt, a repóba csak ez az összesítés kerül.
 
-- **Villany:** a villanyszámlák többsége a számlafizető postafiókjába megy, a tulajéban csak 5 F27 villanyszámla van (2025.09-2026.02). A1 197-227 kWh/hó, B 397-457 kWh/hó (becsült), ebből B-n 183-215 kWh/hó piaci áron. Nyári elszámoló (2025.07.09-09.10): A1 592 kWh 64 nap alatt, ebből 150 kWh keret feletti (klíma), B 182 kWh (kb. 2,8 kWh/nap, csak bojler).
-- **B mérő valós átlaga:** 2024.10.09 és 2025.09.10 (diktált) között 5 337 kWh 336 nap alatt = kb. 15,9 kWh/nap, kb. 477 kWh/hó. A becsült részszámlák (397-457 kWh/hó) ennél kevesebbet számláznak: nagy pótlás várható a következő villany-elszámolón.
+- **Villany:** a teljes villanykép az 5. fejezetben ("Villanyszámlák feldolgozva").
 - **Gáz elszámolási évek (korrigált m³):** 2023.07-2024.07: 341; 2024.07-2025.07: 381; 2025.07-2026.07: 470 (+24%). A havi gáz-részszámlák mind becsültek.
 - **Gáz valós havi pontok a diktálásokból:** 2025.08.01-12.31: 156 m³; 2026.01: 140 m³ (a részszámla erre a hónapra 68 m³-t becsült); 2026.02: 119 m³; 2026.03-07.22: 44 m³.
 - **Gázmérő csere:** 2025.06.02 (régi mérő záró 8 220 m³, új mérő 1 m³-ről indult).
@@ -203,7 +227,7 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 
 ## 11. Nyitott kérdések
 
-- A 2024.05-2025.08 és 2026.03-tól érkezett F27 villanyszámlák (a számlafizető postafiókjában vannak): továbbítás vagy hozzáférés kell.
+- Hiányzó F27 villanyszámlák: 2024.05-10 és 2025.04 kelte (a fogyasztás ettől még lefedett).
 
 - A mérőfotók dátumai (a tulaj pótolja).
 - A fürdő fali fűtőtestjének köre.
