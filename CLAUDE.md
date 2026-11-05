@@ -85,7 +85,7 @@ Megjegyzés: a Wi-Fi-s elemes hőmérők sokat alszanak, ritkábban jelentenek, 
 - **Cserépkályha (W):** hőtárolós, kb. 2 m magas, 1 m mély, 90 cm széles. 3 fokozat egyenként kapcsolható, 1 kW-onként, max 3 kW. "Közepes" = 2 kW. 10-12 óra közepes töltés után 8-10 óra múlva is langyos. **A B (vezérelt) mérőn van.**
 - **Klíma (11):** Gree Comfort X 3,5 kW oldalfali split, inverteres hőszivattyú, fűtésre és hűtésre. 2020-ban szerelve. IR-rel vezérelt a Zigbee gatewayen keresztül. **Az A1 mérőn van** (9-es kör).
 - **Gázkonvektor:** Lampart Gála Elegance 50 parapetes (875734), a kis szoba ablaka alatt (8). Egész télen be van kapcsolva, a vendég tekergeti a gombját. Nincs okos vezérlése.
-- **Bojler:** Hajdu ZV120, vízszintes elektromos melegvíztároló, a fürdő álmennyezete felett. Hőfoka fixen beállítva, értéke ismeretlen. **A B (vezérelt) mérőn van**, a 7-es okos kismegszakítóval távolról kapcsolható.
+- **Bojler:** Hajdu ZV120, fekvő, henger alakú elektromos melegvíztároló (120 l), a fürdő álmennyezete felett. Hőfoka fixen beállítva, értéke ismeretlen. **A B (vezérelt) mérőn van**, a 7-es okos kismegszakítóval távolról kapcsolható.
 - **Fürdő fali fűtőtest:** körét nem tudjuk.
 
 ## 5. Villamos energia
