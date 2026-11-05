@@ -34,7 +34,7 @@ A fő probléma a tulaj szerint: a vendégek túlfűtik a lakást, sokat megy a 
 | Fürdő | 3,67 + 3,74 | belső | Az eredeti alaprajz "BM"-je és "fürdő"-je valójában **egyetlen helyiség**, nincs előtér. Egyik fala vastag és szűkíti a teret (a kályha felőli, északi fal; a tulaj megerősítette). Kb. 7 m², csak a nagy szobából érhető el (az előszobából és a tárolóból nincs ajtó, fal választja el). Sarokkád, fali WC, mosdó, magasan a falon elektromos fűtőpanel. Bojler az álmennyezet felett. |
 | WC | 0,83 | belső | Kb. 79 × 105 cm. Külön kis WC, a bejárattal szemben, az előszobából nyílik. Fali WC, fölötte csempézett párkányon pici kézmosó, fehér metrócsempe, patchwork padló, szellőző. |
 | Tároló | ~1,15 | belső | Kb. 107 × 107 cm, a WC-nél szélesebb. A tulaj **privát** tárolója, az előszobából nyílik. Ajtóérzékelő (6). |
-| Előszoba | 3,43 | belső udvar felé bejárat | Bejárati ajtó (5). A villanyelosztó (okos kismegszakítók) és a mérők (X) belépve rögtön jobbra, az előszoba keleti falán. Innen nyílik a WC, a tároló, a konyha és (a bejárattal szemben, befelé nyíló ajtóval) a kis szoba. |
+| Előszoba | 3,43 | belső udvar felé bejárat | Bejárati ajtó (5) a gang felőli déli falon, befelé nyílik. A villanyelosztó (okos kismegszakítók) és a mérők (X) ugyanezen a falon, belülről közvetlenül az ajtótól jobbra (DK-i sarok). Innen nyílik a WC, a tároló, a konyha és (a bejárattal szemben, befelé nyíló ajtóval) a kis szoba. |
 | Konyha | 4,64 | belső udvar, 1 ablak (7) | Sütő, főzőlap, mikró, mosógép, hűtő |
 
 A nagy szoba és a kis szoba között kétszárnyú ajtó van.
@@ -90,7 +90,7 @@ Megjegyzés: a Wi-Fi-s elemes hőmérők sokat alszanak, ritkábban jelentenek, 
 
 ## 5. Villamos energia
 
-### Mérők (előszoba, X: belépve rögtön jobbra)
+### Mérők (előszoba, X: a bejárati ajtó mellett jobbra)
 
 | Mérő | Gyártási szám | Szerep |
 |---|---|---|
