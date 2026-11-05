@@ -40,6 +40,16 @@ A fő probléma a tulaj szerint: a vendégek túlfűtik a lakást, sokat megy a 
 
 A nagy szoba és a kis szoba között kétszárnyú ajtó van.
 
+### Berendezés (fotók és a tulaj szerint, 2026.11.05)
+
+Égtájak az alaprajz szerint: észak = Ferenc krt. Mindenhol sötét tölgy halszálka parketta, krém falak, a keleti fal mindkét szobában zsályazöld díszfal, zsályazöld vászonfüggönyök, kristálycsillárok.
+
+- **Nagy szoba:** nyugati falon franciaágy (fehér pálcás fejvég), majdnem a fal közepén, kicsit a fürdő felé tolva, fölötte ezüst keretes tükör. ÉNy-i sarok: Thonet hintaszék, állólámpa, polcok, macramé futóborostyán. Az ablakok között békeliliom és zöld üvegballon. A 10-es ablak alatt szürke L-alakú sarokkanapé ívlámpával, előtte kerek sötét dohányzóasztal szőnyegen. Keleti (zöld) fal: TV, fehér komód, déli végén íróasztal monitorral. Déli fal: kétszárnyú ajtó a kis szobába, tőle nyugatra a cserépkályha (sötét bordó-barna domborműves csempe, esztergált sarokoszlopok), DNy-on ajtó a BM felé.
+- **Kis szoba:** a bejárati ajtóval szemben nyílik, az ajtó befelé nyílik. Nyugati fal: fehér üvegajtós szekrények, sárgaréz tölcséres gramofon Singer varrógépasztalon, mellette a két zöldre festett Windsor-szék (ez a "Green Chair", a lakás névadója), fölötte magasan a Gree klíma. Keleti (zöld) fal: kanapéágy, fölötte fekvő, fehér keretes tükör (majdnem az asztalig ér) kis polccal; étkezőasztal a falhoz tolva, 4 fő, szükség esetén 5. Déli fal: ablak, alatta a gázkonvektor, DK-i sarokban fehér vitrin, tetején a Zigbee gateway.
+- **Konyha:** fehér kazettás szekrények fekete kagylófogantyúval, sötétbarna munkalap, kerek mosogató, mosógép, szabadon álló villanytűzhely (sütő + kerámialap), mikró a felső szekrényben, fűszercserepek falisínen, kék függöny. A hűtő a sarokban, 90 fokkal elfordítva a pultsorhoz képest.
+- **Fürdő:** fehér metrócsempe, patchwork mintás padló és kádburkolat, aszimmetrikus sarokkád, fali WC, lambériás mosdószekrény, magasan a falon fehér elektromos fűtőpanel.
+- **Középen két kb. 1 m²-es helyiség,** mindkettő az előszobából nyílik: a külön WC és a tulaj **privát tárolója** (6-os nyitásérzékelő a tároló ajtaján).
+
 ## 3. Eszközök és a pink számok a térképen
 
 Smart Life app, otthon neve: "Ferenc krt.". Minden eszköz Tuya ökoszisztéma.
@@ -215,3 +225,4 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 ## 15. Állapot
 
 - 2026.11.01: repó váz kész: Tuya kliens, felderítő workflow, titkosítás, Pages térkép (sematikus alaprajz, demo adat). Következő: a tulaj végigmegy a `docs/tuya-setup.md`-n, lefuttatja az Eszközfelderítés workflow-t, utána a párosítás ellenőrzése és a pink számok véglegesítése.
+- 2026.11.01-05: játékos dashboard mockupok egy privát Claude Design vásznon (A-I változatok). A tulaj kedvence a G irány (izometrikus platformer: meleg dioráma + ugráló Energiaőr hős, Ft érmék, a keret feletti kályha a "boss", a zöld szék a cél, húzható bútorok és eszközök). G3 = fotóhű elrendezés; képei a `mockups/` mappában. Következő: a G3-ból élő térkép valós Tuya-adattal, ha az első felderítés lefutott.

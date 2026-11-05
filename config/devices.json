@@ -6,7 +6,7 @@
     {"pink": "3",  "role": "thermo",  "room": "nagyszoba", "label": "Hőmérő, cserépkályha mögött", "match": ["cserépkályha mögött"],              "pos": [380, 312]},
     {"pink": "4",  "role": "thermo",  "room": "furdo",     "label": "Hőmérő, fürdő",              "match": ["hőmérő - fürdőszoba"],              "pos": [312, 372]},
     {"pink": "5",  "role": "contact", "room": "eloszoba",  "label": "Bejárati ajtó",              "match": ["bejárati ajtó"],                    "pos": [292, 592]},
-    {"pink": "6",  "role": "contact", "room": "tarolo",    "label": "Tároló ajtó",                "match": ["tároló helyiség"],                  "pos": [316, 492]},
+    {"pink": "6",  "role": "contact", "room": "tarolo",    "label": "Tároló ajtó (privát)",              "match": ["tároló helyiség"],                  "pos": [316, 492]},
     {"pink": "7",  "role": "contact", "room": "konyha",    "label": "Konyha ablak",               "match": ["konyha ablak"],                     "pos": [218, 592]},
     {"pink": "8",  "role": "contact", "room": "kisszoba",  "label": "Kis szoba ablak",            "match": ["kis szoba - ablak"],                "pos": [405, 592]},
     {"pink": "9",  "role": "contact", "room": "nagyszoba", "label": "Nagy szoba bal ablak",       "match": ["nagy szoba - bal ablak"],           "pos": [327, 48]},
