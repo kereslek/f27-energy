@@ -33,10 +33,19 @@ A séma újrafuttatható: ha később frissül, ugyanígy bemásolod és futtato
 
    ```sql
    insert into public.app_users (user_id, role)
-   select id, 'owner' from auth.users where email = 'IDE_A_SAJAT_EMAIL_CIMED';
+   select id, 'owner' from auth.users where email = 'IDE_A_SAJAT_EMAIL_CIMED'
+   on conflict (user_id) do update set role = 'owner';
+
+   select u.email, a.role
+   from public.app_users a join auth.users u on u.id = a.user_id;
    ```
 
-   Eredmény: `INSERT 0 1`. Ha `INSERT 0 0`, elírtad az e-mailt.
+   Figyelj, hogy az e-mail cím **két aposztróf között** legyen: `'nev@pelda.hu'`. Ha a záró
+   aposztróf lemarad, a hiba: `unterminated quoted string`.
+
+   Eredmény: alul egy sor a saját e-mail címeddel és `owner` szerepkörrel. Ha 0 sor, a
+   felhasználó még nincs létrehozva (előző pont), vagy elírtad az e-mailt. Többször is
+   futtatható, nem okoz hibát.
 
 ## 5. Idegen regisztráció tiltása
 
