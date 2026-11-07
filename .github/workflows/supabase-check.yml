@@ -1,0 +1,24 @@
+name: Supabase ellenőrzés
+
+# Kézzel indítható: Actions > Supabase ellenőrzés > Run workflow.
+# Csak a nyilvános (publishable) kulcsot használja; a logba csak OK / HIBA kerül.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Ellenőrzés
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: python -m f27.supabase_check

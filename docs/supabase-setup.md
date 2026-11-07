@@ -62,9 +62,20 @@ GitHub: repó > **Settings > Secrets and variables > Actions**. A felső fülekk
   jogosultság védi az adatot. Ezért mehet Variable-be.
 - A **secret** kulcs mindent megkerül: csak GitHub Secretsbe, sehova máshova.
 
-## 7. Kész
+## 7. Ellenőrzés
 
-Írd meg a chatben: „Supabase kész”. A kulcsokat nem kell elküldened. Ezután:
+GitHub: **Actions > Supabase ellenőrzés > Run workflow**. Kb. fél perc. Az eredmény egy táblázat
+(OK / HIBA soronként, mellette, mit kell javítani):
+
+- a projekt elérhető és a publishable kulcs érvényes;
+- az idegen regisztráció ki van kapcsolva;
+- mind a 6 tábla létezik, és névtelenül egyik sem olvasható.
+
+Ha minden sor OK, kész vagy.
+
+## 8. Kész
+
+Írd meg a chatben: „Supabase kész” (és hogy az ellenőrzés zöld lett-e). A kulcsokat nem kell elküldened. Ezután:
 
 - bekötöm a térképbe a bejelentkezést és az elrendezés mentését/betöltését;
 - az adatgyűjtő a Tuya-adatokat ide írja (változáskor vagy óránként), és a mérések
