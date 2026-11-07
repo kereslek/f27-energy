@@ -251,7 +251,7 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 
 - Nyelv: magyar, élénk, közvetlen hangnem.
 - **Soha ne használj em dash-t (gondolatjelet) semmilyen kimenetben.**
-- Hosszú, többlépéses munkánál egy használati session kb. 60%-áig dolgozz, utána állj meg és a következő sessionben folytasd.
+- **Munkamenet-keret:** egy 5 órás használati ablaknak legfeljebb a 85%-át használd (hacsak a tulaj másképp nem kéri). Ha közeledik a határ, zárd le a munkát rendezetten (commit, push, rövid állapotjegyzet a 15. fejezetbe), és a következő sessionben folytasd ugyanonnan. Ez a tulaj általános munkastílusa, nem csak ennél a projektnél.
 
 ## 14. Adatvédelem és működés (publikus repó)
 
