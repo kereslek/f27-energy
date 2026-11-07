@@ -4,289 +4,758 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>F27 lakástérkép</title>
+<meta name="description" content="F27 Energy Quest: a lakás izometrikus térképe, húzható bútorokkal és eszközökkel, mentett elrendezésekkel.">
+<title>F27 Energy Quest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=Baloo+2:wght@800&amp;family=Lilita+One&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">
 <style>
-:root {
-  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a65; --line: #d9d7cf;
-  --wall: #22324a; --room: #ffffff; --pink: #e0438f; --ok: #2f9e62; --bad: #d64545;
-  --warn: #d98a1c; --off: #9a9893; --window: #6cc3d9;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #15171a; --panel: #1e2125; --ink: #ecebe6; --muted: #9b9a94; --line: #34383e;
-    --wall: #9fb4d6; --room: #22262b; --pink: #ff6fb0;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { padding: 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
-h1 { font-size: 20px; margin: 0; }
-.sub { color: var(--muted); font-size: 13px; }
-.banner { margin: 0 16px; padding: 8px 12px; border-radius: 8px; background: #fde8c8; color: #6b4300; font-size: 13px; }
-.banner[hidden] { display: none; }
-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px; }
-@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
-svg { width: 100%; height: auto; display: block; }
-.room { fill: var(--room); stroke: var(--wall); stroke-width: 4; }
-.roomlabel { font-size: 13px; font-style: italic; fill: var(--muted); }
-.roomtemp { font-size: 17px; font-weight: 600; fill: var(--ink); }
-.win { stroke: var(--window); stroke-width: 6; }
-.door { stroke: var(--panel); stroke-width: 6; }
-.marker circle { stroke: var(--panel); stroke-width: 2; }
-.marker text { font-size: 10px; font-weight: 700; fill: #fff; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.marker { cursor: pointer; }
-.fixed rect { fill: none; stroke: var(--muted); stroke-dasharray: 3 3; }
-.fixed text { font-size: 10px; fill: var(--muted); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-td { padding: 5px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
-td.p { font-weight: 700; color: var(--pink); width: 34px; }
-td.v { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-form { display: flex; gap: 8px; flex-wrap: wrap; }
-input[type=password] { flex: 1 1 180px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
-button { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--ink); color: var(--bg); font: inherit; cursor: pointer; }
-button.ghost { background: transparent; color: var(--ink); }
-.msg { color: var(--bad); font-size: 13px; min-height: 1.2em; margin-top: 6px; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-top: 8px; }
-.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+a{color:#1e2a44}a:hover{color:#ff4fa3}
+.lil{font-family:"Lilita One","Baloo 2","Nunito",sans-serif;letter-spacing:.4px}
+.fr{font-family:"Fraunces",Georgia,serif}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes hop{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-12px) rotate(3deg)}}
+@keyframes ghost{0%,100%{transform:translate(0,0)}50%{transform:translate(12px,-8px)}}
+@keyframes spin{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.2)}}
+@keyframes fire{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes flick{0%,100%{opacity:1}35%{opacity:.7}60%{opacity:.95}80%{opacity:.78}}
+@keyframes ring{0%{transform:scale(.5);opacity:.95}100%{transform:scale(1.7);opacity:0}}
+@keyframes note{0%{transform:translate(0,0);opacity:0}15%{opacity:1}100%{transform:translate(10px,-50px);opacity:0}}
+@keyframes drift{0%{transform:translateX(0)}100%{transform:translateX(60px)}}
+@keyframes tw{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes spark{0%,100%{transform:scale(.4) rotate(0deg);opacity:.2}50%{transform:scale(1.15) rotate(45deg);opacity:1}}
+@keyframes flag{0%,100%{transform:skewY(0deg)}50%{transform:skewY(-7deg)}}
+@keyframes rise{0%{transform:translate(0,0) scale(.6);opacity:0}25%{opacity:.7}100%{transform:translate(6px,-56px) scale(1.5);opacity:0}}
+@keyframes pop{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes dash{to{stroke-dashoffset:-48}}
+@keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,60,.7)}100%{box-shadow:0 0 0 12px rgba(255,90,60,0)}}
+.hero{animation:hop 1.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.gh1{animation:ghost 3.4s ease-in-out infinite}
+.gh2{animation:ghost 2.7s ease-in-out infinite .9s}
+.coin{animation:spin 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fire{animation:fire .9s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.mk{animation:bob 3s ease-in-out infinite}
+.flick{animation:flick 1.3s ease-in-out infinite}
+.ring{animation:ring 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.ring2{animation:ring 1.8s ease-out infinite .9s;transform-box:fill-box;transform-origin:center}
+.note{animation:note 2.6s ease-out infinite}
+.note2{animation:note 2.6s ease-out infinite 1.3s}
+.cloud{animation:drift 24s ease-in-out infinite alternate}
+.cloud2{animation:drift 31s ease-in-out infinite alternate-reverse}
+.tw{animation:tw 3.4s ease-in-out infinite}
+.spark{animation:spark 1.9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.flag{animation:flag 1.7s ease-in-out infinite;transform-box:fill-box;transform-origin:left center}
+.rise{animation:rise 4.2s ease-out infinite}
+.rise2{animation:rise 5s ease-out infinite 1.6s}
+.pop{animation:pop 2.4s ease-in-out infinite}
+.trail{animation:dash 1.6s linear infinite}
+.breathe{animation:breathe 3.6s ease-in-out infinite}
+.root{user-select:none;-webkit-user-select:none}
+.pc{cursor:grab;touch-action:none}
+.pc:hover{filter:brightness(1.06) drop-shadow(0 0 3px #ffffff)}
+.pc.sel{filter:drop-shadow(0 0 4px #ff4fa3) drop-shadow(0 0 2px #ff4fa3)}
+.pc.drag{cursor:grabbing;filter:drop-shadow(0 14px 6px rgba(30,42,68,.45)) brightness(1.08)}
+.wall{pointer-events:none}
+.panel{box-sizing:border-box;border-radius:24px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44}
+.qb{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:24px minmax(0,1fr);gap:4px 10px;width:100%;padding:10px 12px;border-radius:16px;border:2px solid #e3cfa6;background:#fffaf0;font-family:"Nunito",sans-serif;transition:transform .12s}
+.qb:hover{transform:translateY(-1px)}
+.qb:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.qb.on{border-color:#1e2a44;background:#fff1c9;box-shadow:0 3px 0 #1e2a44}
+.pu{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 12px;border-radius:16px;border:3px solid #1e2a44;background:#fff7e6;box-shadow:0 4px 0 #1e2a44;font-family:"Nunito",sans-serif;transition:transform .12s}
+.pu:hover{transform:translateY(-2px)}
+.pu:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
+.pu.on{background:#ffe066;box-shadow:0 4px 0 #1e2a44,inset 0 0 0 3px #ff4fa3}
+.lv{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:64px;padding:8px 12px;border-radius:16px;border:3px solid #1e2a44;background:#ffffff;box-shadow:0 4px 0 #1e2a44;font-family:"Nunito",sans-serif;transition:transform .12s}
+.lv:hover{transform:translateY(-2px)}
+.lv:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
+.lv.on{background:#2f6fe4;color:#ffffff}
+.lv.boss{background:#ffd9cc}
+.lv.boss.on{background:#e8432f;color:#ffffff}
+.chip{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 16px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
+.ck{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a}
+.cv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44}
+.ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;border:3px solid #1e2a44;box-sizing:border-box}
+.tag{font-size:9.5px;font-weight:900;letter-spacing:.8px;color:#ffffff;padding:2px 8px;border-radius:999px;border:2px solid #1e2a44}
+.pin{all:unset;position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;cursor:grab;touch-action:none;z-index:2}
+.pin:active{cursor:grabbing}
+.pin.drag{z-index:5}
+.pin .dot{position:absolute;inset:0;border-radius:50%;border:3px solid #1e2a44;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#ffffff;font-family:"Lilita One","Baloo 2",sans-serif;font-size:13px;box-shadow:0 3px 0 #1e2a44;transition:transform .12s}
+.pin.sm .dot{font-size:11px}
+.pin:hover .dot,.pin:focus-visible .dot{transform:scale(1.15)}
+.pin:focus-visible{outline:none}
+.pin:focus-visible .dot{outline:3px solid #ffffff;outline-offset:2px}
+.pin.sel .dot{outline:3px solid #ffe066;outline-offset:2px}
+.pin.drag .dot{transform:scale(1.2);box-shadow:0 10px 8px rgba(30,42,68,.45)}
+.pin.alert .dot{animation:pulse 1.4s ease-out infinite}
+.pin .val{position:absolute;left:34px;top:4px;white-space:nowrap;font-family:"Nunito",sans-serif;font-weight:900;font-size:12px;line-height:18px;padding:0 8px;border-radius:999px;border:2px solid #1e2a44;background:#ffffff;color:#1e2a44}
+.pin .val.l{left:auto;right:34px}
+.pin .val.hot{background:#ffd9cc}
+.pin .val.bad{background:#ff5a3c;color:#ffffff}
+.pin .tip{position:absolute;left:50%;bottom:38px;transform:translateX(-50%);white-space:nowrap;font-family:"Nunito",sans-serif;font-weight:800;font-size:12px;padding:6px 10px;border-radius:12px;background:#1e2a44;color:#fff7e6;opacity:0;pointer-events:none;transition:opacity .12s}
+.pin:hover .tip,.pin:focus-visible .tip{opacity:1}
+.btn{all:unset;box-sizing:border-box;cursor:pointer;white-space:nowrap;flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:14px;border:3px solid #1e2a44;background:#ffffff;box-shadow:0 4px 0 #1e2a44;font-family:"Nunito",sans-serif;font-weight:900;font-size:13px;color:#1e2a44}
+.btn:hover{background:#fff1c9}
+.btn:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
+
+/* ---- élő térkép: keret, fiók, mentés, értesítések ---- */
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+html,body{height:100%}
+body{margin:0;background:#1e2a44;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1440px;height:900px;transform-origin:0 0}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn[disabled]:hover{background:#ffffff}
+.btn.ib{width:44px;padding:0;justify-content:center}
+.btn.sm{min-height:36px;padding:0 12px;font-size:12.5px;border-radius:12px;box-shadow:0 3px 0 #1e2a44}
+.btn.ib.sm{width:36px;padding:0}
+.btn.xs{min-height:30px;padding:0 10px;font-size:12px;border-radius:10px;border-width:2px;box-shadow:0 2px 0 #1e2a44}
+.btn.primary{background:#ffe066}
+.btn.primary:hover{background:#ffd23f}
+.btn.danger{background:#ff5a3c;color:#ffffff}
+.btn.danger:hover{background:#e8432f}
+.btn.acct{align-self:center;min-height:40px}
+.stchip{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:14px;border:3px solid #1e2a44;background:#fff7e6;font-family:"Nunito",sans-serif;font-weight:900;font-size:12.5px;color:#1e2a44;white-space:nowrap}
+.stchip:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
+.stchip .sd{width:10px;height:10px;border-radius:50%;background:#9aa3ad;border:2px solid #1e2a44}
+.stchip.dirty{background:#ffe1d6}
+.stchip.dirty .sd{background:#ff5a3c}
+.stchip.saved .sd{background:#3fae6a}
+.stchip.mini{height:28px;margin-top:6px;padding:0 10px;border-width:2px;border-radius:10px;font-size:11.5px;cursor:default}
+.drawer{position:absolute;left:1144px;top:96px;width:280px;height:632px;padding:14px;display:flex;flex-direction:column;gap:10px;z-index:10;overflow-y:auto;font-family:"Nunito",sans-serif}
+.drawer .dhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.drawer form.login{display:grid;gap:6px}
+.drawer label{font-size:11px;font-weight:900;letter-spacing:.8px;color:#45507a}
+.drawer input{box-sizing:border-box;width:100%;height:38px;padding:0 10px;border-radius:10px;border:2px solid #1e2a44;background:#ffffff;font:700 14px "Nunito",sans-serif;color:#1e2a44}
+.drawer input:focus-visible{outline:3px solid #ff4fa3;outline-offset:1px}
+.drawer form.login .btn{margin-top:6px;justify-content:center}
+.drawer .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.drawer form.row input{flex:1 1 120px;width:auto;height:30px}
+.drawer .who{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:800}
+.drawer .who .em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer .sect{margin-top:4px;font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;border-top:2px dashed #e3cfa6;padding-top:10px}
+.drawer .cur{font-size:13px;font-weight:700}
+.drawer .note{margin:0;font-size:12px;font-weight:800;color:#9a3412;background:#fff1c9;border:2px solid #e3cfa6;border-radius:10px;padding:6px 8px}
+.drawer .list{display:flex;flex-direction:column;gap:6px}
+.drawer .lrow{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;border:2px solid #e3cfa6;background:#fffaf0}
+.drawer .lrow.cur{border-color:#1e2a44;background:#fff1c9}
+.drawer .lname{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:900;overflow:hidden}
+.drawer .lname span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer .ltime{font-size:11px;font-weight:700;color:#45507a}
+.drawer .warn{font-size:12px;font-weight:900;color:#b02a17}
+.drawer .alap{margin-top:auto;font-size:12px;font-weight:800}
+.toasts{position:absolute;left:470px;top:96px;width:500px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:30;pointer-events:none}
+.toast{max-width:500px;padding:10px 16px;border-radius:14px;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;background:#fffdf7;font:900 13.5px "Nunito",sans-serif;color:#1e2a44;text-align:center}
+.toast.ok{background:#c8f2d4}
+.toast.err{background:#ffd9cc}
 </style>
 </head>
 <body>
-<header>
-  <h1>F27 lakástérkép</h1>
-  <span class="sub" id="stamp">nincs betöltött adat</span>
-</header>
-<p class="banner" id="demo" hidden>DEMO mód: kitalált értékek, nem a lakás valós állapota.</p>
-<main>
-  <section class="card">
-    <svg id="plan" viewBox="160 20 340 600" role="img" aria-label="A lakás sematikus alaprajza az eszközökkel"></svg>
-    <div class="legend" id="legend"></div>
-  </section>
-  <aside>
-    <div class="card" id="login">
-      <form id="pwform">
-        <input type="password" id="pw" placeholder="Adatjelszó" autocomplete="current-password" required>
-        <button type="submit">Megnyitás</button>
-        <button type="button" class="ghost" id="demobtn">Demo</button>
-      </form>
-      <div class="msg" id="msg"></div>
-    </div>
-    <div class="card" style="margin-top:12px">
-      <table id="list"><tbody></tbody></table>
-    </div>
-  </aside>
-</main>
-<script>
-"use strict";
-const NS = "http://www.w3.org/2000/svg";
-const ROOMS = {
-  nagyszoba: { x: 280, y: 48,  w: 195, h: 280, label: "nagy szoba", sensor: "2" },
-  furdo:     { x: 255, y: 328, w: 78,  h: 127, label: "fürdő", sensor: "4", ly: 404 }, // egy helyiség (a régi alaprajz "BM"-je is ide tartozik)
-  kisszoba:  { x: 333, y: 328, w: 142, h: 264, label: "kis szoba", sensor: "1" },
-  wc:        { x: 255, y: 455, w: 33,  h: 50,  label: "WC" },        // kb. 79 x 105 cm
-  tarolo:    { x: 288, y: 455, w: 45,  h: 50,  label: "tároló", ly: 472 }, // kb. 107 x 107 cm, privát
-  eloszoba:  { x: 255, y: 505, w: 78,  h: 87,  label: "előszoba", ly: 532 },
-  konyha:    { x: 180, y: 450, w: 75,  h: 142, label: "konyha" }
-};
-// Vastag fal (a fürdő északi fala a kályha felől, szűkíti a fürdőt; a tulaj megerősítette).
-const THICK = [[255, 328, 33, 14], [318, 328, 15, 14]]; // rés az ajtónak (x 288-318)
-// Villanyelosztó (kismegszakítók + mérők): a bejárati fal belső oldalán, közvetlenül az ajtótól jobbra (DK-i sarok).
-const PANEL = [318, 578, 13, 12]; // magas, beépített fehér szekrény (kb. 50 x 35 cm)
-const WINDOWS = [[305, 48, 350, 48], [405, 48, 460, 48], [198, 592, 238, 592], [380, 592, 425, 592]];
-// Ajtók: nagy szoba > fürdő (a kályha és az ágy között; a fürdő CSAK innen érhető el),
-// kétszárnyú ajtó, bejárat, WC és privát tároló az előszobából,
-// kis szoba ajtaja az előszobából (befelé nyílik), konyha ajtaja az előszobából. Előszoba és fürdő között nincs ajtó.
-const DOORS = [[288, 328, 318, 328], [362, 328, 412, 328], [288, 592, 316, 592],
-  [259, 505, 284, 505], [295, 505, 326, 505], [333, 515, 333, 553], [255, 522, 255, 556]];
+<div id="stage"></div>
+<!-- A G3 sablon: a js/minidc.js értelmezi ({{ }} értékek, sc-for, sc-if, onX események). -->
+<template id="g3-template">
+<div class="root" data-root="1" onPointerMove="{{onMove}}" onPointerUp="{{onUp}}" onPointerCancel="{{onUp}}" style="width: 1440px; height: 900px; position: relative; overflow: hidden; font-family: 'Nunito', system-ui, sans-serif; color: #1e2a44; background: #8fd3ff">
 
-let config = null;
-const $ = (id) => document.getElementById(id);
-const el = (tag, attrs = {}, parent) => {
-  const n = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
-  if (parent) parent.appendChild(n);
-  return n;
-};
+<svg width="1440" height="900" viewBox="0 0 1440 900" style="position: absolute; left: 0; top: 0" role="img" aria-label="A lakás izometrikus platformer pályaként. A bútorok és az eszközök húzhatók.">
+<defs>
+<linearGradient id="skyG2" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="{{L.sky0}}"></stop>
+<stop offset="0.55" stop-color="{{L.sky1}}"></stop>
+<stop offset="1" stop-color="{{L.sky2}}"></stop>
+</linearGradient>
+<radialGradient id="halo2">
+<stop offset="0" stop-color="#fff3c4" stop-opacity="0.9"></stop>
+<stop offset="0.4" stop-color="#ffd27a" stop-opacity="0.35"></stop>
+<stop offset="1" stop-color="#ffb04f" stop-opacity="0"></stop>
+</radialGradient>
+<radialGradient id="warm2">
+<stop offset="0" stop-color="#ffd58a" stop-opacity="0.9"></stop>
+<stop offset="0.5" stop-color="#ffb35c" stop-opacity="0.3"></stop>
+<stop offset="1" stop-color="#ff9a3c" stop-opacity="0"></stop>
+</radialGradient>
+<radialGradient id="ember2">
+<stop offset="0" stop-color="#ff8a2a" stop-opacity="0.85"></stop>
+<stop offset="0.5" stop-color="#ff6a1f" stop-opacity="0.28"></stop>
+<stop offset="1" stop-color="#ff5a14" stop-opacity="0"></stop>
+</radialGradient>
+<radialGradient id="cold2">
+<stop offset="0" stop-color="#bfe6ff" stop-opacity="0.85"></stop>
+<stop offset="1" stop-color="#bfe6ff" stop-opacity="0"></stop>
+</radialGradient>
+<radialGradient id="coinG2" cx="0.35" cy="0.35">
+<stop offset="0" stop-color="#fff3a6"></stop>
+<stop offset="0.6" stop-color="#ffd23f"></stop>
+<stop offset="1" stop-color="#e8a817"></stop>
+</radialGradient>
+<linearGradient id="brass2" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#ffe08a"></stop>
+<stop offset="0.5" stop-color="#e0a93a"></stop>
+<stop offset="1" stop-color="#a8741c"></stop>
+</linearGradient>
+<filter id="glowF2" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.4" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+</defs>
 
-// --- értékek ------------------------------------------------------------
-function scaled(dev, code) {
-  if (!dev || !dev.status || !(code in dev.status)) return null;
-  const v = dev.status[code];
-  if (typeof v !== "number") return v;
-  const meta = dev.meta && dev.meta[code];
-  if (meta && typeof meta.scale === "number") return v / Math.pow(10, meta.scale);
-  if (/temp/.test(code) && Math.abs(v) > 60) return v / 10;  // ha nincs specifikáció
-  return v;
-}
-function firstOf(dev, codes) {
-  for (const c of codes) { const v = scaled(dev, c); if (v !== null && v !== undefined) return v; }
-  return null;
-}
-const temp = (d) => firstOf(d, ["va_temperature", "temp_current", "temperature"]);
-const hum = (d) => firstOf(d, ["va_humidity", "humidity_value", "humidity"]);
-function isOpen(d) {
-  const v = firstOf(d, ["doorcontact_state", "contact_state"]);
-  return v === null ? null : !!v;
-}
-function phaseA(b64) {  // TONGOU/dlq: feszültség 2B/10, áram 3B/1000, teljesítmény 3B/1000 kW
-  try {
-    const b = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    if (b.length < 8) return null;
-    return (b[5] << 16) | (b[6] << 8) | b[7];  // nyers érték W-ban (= kW/1000)
-  } catch { return null; }
-}
-function power(d) {
-  const w = firstOf(d, ["cur_power", "power"]);
-  if (typeof w === "number") return w;
-  const pa = d && d.status && d.status.phase_a;
-  return typeof pa === "string" ? phaseA(pa) : null;
-}
-function stoveKw(d) {
-  if (!d || !d.status) return null;
-  return ["switch_1", "switch_2", "switch_3"].filter((c) => d.status[c] === true).length;
-}
-function tempColor(t) {
-  if (t === null) return "var(--room)";
-  const stops = [[16, "#9cc3ec"], [19, "#bfe3e0"], [21, "#cfeac0"], [23, "#f7dc9b"], [25, "#f3a37f"]];
-  for (const [lim, c] of stops) if (t < lim) return c;
-  return "#e9776d";
-}
-const fmt = (v, d = 1) => (v === null || v === undefined) ? "?" : Number(v).toFixed(d).replace(".", ",");
+<rect x="0" y="0" width="1440" height="900" fill="url(#skyG2)"></rect>
+<g opacity="{{L.starOp}}">
+<sc-for list="{{sc.stars}}" as="s" hint-placeholder-count="0">
+<circle class="tw" cx="{{s.x}}" cy="{{s.y}}" r="{{s.r}}" fill="#fff6dc" style="animation-delay: {{s.d}}"></circle>
+</sc-for>
+</g>
+<circle cx="452" cy="{{L.sunY}}" r="80" fill="url(#halo2)" opacity="0.8"></circle>
+<circle cx="452" cy="{{L.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3"></circle>
+<g class="cloud">
+<g transform="translate(400 132) scale(.8)"><ellipse cx="0" cy="0" rx="46" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="-22" cy="-12" rx="24" ry="18" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="18" cy="-16" rx="26" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><rect x="-44" y="-4" width="88" height="20" fill="#ffffff" opacity="{{L.cloudOp}}"></rect></g>
+</g>
+<g class="cloud2">
+<g transform="translate(640 120) scale(.7)"><ellipse cx="0" cy="0" rx="46" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="-22" cy="-12" rx="24" ry="18" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="18" cy="-16" rx="26" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><rect x="-44" y="-4" width="88" height="20" fill="#ffffff" opacity="{{L.cloudOp}}"></rect></g>
+</g>
+<path d="{{sc.city}}" fill="{{L.city}}" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round" opacity="0.75"></path>
+<path d="{{sc.cityWin}}" fill="{{L.cityWin}}"></path>
 
-function describe(c, d) {
-  if (!d) return { text: "nincs párosítva", color: "var(--off)" };
-  if (d.online === false) return { text: "offline", color: "var(--off)" };
-  switch (c.role) {
-    case "thermo": {
-      const t = temp(d), h = hum(d);
-      return { text: `${fmt(t)} °C, ${fmt(h, 0)} %`, color: c.pink === "3" ? "var(--warn)" : "var(--ok)" };
-    }
-    case "contact": {
-      const o = isOpen(d);
-      return o === null ? { text: "?", color: "var(--off)" }
-        : o ? { text: "NYITVA", color: "var(--bad)" } : { text: "zárva", color: "var(--ok)" };
-    }
-    case "breaker": {
-      const w = power(d), on = d.status && (d.status.switch ?? d.status.switch_1);
-      return { text: `${on === false ? "KI, " : ""}${fmt(w, 0)} W`, color: w > 50 ? "var(--warn)" : "var(--ok)" };
-    }
-    case "switch3": {
-      const k = stoveKw(d);
-      return { text: `${k ?? "?"} / 3 kW`, color: k ? "var(--warn)" : "var(--ok)" };
-    }
-    default:
-      return { text: "online", color: "var(--ok)" };
-  }
-}
+<g transform="translate(720 124) scale(0.9)">
+<polygon points="{{sc.road}}" fill="#5b6478" stroke="#1e2a44" stroke-width="2"></polygon>
+<path d="{{sc.roadLine}}" stroke="#ffe8a8" stroke-width="2.5" stroke-dasharray="10 9" fill="none"></path>
+<polygon points="{{sc.walk}}" fill="#c9c2b4" stroke="#1e2a44" stroke-width="2"></polygon>
+<sc-for list="{{sc.trees}}" as="t" hint-placeholder-count="0">
+<g transform="{{t.tr}}">
+<line x1="0" y1="0" x2="0" y2="-40" stroke="#1e2a44" stroke-width="7" stroke-linecap="round"></line>
+<line x1="0" y1="0" x2="0" y2="-40" stroke="#8a5a3a" stroke-width="3.5" stroke-linecap="round"></line>
+<circle cx="-16" cy="-52" r="20" fill="{{L.tree1}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="17" cy="-55" r="22" fill="{{L.tree1}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="0" cy="-76" r="26" fill="{{L.tree2}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="-7" cy="-84" r="8" fill="#ffffff" opacity="0.25"></circle>
+</g>
+</sc-for>
+<sc-for list="{{sc.lamps}}" as="l" hint-placeholder-count="0">
+<g transform="{{l.tr}}">
+<line x1="0" y1="0" x2="0" y2="-92" stroke="#1e2a44" stroke-width="4"></line>
+<path d="M0,-92 q0,-10 12,-10" stroke="#1e2a44" stroke-width="4" fill="none"></path>
+<circle class="breathe" cx="12" cy="-98" r="34" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle>
+<circle cx="12" cy="-98" r="5" fill="#fff0c4" stroke="#1e2a44" stroke-width="2"></circle>
+</g>
+</sc-for>
 
-// --- rajz -----------------------------------------------------------------
-function draw(data) {
-  const svg = $("plan");
-  svg.textContent = "";
-  const devs = (data && data.devices) || {};
-  for (const [key, r] of Object.entries(ROOMS)) {
-    const t = r.sensor ? temp(devs[r.sensor]) : null;
-    const off = r.sensor && devs[r.sensor] && devs[r.sensor].online === false;
-    el("rect", { x: r.x, y: r.y, width: r.w, height: r.h, class: "room", style: `fill:${off ? "var(--room)" : tempColor(t)}` }, svg);
-    const big = r.w >= 100;
-    const ly = r.ly ?? (r.y + (r.sensor ? r.h / 2 - 6 : r.h / 2 + 4));
-    const lbl = el("text", { x: r.x + r.w / 2, y: ly, "text-anchor": "middle", class: "roomlabel" }, svg);
-    lbl.textContent = r.label;
-    if (t !== null) {
-      const tt = el("text", { x: r.x + r.w / 2, y: ly + (big ? 20 : 16), "text-anchor": "middle", class: "roomtemp",
-        style: big ? "" : "font-size:12px" }, svg);
-      tt.textContent = `${fmt(t)} °C${off ? "?" : ""}`;
-      if (off) { const ti = el("title", {}, tt); ti.textContent = "A hőmérő offline, ez az utolsó ismert érték."; }
-    }
-  }
-  for (const [x, y, w, h] of THICK) el("rect", { x, y, width: w, height: h, fill: "var(--wall)" }, svg);
-  { const [x, y, w, h] = PANEL; const g = el("rect", { x, y, width: w, height: h, rx: 1, fill: "#9aa3ad", stroke: "var(--wall)", "stroke-width": 1.5 }, svg); const t = el("title", {}, g); t.textContent = "Villanyóra- és kismegszakító-szekrény (magas, fehér, beépített)"; }
-  for (const [x1, y1, x2, y2] of DOORS) el("line", { x1, y1, x2, y2, class: "door" }, svg);
-  for (const [x1, y1, x2, y2] of WINDOWS) el("line", { x1, y1, x2, y2, class: "win" }, svg);
-  const st = el("text", { x: 377, y: 36, "text-anchor": "middle", class: "roomlabel" }, svg); st.textContent = "Ferenc krt.";
-  const ud = el("text", { x: 300, y: 612, "text-anchor": "middle", class: "roomlabel" }, svg); ud.textContent = "belső udvar";
+<ellipse cx="-13" cy="572" rx="380" ry="54" fill="#1e2a44" opacity="0.2"></ellipse>
 
-  for (const f of config.fixed) {
-    const g = el("g", { class: "fixed" }, svg);
-    if (f.id === "W") el("rect", { x: f.pos[0] - 22, y: f.pos[1] - 16, width: 44, height: 22, rx: 3 }, g);
-    const t = el("text", { x: f.pos[0], y: f.pos[1], "text-anchor": "middle" }, g);
-    t.textContent = { W: "kályha", GAS: "gáz", BOJ: "bojler", FT: "fűtőtest" }[f.id] || f.id;
-    const ti = el("title", {}, g); ti.textContent = f.label;
-  }
+<sc-for list="{{sc.slab}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></polygon>
+<path d="{{b.lines}}" stroke="{{b.lc}}" stroke-width="1.4" fill="none"></path>
+</g>
+</sc-for>
+<sc-for list="{{sc.floors}}" as="f" hint-placeholder-count="0">
+<g>
+<polygon points="{{f.p}}" fill="{{f.fill}}" stroke="#1e2a44" stroke-width="1.6"></polygon>
+<path d="{{f.lines}}" stroke="{{f.lc}}" stroke-width="1" fill="none"></path>
+</g>
+</sc-for>
+<sc-for list="{{sc.checks}}" as="c" hint-placeholder-count="0">
+<polygon points="{{c.p}}" fill="{{c.f}}" opacity="0.95"></polygon>
+</sc-for>
+<sc-for list="{{sc.rugs}}" as="r" hint-placeholder-count="0">
+<g>
+<polygon points="{{r.p}}" fill="{{r.fill}}" stroke="#1e2a44" stroke-width="2"></polygon>
+<polygon points="{{r.p2}}" fill="none" stroke="{{r.edge}}" stroke-width="2" stroke-dasharray="4 4"></polygon>
+</g>
+</sc-for>
 
-  const rows = $("list").tBodies[0];
-  rows.textContent = "";
-  for (const c of config.devices) {
-    const d = devs[c.pink];
-    const info = describe(c, d);
-    const g = el("g", { class: "marker", transform: `translate(${c.pos[0]},${c.pos[1]})` }, svg);
-    if (c.role === "breaker") el("rect", { x: -8, y: -8, width: 16, height: 16, rx: 3, fill: info.color }, g);
-    else el("circle", { r: c.pink.length > 1 ? 10 : 8.5, fill: info.color }, g);
-    const tx = el("text", {}, g); tx.textContent = c.role === "breaker" ? "k" + c.pink.slice(1) : c.pink;
-    const ti = el("title", {}, g); ti.textContent = `${c.pink}: ${c.label}: ${info.text}`;
+<g opacity="{{L.glow}}">
+<ellipse cx="158" cy="218" rx="120" ry="58" fill="url(#warm2)"></ellipse>
+<ellipse cx="107" cy="395" rx="110" ry="52" fill="url(#warm2)"></ellipse>
+<ellipse cx="-261" cy="410" rx="70" ry="34" fill="url(#warm2)"></ellipse>
+</g>
+<ellipse class="breathe" cx="51" cy="330" rx="120" ry="58" fill="url(#ember2)" opacity="{{L.ember}}"></ellipse>
+<ellipse cx="-173" cy="462" rx="96" ry="44" fill="url(#cold2)"></ellipse>
 
-    const tr = rows.insertRow();
-    tr.insertCell().textContent = c.pink; tr.cells[0].className = "p";
-    const nc = tr.insertCell();
-    const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = info.color;
-    nc.append(dot, c.label);
-    const vc = tr.insertCell(); vc.className = "v"; vc.textContent = info.text;
-  }
-  if (data && data.generated_at) {
-    $("stamp").textContent = "pillanatkép: " + new Date(data.generated_at).toLocaleString("hu-HU");
-  }
-}
+<sc-for list="{{sc.back}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
+<path d="{{b.lines}}" stroke="{{b.lc}}" stroke-width="1.2" fill="none"></path>
+</g>
+</sc-for>
+<sc-for list="{{wins}}" as="w" hint-placeholder-count="0">
+<g>
+<path d="{{w.glass}}" fill="{{w.fill}}" stroke="#1e2a44" stroke-width="2.5"></path>
+<path d="{{w.frame}}" stroke="#fff7e6" stroke-width="3" fill="none"></path>
+<path d="{{w.shine}}" stroke="#ffffff" stroke-width="2" opacity="0.6" fill="none"></path>
+</g>
+</sc-for>
 
-function legend() {
-  const items = [["#9cc3ec", "< 16 °C"], ["#bfe3e0", "16-19"], ["#cfeac0", "19-21"], ["#f7dc9b", "21-23"], ["#f3a37f", "23-25"], ["#e9776d", "25+ °C"]];
-  $("legend").innerHTML = items.map(([c, t]) => `<span><span class="sw" style="background:${c}"></span>${t}</span>`).join("")
-    + `<span><span class="dot" style="background:var(--bad)"></span>nyitva</span><span><span class="dot" style="background:var(--off)"></span>nincs adat</span>`;
-}
+<sc-for list="{{layers}}" as="ly" hint-placeholder-count="0">
+<g class="{{ly.cls}}" transform="{{ly.tr}}" onPointerDown="{{ly.down}}">
+<sc-for list="{{ly.boxes}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="{{b.sw}}" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="{{b.sw}}" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="{{b.sw}}" stroke-linejoin="round"></polygon>
+<path d="{{b.lines}}" stroke="{{b.lc}}" stroke-width="1.1" fill="none"></path>
+<path class="{{b.f1cls}}" d="{{b.f1}}" fill="{{b.f1c}}" filter="{{b.f1f}}"></path>
+</g>
+</sc-for>
+</g>
+</sc-for>
 
-// --- visszafejtés (WebCrypto, egyezik az f27/crypto.py formátummal) ---------
-const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-async function decrypt(env, password) {
-  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: unb64(env.salt), iterations: env.iter, hash: "SHA-256" },
-    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(env.iv) }, key, unb64(env.ct));
-  return JSON.parse(new TextDecoder().decode(plain));
-}
+<g transform="{{fx.horn}}" style="pointer-events: none">
+<ellipse cx="0" cy="0" rx="9" ry="4.5" fill="#1e2a44"></ellipse>
+<ellipse cx="0" cy="-1" rx="7" ry="3.2" fill="#3a3a3a"></ellipse>
+<path d="M2,-2 L10,-14" stroke="#1e2a44" stroke-width="3"></path>
+<path d="M8,-12 Q16,-30 34,-40 Q40,-30 30,-20 Q20,-16 12,-10 Z" fill="url(#brass2)" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></path>
+<ellipse cx="33" cy="-31" rx="5" ry="10" transform="rotate(-38 33 -31)" fill="#7a5214" opacity="0.6"></ellipse>
+<g class="note"><g transform="translate(30 -46)" fill="#ff4fa3" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"><ellipse cx="-2" cy="-1" rx="4.2" ry="3.2" transform="rotate(-20 -2 -1)"></ellipse><path d="M1.6,-2 V-15 q5,1 6,6 q-3,-2 -6,-1 Z"></path></g></g>
+<g class="note2"><g transform="translate(40 -40)" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"><ellipse cx="-4" cy="0" rx="3.6" ry="2.8" transform="rotate(-20 -4 0)"></ellipse><ellipse cx="5" cy="-2" rx="3.6" ry="2.8" transform="rotate(-20 5 -2)"></ellipse><path d="M-1,-1 V-13 L8,-15 V-3 L8,-4 V-14 L-1,-12 Z"></path></g></g>
+</g>
+<g transform="{{fx.plant}}" style="pointer-events: none">
+<ellipse cx="-8" cy="-8" rx="9" ry="5" fill="#3fa35f" stroke="#1e2a44" stroke-width="2" transform="rotate(-30 -8 -8)"></ellipse>
+<ellipse cx="8" cy="-11" rx="9" ry="5" fill="#57c27a" stroke="#1e2a44" stroke-width="2" transform="rotate(25 8 -11)"></ellipse>
+<ellipse cx="-4" cy="-22" rx="5" ry="9" fill="#3fa35f" stroke="#1e2a44" stroke-width="2" transform="rotate(-18 -4 -22)"></ellipse>
+<ellipse cx="7" cy="-24" rx="4" ry="8" fill="#6fd28e" stroke="#1e2a44" stroke-width="2" transform="rotate(24 7 -24)"></ellipse>
+</g>
+<g transform="{{fx.lamp}}" style="pointer-events: none"><circle class="breathe" cx="0" cy="0" r="40" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle></g>
+<g transform="{{fx.lamp2}}" style="pointer-events: none"><circle class="breathe" cx="0" cy="0" r="30" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle></g>
+<g transform="{{fx.lamp3}}" style="pointer-events: none"><circle class="breathe" cx="0" cy="0" r="18" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle></g>
+<g transform="{{fx.lamp4}}" style="pointer-events: none"><circle class="breathe" cx="0" cy="0" r="18" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle></g>
+<g transform="{{sc.fx.ch1}}" style="pointer-events: none">
+<circle class="breathe" cx="0" cy="0" r="44" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle>
+<path d="M0,-30 V-14" stroke="#1e2a44" stroke-width="2"></path>
+<path d="M-14,-8 q14,10 28,0 M-10,-13 q10,6 20,0" stroke="#ffffff" stroke-width="2.6" fill="none" stroke-linecap="round"></path>
+<path d="M-14,-8 l-2,5 l2,4 l2,-4z M-5,-3 l-2,6 l2,4 l2,-4z M5,-3 l-2,6 l2,4 l2,-4z M14,-8 l-2,5 l2,4 l2,-4z" fill="#eaf6ff" stroke="#1e2a44" stroke-width="1.2"></path>
+<circle cx="-10" cy="-16" r="2.4" fill="#fff6d6" stroke="#1e2a44" stroke-width="1"></circle><circle cx="0" cy="-17" r="2.4" fill="#fff6d6" stroke="#1e2a44" stroke-width="1"></circle><circle cx="10" cy="-16" r="2.4" fill="#fff6d6" stroke="#1e2a44" stroke-width="1"></circle>
+</g>
+<g transform="{{sc.fx.ch2}}" style="pointer-events: none">
+<circle class="breathe" cx="0" cy="0" r="34" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle>
+<path d="M0,-24 V-12" stroke="#1e2a44" stroke-width="2"></path>
+<path d="M-10,-6 q10,8 20,0" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+<path d="M-10,-6 l-2,5 l2,4 l2,-4z M0,-2 l-2,6 l2,4 l2,-4z M10,-6 l-2,5 l2,4 l2,-4z" fill="#eaf6ff" stroke="#1e2a44" stroke-width="1.2"></path>
+</g>
+<g transform="{{sc.fx.stoveTop}}" style="pointer-events: none">
+<circle class="rise" cx="-6" cy="0" r="7" fill="#ffd8a8" opacity="0.6"></circle>
+<circle class="rise2" cx="8" cy="-4" r="6" fill="#ffc48a" opacity="0.6"></circle>
+</g>
 
-async function openWith(password) {
-  const res = await fetch("data/latest.json.enc", { cache: "no-store" });
-  if (!res.ok) throw new Error("Még nincs adat. Futtasd az Eszközfelderítés workflow-t.");
-  let data;
-  try { data = await decrypt(await res.json(), password); }
-  catch { throw new Error("Hibás jelszó."); }
-  $("demo").hidden = true;
-  draw(data);
-  try { sessionStorage.setItem("f27pw", password); } catch {}
-}
+<g style="pointer-events: none">
+<path d="{{sc.mirror.frame}}" fill="#ffffff" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path>
+<path d="{{sc.mirror.glass}}" fill="#cfe3ea" stroke="#9fb3bd" stroke-width="1"></path>
+<path d="{{sc.mirror.shine}}" stroke="#ffffff" stroke-width="2.5" opacity="0.8" fill="none" stroke-linecap="round"></path>
+<sc-for list="{{sc.mirror.shelf}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+</g>
+</sc-for>
+<g opacity="0.24">
+<polygon points="{{sc.ghost.right}}" fill="{{sc.ghost.cr}}"></polygon>
+<polygon points="{{sc.ghost.top}}" fill="{{sc.ghost.ct}}"></polygon>
+</g>
+<polygon points="{{sc.ghost.right}}" fill="none" stroke="#1e2a44" stroke-width="1.6" stroke-dasharray="5 5" opacity="0.55"></polygon>
+</g>
 
-$("pwform").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  $("msg").textContent = "Visszafejtés...";
-  try { await openWith($("pw").value); $("msg").textContent = ""; }
-  catch (err) { $("msg").textContent = err.message; }
-});
-$("demobtn").addEventListener("click", async () => {
-  const data = await (await fetch("demo.json")).json();
-  $("demo").hidden = false;
-  draw(data);
-});
+<g style="pointer-events: none">
+<path d="{{sc.blind.slats}}" stroke="#1c1916" stroke-width="1.3" fill="none" opacity="0.8"></path>
+<path d="{{sc.blind.sheer}}" fill="#ffffff" opacity="0.5"></path>
+<path d="{{sc.blind.lace}}" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.9"></path>
+<sc-for list="{{sc.blind.curt}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+</g>
+</sc-for>
+</g>
 
-(async function init() {
-  config = await (await fetch("config/devices.json")).json();
-  legend();
-  draw(null);
-  let saved = null;
-  try { saved = sessionStorage.getItem("f27pw"); } catch {}
-  if (saved) openWith(saved).catch(() => {});
-})();
-</script>
+<polygon points="{{sc.gangSlab}}" fill="#d9c3a0" stroke="#1e2a44" stroke-width="2"></polygon>
+<sc-for list="{{sc.front}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
+</g>
+</sc-for>
+<polygon points="{{sc.win7}}" fill="#bfe6ff" stroke="#1e2a44" stroke-width="2"></polygon>
+<polygon points="{{sc.win8}}" fill="#e6f6ff" stroke="#1e2a44" stroke-width="2.5" opacity="0.92"></polygon>
+<path d="{{sc.win8frame}}" stroke="#ffffff" stroke-width="2" fill="none"></path>
+<path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+<text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
+
+<sc-if value="{{showPath}}" hint-placeholder-val="{{ true }}">
+<g style="pointer-events: none">
+<sc-for list="{{arcs}}" as="a" hint-placeholder-count="0">
+<g>
+<path d="{{a.d}}" stroke="#1e2a44" stroke-width="7" stroke-dasharray="1 13" stroke-linecap="round" fill="none" opacity="0.3"></path>
+<path class="trail" d="{{a.d}}" stroke="#ffffff" stroke-width="4.5" stroke-dasharray="1 11" stroke-linecap="round" fill="none"></path>
+</g>
+</sc-for>
+<sc-for list="{{pads}}" as="p" hint-placeholder-count="0">
+<g transform="{{p.tr}}">
+<ellipse cx="0" cy="0" rx="14" ry="7" fill="#ffffff" stroke="#1e2a44" stroke-width="2.5" opacity="0.85"></ellipse>
+<ellipse cx="0" cy="0" rx="7" ry="3.5" fill="#ff4fa3"></ellipse>
+</g>
+</sc-for>
+</g>
+</sc-if>
+
+<g style="pointer-events: none">
+<sc-for list="{{coins}}" as="c" hint-placeholder-count="0">
+<g transform="{{c.tr}}" opacity="{{c.op}}">
+<g class="coin" style="animation-delay: {{c.d}}">
+<circle r="11" fill="url(#coinG2)" stroke="#1e2a44" stroke-width="3"></circle>
+<text y="4.5" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="11" fill="#1e2a44">Ft</text>
+</g>
+</g>
+</sc-for>
+</g>
+
+<g transform="{{sc.fx.priv}}" style="pointer-events: none">
+<rect x="-30" y="-36" width="60" height="18" rx="6" fill="#4d311c" stroke="#1e2a44" stroke-width="2.5"></rect>
+<path d="M-22,-29 v-3 a3,3 0 0 1 6,0 v3 M-23.5,-29 h9 v7 h-9 z" fill="#f0cf6a" stroke="#f0cf6a" stroke-width="1.4"></path>
+<text x="5" y="-23" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="10" fill="#fff7e6" letter-spacing="0.6">PRIVÁT</text>
+</g>
+<g transform="{{sc.fx.pendant}}" style="pointer-events: none"><circle class="breathe" cx="0" cy="6" r="22" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle></g>
+<g transform="{{sc.fx.wcTag}}" style="pointer-events: none">
+<rect x="-14" y="-36" width="28" height="18" rx="6" fill="#ffffff" stroke="#1e2a44" stroke-width="2.5"></rect>
+<text x="0" y="-23" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="11" fill="#1e2a44">WC</text>
+</g>
+<g transform="{{fx.seat5}}" style="pointer-events: none">
+<ellipse cx="0" cy="0" rx="13" ry="6.5" fill="#ffffff" fill-opacity="0.25" stroke="#ffffff" stroke-width="2" stroke-dasharray="3 3"></ellipse>
+<text x="0" y="-9" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3" paint-order="stroke">+1</text>
+</g>
+<g transform="{{sc.fx.start}}" style="pointer-events: none">
+<line x1="0" y1="0" x2="0" y2="-44" stroke="#1e2a44" stroke-width="4"></line>
+<rect x="-30" y="-66" width="60" height="24" rx="8" fill="#2f6fe4" stroke="#1e2a44" stroke-width="3"></rect>
+<text x="0" y="-48.5" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="14" fill="#ffffff">START</text>
+</g>
+
+<g transform="{{fx.flag}}" style="pointer-events: none">
+<line x1="0" y1="0" x2="0" y2="-96" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></line>
+<line x1="0" y1="0" x2="0" y2="-96" stroke="#fff7e6" stroke-width="2.5" stroke-linecap="round"></line>
+<circle cx="0" cy="-100" r="6" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.5"></circle>
+<g class="flag"><path d="M2,-96 H104 L96,-82 L104,-68 H2 Z" fill="#3fae6a" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"></path><text x="49" y="-78" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff">CÉL: Zöld szék</text></g>
+
+<path class="spark" d="M-26,-30 l3,-9 l3,9 l9,3 l-9,3 l-3,9 l-3,-9 l-9,-3 z" fill="#fff3a6" stroke="#1e2a44" stroke-width="1.5"></path>
+<path class="spark" style="animation-delay: .6s" d="M22,-40 l2.5,-7 l2.5,7 l7,2.5 l-7,2.5 l-2.5,7 l-2.5,-7 l-7,-2.5 z" fill="#ffffff" stroke="#1e2a44" stroke-width="1.5"></path>
+</g>
+
+<g transform="{{sc.fx.flame}}" style="pointer-events: none">
+<g class="mk">
+<path class="fire" d="M0,-30 q18,15 13,31 a13,13 0 0 1 -26,0 q-2,-11 7,-16 q-2,9 4,11 q-4,-15 2,-26z" fill="#ff7a1a" stroke="#1e2a44" stroke-width="3"></path>
+<path d="M0,-10 q7,6 5,12 a5,5 0 0 1 -10,0 q0,-6 5,-12z" fill="#ffd23f"></path>
+<circle cx="-4" cy="-1" r="2.3" fill="#1e2a44"></circle><circle cx="5" cy="-1" r="2.3" fill="#1e2a44"></circle>
+<path d="M-3,5 q3,-2 6,0" stroke="#1e2a44" stroke-width="1.8" fill="none"></path>
+</g>
+</g>
+
+<g transform="{{sc.fx.boss}}" style="pointer-events: none">
+<rect x="-112" y="-44" width="224" height="60" rx="14" fill="#fff7e6" stroke="#1e2a44" stroke-width="3"></rect>
+<text x="0" y="-22" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="15" fill="#e8432f">BOSS: Keret feletti Kályha</text>
+<rect x="-98" y="-14" width="196" height="12" rx="6" fill="#ffd9cc" stroke="#1e2a44" stroke-width="2"></rect>
+<rect x="-98" y="-14" width="{{bossW}}" height="12" rx="6" fill="#e8432f"></rect>
+<text x="0" y="11" text-anchor="middle" font-family="Nunito" font-weight="900" font-size="11" fill="#1e2a44">~60 Ft / kWh hő</text>
+<path d="M-9,16 L0,27 L9,16 Z" fill="#fff7e6" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></path>
+</g>
+
+<sc-if value="{{L.open8}}" hint-placeholder-val="{{ true }}">
+<g transform="{{sc.fx.ghosts}}" style="pointer-events: none">
+<path d="M-56,30 q20,-20 44,-8 q18,8 38,-4" stroke="#e6f6ff" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"></path>
+<g transform="translate(24 -10)"><g class="gh1">
+<path d="M-16,6 a16,16 0 0 1 32,0 v18 l-6,-5 l-5,5 l-5,-5 l-5,5 l-5,-5 l-6,5z" fill="#eefaff" stroke="#1e2a44" stroke-width="3"></path>
+<circle cx="-5" cy="6" r="2.5" fill="#1e2a44"></circle><circle cx="5" cy="6" r="2.5" fill="#1e2a44"></circle>
+<path d="M-4,13 q4,-3 8,0" fill="none" stroke="#1e2a44" stroke-width="2"></path>
+</g></g>
+<text x="4" y="-40" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#ffffff" stroke="#1e2a44" stroke-width="3.5" paint-order="stroke">Huzat-szellem</text>
+<g transform="translate(-16 14)"><g class="gh2">
+<path d="M-12,4 a12,12 0 0 1 24,0 v14 l-5,-4 l-4,4 l-3,-4 l-4,4 l-4,-4 l-4,4z" fill="#eefaff" stroke="#1e2a44" stroke-width="3"></path>
+<circle cx="-4" cy="4" r="2" fill="#1e2a44"></circle><circle cx="4" cy="4" r="2" fill="#1e2a44"></circle>
+</g></g>
+</g>
+</sc-if>
+
+<g transform="{{sc.fx.gw}}" style="pointer-events: none">
+<circle class="ring" r="14" fill="none" stroke="#4fc3f7" stroke-width="2.5"></circle>
+<circle class="ring2" r="14" fill="none" stroke="#4fc3f7" stroke-width="2.5"></circle>
+</g>
+
+<g transform="{{focusFx.tr}}" style="pointer-events: none">
+<ellipse class="ring" cx="0" cy="0" rx="34" ry="17" fill="none" stroke="{{focusFx.c}}" stroke-width="4"></ellipse>
+<ellipse class="ring2" cx="0" cy="0" rx="34" ry="17" fill="none" stroke="{{focusFx.c}}" stroke-width="4"></ellipse>
+</g>
+
+<g transform="{{hero.tr}}" style="pointer-events: none">
+<path d="M-58,30 h22 M-64,42 h28 M-54,54 h16" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.85"></path>
+<g class="hero">
+<ellipse cx="0" cy="54" rx="15" ry="4" fill="#1e2a44" opacity="0.18"></ellipse>
+<path d="M-8,28 L-15,40 M8,28 L17,37" stroke="#1e2a44" stroke-width="7" stroke-linecap="round"></path>
+<ellipse cx="0" cy="8" rx="20" ry="22" fill="#2f6fe4" stroke="#1e2a44" stroke-width="4"></ellipse>
+<path d="M-18,2 L-30,-14" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></path>
+<path d="M18,2 L31,-16" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></path>
+<circle cx="-31" cy="-16" r="4.5" fill="#ffd9b8" stroke="#1e2a44" stroke-width="2.5"></circle>
+<circle cx="32" cy="-18" r="4.5" fill="#ffd9b8" stroke="#1e2a44" stroke-width="2.5"></circle>
+<circle cx="0" cy="-12" r="16" fill="#ffd9b8" stroke="#1e2a44" stroke-width="4"></circle>
+<circle cx="-5" cy="-12" r="2.6" fill="#1e2a44"></circle><circle cx="6" cy="-12" r="2.6" fill="#1e2a44"></circle>
+<path d="M-5,-5 q5,5 11,0" fill="#1e2a44"></path>
+<circle cx="-10" cy="-7" r="3" fill="#ff9db0" opacity="0.85"></circle><circle cx="11" cy="-7" r="3" fill="#ff9db0" opacity="0.85"></circle>
+<path d="M-16,-16 a16,16 0 0 1 32,0z" fill="#ff4f4f" stroke="#1e2a44" stroke-width="4"></path>
+<path d="M-8,-27 v8 M0,-29 v9 M8,-27 v8" stroke="#ffffff" stroke-width="1.6" opacity="0.6"></path>
+<rect x="-17" y="-19" width="34" height="7" rx="3.5" fill="#ffffff" stroke="#1e2a44" stroke-width="3"></rect>
+<circle cx="0" cy="-34" r="5.5" fill="#ffffff" stroke="#1e2a44" stroke-width="3"></circle>
+<path d="M-14,2 H14 V8 H-14z" fill="#ffd23f" stroke="#1e2a44" stroke-width="3"></path>
+<path d="M-10,8 L-22,20 L-16,24 L-4,8z" fill="#ffd23f" stroke="#1e2a44" stroke-width="3"></path>
+<circle cx="0" cy="16" r="5" fill="#ffffff" stroke="#1e2a44" stroke-width="2"></circle>
+<path d="M-1.5,13 l3,0 l-2,3 h3 l-4,5 l1,-3.5 h-2.5z" fill="#ffd23f"></path>
+</g>
+</g>
+</g>
+
+<sc-if value="{{showMarkers}}" hint-placeholder-val="{{ true }}">
+<g style="pointer-events: none">
+<sc-for list="{{pins}}" as="m" hint-placeholder-count="0">
+<g>
+<line x1="{{m.ax}}" y1="{{m.ay}}" x2="{{m.x}}" y2="{{m.y}}" stroke="#1e2a44" stroke-width="2.5" stroke-linecap="round"></line>
+<circle cx="{{m.ax}}" cy="{{m.ay}}" r="3.5" fill="#ffffff" stroke="#1e2a44" stroke-width="2"></circle>
+</g>
+</sc-for>
+</g>
+</sc-if>
+</svg>
+
+<sc-if value="{{showMarkers}}" hint-placeholder-val="{{ true }}">
+<div>
+<sc-for list="{{pins}}" as="m" hint-placeholder-count="0">
+<button type="button" class="{{m.cls}}" style="left: {{m.x}}px; top: {{m.y}}px" onPointerDown="{{m.down}}" aria-label="{{m.aria}}">
+<span class="dot" style="background: {{m.fill}}">{{m.id}}</span>
+<sc-if value="{{m.showVal}}" hint-placeholder-val="{{ false }}"><span class="{{m.vcls}}">{{m.val}}</span></sc-if>
+<span class="tip">{{m.name}}: {{m.val}}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 16px">
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 20px; border-radius: 18px; background: #ff4fa3; border: 3px solid #1e2a44; box-shadow: 0 4px 0 #1e2a44; color: #ffffff">
+<span class="lil" style="font-size: 24px; line-height: 1">F27 ENERGY QUEST</span>
+<span style="font-size: 12px; font-weight: 900; letter-spacing: 1px">VILÁG {{L.code}}: {{L.name}}</span>
+</div>
+<div class="chip"><span class="ck">ENERGIAPONT</span><span class="cv">{{L.score}}</span></div>
+<div class="chip"><span class="ck">MEGTAKARÍTOTT Ft</span><span class="cv" style="color: #9a6a00">{{L.coins}}</span></div>
+<div class="chip"><span class="ck">KOMFORT (ELSŐ!)</span>
+<div style="display: flex; gap: 4px">
+<sc-for list="{{hearts}}" as="h" hint-placeholder-count="5">
+<svg width="22" height="20" viewBox="0 0 24 22" aria-hidden="true"><path d="M12 20 C4 14 1 10 1 6.5 A5 5 0 0 1 12 4 A5 5 0 0 1 23 6.5 C23 10 20 14 12 20Z" fill="{{h.f}}" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></path></svg>
+</sc-for>
+</div>
+</div>
+<div class="chip"><span class="ck">KINT</span><span class="cv">{{L.outside}}</span></div>
+<div class="chip" style="background: #fff1c9"><span class="ck">VENDÉG ÉRKEZIK</span><span class="cv" style="color: #c8321f">{{L.timer}}</span></div>
+<div style="flex: 1 1 auto"></div>
+<sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 8px 16px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 12px; letter-spacing: 1.2px">DEMO ADATOK</div></sc-if>
+<button class="btn acct" type="button" onClick="{{ui.toggleDrawer}}" aria-expanded="{{ui.drawerOpenAttr}}" aria-controls="f27-drawer">
+<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+{{ui.acctLabel}}
+</button>
+</div>
+
+<div class="panel" style="position: absolute; left: 16px; top: 96px; width: 280px; height: 632px; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 4px">
+<span class="fr" style="font-size: 23px; font-weight: 800; color: #3b2a14">Küldetésnapló</span>
+<span style="font-size: 12px; font-weight: 900; color: #7a5a2e">{{questDone}}/5 kész</span>
+</div>
+<sc-for list="{{quests}}" as="q" hint-placeholder-count="5">
+<button class="qb {{q.cls}}" type="button" onClick="{{q.pick}}" aria-label="{{q.aria}}">
+<svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true"><rect x="2" y="2" width="22" height="22" rx="7" fill="{{q.boxFill}}" stroke="#1e2a44" stroke-width="2.5"></rect><path d="{{q.check}}" stroke="#ffffff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<span style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<span style="font-weight: 900; font-size: 14px; color: #1e2a44">{{q.title}}</span>
+<span style="font-family: 'Lilita One','Baloo 2'; font-size: 13px; color: #9a6a00">{{q.reward}}</span>
+</span>
+<span style="font-size: 12px; font-weight: 700; color: #4a3d28; line-height: 1.35">{{q.desc}}</span>
+<span style="display: flex; align-items: center; gap: 8px">
+<span style="flex: 1 1 auto; height: 8px; border-radius: 4px; background: #eadbbb; border: 1.5px solid #1e2a44; overflow: hidden"><span style="display: block; height: 100%; width: {{q.pw}}; background: {{q.bar}}"></span></span>
+<span style="font-size: 11px; font-weight: 900; color: #4a3d28; min-width: 40px; text-align: right">{{q.prog}}</span>
+</span>
+</span>
+</button>
+</sc-for>
+<div style="flex: 1 1 auto"></div>
+<div style="padding: 12px 16px; border-radius: 18px; background: #1e2a44; color: #fff7e6; box-shadow: 0 4px 0 #0f1628; display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.2px; color: #ffe066">SZINT 7</span>
+<span style="font-size: 11px; font-weight: 900; color: #c9d1ea">1 240 / 2 000 XP</span>
+</span>
+<span class="lil" style="font-size: 20px; line-height: 1.05">Gondos Gazda</span>
+<span style="height: 10px; border-radius: 5px; background: #33416a; overflow: hidden"><span style="display: block; height: 100%; width: 62%; background: #ffe066"></span></span>
+</div>
+</div>
+
+<div class="panel" style="position: absolute; left: 1144px; top: 96px; width: 280px; height: 632px; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 4px">
+<span class="lil" style="font-size: 23px; color: #1e2a44">Power-upok</span>
+<span style="font-size: 11px; font-weight: 900; color: #7a5a2e">katt = felszerel</span>
+</div>
+<sc-for list="{{tools}}" as="t" hint-placeholder-count="5">
+<button class="pu {{t.cls}}" type="button" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">
+<span class="ic" style="background: {{t.color}}"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="{{t.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<span style="font-weight: 900; font-size: 14px; white-space: nowrap">{{t.name}}</span>
+<span class="tag" style="background: {{t.rc}}">{{t.rarity}}</span>
+</span>
+<span style="font-size: 12px; font-weight: 800; color: #45507a; white-space: nowrap">{{t.stat}}</span>
+</span>
+</button>
+</sc-for>
+<div style="flex: 1 1 auto"></div>
+<div style="padding: 12px 16px; border-radius: 18px; background: #1e2a44; color: #fff7e6; box-shadow: 0 4px 0 #0f1628; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.2px; color: #ffe066">FELSZERELVE</span>
+<span class="lil" style="font-size: 20px; line-height: 1.05">{{eq.name}}</span>
+<span style="font-size: 12.5px; line-height: 1.4; font-weight: 700; color: #e6e9f5">{{eq.effect}}</span>
+<span style="display: flex; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 11px; font-weight: 900; padding: 3px 10px; border-radius: 999px; background: {{eq.color}}; color: #1e2a44">{{eq.stat}}</span>
+<span style="font-size: 11px; font-weight: 900; padding: 3px 10px; border-radius: 999px; background: #ff4fa3; color: #ffffff">Cél: {{eq.targetLabel}}</span>
+</span>
+</div>
+</div>
+
+<div style="position: absolute; left: 312px; width: 816px; top: 684px; height: 44px; display: flex; align-items: center; gap: 8px">
+<div title="Húzd a bútorokat és eszközöket" style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: #1e2a44; color: #fff7e6; font-weight: 900; font-size: 13px">
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3" fill="none" stroke="#ffe066" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="sr">Húzd a bútorokat és eszközöket</span>
+</div>
+<button class="btn ib" type="button" onClick="{{ui.undo}}" disabled="{{ui.undoDisabled}}" aria-label="Visszavonás (Ctrl+Z)" title="Visszavonás (Ctrl+Z)">
+<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+<button class="btn ib" type="button" onClick="{{ui.redo}}" disabled="{{ui.redoDisabled}}" aria-label="Újra (Ctrl+Shift+Z)" title="Újra (Ctrl+Shift+Z vagy Ctrl+Y)">
+<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+<div style="flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 14px; background: #fff7e6; border: 3px solid #1e2a44; box-sizing: border-box; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden">
+<span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.1px; color: #45507a">KIJELÖLVE</span>
+<span style="font-weight: 900; overflow: hidden; text-overflow: ellipsis">{{selText}}</span>
+</div>
+<button class="{{ui.chipCls}}" type="button" onClick="{{ui.openDrawer}}" title="{{ui.chipTitle}}"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</button>
+<button class="btn" type="button" onClick="{{reset}}">
+<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+Elrendezés visszaállítása
+</button>
+</div>
+
+<div class="panel" style="position: absolute; left: 16px; top: 744px; width: 456px; height: 140px; padding: 12px 16px; background: #fff7e6; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span class="lil" style="font-size: 18px">Pályaválasztó</span>
+<span style="font-size: 11px; font-weight: 800; color: #45507a">időjárás + foglaltság</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{levels}}" as="l" hint-placeholder-count="4">
+<button class="lv {{l.cls}}" type="button" onClick="{{l.pick}}" aria-pressed="{{l.pressed}}">
+<span class="lil" style="font-size: 19px; line-height: 1">{{l.code}}</span>
+<span style="font-size: 12px; font-weight: 900; white-space: nowrap">{{l.name}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<div class="panel" style="position: absolute; left: 492px; top: 744px; width: 456px; height: 140px; padding: 10px 16px; background: #fff7e6; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; height: 24px">
+<span class="lil" style="font-size: 18px">Hőköltség-rangsor</span>
+<span style="font-size: 11px; font-weight: 800; color: #45507a">Ft / kWh hő, bruttó becslés</span>
+</div>
+<sc-for list="{{ranking}}" as="r" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: 168px minmax(0, 1fr) 32px; align-items: center; gap: 8px; height: 17px">
+<span style="font-size: 11.5px; font-weight: 900; white-space: nowrap">{{r.name}}</span>
+<span style="height: 9px; border-radius: 5px; background: #eee3cc; border: 1.5px solid #1e2a44; overflow: hidden"><span style="display: block; height: 100%; width: {{r.w}}; background: {{r.c}}"></span></span>
+<span style="font-family: 'Lilita One','Baloo 2'; font-size: 13px; text-align: right; color: {{r.tc}}">{{r.v}}</span>
+</div>
+</sc-for>
+</div>
+
+<div class="panel" style="position: absolute; left: 968px; top: 744px; width: 456px; height: 140px; padding: 12px 16px; background: #fff7e6; display: grid; grid-template-columns: minmax(0, 1fr) 208px; gap: 12px; align-items: stretch">
+<div class="pop" style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 8px 14px; border-radius: 16px; background: #ffe066; border: 3px solid #1e2a44; min-width: 0">
+<span style="display: flex; align-items: center; gap: 8px">
+<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.1px; color: #6b4e00">LEGUTÓBBI SIKER</span>
+</span>
+<span class="lil" style="font-size: 18px; line-height: 1.1">Becsuktad az ablakot!</span>
+<span style="font-size: 12px; font-weight: 900; color: #6b4e00">Huzatvadász, +250 pont</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{badges}}" as="b" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 4px; box-sizing: border-box; border-radius: 14px; background: {{b.bg}}; border: 2.5px solid #1e2a44; opacity: {{b.op}}">
+<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="{{b.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span style="font-size: 11px; font-weight: 900; text-align: center; line-height: 1.2; white-space: nowrap">{{b.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+
+<sc-if value="{{ui.drawerOpen}}">
+<div id="f27-drawer" class="panel drawer" role="dialog" aria-label="Fiók és elrendezések">
+<div class="dhead">
+<span class="fr" style="font-size: 21px; font-weight: 800; color: #3b2a14">Fiók és mentés</span>
+<button class="btn ib sm" type="button" onClick="{{ui.closeDrawer}}" aria-label="Bezárás" title="Bezárás (Esc)">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg>
+</button>
+</div>
+<sc-if value="{{ui.showLogin}}">
+<form class="login" onSubmit="{{ui.login}}">
+<label for="f27-email">E-mail</label>
+<input id="f27-email" type="email" autocomplete="username" required>
+<label for="f27-pass">Jelszó</label>
+<input id="f27-pass" type="password" autocomplete="current-password" required>
+<button class="btn primary" type="submit" disabled="{{ui.busy}}">Belépés</button>
+</form>
+</sc-if>
+<sc-if value="{{ui.loggedIn}}">
+<div class="who"><span class="em">{{ui.email}}</span><span class="tag" style="background: {{ui.roleColor}}">{{ui.roleLabel}}</span></div>
+<button class="btn sm" type="button" onClick="{{ui.logout}}">Kilépés</button>
+</sc-if>
+<div class="sect">ELRENDEZÉS</div>
+<div class="cur">Jelenlegi: <b>{{ui.currentName}}</b><br><span class="{{ui.chipCls}} mini"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</span></div>
+<sc-if value="{{ui.saveHint}}"><p class="note">{{ui.saveHint}}</p></sc-if>
+<div class="row">
+<button class="btn sm" type="button" onClick="{{ui.save}}" disabled="{{ui.saveDisabled}}">Mentés</button>
+<button class="btn sm" type="button" onClick="{{ui.saveAsOpen}}" disabled="{{ui.saveAsDisabled}}">Mentés másként</button>
+</div>
+<sc-if value="{{ui.saveAsShown}}">
+<form class="row" onSubmit="{{ui.saveAs}}">
+<input id="f27-newname" type="text" maxlength="80" placeholder="Elrendezés neve" aria-label="Új elrendezés neve" required>
+<button class="btn xs primary" type="submit">OK</button>
+<button class="btn xs" type="button" onClick="{{ui.saveAsCancel}}">Mégse</button>
+</form>
+</sc-if>
+<sc-if value="{{ui.loggedIn}}">
+<div class="sect">MENTETT ELRENDEZÉSEK</div>
+<sc-if value="{{ui.noLayouts}}"><p class="note">Még nincs mentett elrendezés.</p></sc-if>
+<div class="list">
+<sc-for list="{{ui.layouts}}" as="l">
+<div class="{{l.cls}}">
+<div class="lname"><span>{{l.name}}</span><sc-if value="{{l.isDefault}}"><span class="tag" style="background: #3fae6a">ALAP</span></sc-if></div>
+<div class="ltime">{{l.time}}</div>
+<sc-if value="{{l.confirm}}">
+<div class="row"><span class="warn">Biztosan törlöd?</span><button class="btn xs danger" type="button" onClick="{{l.doDelete}}">Igen</button><button class="btn xs" type="button" onClick="{{l.cancelDelete}}">Mégse</button></div>
+</sc-if>
+<sc-if value="{{l.actions}}">
+<div class="row">
+<button class="btn xs" type="button" onClick="{{l.load}}">Betöltés</button>
+<sc-if value="{{l.canDefault}}"><button class="btn xs" type="button" onClick="{{l.makeDefault}}">Alapértelmezett</button></sc-if>
+<sc-if value="{{l.canEdit}}"><button class="btn xs" type="button" onClick="{{l.askDelete}}" aria-label="{{l.delAria}}">Törlés</button></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<a class="alap" href="alaprajz.html">Egyszerű alaprajz megnyitása (titkosított adat)</a>
+</div>
+</sc-if>
+<div class="toasts" aria-live="polite">
+<sc-for list="{{ui.toasts}}" as="t"><div class="{{t.cls}}" role="status">{{t.text}}</div></sc-for>
+</div>
+</div>
+</template>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/minidc.js"></script>
+<script src="js/g3-scene.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

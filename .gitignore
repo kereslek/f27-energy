@@ -5,3 +5,6 @@ _site/
 # nyílt (titkosítatlan) adat soha ne kerüljön fel
 data/*.json
 !data/.gitkeep
+
+# a Pages build generálja a GitHub Variables-ból
+web/config.js
