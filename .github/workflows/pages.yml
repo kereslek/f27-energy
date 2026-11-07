@@ -32,11 +32,35 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Oldal összeállítása
+        env:
+          # Nyilvános értékek (GitHub Variables). A secret kulcs ide SOHA nem kerül.
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           mkdir -p _site/data _site/config
           cp -r web/. _site/
+          rm -f _site/config.example.js
           cp config/devices.json _site/config/
           cp data/*.enc _site/data/ 2>/dev/null || true
+          python3 - <<'PY'
+          import json, os
+          cfg = {"supabaseUrl": os.environ.get("SUPABASE_URL", "").strip(),
+                 "supabaseKey": os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip()}
+          key = cfg["supabaseKey"]
+          role = ""
+          if key.startswith("eyJ") and key.count(".") == 2:   # régi (JWT) kulcs: a szerepkör a tartalmában
+              import base64
+              part = key.split(".")[1]
+              try:
+                  role = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4))).get("role", "")
+              except Exception:
+                  role = ""
+          if key.startswith("sb_secret_") or role == "service_role":
+              raise SystemExit("HIBA: a SUPABASE_PUBLISHABLE_KEY helyén secret kulcs van. Csak a publishable (anon) kulcs mehet az oldalba.")
+          with open("_site/config.js", "w", encoding="utf-8") as f:
+              f.write("window.F27_CONFIG = " + json.dumps(cfg) + ";\n")
+          print("config.js kész, Supabase beállítva:", bool(cfg["supabaseUrl"] and cfg["supabaseKey"]))
+          PY
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5
