@@ -12,7 +12,9 @@ A repó publikus, ezért:
   kerül a `data/` mappába (`*.enc`, AES-256-GCM, PBKDF2 jelszóból);
 - a kulcsok kizárólag GitHub Secrets-ben vannak;
 - az Actions log és összefoglaló nem tartalmaz mérési értéket;
-- a térkép GitHub Pages-en fut, és a böngészőben jelszóval fejti vissza az adatot.
+- az élő térkép (`web/index.html`) a Supabase-ből olvas, bejelentkezéssel és sorszintű
+  jogosultsággal; az egyszerű alaprajz (`web/alaprajz.html`) a böngészőben jelszóval fejti
+  vissza a repó titkosított adatát.
 
 ## Felépítés
 
@@ -22,11 +24,19 @@ A repó publikus, ezért:
 | `f27/crypto.py` | Titkosítás (Python oldal, a böngésző ugyanezt fejti vissza) |
 | `f27/discover.py` | Eszközfelderítés, párosítás a pink számokhoz |
 | `config/devices.json` | Pink szám > eszköz név-minta, hely a térképen (ID nélkül) |
-| `web/` | Lakástérkép (statikus HTML + SVG), demo adattal |
+| `web/index.html` | Élő játékos térkép (F27 Energy Quest, G3): húzható bútorok és eszközök, Supabase bejelentkezés, mentett elrendezések, visszavonás, élő eszközállapot |
+| `web/js/` | `minidc.js` saját sablon-értelmező, `g3-scene.js` a G3 jelenet, `app.js` Supabase, elrendezések, visszavonás |
+| `web/vendor/` | `@supabase/supabase-js` 2.118.0 (MIT) |
+| `web/alaprajz.html` | Egyszerű sematikus alaprajz, titkosított repó-adattal, demóval |
+| `supabase/schema.sql` | Supabase séma: szerepkörök, elrendezések, eszközállapot, energia, RLS |
+| `f27/supabase_check.py` | Supabase beállítás ellenőrzése (Actions: Supabase ellenőrzés) |
 | `.github/workflows/discover.yml` | Kézi felderítés, titkosított commit |
-| `.github/workflows/pages.yml` | Térkép publikálása Pages-re |
+| `.github/workflows/pages.yml` | Térkép publikálása Pages-re (a `config.js`-t a GitHub Variables-ból generálja) |
+| `.github/workflows/supabase-check.yml` | Kézi Supabase ellenőrzés (OK / HIBA táblázat) |
 | `tools/decrypt.py` | Titkosított fájl kibontása helyben |
 | `docs/tuya-setup.md` | Tuya fiók + Secrets beállítás lépésről lépésre |
+| `docs/supabase-setup.md` | Supabase beállítás lépésről lépésre |
+| `docs/terkep.md` | Az élő térkép használata (belépés, elrendezések, visszavonás, szerepkörök) |
 
 ## Kezdés
 
