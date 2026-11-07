@@ -221,6 +221,7 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 - Architektúra: a **K-Telemetry** mintájára (GitHub repó + felhős futtatás, Claude Code).
 - Adatforrás: **Tuya IoT Cloud API**, a Smart Life fiók összekötésével. A tulaj hajlandó létrehozni a Tuya IoT Developer fiókot, végig kell vezetni rajta.
 - Titkok (Tuya Access ID/Secret stb.) **csak GitHub Secrets-ben**, soha nem a kódban vagy a chatben.
+- **Felhős adatbázis: Supabase** (Postgres, ingyenes csomag, Frankfurt), projekt neve: F27-energy. Elrendezések, eszközállapot-idősor, napi energia; bejelentkezés + sorszintű jogosultság (owner / cleaner / viewer). Séma: `supabase/schema.sql`, útmutató: `docs/supabase-setup.md`. Kulcsok: `SUPABASE_URL` és `SUPABASE_PUBLISHABLE_KEY` GitHub Variables, `SUPABASE_SECRET_KEY` GitHub Secrets. A Claude session hálózata a Supabase-t jelenleg nem éri el; az SQL-t a tulaj futtatja az SQL Editorban. Localstorage-ot a tulaj nem kér.
 - Hardverkeret: **max 80 000 Ft**.
 - Vendég szigorítása: rendszerszinten mehet szigorú is (klíma hőfokkorlát, ütemezés stb.).
 - A takarító bevonható érkezés előtti beállításokba.
@@ -266,4 +267,5 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 ## 15. Állapot
 
 - 2026.11.01: repó váz kész: Tuya kliens, felderítő workflow, titkosítás, Pages térkép (sematikus alaprajz, demo adat). Következő: a tulaj végigmegy a `docs/tuya-setup.md`-n, lefuttatja az Eszközfelderítés workflow-t, utána a párosítás ellenőrzése és a pink számok véglegesítése.
+- 2026.11.07: Supabase projekt regisztrálva (F27-energy). Séma kész és helyi Postgresen tesztelve (újrafuttatható, RLS: owner/cleaner/idegen/anon). A tulaj a `docs/supabase-setup.md` szerint állítja be; utána: bejelentkezés + elrendezés mentés/betöltés a térképen, adatgyűjtő Supabase-be.
 - 2026.11.01-05: játékos dashboard mockupok egy privát Claude Design vásznon (A-I változatok). A tulaj kedvence a G irány (izometrikus platformer: meleg dioráma + ugráló Energiaőr hős, Ft érmék, a keret feletti kályha a "boss", a zöld szék a cél, húzható bútorok és eszközök). G3 = fotóhű elrendezés; képei a `mockups/` mappában. Következő: a G3-ból élő térkép valós Tuya-adattal, ha az első felderítés lefutott.
