@@ -58,8 +58,9 @@ Alapból az ég, a nap és a hold, az ablakok fénye és a lámpák a **valódi 
 A cím ilyenkor például: „ÉLŐ: nappal, 10:42”; fölé állva mutatja a napkeltét és a napnyugtát.
 Napszakok: hajnal, nappal (6 fok napmagasság felett), alkonyat, éjszaka (-18 fok alatt).
 
-A Pályaválasztó gombjai (1-1 ... 1-4) előbeállított forgatókönyvek; ha valamelyiket választod,
-az élő mód kikapcsol. A panel fejlécében az **ÉLŐ** gomb visszakapcsolja.
+A pálya-gombok (1-1 ... 1-4) előbeállított forgatókönyvek; kicsiben a Foglaltság panel fejlécében
+vannak (a régi Pályaválasztó helyén ma a foglaltsági sáv áll). Ha valamelyiket választod, az élő
+mód kikapcsol; mellettük az **ÉLŐ** gomb visszakapcsolja.
 
 ## Nagyítás és mozgatás
 
@@ -157,7 +158,7 @@ kályhát most érdemes tölteni, vagy érkezés előtt temperálj", egyébként
 javaslatok: a kályha automatikus kapcsolása a kontaktorok beépítéséig nincs bekötve (CLAUDE.md
 9. fejezet). A tipp az Energiaőr tanácsai közt is megjelenik.
 
-A pálya-előbeállítások (Pályaválasztó) a saját, kitalált kinti értéküket mutatják. Ha az időjárás
+A pálya-előbeállítások (1-1 ... 1-4) a saját, kitalált kinti értéküket mutatják. Ha az időjárás
 nem érhető el, a csip `KINT --`. Időjárás: [Open-Meteo](https://open-meteo.com/).
 
 ## Energiaőr (tanácsadó)
@@ -186,6 +187,85 @@ A lakásban a huzat-szellem csak nyitott ablaknál vagy bejárati ajtónál jele
 érzékelőnél), a láng csak akkor, ha a kályha megy: a kályha oldalán ül, alatta felirat a LUXION
 kapcsoló fokozatával ("Kályha fűt · 2 kW"), hogy ne tűnjön úgy, mintha egy hőmérő égne. Megjelenés: alapból a zöld szék (`?energiaor=3`); minta: `?energiaor=1` robot,
 `?energiaor=2` szakértő; a tanácslistában is váltható.
+
+## Foglaltság (Airbnb naptár)
+
+A foglaltság az Airbnb **naptárexportjából** jön (iCal, `.ics` link). Az adatgyűjtő óránként egyszer
+letölti, és a Supabase `bookings` táblájába csak ennyit ír: forrás, fajta, érkezés napja, távozás
+napja. Vendégnév, telefonszám, foglalási kód vagy link nem kerül sehová. Csak a **tulaj** és a
+**takarító** látja; belépés nélkül kitalált, a mai naphoz igazított **DEMÓ** foglalások látszanak.
+
+Az Airbnb exportjában kétféle esemény van:
+
+- **Airbnb foglalás** ("Reserved"): rózsaszín.
+- **Foglalt vagy lezárt** ("Airbnb (Not available)"): kék-szürke csíkos. Ez lehet az Airbnb-be
+  importált Booking-naptár foglalása (a tulaj szerint a Booking ide szinkronizál), de lehet
+  elérhetőségi szabály is (előkészítési idő, előzetes értesítés, kézi lezárás). Az export nem
+  különbözteti meg őket, ezért a térkép óvatosan "foglalt vagy lezárt"-nak hívja.
+
+Érkezés **15:00**, távozás **11:00**, felfűtés érkezés napján **12:00**-tól (`web/js/app.js`,
+`STAY` állandó, egyetlen helyen). **A tulaj erősítse meg**, hogy a hirdetésben is ez áll; ha nem,
+csak ezt a három értéket kell átírni. Vendég bent: a mostani idő az érkezés napja 15:00 és a
+távozás napja 11:00 közé esik. Érkezés napján a bejárati ajtó (5) első nyitása 15:00 után meg is
+erősíti ("megérkezett 15:42").
+
+**Felső sáv, foglaltsági csempe** (a régi, kitalált "VENDÉG ÉRKEZIK" helyén), állapotok:
+
+| Csempe | Mikor | Alsó sor |
+|---|---|---|
+| VENDÉG BENT · AIRBNB, "holnap 11:00-ig" | vendég bent | "1 éjszaka maradt a 4-ből"; érkezés napján "megérkezett 15:42" |
+| MA ÉRKEZIK · AIRBNB, "15:00 · 3 ó 12 p" | ma jön, még nincs bent | "felfűtés indul 12:00-kor" |
+| ÜRES · KÖVETKEZŐ VENDÉG, "péntek 15:00" | most üres | "2 nap 4 óra múlva · takarékmód" |
+| FOGLALT VAGY LEZÁRT, "csütörtök 11:00-ig" | csak lezárt nap fut | "valószínűleg Booking-vendég" |
+| FOGLALTSÁG, "nincs adat" | nincs adat | az ok: nincs beállítva az `AIRBNB_ICAL_URL`, hiányzik a tábla (004), vagy megtekintő szerepkör |
+
+Ha a naptár 3 óránál régebben frissült, az alsó sor ezt írja ("a naptár 5 órája nem frissült").
+
+**Foglaltsági sáv** (bal alul, a régi Pályaválasztó helyén): a következő 14 nap, a mai kiemelve,
+benne egy rózsaszín vonal a mostani időpontnál. A sávok 15:00-tól 11:00-ig tartanak. Zöld
+szaggatott doboz: üres nap (bojler LE, kályha KI javasolt); láng és "12:00": érkezés üres napok
+után, felfűtés 12:00-tól. Minden napra rávíve a teljes szöveg látszik.
+
+**Foglalási naptár** (felső sáv, "FOGLALÁSI NAPTÁR" csempe, a régi KOMFORT szívek helyén):
+havi nézet, hétfővel kezdődik. Lapozás a ‹ › gombokkal vagy a bal/jobb nyíllal (3 hónap vissza,
+13 hónap előre; a naptár kb. 30 napot tart meg visszafelé), **Ma** vissza a mostani hónapra. Egy nap
+két fél cella: bal fele az előző éjszaka (távozás 11:00-ig), jobb fele a következő (érkezés
+15:00-tól); váltásnapon mindkettő látszik, felirattal ("táv. 11:00", "érk. 15:00"). Napra kattintva
+részlet (pl. "Airbnb foglalás: nov. 13. 15:00 - nov. 16. 11:00, 3 éjszaka", vagy "üres nap: bojler LE,
+kályha KI javasolt"). Alul a havi összesítő: foglalt éjszakák, üres éjszakák, kihasználtság. A
+**Másolás** gomb a hónapot szövegként a vágólapra teszi (pl. üzenetbe a takarítónak), a naptár
+szövege ki is jelölhető. Esc vagy X bezárja; telefonon alulról nyíló, teljes szélességű lap.
+
+**Energiaőr** a foglaltságból (mind csak javaslat, automatikus kapcsolás nincs; a kályhához előbb
+kontaktor kell, CLAUDE.md 9. fejezet):
+
+- Üres a lakás, de megy a kályha: erős tipp. 1 kW egész nap kb. 25 kWh, keret felett (60,9 Ft/kWh)
+  kb. 1 500 Ft naponta. Ez a nagy tétel.
+- Üres napok előre: "kapcsold le a bojlert holnap 11:00 után, vissza péntek 12:00-kor (érkezés
+  előtt kb. 3 órával)". Őszintén: ez kevés pénz. A 120 literes tartály kb. 1,5 kWh-t veszít
+  naponta, és a kihűlt vizet újra fel kell fűteni, így a valódi megtakarítás nagyjából 20-50 Ft
+  naponta.
+- Fűtési szezonban üres napok előtt: a kályha ne menjen 0-24.
+- Ma érkezik vendég: felfűtési terv (12:00-tól klíma 22 °C, ajtó nyitva, gáz közepesen, takarító
+  14:00-kor ellenőriz); ha a bojler le van kapcsolva, piros tipp: kapcsold vissza legkésőbb 12:00-kor.
+- A vendég megérkezett (az ajtó első nyitása 15:00 után), vagy még nem nyílt az ajtó.
+
+### A naptár bekötése (a tulajnak, egyszer)
+
+1. Airbnb (asztali böngészőben): **Naptár** > a lakás kiválasztása > **Elérhetőség** >
+   **Naptárak összekapcsolása** > **Naptár exportálása**. Másold ki a megjelenő `.ics` linket.
+2. A link titkos tokent tartalmaz, aki ismeri, látja a foglalásaidat. **Soha ne másold chatbe**,
+   e-mailbe vagy a repóba.
+3. GitHub: a repó > **Settings** > **Secrets and variables** > **Actions** > **New repository
+   secret**. Name: `AIRBNB_ICAL_URL`, Secret: a link. **Add secret**.
+4. Supabase: futtasd a `supabase/migrations/004_bookings.sql`-t (lásd `docs/supabase-setup.md`).
+5. Legfeljebb 10 perc múlva az Adatgyűjtés lefut; a Summary-ban "Foglalások: N foglalás, M lezárt
+   időszak frissítve". A térképen belépés után a csempe és a sáv élő lesz.
+
+Nem kötelező: ha a Booking.com naptárát közvetlenül is be akarod kötni (extranet: **Árak és
+elérhetőség** > **Naptár szinkronizálása** > exportálás), a linket `BOOKING_ICAL_URL` néven mentsd.
+A Booking exportja nem választja szét a foglalást és a kézi lezárást, ezért ott minden esemény
+foglalásnak számít.
 
 ## Szerepkörök
 
