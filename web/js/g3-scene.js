@@ -630,7 +630,7 @@ class G3Scene extends MiniDC.Component {
       back: back, winsBase: winsBase, walls: W, pieces: pieces, front: front, win7: win7, win8: win8, win8frame: win8frame,
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
-        stoveTop: tr(341, 303, 110), flame: tr(380, 312, 6), boss: tr(341, 303, 154), ch1: tr(377, 190, 70), ch2: tr(404, 470, 70),
+        stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), boss: tr(341, 303, 154), ch1: tr(377, 190, 70), ch2: tr(404, 470, 70),
         ghosts: tr(414, 552, 34), compass: tr(640, 470, 0), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };

@@ -83,8 +83,12 @@ felváltva nyílik.
   Nyílászárók, Áram, Egyéb. A figyelmeztetések elöl.
 - Kártyánként: érték, elem (kis életerő-csík), online pötty, utolsó jelzés ideje.
 - Jelvények: **Elem merül** (20 % alatt), **Elem lemerült** (10 % alatt), **Nem elérhető**
-  (offline), **Régóta hallgat** (hőmérő 6 óra, nyitásérzékelő 24 óra, kapcsoló, kismegszakító,
-  gateway 90 perc óta nem jelentett), **Friss** (10 percen belül).
+  (offline), **Régóta hallgat** (csak az elemes érzékelőknél: hőmérő 6 óra, nyitásérzékelő 24 óra
+  óta nem jelentett), **Friss** (10 percen belül).
+- A hálózati eszközök (kismegszakítók, a LUXION kapcsoló, a gateway, az IR klíma) a Tuyának csak
+  változáskor jelentenek: egy álló bojler vagy egy érintetlen kályhakapcsoló napokig hallgathat, és
+  ez nem hiba. Náluk nincs "Régóta hallgat", csak a Tuya online jelzője számít (**Nem elérhető**).
+  Az utolsó jelzés ideje infóként látszik ("csak változáskor jelez"), figyelmeztető szín nélkül.
 - Ha egy NYITVA jelzésű érzékelő régóta hallgat vagy merül az eleme, a kártya figyelmeztet, hogy a
   jelzés lehet régi.
 - Kártyára kattintva a térkép rá nagyít az eszközre, kijelöli, és kinyílnak a részletek: minden
@@ -179,7 +183,8 @@ bejárati ajtó fűtés közben; a kályha fokozata és óránkénti ára (keret
 (ugyanazok a szabályok, mint az Eszközök panelen); és ha minden rendben, dicséret.
 
 A lakásban a huzat-szellem csak nyitott ablaknál vagy bejárati ajtónál jelenik meg (annál az
-érzékelőnél), a láng csak akkor, ha a kályha megy. Megjelenés: alapból a zöld szék (`?energiaor=3`); minta: `?energiaor=1` robot,
+érzékelőnél), a láng csak akkor, ha a kályha megy: a kályha oldalán ül, alatta felirat a LUXION
+kapcsoló fokozatával ("Kályha fűt · 2 kW"), hogy ne tűnjön úgy, mintha egy hőmérő égne. Megjelenés: alapból a zöld szék (`?energiaor=3`); minta: `?energiaor=1` robot,
 `?energiaor=2` szakértő; a tanácslistában is váltható.
 
 ## Szerepkörök

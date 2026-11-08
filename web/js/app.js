@@ -274,9 +274,11 @@
     return { kind: 'idle', w: w, tag: L.offT, short: L.offT, text: cap1(L.who) + ' ' + L.idle + ' (' + fmtW(w) + '; a kismegszakító be van kapcsolva, áram van).' };
   }
   function acPower(src) { return circuitState(src, 'k9'); }
-  // "Régóta hallgat" küszöb (perc). A hálózati eszközöknél 90 perc: az adatgyűjtő változatlan
-  // állapotnál csak óránként ír, így a tárolt utolsó jelentés legfeljebb kb. 70 percet késhet.
-  var STALE_MIN = { thermo: 6 * 60, contact: 24 * 60, breaker: 90, switch3: 90, gateway: 90 };
+  // "Régóta hallgat" küszöb (perc), csak az elemes érzékelőkre. A hálózati eszközök (kismegszakítók,
+  // a LUXION kapcsoló, a gateway, az IR klíma) a Tuyának csak változáskor jelentenek: egy álló bojler,
+  // egy nem használt főzőlap vagy egy érintetlen kályhakapcsoló napokig hallgathat, és ez nem hiba.
+  // Az ő egészségük kizárólag a Tuya online jelzője (online === false: "Nem elérhető").
+  var STALE_MIN = { thermo: 6 * 60, contact: 24 * 60 };
 
   // ---- Fogyasztás panel: a mért körök és a kályha fokozata ---------------------------------
   // Árak a briefből (bruttó, 2026): B kör keret felett 60,9 Ft/kWh (a kályha szinte mindig ott jár),
@@ -922,7 +924,7 @@
           hasBatt: !!batt, batt: batt ? (batt.label ? batt.label : batt.pct + ' %') : '', battW: batt ? batt.pct + '%' : '0%',
           battCls: 'hp ' + (!batt ? '' : batt.pct < 10 ? 'red' : batt.pct < 20 ? 'orange' : 'ok'),
           onlineCls: 'dc-dot ' + (online === false ? 'off' : online ? 'on' : 'unk'),
-          seen: ir ? 'a gatewayen át' : age != null ? 'utolsó jelzés: ' + ago(age) : 'nincs jelzés',
+          seen: ir ? 'a gatewayen át' : age != null ? 'utolsó jelzés: ' + ago(age) + (lim == null && age > 90 * 60000 ? ' · csak változáskor jelez' : '') : 'nincs jelzés',
           badges: badges, hasBadges: badges.length > 0, note: note,
           expanded: expanded, expandedAttr: expanded ? 'true' : 'false',
           details: details,
@@ -966,6 +968,7 @@
       });
       var P = by.P;
       v.flameOn = !!(P && P.online !== false && P.stage > 0);
+      v.flameLabel = v.flameOn ? 'Kályha fűt · ' + P.stage + ' kW' : '';
     }
 
     // Belépve (listán szereplő szerepkörrel) a Supabase-ből olvas (az adatgyűjtő óránként tölti);
