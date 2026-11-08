@@ -24,10 +24,11 @@ Folyamat egy körben (f27.collect hívja a Tuya rész után, attól függetlenü
   6. public.alert_log: minden elküldött (vagy visszatartott) riasztás és próba egy sorban.
 
 Csatornák (csak ha a beállításban be vannak kapcsolva ÉS a GitHub Secret meg van adva):
-  push      ntfy: POST {NTFY_URL, alapból https://ntfy.sh}/{NTFY_TOPIC}
-  email     SMTP: SMTP_HOST, SMTP_PORT (587 STARTTLS vagy 465 SSL), SMTP_USER, SMTP_PASS,
+  push      ntfy: POST {NTFY_URL, alapból https://ntfy.sh}/{NTFY_TOPIC}  (azonnali riasztás, próba)
+  whatsapp  CallMeBot: CALLMEBOT_PHONE, CALLMEBOT_APIKEY (alapból kikapcsolva, azonnali)
+  e-mail    csak a napi összefoglaló (f27.digest, naponta legfeljebb egy, alapból 20:00):
+            SMTP_HOST, SMTP_PORT (587 STARTTLS vagy 465 SSL), SMTP_USER, SMTP_PASS,
             ALERT_EMAIL_TO (vesszővel több cím), ALERT_EMAIL_FROM (nem kötelező)
-  whatsapp  CallMeBot: CALLMEBOT_PHONE, CALLMEBOT_APIKEY (alapból kikapcsolva)
 
 A publikus logba csak darabszám kerül: cím, topic, telefonszám, kulcs, üzenetszöveg, mérési
 érték soha. Csatornahibánál csak a kivétel osztályneve, és az is csak a hibaszámlálóba.
@@ -72,7 +73,8 @@ DEFAULT_CONFIG = {
     "resolvedMsg": True,
     "quiet": {"on": True, "from": "23:00", "to": "07:00"},
     "quietExceptStoveC": 40,
-    "channels": {"push": True, "email": True, "whatsapp": False},
+    "channels": {"push": True, "whatsapp": False},
+    "digest": {"on": True, "time": "20:00"},
 }
 
 THERMO = {"1": "Kis szoba", "2": "Nagy szoba", "3": "Kályha mögött", "4": "Fürdő"}
@@ -132,6 +134,10 @@ def merge_config(stored) -> dict:
     ch = s.get("channels") if isinstance(s.get("channels"), dict) else {}
     for k in cfg["channels"]:
         cfg["channels"][k] = _bool(ch.get(k), cfg["channels"][k])
+    dg = s.get("digest") if isinstance(s.get("digest"), dict) else {}
+    cfg["digest"]["on"] = _bool(dg.get("on"), cfg["digest"]["on"])
+    if isinstance(dg.get("time"), str) and HM.match(dg["time"]):
+        cfg["digest"]["time"] = dg["time"]
     return cfg
 
 
@@ -446,16 +452,21 @@ def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime, quiet
 # ----------------------------------------------------------------------------- csatornák
 
 def channels_ready(cfg: dict, environ) -> list[str]:
+    """Az azonnali értesítés csatornái: push (ntfy) és, ha be van kapcsolva, WhatsApp. E-mail
+    itt nincs: az csak a napi összefoglalóban megy (f27.digest)."""
     e = lambda k: (environ.get(k) or "").strip()
     ch = cfg["channels"]
     out = []
     if ch.get("push") and e("NTFY_TOPIC"):
         out.append("push")
-    if ch.get("email") and e("SMTP_HOST") and e("ALERT_EMAIL_TO"):
-        out.append("email")
     if ch.get("whatsapp") and e("CALLMEBOT_PHONE") and e("CALLMEBOT_APIKEY"):
         out.append("whatsapp")
     return out
+
+
+def email_ready(environ) -> bool:
+    e = lambda k: (environ.get(k) or "").strip()
+    return bool(e("SMTP_HOST") and e("ALERT_EMAIL_TO"))
 
 
 def _hdr(v: str) -> str:
@@ -478,6 +489,7 @@ def send_ntfy(msg: dict, environ, opener=None) -> None:
 
 
 def send_email(msg: dict, environ, smtp=None) -> None:
+    """msg: {'subject', 'email_body'}. Csak a napi összefoglaló használja (f27.digest)."""
     smtp = smtp or smtplib
     host = environ["SMTP_HOST"].strip()
     port = int((environ.get("SMTP_PORT") or "587").strip() or 587)
@@ -515,29 +527,22 @@ def send_whatsapp(msg: dict, environ, opener=None) -> None:
         r.read()
 
 
-SENDERS = {"push": send_ntfy, "email": send_email, "whatsapp": send_whatsapp}
+SENDERS = {"push": send_ntfy, "whatsapp": send_whatsapp}
 
 
 def compose(events: list[dict], snap: dict, now: datetime, test: bool = False) -> dict:
-    """Egy kör eseményei egyetlen értesítésben (csatornánként egy üzenet)."""
+    """Egy kör eseményei egyetlen push-értesítésben (csatornánként egy üzenet)."""
     lines = [e["text"] for e in events]
     if test:
-        title = subject = "F27 próba-értesítés"
+        title = "F27 próba-értesítés"
     elif len(events) == 1:
         e = events[0]
-        title = e["title"]
-        subject = e["title"] if e["kind"] != "resolved" else f"F27: megszűnt: {e['short']}"
+        title = e["title"] if e["kind"] != "resolved" else f"F27: megszűnt: {e['short']}"
     else:
         title = f"F27 riasztás: {len(events)} esemény"
-        subject = f"{events[0]['title']} (+{len(events) - 1})"
     fired = any(e["kind"] in ("fired", "reminder") for e in events)
-    when = now.astimezone(BUDAPEST).strftime("%Y.%m.%d %H:%M")
     body = "\n".join(lines) + "\n\nTérkép: " + MAP_URL
-    email_body = ("\n".join(lines) + "\n\nÉrzékelők most:\n" + "\n".join("  " + x for x in context_lines(snap, now))
-                  + f"\n\nIdő: {when} (Budapest)\nTérkép: {MAP_URL}\n\n"
-                  + "Ezt az F27 adatgyűjtő küldte (csak jelez, semmit nem kapcsol). Beállítás: a térkép Riasztások panelje.\n")
-    return {"title": title, "subject": subject, "body": body, "email_body": email_body,
-            "plain": title + "\n" + body, "priority": "high" if fired else "default",
+    return {"title": title, "body": body, "plain": title + "\n" + body, "priority": "high" if fired else "default",
             "tags": "rotating_light" if fired else ("white_check_mark" if not test else "bell")}
 
 
@@ -654,7 +659,7 @@ def run_alerts(sb: SupabaseRest, now: datetime | None = None, environ=None, send
     res["errors"] = len(errs)
     note = f"Riasztások: {res['active']} aktív, {res['sent']} értesítés elküldve, {res['errors']} hiba."
     if not channels:
-        note += " Nincs beállított értesítési csatorna (NTFY_TOPIC, SMTP_HOST + ALERT_EMAIL_TO)."
+        note += " Nincs beállított push csatorna (NTFY_TOPIC)."
     if errs:
         note += " Csatornahiba: " + ", ".join(sorted(set(errs))) + "."
     if res["test"]:

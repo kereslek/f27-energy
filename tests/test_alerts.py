@@ -98,15 +98,15 @@ class TestRules(Base):
         self.assertIsNotNone(self.sb.db["alert_state"]["temp_hi:3"]["since"])
         self.assertFalse(self.sb.db["alert_state"]["temp_hi:3"]["active"])
         r = self.run_at(T0 + timedelta(minutes=10), **{"3": {"va_temperature": 392}})
-        self.assertEqual(sorted(c for c, _ in r["new"]), ["email", "push"])
-        push = r["new"][0][1] if r["new"][0][0] == "push" else r["new"][1][1]
+        self.assertEqual([c for c, _ in r["new"]], ["push"])          # e-mail csak a napi összefoglalóban
+        push = r["new"][0][1]
         self.assertTrue(push["body"].startswith("F27 riasztás: Kályha mögött 39,2 °C (határ 38 °C)."))
         self.assertIn(A.MAP_URL, push["body"])
         self.assertEqual(push["title"], "F27 riasztás: Kályha mögött 39,2 °C")
         self.assertEqual(push["priority"], "high")
         self.assertEqual(r["active"], 1)
         self.assertEqual(self.log()[-1]["kind"], "fired")
-        self.assertEqual(self.log()[-1]["channels"], "push,email")
+        self.assertEqual(self.log()[-1]["channels"], "push")
         self.assertEqual(self.log()[-1]["rule_key"], "temp_hi:3")
 
     def test_short_spike_does_not_fire(self):
@@ -147,8 +147,8 @@ class TestRules(Base):
         self.assertEqual(self.texts(r)[0].splitlines()[0], "F27: megszűnt: Kályha mögött 36,0 °C (határ 38 °C).")
         push = [m for c, m in r["new"] if c == "push"][0]
         self.assertEqual(push["priority"], "default")
-        email = [m for c, m in r["new"] if c == "email"][0]
-        self.assertEqual(email["subject"], "F27: megszűnt: Kályha mögött 36,0 °C")
+        self.assertEqual(push["title"], "F27: megszűnt: Kályha mögött 36,0 °C")
+        self.assertEqual([c for c, _ in r["new"]], ["push"])
         self.assertFalse(self.sb.db["alert_state"]["temp_hi:3"]["active"])
         self.assertEqual(r["active"], 0)
         self.assertEqual(self.log()[-1]["kind"], "resolved")
@@ -310,14 +310,14 @@ class TestTestAndChannels(Base):
         self.sb.db["alert_settings"][1] = {"id": 1, "config": {}, "test_requested_at": (T0 - timedelta(minutes=3)).isoformat()}
         r = self.run_at(T0)
         self.assertTrue(r["test"])
-        self.assertEqual(sorted(c for c, _ in r["new"]), ["email", "push"])
+        self.assertEqual([c for c, _ in r["new"]], ["push"])          # a próba sem megy e-mailben
         msg = r["new"][0][1]
         self.assertEqual(msg["title"], "F27 próba-értesítés")
         self.assertIn("5 szabály bekapcsolva", msg["body"])
         self.assertEqual(self.log()[-1]["kind"], "test")
         self.assertEqual(self.run_at(T0 + timedelta(minutes=10))["new"], [])           # már kiment
         self.sb.db["alert_settings"][1]["test_requested_at"] = (T0 + timedelta(minutes=15)).isoformat()
-        self.assertEqual(len(self.run_at(T0 + timedelta(minutes=20))["new"]), 2)
+        self.assertEqual(len(self.run_at(T0 + timedelta(minutes=20))["new"]), 1)
 
     def test_test_ignores_quiet_hours(self):
         night = datetime(2026, 11, 8, 23, 0, tzinfo=timezone.utc)
@@ -325,13 +325,13 @@ class TestTestAndChannels(Base):
         self.assertTrue(self.run_at(night + timedelta(minutes=5))["new"])
 
     def test_only_enabled_and_configured_channels(self):
-        self.settings(channels={"push": True, "email": False, "whatsapp": True})
+        self.settings(channels={"push": True, "whatsapp": True})
         hot = {"3": {"va_temperature": 392}}
         self.run_at(T0, **hot)
         r = self.run_at(T0 + timedelta(minutes=10), **hot)
         self.assertEqual(sorted(c for c, _ in r["new"]), ["push", "whatsapp"])
         self.assertEqual(A.channels_ready(A.merge_config({}), {"NTFY_TOPIC": "x"}), ["push"])
-        self.assertEqual(A.channels_ready(A.merge_config({}), {"SMTP_HOST": "h", "ALERT_EMAIL_TO": "a@b"}), ["email"])
+        self.assertEqual(A.channels_ready(A.merge_config({}), {"SMTP_HOST": "h", "ALERT_EMAIL_TO": "a@b"}), [])
         self.assertEqual(A.channels_ready(A.merge_config({"channels": {"whatsapp": True}}), {"CALLMEBOT_PHONE": "1"}), [])
 
     def test_no_channels_logs_once(self):
@@ -339,22 +339,23 @@ class TestTestAndChannels(Base):
         self.run_at(T0, environ={}, **hot)
         r = self.run_at(T0 + timedelta(minutes=10), environ={}, **hot)
         self.assertEqual(r["new"], [])
-        self.assertIn("Nincs beállított értesítési csatorna", r["note"])
+        self.assertIn("Nincs beállított push csatorna", r["note"])
         self.assertEqual(self.log()[-1]["channels"], "nincs beállított csatorna")
         self.run_at(T0 + timedelta(minutes=20), environ={}, **hot)
         self.assertEqual(len(self.log()), 1)
 
     def test_channel_error_is_counted_and_retried(self):
-        self.failing = {"push"}
+        self.settings(channels={"push": True, "whatsapp": True})
+        self.failing = {"whatsapp"}
         hot = {"3": {"va_temperature": 392}}
         self.run_at(T0, **hot)
         r = self.run_at(T0 + timedelta(minutes=10), **hot)
         self.assertEqual(r["errors"], 1)
-        self.assertEqual(r["sent"], 1)                                # az e-mail kiment
-        self.assertIn("Csatornahiba: push (ConnectionError)", r["note"])
+        self.assertEqual(r["sent"], 1)                                # a push kiment
+        self.assertIn("Csatornahiba: whatsapp (ConnectionError)", r["note"])
         for s in SECRETS + ["39,2", "Kályha mögött"]:
             self.assertNotIn(s, r["note"])
-        self.failing = {"push", "email"}
+        self.failing = {"push", "whatsapp"}
         self.sb.db["alert_state"].clear()
         self.run_at(T0 + timedelta(minutes=100), **hot)
         r = self.run_at(T0 + timedelta(minutes=110), **hot)
@@ -382,7 +383,8 @@ class TestTestAndChannels(Base):
         self.assertEqual(cfg["temps"]["2"], {"on": True, "lo": 18.5, "hi": 23})
         self.assertEqual(cfg["cooldownMin"], 60)
         self.assertEqual(cfg["quiet"], {"on": True, "from": "23:00", "to": "06:00"})
-        self.assertTrue(cfg["channels"]["email"])
+        self.assertNotIn("email", cfg["channels"])
+        self.assertEqual(cfg["digest"], {"on": True, "time": "20:00"})
         self.assertEqual(cfg["acMaxOpen"]["watts"], 900)
         self.assertFalse(cfg["skipDeadContacts"])
         self.assertNotIn("ismeretlen", cfg)
@@ -537,6 +539,9 @@ class TestPublicOutput(Base):
         envs = dict(ENV, TUYA_ACCESS_ID="id", TUYA_ACCESS_SECRET="sec", TUYA_ENDPOINT=tu.url, TUYA_UID=None,
                     SUPABASE_URL=self.sb.url, SUPABASE_SECRET_KEY=self.sb.secret, GITHUB_STEP_SUMMARY=None,
                     AIRBNB_ICAL_URL=None, BOOKING_ICAL_URL=None)
+        from f27 import digest as DG
+        self.addCleanup(setattr, DG, "send_email", DG.send_email)
+        DG.send_email = lambda msg, environ: self.sent.append(("email", msg))
         self.addCleanup(setattr, C, "collect_weather", C.collect_weather)
         C.collect_weather = lambda sb: {"error": False, "note": "Időjárás: teszt."}
         self.sb.db["alert_state"]["temp_hi:3"] = {"rule_key": "temp_hi:3", "active": False, "last_sent": None, "last_text": None,
@@ -544,6 +549,7 @@ class TestPublicOutput(Base):
         with env(**envs):
             rc, out = run_main(C.main)
         self.assertIn("Riasztások: 1 aktív, 1 értesítés elküldve, 0 hiba.", out)
+        self.assertRegex(out, r"Napi összefoglaló: (elküldve|nem kellett)\.")
         self.assertTrue(self.sent)
         for s in SECRETS + ["39,2", "Kályha mögött", "Kis szoba ablak", "F27 riasztás:", A.MAP_URL, "ntfy.sh"]:
             self.assertNotIn(s, out, f"a publikus kimenetben nem lehet: {s!r}")

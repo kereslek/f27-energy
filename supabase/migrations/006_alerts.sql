@@ -6,12 +6,14 @@
 -- (csak a tulaj írja, a takarító olvassa). Az adatgyűjtő (GitHub Actions, titkos kulcs) 10
 -- percenként kiértékeli a szabályokat, az alert_state-ben tartja, mi aktív és mikor ment ki
 -- utoljára értesítés, és az alert_log-ba írja az elküldött (vagy csendes órák miatt visszatartott)
--- riasztásokat. Csak jelez, semmit nem kapcsol.
+-- riasztásokat. Azonnali értesítés csak pushon (ntfy) megy; e-mail naponta legfeljebb egy, a
+-- napi összefoglaló (alapból 20:00). Csak jelez, semmit nem kapcsol.
 --   alert_settings.config            a szabályok JSON-ban (lásd docs/riasztasok.md)
 --   alert_settings.test_requested_at a Próba-értesítés gomb ideje: a következő körben kimegy
 --   alert_state.since                mióta áll fenn a feltétel (null: most nem áll fenn)
 --   alert_state.active               a feltétel elég régóta fennáll, riasztás él
---   alert_log.kind                   'fired' (riasztás), 'resolved' (megszűnt), 'test' (próba)
+--   alert_log.kind                   'fired' (riasztás), 'resolved' (megszűnt), 'test' (próba),
+--                                    'digest' (a napi 20:00-s e-mail összefoglaló; rule_key: digest:ÉÉÉÉ-HH-NN)
 
 create table if not exists public.alert_settings (
   id                smallint primary key default 1 check (id = 1),
@@ -82,11 +84,15 @@ create table if not exists public.alert_log (
   id       bigserial primary key,
   ts       timestamptz not null default now(),
   rule_key text check (char_length(rule_key) <= 100),
-  kind     text not null check (kind in ('fired', 'resolved', 'test')),
+  kind     text not null,
   text     text check (char_length(text) <= 1000),
   channels text check (char_length(channels) <= 200)
 );
 create index if not exists alert_log_ts_idx on public.alert_log (ts desc);
+-- a fajta-ellenőrzés külön, így egy régebbi változat újrafuttatása is frissíti
+alter table public.alert_log drop constraint if exists alert_log_kind_check;
+alter table public.alert_log add constraint alert_log_kind_check
+  check (kind in ('fired', 'resolved', 'test', 'digest'));
 
 alter table public.alert_log enable row level security;
 

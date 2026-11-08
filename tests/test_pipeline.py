@@ -196,6 +196,8 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                     rows = [r for r in rows if r["end_date"] >= q["end_date"][4:]]
                 if q.get("order") == "seen_at.desc":
                     rows.sort(key=lambda r: r["seen_at"], reverse=True)
+                if q.get("order") == "start_date.asc":
+                    rows.sort(key=lambda r: r["start_date"])
                 if "limit" in q:
                     rows = rows[: int(q["limit"])]
             elif table == "device_latest":
@@ -210,12 +212,22 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                 rows = list(db["alert_log"])
                 if q.get("kind", "").startswith("eq."):
                     rows = [r for r in rows if r["kind"] == q["kind"][3:]]
+                if q.get("rule_key", "").startswith("eq."):
+                    rows = [r for r in rows if r.get("rule_key") == q["rule_key"][3:]]
+                if q.get("ts", "").startswith("gte."):
+                    rows = [r for r in rows if r["ts"] >= q["ts"][4:]]
                 if q.get("order") == "ts.desc":
                     rows.sort(key=lambda r: r["ts"], reverse=True)
+                if q.get("order") == "ts.asc":
+                    rows.sort(key=lambda r: r["ts"])
                 if "limit" in q:
                     rows = rows[: int(q["limit"])]
+            elif table == "weather_daily" and "weather_daily" in db:
+                rows = [r for r in db["weather_daily"] if r["day"] == q.get("day", "eq.")[3:]]
             elif table == "energy_daily":
                 rows = list(db["energy_daily"].values())
+                if q.get("day", "").startswith("eq."):
+                    rows = [r for r in rows if r["day"] == q["day"][3:]]
                 if q.get("pink", "").startswith("in.("):
                     allowed = q["pink"][4:-1].split(",")
                     rows = [r for r in rows if r["pink"] in allowed]

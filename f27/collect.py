@@ -18,8 +18,9 @@ Folyamat egy futásban:
      AIRBNB_ICAL_URL, ha van BOOKING_ICAL_URL), szintén a Tuyától függetlenül. A logba csak
      darabszám kerül.
   7. Riasztások (f27.alerts): minden körben a szabályok kiértékelése a friss device_latest-ből,
-     értesítés ntfy pushon és e-mailben (alert_settings, alert_state, alert_log). A Tuya és a
-     többi lépés hibájától független; a logba csak darabszám kerül.
+     azonnali értesítés ntfy pushon (alert_settings, alert_state, alert_log), és naponta egyszer
+     (alapból 20:00) e-mail összefoglaló (f27.digest). A Tuya és a többi lépés hibájától
+     független; a logba csak darabszám kerül.
 
 A publikus logba csak darabszámok kerülnek: név, device ID, mérési érték soha.
 
@@ -38,6 +39,7 @@ from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError
 from .alerts import run_alerts
 from .bookings import collect_bookings
+from .digest import run_digest
 from .weather import collect_weather
 
 BUDAPEST = ZoneInfo("Europe/Budapest")
@@ -328,6 +330,13 @@ def main() -> int:
     if al["error"]:
         print(f"::warning::{al['note']}")
     text += "\n\n" + al["note"]
+    try:
+        dg = run_digest(sb)
+    except Exception as e:
+        dg = {"error": True, "note": f"Napi összefoglaló: hiba ({type(e).__name__})."}
+    if dg["error"]:
+        print(f"::warning::{dg['note']}")
+    text += "\n" + dg["note"]
     print(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
