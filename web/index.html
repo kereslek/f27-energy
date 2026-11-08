@@ -399,6 +399,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ov-ac{flex-direction:row;align-items:baseline;flex-wrap:wrap;column-gap:8px}
 .ov-acv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:15px;color:#8a8f9c}
 .ov-acv.on{color:#2f7d4f}
+.ov-acv.off{color:#c8321f}
 .ov-alert{all:unset;box-sizing:border-box;cursor:pointer;margin-top:auto;padding:5px 8px;border-radius:10px;border:2px solid #1e2a44;background:#fff6e0;font-size:11px;font-weight:900;color:#9a3412;box-shadow:0 2px 0 #1e2a44}
 .ov-alert:hover{background:#ffe9b8}
 /* F2: csempés műszerfal */
@@ -1127,7 +1128,7 @@ Elrendezés visszaállítása
 </svg>
 <template id="ov-template">
 <div class="ov-head">
-<span class="ov-title">Élő áttekintés</span>
+<span class="ov-title" title="{{ov.srcTip}}">{{ov.title}}</span>
 <span class="{{ov.srcCls}}">{{ov.srcLabel}}</span>
 <span class="ov-vars" role="group" aria-label="Megjelenés (minta)"><button class="{{ov.v1Cls}}" type="button" onClick="{{ov.pickV1}}" aria-pressed="{{ov.v1P}}" title="Alap: lista, kályha-csempével">1</button><button class="{{ov.v2Cls}}" type="button" onClick="{{ov.pickV2}}" aria-pressed="{{ov.v2P}}" title="Csempés műszerfal">2</button><button class="{{ov.v3Cls}}" type="button" onClick="{{ov.pickV3}}" aria-pressed="{{ov.v3P}}" title="Fülek">3</button></span>
 <sc-if value="{{ov.inSheet}}"><button class="btn ib sm" type="button" onClick="{{ov.closeSheet}}" aria-label="Bezárás" title="Bezárás (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg></button></sc-if>
@@ -1151,7 +1152,7 @@ Elrendezés visszaállítása
 <sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}"><span class="{{d.icoCls}}" title="{{d.icoTitle}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
 </div>
 <div class="ov-sec">
-<span class="ov-h">HŐMÉRSÉKLETEK<button class="ov-acchip" type="button" onClick="{{ov.ac.pick}}" data-ov="11" title="Klíma (IR vezérelt): a 9-es kör méréséből">Klíma: <span class="{{ov.ac.cls}}">{{ov.ac.text}}</span></button></span>
+<span class="ov-h">HŐMÉRSÉKLETEK<button class="ov-acchip" type="button" onClick="{{ov.ac.pick}}" data-ov="11" title="{{ov.ac.tip}} (A klíma IR vezérelt, állapota a 9-es kismegszakítóból.)">Klíma: <span class="{{ov.ac.cls}}">{{ov.ac.text}}</span></button></span>
 <div class="ov-temps"><sc-for list="{{ov.temps}}" as="t"><button class="{{t.cls}}" type="button" onClick="{{t.pick}}" data-ov="{{t.id}}"><span class="n">{{t.name}}</span><span class="v">{{t.t}}</span><span class="h">{{t.h}}</span></button></sc-for></div>
 </div>
 <sc-if value="{{ov.alerts.has}}"><button class="ov-alert" type="button" onClick="{{ov.alerts.open}}" data-ov="alerts">{{ov.alerts.text}} <span aria-hidden="true">›</span></button></sc-if>

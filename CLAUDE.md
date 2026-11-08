@@ -67,7 +67,7 @@ Smart Life app, otthon neve: "Ferenc krt.". Minden eszköz Tuya ökoszisztéma.
 | 8 | F27 - Kis szoba - ablak | Aubess nyitásérzékelő | Zigbee 3.0 | Kis szoba ablak (udvar) |
 | 9 | F27 - Nagy szoba - bal ablak | Aubess nyitásérzékelő | Zigbee 3.0 | Utcai ablak |
 | 10 | F27 - Nagy szoba - jobb ablak | Aubess nyitásérzékelő | Zigbee 3.0 | Utcai ablak |
-| 11 | Klíma a Smart IR-en belül | Gree Comfort X 3,5 kW split | IR (a gatewayen át) | Kis szoba fala |
+| 11 | Klíma a Smart IR-en belül | Gree Comfort X 3,5 kW split | IR (a gatewayen át) | Kis szoba fala. Tápja a 9-es okos kismegszakító (X9): ha az le van kapcsolva, a klíma nem kap áramot; az állapotát a térkép ebből számolja. |
 | W | (fizikai eszköz) | Hőtárolós cserépkályha, 3 × 1000 W | | Nagy szoba, a fürdő felőli oldalon |
 | P | Cserépkályha kapcsoló (új) | LUXION LX-WT2-301A-W hármas üveg érintőkapcsoló | Wi-Fi | Fokozatonként 1 kW (Switch 1/2/3) |
 | X | Cserépkályha kismegszakító (5.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó |

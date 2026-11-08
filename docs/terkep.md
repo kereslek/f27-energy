@@ -116,11 +116,16 @@ adatával):
   utoljára. Ezt a `device_status` előzményből számolja (az utolsó 48 óra állapotváltásai); ha
   ebben nincs váltás, "legalább ... óta". Merülő elem és régóta hallgató érzékelő jelezve.
 - **Hőmérsékletek** (hideg, rendben, meleg; a kályha mögötti a kályha töltöttségét mutatja), a
-  fejlécben a **Klíma** állapota (IR vezérelt; a 9-es kör méréséből: fut vagy áll), és ha kell, egy figyelmeztető sor,
+  fejlécben a **Klíma** állapota. A klíma IR vezérelt, maga nem küld állapotot; a tápját adó 9-es
+  okos kismegszakítóból számoljuk: *nincs áram* (a kismegszakító le van kapcsolva, piros), *fut*
+  (100 W felett), *áll* (áram van, nem megy). Ugyanez látszik a 11-es tűn és az Eszközök panelen,
+  és ha a kismegszakító le van kapcsolva, miközben a kályha fűt, az Energiaőr szól (a klíma a
+  legolcsóbb hő), és ha kell, egy figyelmeztető sor,
   ami az Eszközök panelt nyitja a Figyelem szűrővel.
 
 Bármelyik sorra kattintva a térkép rá nagyít az eszközre. Telefonon a képernyő tetején lévő
-**Élő áttekintés** gomb alsó lapként nyitja meg. Megjelenés: az alap (`?attekintes=1`) a
+**Élő áttekintés** gomb alsó lapként nyitja meg. Belépés nélkül a panel címe **Demó áttekintés**: kitalált értékek a kiválasztott pálya szerint,
+nem a lakás valódi állapota. Megjelenés: az alap (`?attekintes=1`) a
 szekciós lista a csempés műszerfal kályha-csempéjével; `?attekintes=2` csempés műszerfal,
 `?attekintes=3` fülek; a panel fejlécében is váltható.
 

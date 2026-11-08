@@ -20,12 +20,12 @@
     {"pink": "8",  "role": "contact", "room": "kisszoba",  "label": "Kis szoba ablak",            "match": ["kis szoba - ablak"], "exact": "F27 - Kis szoba - ablak", "pos": [405, 592]},
     {"pink": "9",  "role": "contact", "room": "nagyszoba", "label": "Nagy szoba bal ablak",       "match": ["nagy szoba - bal ablak"], "exact": "F27 - Nagy szoba - bal ablak", "pos": [327, 48]},
     {"pink": "10", "role": "contact", "room": "nagyszoba", "label": "Nagy szoba jobb ablak",      "match": ["nagy szoba - jobb ablak"], "exact": "F27 - Nagy szoba - jobb ablak", "pos": [430, 48]},
-    {"pink": "11", "role": "ac_ir",   "room": "kisszoba",  "label": "Klíma (Gree, IR)",           "match": ["klíma"], "exclude": ["kismegszakító"], "exact": "Klíma a Smart IR-en belül", "pos": [340, 500]},
+    {"pink": "11", "role": "ac_ir",   "room": "kisszoba",  "label": "Klíma (Gree, IR)",           "match": ["klíma"], "exclude": ["kismegszakító"], "exact": "Klíma a Smart IR-en belül", "power": "X9", "pos": [340, 500]},
     {"pink": "P",  "role": "switch3", "room": "nagyszoba", "label": "Cserépkályha kapcsoló (LUXION)", "match": ["cserépkályha kapcsoló"], "exact": "Cserépkályha kapcsoló (új)", "pos": [314, 318]},
     {"pink": "X5", "role": "breaker", "room": "eloszoba",  "label": "Kör 5: cserépkályha",        "match": ["cserépkályha kismegszakító"], "exact": "Cserépkályha kismegszakító (5.)", "pos": [300, 551]},
     {"pink": "X7", "role": "breaker", "room": "eloszoba",  "label": "Kör 7: bojler",              "match": ["bojler"], "exact": "Fürdőszoba bojler (melegvíz) (7.)", "pos": [316, 551]},
     {"pink": "X8", "role": "breaker", "room": "eloszoba",  "label": "Kör 8: főzőlap és sütő",     "match": ["főzőlap"], "exact": "Konyhai főzőlap és sütő (8.)", "pos": [300, 567]},
-    {"pink": "X9", "role": "breaker", "room": "eloszoba",  "label": "Kör 9: klíma",               "match": ["klíma kismegszakító"], "exact": "Klíma kismegszakító (9.)", "pos": [316, 567]},
+    {"pink": "X9", "role": "breaker", "room": "eloszoba",  "label": "Kör 9: klíma",               "match": ["klíma kismegszakító"], "exact": "Klíma kismegszakító - 9.kismegszakító", "feeds": ["11"], "pos": [316, 567]},
     {"pink": "G",  "role": "gateway", "room": "kisszoba",  "label": "Zigbee + IR gateway",        "match": ["gateway", "átjáró"],                "pos": [458, 560]}
   ],
   "fixed": [

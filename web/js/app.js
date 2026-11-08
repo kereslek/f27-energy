@@ -251,6 +251,20 @@
     'k9': { name: 'Kör 9: klíma', room: 'Elosztó', kind: 'breaker', cat: 'power' },
     'G': { name: 'Zigbee + IR gateway', room: 'Kis szoba', kind: 'gateway', cat: 'other' }
   };
+  // A klíma (11, IR, nem küld állapotot) és a tápját adó 9-es okos kismegszakító (X9) logikai
+  // kapcsolata: a klíma állapota a kismegszakítóból jön. Lekapcsolt kismegszakító = nincs áram.
+  var AC_RUN_W = 100;
+  function acPower(src) {
+    var d = src && src[dbPink('k9')];
+    if (!d) return { kind: 'unknown', w: null, short: 'nincs adat', text: 'Nincs adat a 9-es (klíma) kismegszakítóról.' };
+    if (d.online === false) return { kind: 'unknown', w: null, short: 'ismeretlen', text: 'A 9-es (klíma) kismegszakító nem elérhető, a klíma állapota ismeretlen.' };
+    var s = d.status || {};
+    if (s.switch === false) return { kind: 'off', w: 0, short: 'nincs áram', text: 'Nincs áram: a 9-es (klíma) kismegszakító le van kapcsolva, a klíma nem tud menni.' };
+    var w = livePower(s, d.meta);
+    if (w == null) return { kind: 'idle', w: null, short: 'áram van', text: 'A 9-es kismegszakító be van kapcsolva, a teljesítmény nem ismert.' };
+    if (w > AC_RUN_W) return { kind: 'run', w: w, short: 'fut, ' + fmtW(w), text: 'A klíma fut: ' + fmtW(w) + ' a 9-es körön.' };
+    return { kind: 'idle', w: w, short: 'áll', text: 'A klíma áll: a 9-es kismegszakító be van kapcsolva (áram van), ' + fmtW(w) + '.' };
+  }
   // "Régóta hallgat" küszöb (perc). A hálózati eszközöknél 90 perc: az adatgyűjtő változatlan
   // állapotnál csak óránként ír, így a tárolt utolsó jelentés legfeljebb kb. 70 percet késhet.
   var STALE_MIN = { thermo: 6 * 60, contact: 24 * 60, breaker: 90, switch3: 90, gateway: 90 };
@@ -531,6 +545,11 @@
       }).join(', ');
       add(c.red ? 70 : 48, c.red ? 'red' : 'orange', c.id, c.name + ': ' + detail, c.name + ': ' + detail + '. ' + (c.red && c.online === false ? 'Nézd meg az áramot vagy a Wi-Fit.' : /elem/.test(detail) ? 'Elemcsere a következő takarításkor.' : 'Lehet, hogy csak alszik; ha sokáig így marad, nézd meg.'));
     });
+    // a klíma tápja (9-es kismegszakító) lekapcsolva: a legolcsóbb hőforrás ki van zárva
+    if (by.k9 && by.k9.swOff) {
+      if (season && stage > 0) add(66, 'orange', 'k9', 'A klíma nem kap áramot, közben a kályha megy', 'A 9-es (klíma) kismegszakító le van kapcsolva, így a klíma nem tud menni, közben a kályha ' + stage + ' kW-on fűt. A klíma hőszivattyúval kb. 12-23 Ft egy kWh hő, a kályha keret felett kb. 60 Ft: minden kályháról klímára terelt kWh kb. 37 Ft megtakarítás. Ha szándékos (pl. a vendég ne kapcsolgassa), rendben.');
+      else add(season ? 28 : 15, 'blue', 'k9', 'A klíma kismegszakítója le van kapcsolva', 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma most nem kap áramot. Távolról a Smart Life appban kapcsolható vissza.');
+    }
     if (ac && season && stage === 0) add(20, 'green', 'k9', 'A klíma fűt: ez a legolcsóbb meleg', 'A klíma fűt (' + fmtNum(by.k9.watt, 0) + ' W). Hőszivattyúval kb. 12 Ft egy kWh hő, a kályha keret felett kb. 60 Ft.');
     // időjárás (csak az Élő módban, valós előrejelzésből); a kályha kapcsolása kézi, ez csak javaslat
     var safe = ' Csak javaslat: a kályha automatikus kapcsolása még nincs bekötve (előbb kontaktor kell).';
@@ -768,7 +787,8 @@
         m.aria = m.id + ': ' + m.name + ', ' + m.val + '. Húzható.';
       });
       if (live && live.__any && v.pins.some(function (m) { return m.id === '11'; })) {
-        v.pins.forEach(function (m) { if (m.id === '11') { m.val = 'IR vezérelt'; m.aria = m.id + ': ' + m.name + ', ' + m.val + '. Húzható.'; } });
+        var acPin = acPower(live);
+        v.pins.forEach(function (m) { if (m.id === '11') { m.val = 'Klíma: ' + acPin.short; m.aria = m.id + ': ' + m.name + ', ' + acPin.text + ' Húzható.'; } });
       }
       if (st.sel && st.sel.charAt(0) === 'd') {
         v.pins.forEach(function (m) { if ('d' + m.id === st.sel) v.selText = m.id + ' ' + m.name + ': ' + m.val; });
@@ -829,7 +849,9 @@
           } else if (info.kind === 'gateway') {
             value = online === false ? 'Offline' : 'Online'; valCls = online === false ? 'bad' : 'good';
           } else if (ir) {
-            value = 'IR vezérelt'; valCls = '';
+            var acp = acPower(src);
+            value = acp.short.charAt(0).toUpperCase() + acp.short.slice(1);
+            valCls = acp.kind === 'run' ? 'warm' : acp.kind === 'off' ? 'bad' : '';
           }
         }
         var badges = [], warn = false, red = false;
@@ -842,14 +864,18 @@
         if (stale) { badges.push({ t: 'Régóta hallgat', c: 'orange' }); warn = true; }
         if (!warn && has && !ir && age != null && age < 10 * 60000 && online !== false) badges.push({ t: 'Friss', c: 'green' });
         var note = '';
+        if (ir && acPower(src).kind === 'off') note = 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma nem kap áramot.';
         if (open && (stale || online === false)) note = 'A NYITVA jelzés lehet régi: ' + hoursAgoText(age) + ' nem jelentett' + (batt && batt.pct < 20 ? ', és merül az eleme.' : '.');
         else if (open && batt && batt.pct < 20) note = 'A NYITVA jelzés lehet hibás: merül az eleme (' + batt.pct + ' %).';
         var details = [];
         if (ir) {
-          details = [{ k: 'Vezérlés', v: 'infravörös, a gatewayen át', cls: '' }, { k: 'Visszajelzés', v: 'az IR eszköz nem küld állapotot', cls: '' }];
+          var acd = acPower(src);
+          details = [{ k: 'Táp', v: '9-es okos kismegszakító (k9)', cls: '' }, { k: 'Állapot', v: acd.text, cls: '' },
+            { k: 'Vezérlés', v: 'infravörös, a gatewayen át', cls: '' }, { k: 'Visszajelzés', v: 'csak a 9-es kör méréséből', cls: '' }];
         } else {
           var keys = Object.keys(stt).sort(function (a, b) { var fa = FRIENDLY[a] ? 0 : 1, fb = FRIENDLY[b] ? 0 : 1; if (a === '_upd') fa = 2; if (b === '_upd') fb = 2; return fa - fb || a.localeCompare(b); });
           details = keys.map(function (k) { return { k: FRIENDLY[k] || k, v: codeValue(k, stt[k], meta), cls: FRIENDLY[k] ? '' : 'raw' }; });
+          if (id === 'k9') details.unshift({ k: 'Táplálja', v: 'Klíma (11): ' + acPower(src).short, cls: '' });
           if (d && d.ts) details.push({ k: 'Tárolva', v: budTime(Date.parse(d.ts)), cls: '' });
           if (!details.length) details.push({ k: 'Állapot', v: 'nincs részlet', cls: '' });
         }
@@ -860,6 +886,7 @@
           temp: has && info.kind === 'thermo' ? liveTemp(stt, meta) : null,
           stage: has && info.kind === 'switch3' ? liveStage(stt) : null,
           watt: has && info.kind === 'breaker' && stt.switch !== false ? livePower(stt, meta) : null,
+          swOff: has && info.kind === 'breaker' && online !== false && stt.switch === false,
           pinLabel: id, name: info.name, room: info.room, icon: cat.icon, tile: cat.tile,
           value: value, valCls: 'dc-val ' + valCls,
           hasBatt: !!batt, batt: batt ? (batt.label ? batt.label : batt.pct + ' %') : '', battW: batt ? batt.pct + '%' : '0%',
@@ -1099,8 +1126,8 @@
         var k = tv == null ? 'off' : t.id === '3' ? (tv > 30 ? 'stove' : 'ok') : tv < 19 ? 'cold' : tv > 23 ? 'warm' : 'ok';
         return { id: t.id, name: t.name, t: tv == null ? '--' : fmtNum(tv, 1) + '°', h: h == null ? '' : fmtNum(h, 0) + ' %', cls: 'ov-t ' + k, tileCls: 'ov-tile temp ' + k, pick: pick(t.id) };
       });
-      var acW = cons.circ[3].w;
-      var ac = { text: acW == null ? 'nincs adat' : acW > 100 ? 'fut, ' + fmtW(acW) : 'áll', cls: 'ov-acv' + (acW != null && acW > 100 ? ' on' : ''), pick: pick('11') };
+      var acp = acPower(src);
+      var ac = { text: acp.short, tip: acp.text, cls: 'ov-acv' + (acp.kind === 'run' ? ' on' : acp.kind === 'off' ? ' off' : ''), pick: pick('11') };
       var nBatt = dv.all.filter(function (c) { return c.battPct != null && c.battPct < 20; }).length;
       var nOff = dv.all.filter(function (c) { return c.has && c.online === false; }).length;
       var nStale = dv.all.filter(function (c) { return c.stale; }).length;
@@ -1115,6 +1142,8 @@
       return {
         cls: 'f' + variant, f1: variant === 1, f2: variant === 2, f3: variant === 3,
         srcLabel: st.live ? 'ÉLŐ' : 'DEMO', srcCls: 'dp-src ' + (st.live ? 'live' : 'demo'),
+        title: st.live ? 'Élő áttekintés' : 'Demó áttekintés', isDemo: !st.live,
+        srcTip: st.live ? 'A lakás valódi, élő adatai (Supabase).' : 'Kitalált demóadat a kiválasztott pálya szerint. A lakás valódi adatai belépés után látszanak.',
         stove: stove, power: power,
         doors: { rows: doorRows, openCount: String(openCount), anyOpen: openCount > 0, openText: openCount + ' nyitva', heroCls: 'ov-h3o' + (openCount ? ' open' : '') },
         temps: temps, ac: ac, alerts: alerts,
