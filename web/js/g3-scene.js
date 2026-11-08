@@ -4,8 +4,13 @@
  * mockup logikája, változtatás nélkül (csak az ősosztály a saját MiniDC.Component).
  * Az élő adat, a bejelentkezés és az elrendezések az app.js-ben vannak.
  */
+// A világ (lakás) helye és mérete a 1440x900-as színpadon; a sablon <g transform>-jával egyezzen.
+var WX0 = 756, WY0 = 134, WS = 0.82;
 class G3Scene extends MiniDC.Component {
-  P(x, y, z) { return [x - y, (x + y) / 2 - (z || 0)]; }
+  // A déli sáv (y >= 452.4: konyha, előszoba, WC, tároló) a jobb láthatóságért nyugat felé
+  // 60%-kal nyújtva (a tulaj kérése): x' = 333 - (333 - x) * 1.6, a 333-as faltól keletre változatlan.
+  wx(x, y) { return y >= 452.4 && x < 333 ? 333 - (333 - x) * 1.6 : x; }
+  P(x, y, z) { var w = this.wx(x, y); return [w - y, (w + y) / 2 - (z || 0)]; }
 
   scene() {
     if (this._sc) return this._sc;
@@ -63,19 +68,20 @@ class G3Scene extends MiniDC.Component {
     var SL = ['#e9b072', '#c97f4a', '#a8653a'];
     var slab = [
       box(276, 44, 203, 290, -26, 26, SL, { lines: seg(P(276, 334.2, -9), P(479, 334.2, -9)), lc: '#8a5530' }),
-      box(176, 446, 79, 150, -26, 26, SL, { lines: seg(P(176, 596.2, -9), P(255, 596.2, -9)), lc: '#8a5530' }),
-      box(251, 326, 228, 270, -26, 26, SL, { lines: seg(P(251, 596.2, -9), P(479, 596.2, -9)) + seg(P(479.2, 326, -9), P(479.2, 596, -9)), lc: '#8a5530' })
+      box(176, 452.5, 79, 143.5, -26, 26, SL, { lines: seg(P(176, 596.2, -9), P(255, 596.2, -9)), lc: '#8a5530' }),
+      box(251, 326, 228, 126.3, -26, 26, SL, { lines: seg(P(479.2, 326, -9), P(479.2, 452.3, -9)), lc: '#8a5530' }),
+      box(251, 452.5, 228, 143.5, -26, 26, SL, { lines: seg(P(251, 596.2, -9), P(479, 596.2, -9)) + seg(P(479.2, 452.5, -9), P(479.2, 596, -9)), lc: '#8a5530' })
     ];
 
     function ell(cx, cy, rx, ry, z) { var a = []; for (var k = 0; k < 18; k++) { var t = k / 18 * Math.PI * 2; a.push(P(cx + rx * Math.cos(t), cy + ry * Math.sin(t), z)); } return pth(a); }
     var rooms = [
       [280, 48, 475, 328, '#9a6c46', '#74502f', 'herr'],
-      [255, 328, 333, 455, '#e3d6c1', '#8d7c69', 'patch'],
+      [255, 328, 333, 452.4, '#e3d6c1', '#8d7c69', 'patch'],
       [333, 328, 475, 592, '#9a6c46', '#74502f', 'herr'],
-      [255, 455, 288, 505, '#e3d6c1', '#8d7c69', 'patch'],
-      [288, 455, 333, 505, '#a8744a', '#7a5032', 'wood'],
+      [255, 452.4, 288, 505, '#e3d6c1', '#8d7c69', 'patch'],
+      [288, 452.4, 333, 505, '#a8744a', '#7a5032', 'wood'],
       [255, 505, 333, 592, '#9a6c46', '#74502f', 'herr'],
-      [180, 450, 255, 592, '#6e4b39', '#4b3326', 'dtile']
+      [180, 455, 255, 592, '#6e4b39', '#4b3326', 'dtile']
     ];
     var PATCHC = ['#e6dac6', '#b9c5cb', '#a98c74', '#d4c5ad', '#cbd3d6', '#9d806a', '#efe7d8'];
     var floors = [], checks = [];
@@ -127,8 +133,8 @@ class G3Scene extends MiniDC.Component {
       for (yb = 330 + (rw % 2) * 4; yb < 452; yb += 8) subway += seg(P(257.8, yb, zz), P(257.8, yb, Math.min(zz + 4, 74)));
     }
     var ktile = '';
-    for (zz = 22; zz <= 46; zz += 6) ktile += seg(P(182.8, 452, zz), P(182.8, 592, zz));
-    for (yb = 458; yb < 592; yb += 12) ktile += seg(P(182.8, yb, 22), P(182.8, yb, 46));
+    for (zz = 22; zz <= 46; zz += 6) ktile += seg(P(182.8, 457.5, zz), P(182.8, 592, zz));
+    for (yb = 462; yb < 592; yb += 12) ktile += seg(P(182.8, yb, 22), P(182.8, yb, 46));
     var damask = '';
     for (var dz = 30, dr = 0; dz < 72; dz += 9, dr++) for (var dy = 156 + (dr % 2) * 7; dy < 278; dy += 14) {
       var c0 = P(282.8, dy, dz), c1 = P(282.8, dy + 3, dz + 3.2), c2 = P(282.8, dy + 6, dz), c3 = P(282.8, dy + 3, dz - 3.2);
@@ -138,9 +144,9 @@ class G3Scene extends MiniDC.Component {
       box(277.5, 45.5, 5, 285, 0, 74, WB, { lines: seg(P(282.8, 46, 24), P(282.8, 330, 24)) + damask, lc: '#d9bd8a' }),
       box(277.5, 45.5, 200, 5, 0, 74, WB, { lines: seg(P(282, 50.8, 24), P(477, 50.8, 24)), lc: '#d9bd8a' }),
       box(252.5, 325.5, 27.5, 5, 0, 74, WB),
-      box(252.5, 325.5, 5, 127, 0, 74, ['#6a4c38', '#ffffff', '#f2f4f5'], { lines: subway, lc: '#cfd6da' }),
-      box(177.5, 447.5, 77.5, 5, 0, 74, WB),
-      box(177.5, 447.5, 5, 147, 0, 74, WB, { lines: ktile, lc: '#d9c39a' })
+      box(252.5, 325.5, 5, 126.8, 0, 74, ['#6a4c38', '#ffffff', '#f2f4f5'], { lines: subway, lc: '#cfd6da' }),
+      box(177.5, 452.5, 77.5, 5, 0, 74, WB),
+      box(177.5, 452.5, 5, 142, 0, 74, WB, { lines: ktile, lc: '#d9c39a' })
     ];
     var winsBase = [[305, 350], [405, 460]].map(function (w) {
       var m = (w[0] + w[1]) / 2, yf = 50.9;
@@ -181,7 +187,7 @@ class G3Scene extends MiniDC.Component {
     W.push(box(288, 330.5, 30, 7, 0, 0.6, ['#c8b79a', '#a8946f', '#977f5c']));
     W = W.concat(walls('y', 288, 455, 505));
     W = W.concat(walls('x', 505, 255, 333, [[259, 284], [294, 326]]));
-    W = W.concat(walls('y', 255, 450, 592, [[520, 560]]));
+    W = W.concat(walls('y', 255, 452.5, 592, [[520, 560]]));
 
     var WOOD = ['#d99b5e', '#a8703f', '#8c5c33'];
     var WALNUT = ['#7a4f2e', '#5e3c22', '#4d311c'];
@@ -548,29 +554,29 @@ class G3Scene extends MiniDC.Component {
     add(182, 510, 20, 22, 0, 20, WHITE, { f1: pth(wd), f1c: '#26221f' });
     add(181, 509, 23, 24, 20, 2, MARBLE, { bias: 1, f1: pth(wd2), f1c: '#7fd3ea' });
     piece('counter2', 'Alsó szekrények sík, márványhatású munkalappal (a tűzhely és a mosógép között)');
-    add(182, 474.5, 20, 34.5, 0, 20, CAB, { lines: seg(P(202.3, 486, 2), P(202.3, 486, 18)) + seg(P(202.3, 497.5, 2), P(202.3, 497.5, 18)), lc: '#c9c3b5' });
-    add(181, 474.5, 23, 35, 20, 2, MARBLE, { bias: 1 });
+    add(182, 479.5, 20, 29.5, 0, 20, CAB, { lines: seg(P(202.3, 486, 2), P(202.3, 486, 18)) + seg(P(202.3, 497.5, 2), P(202.3, 497.5, 18)), lc: '#c9c3b5' });
+    add(181, 479.5, 23, 30, 20, 2, MARBLE, { bias: 1 });
     piece('cooker', 'Candy villanytűzhely kerámialappal, sütővel, a sarokban (fölötte a mikró)');
-    add(182, 453, 20, 21, 0, 22, WHITE, { f1: faceX(202.1, 456, 471, 4, 14), f1c: '#2b2b2b' });
-    add(183, 454, 18, 19, 22, 0.8, BLACK, { bias: 1 });
+    add(182, 458, 20, 21, 0, 22, WHITE, { f1: faceX(202.1, 461, 476, 4, 14), f1c: '#2b2b2b' });
+    add(183, 459, 18, 19, 22, 0.8, BLACK, { bias: 1 });
     piece('fridge', 'Beko inox hűtő-fagyasztó az északi fal mentén, a tűzhely mellett');
-    add(214, 453, 27, 21, 0, 54, STEEL, { lines: seg(P(216, 474.2, 15), P(239, 474.2, 15)) + seg(P(236, 474.2, 20), P(236, 474.2, 34)) + seg(P(236, 474.2, 6), P(236, 474.2, 12)), lc: '#5c636e' });
+    add(214, 458, 27, 21, 0, 54, STEEL, { lines: seg(P(216, 479.2, 15), P(239, 479.2, 15)) + seg(P(236, 479.2, 20), P(236, 479.2, 34)) + seg(P(236, 479.2, 6), P(236, 479.2, 12)), lc: '#5c636e' });
     piece('urnbox', 'Nyitott wenge doboz: kék-fehér porcelán urnák, befőttesüvegek, növény', false);
-    add(213.5, 453, 32, 35, 56, 2, DKWOOD);
-    add(213.5, 453, 32, 2, 58, 16, DKWOOD, { bias: 1 });
-    add(243.5, 453, 2, 35, 58, 16, DKWOOD, { bias: 2 });
-    add(215.5, 455, 28, 31, 64, 1.6, WHITE, { bias: 3 });
+    add(213.5, 458, 32, 35, 56, 2, DKWOOD);
+    add(213.5, 458, 32, 2, 58, 16, DKWOOD, { bias: 1 });
+    add(243.5, 458, 2, 35, 58, 16, DKWOOD, { bias: 2 });
+    add(215.5, 460, 28, 31, 64, 1.6, WHITE, { bias: 3 });
     var BLUEW = ['#f4f7fb', '#3d6fb6', '#2f5a99'];
-    [[219, 462], [227, 470]].forEach(function (u) { add(u[0], u[1], 6, 6, 58, 6, BLUEW, { bias: 4, lines: seg(P(u[0], u[1] + 6.2, 60.5), P(u[0] + 6, u[1] + 6.2, 60.5)), lc: '#2f5a99' }); add(u[0] + 1.5, u[1] + 1.5, 3, 3, 64, 1.4, BLUEW, { bias: 5 }); });
-    add(235, 458, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
-    add(235, 478, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
-    add(220, 478, 5, 5, 58, 4, ['#f4f1ea', '#dcd6ca', '#cbc4b6'], { bias: 4 });
-    add(219.5, 477.5, 6, 6, 62, 5, IVY, { bias: 5 });
+    [[219, 467], [227, 475]].forEach(function (u) { add(u[0], u[1], 6, 6, 58, 6, BLUEW, { bias: 4, lines: seg(P(u[0], u[1] + 6.2, 60.5), P(u[0] + 6, u[1] + 6.2, 60.5)), lc: '#2f5a99' }); add(u[0] + 1.5, u[1] + 1.5, 3, 3, 64, 1.4, BLUEW, { bias: 5 }); });
+    add(235, 463, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
+    add(235, 483, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
+    add(220, 483, 5, 5, 58, 4, ['#f4f1ea', '#dcd6ca', '#cbc4b6'], { bias: 4 });
+    add(219.5, 482.5, 6, 6, 62, 5, IVY, { bias: 5 });
     piece('uppers', 'Fehér kazettás felső szekrények, mikró, LED-szalag', false);
     add(180.5, 488, 11, 100, 46, 18, CAB, { lines: seg(P(191.6, 512, 46), P(191.6, 512, 64)) + seg(P(191.6, 538, 46), P(191.6, 538, 64)) + seg(P(191.6, 563, 46), P(191.6, 563, 64)), lc: '#c9c3b5' });
-    add(180.5, 453, 13, 22, 40, 24, CAB, { lines: seg(P(193.6, 453.5, 52), P(193.6, 474.5, 52)), lc: '#c9c3b5',
-      f1: faceX(193.7, 456, 467, 42, 50) , f1c: '#26221f' });
-    add(180.5, 453, 13, 22, 64, 2, DKWOOD, { bias: 1 });
+    add(180.5, 458, 13, 22, 40, 24, CAB, { lines: seg(P(193.6, 458.5, 52), P(193.6, 479.5, 52)), lc: '#c9c3b5',
+      f1: faceX(193.7, 461, 472, 42, 50) , f1c: '#26221f' });
+    add(180.5, 458, 13, 22, 64, 2, DKWOOD, { bias: 1 });
     add(180.5, 488, 11, 100, 64, 2, DKWOOD, { bias: 1 });
     add(191.2, 490, 0.8, 96, 45.2, 0.6, ['#fff6c8', '#ffe98a', '#ffe070'], { bias: 2 });
     piece('herbs', 'Fűszernövények a falisínen, fekete eszközsín');
@@ -692,11 +698,11 @@ class G3Scene extends MiniDC.Component {
     var ny = d.oy + (e.clientY - d.sy) / d.k;
     var snap = this.props.snap ?? true;
     if (d.kind === 'piece') {
-      var gx = nx / 0.9, gy = ny / 0.9;
+      var gx = nx / WS, gy = ny / WS;
       var wx = gy + gx / 2, wy = gy - gx / 2;
       if (snap) { wx = Math.round(wx / 4) * 4; wy = Math.round(wy / 4) * 4; }
       wx = Math.max(-240, Math.min(240, wx)); wy = Math.max(-300, Math.min(300, wy));
-      nx = (wx - wy) * 0.9; ny = ((wx + wy) / 2) * 0.9;
+      nx = (wx - wy) * WS; ny = ((wx + wy) / 2) * WS;
     } else {
       nx = Math.max(-560, Math.min(560, Math.round(nx)));
       ny = Math.max(-500, Math.min(500, Math.round(ny)));
@@ -726,7 +732,7 @@ class G3Scene extends MiniDC.Component {
     function r1(n) { return Math.round(n * 10) / 10; }
     function P(x, y, z) { return self.P(x, y, z); }
     function trp(p) { return 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ')'; }
-    function off(id) { var o = pos[id] || [0, 0]; return [o[0] / 0.9, o[1] / 0.9]; }
+    function off(id) { var o = pos[id] || [0, 0]; return [o[0] / WS, o[1] / WS]; }
     function trw(x, y, z, id) { var p = P(x, y, z), o = id ? off(id) : [0, 0]; return trp([p[0] + o[0], p[1] + o[1]]); }
 
     // rétegek: falak + húzható bútorok mélység szerint
@@ -786,7 +792,7 @@ class G3Scene extends MiniDC.Component {
     var pins = DEV.map(function (m) {
       var g = P(m.p[0], m.p[1], m.p[2]);
       var o = pos['d' + m.id] || [0, 0];
-      var ax = 720 + 0.9 * g[0] + o[0], ay = 124 + 0.9 * g[1] + o[1];
+      var ax = WX0 + WS * g[0] + o[0], ay = WY0 + WS * g[1] + o[1];
       var cls = 'pin' + (m.sm ? ' sm' : '') + (m.alert ? ' alert' : '') + (st.sel === 'd' + m.id ? ' sel' : '') + (st.drag === 'd' + m.id ? ' drag' : '');
       var fill = m.alert ? '#ff5a3c' : (m.id.charAt(0) === 'k' ? '#3d8f5c' : (m.kind === 't' || m.kind === 'hot' ? '#2f6fe4' : '#ff4fa3'));
       return { id: m.id, name: m.name, val: m.val, cls: cls, fill: fill, showVal: !!m.show,
