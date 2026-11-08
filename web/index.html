@@ -1571,6 +1571,8 @@ Elrendezés visszaállítása
 <div class="al-rt"><span>{{al.heat.label}}</span><span class="al-seg" role="group" aria-label="Perc"><sc-for list="{{al.heatMin}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div></div>
 <div class="al-rule"><button class="{{al.acMax.cls}}" type="button" role="switch" aria-checked="{{al.acMax.on}}" aria-label="{{al.acMax.label}}" onClick="{{al.acMax.toggle}}" disabled="{{al.ro}}"><span></span></button>
 <div class="al-rt"><span>{{al.acMax.label}}</span><span class="al-seg" role="group" aria-label="Teljesítményhatár"><sc-for list="{{al.acW}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div></div>
+<div class="al-rule"><button class="{{al.kitchen.cls}}" type="button" role="switch" aria-checked="{{al.kitchen.on}}" aria-label="{{al.kitchen.label}}" onClick="{{al.kitchen.toggle}}" disabled="{{al.ro}}"><span></span></button>
+<div class="al-rt"><span>{{al.kitchen.label}}</span></div></div>
 <div class="al-rule"><button class="{{al.dead.cls}}" type="button" role="switch" aria-checked="{{al.dead.on}}" aria-label="{{al.dead.label}}" onClick="{{al.dead.toggle}}" disabled="{{al.ro}}"><span></span></button>
 <div class="al-rt"><span>{{al.dead.label}}</span></div></div>
 </div>
@@ -1583,15 +1585,8 @@ Elrendezés visszaállítása
 <label class="al-ch sm"><button class="{{al.wa.cls}}" type="button" role="switch" aria-checked="{{al.wa.on}}" aria-label="{{al.wa.label}}" onClick="{{al.wa.toggle}}" disabled="{{al.ro}}"><span></span></button>{{al.wa.label}}</label>
 </div>
 <p class="al-small">Az azonnali riasztás pushon (ntfy) jön. Az e-mail csak a napi összefoglalóban jön, naponta legfeljebb egy: a nap riasztásai, teendők, holnapi érkezés, mai fogyasztás. A címek és a kulcsok GitHub Secretben vannak (NTFY_TOPIC, SMTP_..., ALERT_EMAIL_TO; lásd docs/riasztasok.md), itt csak ki-be kapcsolod.</p>
-<div class="al-rt"><span>Ugyanarra legfeljebb</span><span class="al-seg" role="group" aria-label="Türelmi idő"><sc-for list="{{al.cool}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div>
+<div class="al-rt"><span>Ha a gond fennáll, újra szól</span><span class="al-seg" role="group" aria-label="Emlékeztető gyakorisága"><sc-for list="{{al.cool}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div>
 <div class="al-rule"><button class="{{al.resolved.cls}}" type="button" role="switch" aria-checked="{{al.resolved.on}}" aria-label="{{al.resolved.label}}" onClick="{{al.resolved.toggle}}" disabled="{{al.ro}}"><span></span></button><div class="al-rt"><span>{{al.resolved.label}}</span></div></div>
-<div class="al-rule"><button class="{{al.quiet.cls}}" type="button" role="switch" aria-checked="{{al.quiet.on}}" aria-label="{{al.quiet.label}}" onClick="{{al.quiet.toggle}}" disabled="{{al.ro}}"><span></span></button>
-<div class="al-rt"><span>{{al.quiet.label}}</span>
-<select class="al-sel al-qf" aria-label="Csendes órák kezdete" data-val="{{al.qFromV}}" onChange="{{al.setFrom}}" disabled="{{al.qOff}}"><sc-for list="{{al.qFrom}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}}</option></sc-for></select><span>-</span>
-<select class="al-sel al-qt" aria-label="Csendes órák vége" data-val="{{al.qToV}}" onChange="{{al.setTo}}" disabled="{{al.qOff}}"><sc-for list="{{al.qTo}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}}</option></sc-for></select>
-<span>kivéve, ha a kályha mögött</span>
-<select class="al-sel al-qs" aria-label="Kályha-kivétel, °C" data-val="{{al.stoveV}}" onChange="{{al.setStove}}" disabled="{{al.qOff}}"><sc-for list="{{al.stoveOpts}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}} °C</option></sc-for></select><span>fölött van</span>
-</div></div>
 </div>
 <p class="{{al.prevCls}}" aria-live="polite">{{al.prevText}}</p>
 <p class="al-small">{{al.prevNote}}</p>

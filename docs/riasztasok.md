@@ -15,6 +15,7 @@ friss eszközállapotot, és ha valami a beállított határon kívül van:
 | Hőmérő 1-4 sávon kívül | a hőmérő a beállított sáv alatt (túl hideg) vagy felett (túl meleg) van legalább 10 percig | Kis szoba 19-24 °C, Nagy szoba 19-22 °C, Kályha mögött 20-38 °C, Fürdő 19-25 °C (a fürdő alapból KI) |
 | Nyitott ablak fűtés/hűtés közben | megy a kályha (LUXION fokozat > 0, vagy az 5-ös kör > 300 W) vagy a klíma (9-es kör > 100 W), és nyitva van egy ablak (7, 8, 9, 10) vagy a bejárati ajtó (5) legalább N percig | BE, 10 perc (5/10/15/30) |
 | Klíma nagy teljesítményen, nyitott ablakkal | a 9-es kör a határ felett megy, és nyitva van egy ablak | BE, 900 W (600/900/1200) |
+| Konyhaablak kivétel | a két ablakos szabály a 7-es (konyha) ablakot nem nézi, pl. főzés közbeni szellőztetéskor; bekapcsolásakor a futó konyhaablak-riasztás csendben lezárul | KI (a konyhaablak is riaszt) |
 | Lemerült nyílászárók kihagyása | a nem elérhető, 10 % alatti elemű vagy 24 órája nem jelentő érzékelő NYITVA jelzése nem számít (lehet régi) | BE |
 
 A 6-os (privát tároló) ajtaja nem számít. A hőmérőből csak friss (6 órán belüli), elérhető érték
@@ -22,12 +23,11 @@ számít. A klímának saját visszajelzése nincs: a 9-es kör méréséből tu
 
 **Mikor és hányszor:**
 
-- Egy riasztásról legfeljebb **óránként** egy push megy (30 perc / óránként / 2 óránként
-  állítható). Ha még mindig fennáll, a türelmi idő után "(még fennáll)" emlékeztető jön.
+- Egy riasztásról legfeljebb **óránként** egy push megy ("Ha a gond fennáll, újra szól":
+  30 percenként / óránként / 2 óránként). Az első push a tartósság (pl. 10 perc) után jön; ha a
+  helyzet nem szűnik meg, ennyi időnként "(még fennáll)" emlékeztető jön, amíg meg nem szűnik.
 - Ha megszűnik és ment róla értesítés, jön egy **"megszűnt"** push (kikapcsolható).
-- **Csendes órák** (alapból 23:00-07:00, budapesti idő): ilyenkor nem megy push, **kivéve**, ha a
-  kályha mögötti hőmérő 40 °C fölött van (állítható). A csendes órákban kezdődött, még élő riasztás
-  a csend végén kimegy.
+- **Nincs csendes időszak** (a tulaj kérése): a push éjjel-nappal megy; ha zavar, a telefonon némítható.
 - Egy körben több esemény egy pushba kerül.
 
 **Az üzenetek** röviden, név és cím nélkül, a mért értékkel, a határral és a térkép linkjével:
@@ -42,7 +42,7 @@ Naponta egyszer, a beállított időpontban (18:00 / 19:00 / **20:00** / 21:00).
 kimaradna, az első későbbi kör pótolja, de csak éjfélig. Tárgy: `F27 napi összefoglaló, nov. 8.
 vasárnap`. Részei:
 
-1. **Ma történt:** a nap riasztásai, megszűnései, próbái időponttal (a csendes órák miatt vissza
+1. **Ma történt:** a nap riasztásai, megszűnései, próbái időponttal (vissza
    tartottakat is jelöli).
 2. **Teendők:** még élő riasztások, nyitott ablak/ajtó, merülő elem (20 % alatt), nem elérhető
    vagy régóta hallgató érzékelő, üres lakásban menő kályha, holnapi érkezés előtt lekapcsolt bojler
@@ -68,7 +68,7 @@ Kattintásra nyílik a **Riasztások** panel (Esc vagy X zárja; telefonon alsó
   jobbra a hőmérő ki-be kapcsolója. Billentyűzettel: Tab a fogantyúra, nyilakkal 0,5 °C.
 - **Fűtés / hűtés és nyitott ablak:** a két szabály és a lemerült érzékelők kihagyása.
 - **Hova és mikor:** Push (ntfy), Napi e-mail összefoglaló (időponttal), WhatsApp (nem kötelező),
-  türelmi idő, "megszűnt" üzenet, csendes órák a kályha-kivétellel.
+  emlékeztető gyakoriság, "megszűnt" üzenet, konyhaablak kivétel, (kikapcsolt) csendes órák.
 - **Most riasztana:** a mostani értékekből számolt előnézet (az adatgyűjtő csak a tartós eltérésre
   szól).
 - **Mentés** (csak a tulaj), **Próba-értesítés** (a következő 10 perces körben egy próba-push megy

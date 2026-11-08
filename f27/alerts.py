@@ -69,9 +69,10 @@ DEFAULT_CONFIG = {
     "openHeat": {"on": True, "minutes": 10},
     "acMaxOpen": {"on": True, "watts": 900},
     "skipDeadContacts": True,
+    "skipKitchen": False,     # konyhaablak kivétel a két ablakos szabálynál (alapból ki: a konyhaablak is riaszt)
     "cooldownMin": 60,
     "resolvedMsg": True,
-    "quiet": {"on": True, "from": "23:00", "to": "07:00"},
+    "quiet": {"on": False, "from": "23:00", "to": "07:00"},   # a tulaj kérése: nincs csendes időszak (a telefonon szundiz)
     "quietExceptStoveC": 40,
     "channels": {"push": True, "whatsapp": False},
     "digest": {"on": True, "time": "20:00"},
@@ -123,6 +124,7 @@ def merge_config(stored) -> dict:
         if "on" in cfg[key]:
             cfg[key]["on"] = _bool(sub.get("on"), cfg[key]["on"])
     cfg["skipDeadContacts"] = _bool(s.get("skipDeadContacts"), cfg["skipDeadContacts"])
+    cfg["skipKitchen"] = _bool(s.get("skipKitchen"), cfg["skipKitchen"])
     cfg["cooldownMin"] = _num(s.get("cooldownMin"), 5, 1440, cfg["cooldownMin"])
     cfg["resolvedMsg"] = _bool(s.get("resolvedMsg"), cfg["resolvedMsg"])
     cfg["quietExceptStoveC"] = _num(s.get("quietExceptStoveC"), 20, 80, cfg["quietExceptStoveC"])
@@ -345,9 +347,12 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "quiet_ok": key == STOVE_KEY and v > cfg["quietExceptStoveC"],
             }
     skip = cfg["skipDeadContacts"]
+    kitchen_out = {"7"} if cfg["skipKitchen"] else set()
     if cfg["openHeat"]["on"]:
         hs = heat_sources(snap)
         for pink, name in OPENINGS.items():
+            if pink in kitchen_out:
+                continue
             key = f"open_heat:{pink}"
             o = contact_open(snap, pink, now, skip)
             if hs is None or (o is None and hs[0]):
@@ -374,8 +379,9 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
         key = "ac_max_open"
         x9 = snap.get("X9")
         w9 = watts_of(x9["status"], x9.get("meta")) if x9 and x9.get("online") is not False else None
-        states = {p: contact_open(snap, p, now, skip) for p in WINDOWS}
+        states = {p: contact_open(snap, p, now, skip) for p in WINDOWS if p not in kitchen_out}
         opened = [OPENINGS[p] for p, o in states.items() if o]
+        kitchen_open = bool(kitchen_out) and bool(contact_open(snap, "7", now, skip))
         if w9 is None or (not opened and any(o is None for o in states.values()) and w9 > cfg["acMaxOpen"]["watts"]):
             unknown.add(key)
         else:
@@ -387,6 +393,7 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "text": (lambda age, w=w9, lm=limit, wh=where:
                          f"F27: a klíma nagy teljesítményen megy ({fmt_w(w)}, határ {lm} W), és nyitva: {wh}."),
                 "rtext": (f"F27: megszűnt: a klíma már nem megy nagy teljesítményen ({fmt_w(w9)})." if w9 <= limit
+                          else "F27: megszűnt: csak a konyhaablak van nyitva, az kivétel." if kitchen_open
                           else "F27: megszűnt: az ablakok zárva."),
                 "minutes": mins, "quiet_ok": False,
             }

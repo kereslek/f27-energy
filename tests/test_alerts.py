@@ -235,6 +235,27 @@ class TestRules(Base):
         r = self.run_at(T0 + timedelta(minutes=70), **o)
         self.assertIn("Kis szoba ablak", self.texts(r)[0])
 
+    def test_kitchen_window_alerts_by_default_and_can_be_excepted(self):
+        o = {"7": {"doorcontact_state": True}, "P": {"switch_1": True}, "X9": {"cur_power": 11000}}
+        self.run_at(T0, **o)
+        r = self.run_at(T0 + timedelta(minutes=10), **o)
+        txt = self.texts(r)[0]
+        self.assertIn("Konyha ablak 10 perce", txt)
+        self.assertIn("nyitva: Konyha ablak", txt)                 # a klíma-szabály is nézi
+        # kivétel bekapcsolva: a nyitott ablak + fűtés riasztás csendben lezárul, a klímásnál
+        # a megszűnt üzenet megmondja, miért; utána egyik sem jön újra
+        self.settings(skipKitchen=True)
+        r = self.run_at(T0 + timedelta(minutes=20), **o)
+        self.assertEqual(self.texts(r), ["F27: megszűnt: csak a konyhaablak van nyitva, az kivétel.\n\nTérkép: " + A.MAP_URL])
+        self.assertFalse(self.sb.db["alert_state"]["open_heat:7"]["active"])
+        self.assertEqual(self.run_at(T0 + timedelta(minutes=90), **o)["new"], [])
+        # a többi ablak ettől még riaszt
+        o2 = dict(o, **{"8": {"doorcontact_state": True}})
+        self.run_at(T0 + timedelta(minutes=100), **o2)
+        r = self.run_at(T0 + timedelta(minutes=110), **o2)
+        self.assertIn("Kis szoba ablak", self.texts(r)[0])
+        self.assertNotIn("Konyha", self.texts(r)[0])
+
     def test_stale_or_offline_thermometer_is_skipped(self):
         o = {"3": {"va_temperature": 450, "age_min": 7 * 60}}
         self.run_at(T0, **o)
@@ -269,6 +290,18 @@ class TestRules(Base):
 
 class TestQuiet(Base):
     NIGHT = datetime(2026, 11, 8, 22, 30, tzinfo=timezone.utc)      # 23:30 Budapest
+
+    def setUp(self):
+        super().setUp()
+        # a csendes órák alapból ki vannak kapcsolva (a tulaj kérése); a funkció itt kifejezetten bekapcsolva
+        self.settings(quiet={"on": True, "from": "23:00", "to": "07:00"})
+
+    def test_quiet_off_by_default_night_alert_goes_out(self):
+        self.settings(quiet={"on": False})
+        hot = {"2": {"va_temperature": 240}}
+        self.run_at(self.NIGHT, **hot)
+        r = self.run_at(self.NIGHT + timedelta(minutes=10), **hot)
+        self.assertTrue(self.texts(r)[0].startswith("F27 riasztás: Nagy szoba 24,0 °C"))
 
     def test_quiet_hours_hold_then_send_in_the_morning(self):
         hot = {"2": {"va_temperature": 240}}
@@ -382,11 +415,12 @@ class TestTestAndChannels(Base):
         self.assertEqual(cfg["temps"]["1"], {"on": True, "lo": 19, "hi": 24})
         self.assertEqual(cfg["temps"]["2"], {"on": True, "lo": 18.5, "hi": 23})
         self.assertEqual(cfg["cooldownMin"], 60)
-        self.assertEqual(cfg["quiet"], {"on": True, "from": "23:00", "to": "06:00"})
+        self.assertEqual(cfg["quiet"], {"on": False, "from": "23:00", "to": "06:00"})
         self.assertNotIn("email", cfg["channels"])
         self.assertEqual(cfg["digest"], {"on": True, "time": "20:00"})
         self.assertEqual(cfg["acMaxOpen"]["watts"], 900)
         self.assertFalse(cfg["skipDeadContacts"])
+        self.assertFalse(cfg["skipKitchen"])
         self.assertNotIn("ismeretlen", cfg)
         self.assertEqual(A.merge_config(None), A.DEFAULT_CONFIG)
         self.assertEqual(A.rules_on(A.DEFAULT_CONFIG), 5)
