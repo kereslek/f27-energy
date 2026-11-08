@@ -71,11 +71,19 @@
 
   // ---- élő értékek a Tuya státuszból (public.device_latest) ------------------------------
 
-  function liveTemp(st) {
+  // A Tuya specifikáció skálája (public.devices.meta, csak a tulaj látja): érték / 10^scale.
+  function metaScale(meta, code) {
+    var m = meta && meta[code];
+    return m && typeof m.scale === 'number' && isFinite(m.scale) ? m.scale : null;
+  }
+  function liveTemp(st, meta) {
     var codes = ['va_temperature', 'temp_current', 'temperature'];
     for (var i = 0; i < codes.length; i++) {
       var v = st[codes[i]];
-      if (typeof v === 'number') return Number.isInteger(v) && Math.abs(v) > 60 ? v / 10 : v;
+      if (typeof v !== 'number') continue;
+      var sc = metaScale(meta, codes[i]);
+      if (sc != null) return v / Math.pow(10, sc);
+      return Number.isInteger(v) && Math.abs(v) > 60 ? v / 10 : v;
     }
     return null;
   }
@@ -83,10 +91,14 @@
     var v = st.doorcontact_state != null ? st.doorcontact_state : st.contact_state;
     return v == null ? null : !!v;
   }
-  // Okos kismegszakító teljesítménye wattban. A Tuya cur_power 0,1 W egységben jön
-  // (scale 1); ha csak phase_a van, a base64 csomag 6-8. bájtja a teljesítmény (W).
-  function livePower(st) {
-    if (typeof st.cur_power === 'number') return st.cur_power / 10;
+  // Okos kismegszakító teljesítménye wattban. A skála a specifikációból jön (devices.meta);
+  // ha az nem elérhető, a szokásos dlq skála: cur_power 0,1 W egységben (scale 1).
+  // Ha csak phase_a van, a base64 csomag 6-8. bájtja a teljesítmény (W).
+  function livePower(st, meta) {
+    if (typeof st.cur_power === 'number') {
+      var sc = metaScale(meta, 'cur_power');
+      return st.cur_power / Math.pow(10, sc != null ? sc : 1);
+    }
     if (typeof st.phase_a === 'string') {
       try {
         var b = atob(st.phase_a);
@@ -142,14 +154,14 @@
           var d = live[p];
           if (!d) return;
           if (d.online === false) { t[i] = 'offline'; return; }
-          var v = liveTemp(d.status || {});
+          var v = liveTemp(d.status || {}, d.meta);
           if (v != null) t[i] = fmtTemp(v);
         });
         L.t = t;
         ['k5', 'k7', 'k8', 'k9'].forEach(function (k) {
           var d = live[dbPink(k)];
           if (!d) return;
-          var w = d.online === false ? null : livePower(d.status || {});
+          var w = d.online === false ? null : livePower(d.status || {}, d.meta);
           L[k] = w == null ? 'offline' : Math.round(w) + ' W';
         });
         if (live.P) {
@@ -423,8 +435,17 @@
         var rows = res.data || [];
         if (!rows.length) { self.setState({ live: null }); return; }
         var live = { __any: true };
-        rows.forEach(function (r) { live[r.pink] = { ts: r.ts, online: r.online, status: r.status || {} }; });
+        rows.forEach(function (r) { live[r.pink] = { ts: r.ts, online: r.online, status: r.status || {}, meta: null }; });
         self.setState({ live: live });
+        // A skálák (devices.meta) csak a tulajnak olvashatók; ha nincs meg (pl. nem futott
+        // a 002-es migráció), csendben marad a feltételezett skála.
+        if (self.state.role !== 'owner') return;
+        self.sb.from('devices').select('pink,meta').then(function (r2) {
+          if (r2.error || !r2.data || self.state.live !== live) return;
+          var next = Object.assign({}, live);
+          r2.data.forEach(function (d) { if (next[d.pink] && d.meta) next[d.pink] = Object.assign({}, next[d.pink], { meta: d.meta }); });
+          self.setState({ live: next });
+        }, function () { /* skála nélkül is működik */ });
       }, function (err) { self.toast(self.errText(err, 'Az élő adatok lekérése nem sikerült.'), 'err'); });
     }
 
