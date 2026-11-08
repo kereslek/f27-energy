@@ -176,6 +176,18 @@ nem érhető el, a csip `KINT --`. Időjárás: [Open-Meteo](https://open-meteo.
 
 ## Energiaőr (tanácsadó)
 
+**Tippek elrejtése.** Minden tipp alatt két gomb:
+- **✓ Rendben:** tudomásul vetted; amíg a helyzet fennáll, nem jelzi. Ha megszűnik, majd újra
+  előáll (pl. az ablakot becsukják, aztán újra kinyitják), újra szól.
+- **Később ▾:** 1 óra múlva; holnap reggel 8:00-ig; ennél a vendégnél ne (a mostani foglalás
+  végéig, a naptárból); ilyen tippet ne mutass (végleg, visszakapcsolható). A piros, biztonsági
+  tippeknél (pl. nyitott ablak fűtés közben, kályha üres lakásban) a "soha" nem választható.
+- Elrejtés után a buborékban **Visszavonás**. A panel alján az **Elrejtett tippek** lista: mi
+  meddig van rejtve, és **visszahoz**.
+- Felhasználónként mentődik a Supabase-be (`tip_dismissals`, 005-ös migráció): amit a tulaj
+  elrejt, az a tulajnál minden eszközén rejtett, a takarítónál nem. Demó módban, vagy amíg a
+  tábla nincs létrehozva, csak az adott lapon él.
+
 A bal oszlopban (a régi Küldetésnapló helyén) az **Energiaőr** panel: fent a zöld szék, ami a
 buborékban sorra mondja a tippeket (12 másodpercenként vált, ha fölé viszed az egeret, megáll),
 alatta az összes tipp és teendő fontossági sorrendben (pl. csukd be az ablakot, cserélj elemet,

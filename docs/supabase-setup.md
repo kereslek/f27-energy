@@ -134,6 +134,11 @@ az Open-Meteótól kéri.
 Ha kimarad: az adatgyűjtő a foglaltságot kihagyja (a Summary-ba kiírja), a térkép csempéje
 "nincs adat: hiányzik a bookings tábla" feliratot mutat.
 
+**005_tip_dismissals.sql** (az Energiaőr tippjeinek elrejtése, 2026.11.08): ugyanígy SQL Editor >
+New query > a [`supabase/migrations/005_tip_dismissals.sql`](../supabase/migrations/005_tip_dismissals.sql)
+teljes tartalma > Run. Ellenőrzés: Table Editor > `tip_dismissals` (üres). Ha kimarad, a térkép
+jelzi, és az elrejtés csak az adott lapon él.
+
 ## Mit tud a séma (röviden)
 
 | Szerepkör | Elrendezés | Aktuális állapot | Eszközlista (Tuya ID) | Energia | Foglaltság |

@@ -389,11 +389,36 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .ip-list .adv-tip{font-size:11.5px;padding:6px 8px;gap:6px}
 .ip-list .adv-tip .tx{display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left;user-select:text;-webkit-user-select:text;cursor:text}
 .ip-act{display:flex;gap:10px;margin-top:1px}
+.dm-row{display:flex;gap:6px;margin-top:4px;user-select:none}
+.chev{display:inline-block;width:0;height:0;margin-left:4px;vertical-align:1px;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-top:4.5px solid currentColor}
+.dm-b{all:unset;box-sizing:border-box;cursor:pointer;height:22px;padding:0 8px;border-radius:999px;border:1.8px solid #1e2a44;background:#ffffff;font:900 10.5px/18px "Nunito",sans-serif;color:#1e2a44;box-shadow:0 1.5px 0 #1e2a44;white-space:nowrap}
+.dm-b.ok{background:#e7f8ec}
+.dm-b[aria-expanded="true"]{background:#1e2a44;color:#ffe066}
+.dm-b:focus-visible,.dm-it:focus-visible,.tact:focus-visible,.ip-hid-h:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.dm-menu{display:flex;flex-direction:column;gap:1px;margin-top:5px;padding:4px;border:2px solid #1e2a44;border-radius:12px;background:#fffdf7;box-shadow:0 3px 0 #1e2a44;user-select:none}
+.dm-it{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:5px 7px;border-radius:8px;font:900 11px "Nunito",sans-serif;color:#1e2a44}
+.dm-it small{font-size:9.5px;font-weight:800;color:#6b7280;white-space:nowrap}
+.dm-it span{white-space:nowrap}
+.dm-it:hover{background:#fff1c9}
+.dm-it.sep{border-top:1.5px dashed #e3cfa6;border-radius:0 0 8px 8px;margin-top:2px}
+.ip-hid{border:2px dashed #c9b88f;border-radius:12px;background:#fffaf0;padding:4px 8px;flex:0 0 auto;max-height:150px;overflow-y:auto}
+.ip-hid-h{all:unset;cursor:pointer;font-size:11px;font-weight:900;color:#6b5a3a}
+.ip-hid ul{list-style:none;margin:4px 0 2px;padding:0;display:flex;flex-direction:column;gap:3px}
+.ip-hid li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:6px;font-size:10.5px;font-weight:800;color:#45507a}
+.ip-hid .hl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1e2a44}
+.ip-hid .hu{grid-column:1;font-size:9.5px;color:#6b7280}
+.ip-hid .lk{grid-column:2;grid-row:1 / 3;align-self:center}
+.ip-dn{margin:0;font-size:9.5px;font-weight:800;color:#b45309;line-height:1.25}
+.toast.act{pointer-events:auto}
+.toast .tact{all:unset;pointer-events:auto;cursor:pointer;margin-left:6px;padding:1px 8px;border-radius:999px;background:#ffe066;color:#1e2a44;font-weight:900}
 .ip-act .lk{all:unset;cursor:pointer;font-size:10.5px;font-weight:900;color:#2f6fdb;text-decoration:underline;text-underline-offset:2px}
 .ip-act .lk:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;border-radius:4px}
 .ip-list .adv-tip:not(.open) .tx > span:not(.ip-act){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ip-list .adv-tip .tx b{font-size:12px;font-weight:900}
 .ip-list .adv-tip .tx > span:not(.ip-act){font-weight:700;color:#3d3426}
+.ip-list .adv-tip > .btn{grid-column:3;grid-row:1}
+.ip-list .adv-tip > .dm-row{grid-column:2 / -1}
+.ip-list .adv-tip > .dm-menu{grid-column:1 / -1}
 .ip-foot{margin:0;padding:6px 4px 0;border-top:2px dashed #e3cfa6;font-size:10px;font-weight:800;color:#8a8f9c;line-height:1.3}
 @media (max-width:700px){
 .adv-stage{display:none}
@@ -1004,8 +1029,9 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </div>
 <button class="{{info.bubbleCls}}" type="button" onClick="{{info.showCur}}" aria-label="{{adv.aria}}" title="A zöld szék most ezt mondja. Kattints: mutasd a térképen.">{{adv.text}}<span class="c">{{adv.count}}</span></button>
 <ol class="ip-list">
-<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><div class="tx"><b>{{t.short}}</b><span>{{t.text}}</span><span class="ip-act"><button class="lk" type="button" onClick="{{t.toggle}}" aria-expanded="{{t.expanded}}">{{t.moreLabel}}</button><button class="lk" type="button" onClick="{{t.copy}}" title="A tipp szövege a vágólapra (pl. üzenetbe beillesztéshez)">Másolás</button></span></div><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
+<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><div class="tx"><b>{{t.short}}</b><span>{{t.text}}</span><span class="ip-act"><button class="lk" type="button" onClick="{{t.toggle}}" aria-expanded="{{t.expanded}}">{{t.moreLabel}}</button><button class="lk" type="button" onClick="{{t.copy}}" title="A tipp szövege a vágólapra (pl. üzenetbe beillesztéshez)">Másolás</button></span></div><sc-if value="{{t.canDism}}"><span class="dm-row"><button class="dm-b ok" type="button" onClick="{{t.ok}}" title="Tudomásul vettem: amíg így marad, nem jelzem">✓ Rendben</button><button class="dm-b" type="button" onClick="{{t.later}}" aria-expanded="{{t.menuAttr}}" aria-haspopup="menu">Később<i class="chev" aria-hidden="true"></i></button></span><sc-if value="{{t.menuOpen}}"><span class="dm-menu" role="menu"><sc-for list="{{t.opts}}" as="o"><button class="{{o.cls}}" type="button" role="menuitem" onClick="{{o.pick}}"><span>{{o.label}}</span><small>{{o.when}}</small></button></sc-for></span></sc-if></sc-if><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
 </ol>
+<sc-if value="{{adv.hidden.length}}"><div class="ip-hid"><button class="ip-hid-h" type="button" onClick="{{adv.toggleHid}}" aria-expanded="{{adv.hidAttr}}">Elrejtett tippek ({{adv.hidden.length}})<i class="chev" aria-hidden="true"></i></button><sc-if value="{{adv.hidOpen}}"><ul><sc-for list="{{adv.hidden}}" as="h"><li><span class="hl">{{h.label}}</span><span class="hu">{{h.until}}</span><button class="lk" type="button" onClick="{{h.restore}}">visszahoz</button></li></sc-for></ul></sc-if></div></sc-if><sc-if value="{{adv.dismNote}}"><p class="ip-dn">{{adv.dismNote}}</p></sc-if>
 <p class="ip-foot">Szabályalapú tippek az élő adatokból és az időjárásból. Ide kerülnek majd az adatgyűjtés elemzései is (pl. hőigény, üres napok).</p>
 </section>
 
@@ -1158,7 +1184,7 @@ Elrendezés visszaállítása
 </div>
 </sc-if>
 <div class="toasts" aria-live="polite">
-<sc-for list="{{ui.toasts}}" as="t"><div class="{{t.cls}}" role="status">{{t.text}}</div></sc-for>
+<sc-for list="{{ui.toasts}}" as="t"><div class="{{t.cls}}" role="status">{{t.text}}<sc-if value="{{t.hasAct}}"> <button class="tact" type="button" onClick="{{t.act}}">{{t.actLabel}}</button></sc-if></div></sc-for>
 </div>
 </div>
 </template>
@@ -1386,7 +1412,7 @@ Elrendezés visszaállítása
 </button>
 </div>
 <ol class="ap-list">
-<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><span>{{t.text}}</span><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
+<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><span class="tx2"><span>{{t.text}}</span><sc-if value="{{t.canDism}}"><span class="dm-row"><button class="dm-b ok" type="button" onClick="{{t.ok}}" title="Tudomásul vettem: amíg így marad, nem jelzem">✓ Rendben</button><button class="dm-b" type="button" onClick="{{t.later}}" aria-expanded="{{t.menuAttr}}" aria-haspopup="menu">Később<i class="chev" aria-hidden="true"></i></button></span><sc-if value="{{t.menuOpen}}"><span class="dm-menu" role="menu"><sc-for list="{{t.opts}}" as="o"><button class="{{o.cls}}" type="button" role="menuitem" onClick="{{o.pick}}"><span>{{o.label}}</span><small>{{o.when}}</small></button></sc-for></span></sc-if></sc-if></span><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
 </ol>
 <div class="ap-foot">
 <button class="btn xs" type="button" onClick="{{adv.toggleMute}}" aria-pressed="{{adv.mutePressed}}">{{adv.muteLabel}}</button>

@@ -387,6 +387,7 @@
     var k = budDayKey(ms), t = budTime(ms);
     if (k === budDayKey(now)) return 'ma ' + t;
     if (k === budDayKey(now - 86400000)) return 'tegnap ' + t;
+    if (k === budDayKey(now + 86400000)) return 'holnap ' + t;
     var dt = new Date(k + 'T12:00:00Z');
     return ['jan.', 'febr.', 'márc.', 'ápr.', 'máj.', 'jún.', 'júl.', 'aug.', 'szept.', 'okt.', 'nov.', 'dec.'][dt.getUTCMonth()] + ' ' + dt.getUTCDate() + '. ' + DAY_ABBR[dt.getUTCDay()] + ' ' + t;
   }
@@ -413,6 +414,11 @@
   var DAY_SHORT = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
   var MONTH_ABBR = ['jan.', 'febr.', 'márc.', 'ápr.', 'máj.', 'jún.', 'júl.', 'aug.', 'szept.', 'okt.', 'nov.', 'dec.'];
   var MONTH_NAME = ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'];
+  // Energiaőr-tipp azonosító: eszköz + a rövid szöveg számok nélkül (a "35 perce" -> "# perce"),
+  // így ugyanaz a tipp ugyanaz marad, ha közben változnak benne a számok.
+  function tipKey(t) {
+    return ((t.dev || '-') + '|' + String(t.short || '').replace(/\d+([.,]\d+)?/g, '#').replace(/\s+/g, ' ').trim()).slice(0, 190);
+  }
   function dayAdd(key, n) { var d = new Date(key + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
   function dayDiff(a, b) { return Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000); }
   function dowOf(key) { return new Date(key + 'T12:00:00Z').getUTCDay(); }
@@ -1653,7 +1659,28 @@
 
     advVals(v, dv) {
       var self = this, st = this.state, now = st.now || Date.now();
-      var tips = advTips(dv.all, now, st.liveSky && st.weather && st.weather.ok ? wxForecast(st.weather.data, now) : null, v.bk && v.bk.model), n = tips.length, idx = (st.advIdx || 0) % n, cur = tips[idx];
+      var all = advTips(dv.all, now, st.liveSky && st.weather && st.weather.ok ? wxForecast(st.weather.data, now) : null, v.bk && v.bk.model);
+      var dism = st.dism || {}, present = {};
+      all.forEach(function (t) { t.key = tipKey(t); present[t.key] = t; });
+      var isHidden = function (k) {
+        var d = dism[k]; if (!d) return false;
+        if (d.mode === 'ok' || d.mode === 'never') return true;
+        return d.until != null && now < d.until;
+      };
+      this.dismCleanup(present, now);
+      var tips = all.filter(function (t) { return !isHidden(t.key); });
+      var hiddenN = all.length - tips.length;
+      if (!tips.length) tips = [{ pri: 0, tone: 'green', dev: null, key: '-|none', noDism: true,
+        short: 'Nincs megjelenítendő tipp (' + hiddenN + ' elrejtve)', long: 'Minden tipp el van rejtve vagy halasztva. Az Elrejtett tippek listában bármikor visszahozhatod őket.' }];
+      var n = tips.length, idx = (st.advIdx || 0) % n, cur = tips[idx];
+      // "ennél a vendégnél": a mostani foglalás végéig, vagy ha nincs vendég, a következő érkezésig
+      var bkm = v.bk && v.bk.model, guestUntil = bkm && bkm.cur ? bkm.cur.dep : bkm && bkm.next ? bkm.next.arr : null;
+      var tomorrow8 = (function () { var k = budDayKey(now), t8 = budMs(k, '08:00'); return now < t8 ? t8 : budMs(dayAdd(k, 1), '08:00'); })();
+      var untilText = function (d) {
+        if (d.mode === 'ok') return 'amíg így marad';
+        if (d.mode === 'never') return 'soha';
+        return d.until ? dayTime(d.until, now) + '-ig' : '';
+      };
       var pinXY = {}; v.pins.forEach(function (m) { pinXY[m.id] = [m.x, m.y]; });
       var show = function (t) { return function () { self.setState({ advOpen: false, sel: t.dev ? 'd' + t.dev : st.sel }); if (t.dev && pinXY[t.dev]) focusStage(pinXY[t.dev][0], pinXY[t.dev][1], false); }; };
       var variant = st.advVariant === 1 || st.advVariant === 2 ? st.advVariant : 3;
@@ -1672,13 +1699,28 @@
         enter: function () { if (!st.advHover) self.setState({ advHover: true }); },
         leave: function () { if (st.advHover) self.setState({ advHover: false }); },
         list: tips.map(function (t, i) {
-          return { cls: 'adv-tip ' + t.tone + (i === idx ? ' cur' : '') + (st.ipOpen === i ? ' open' : ''), text: t.long, short: t.short, hasDev: !!t.dev,
+          var menuOpen = st.dismMenu === t.key, opts = [
+            { label: '1 óra múlva', when: budTime(now + 3600000), pick: function () { self.dismissTip(t, 'until', now + 3600000); } },
+            { label: 'Holnap reggel', when: dayTime(tomorrow8, now), pick: function () { self.dismissTip(t, 'until', tomorrow8); } }
+          ];
+          if (guestUntil && guestUntil > now) opts.push({ label: bkm.cur ? 'Ennél a vendégnél ne' : 'A következő vendégig ne', when: dayTime(guestUntil, now) + '-ig', pick: function () { self.dismissTip(t, 'booking', guestUntil); } });
+          if (t.tone !== 'red') opts.push({ label: 'Ilyen tippet ne mutass', when: 'visszakapcsolható', sep: true, pick: function () { self.dismissTip(t, 'never', null); } });
+          return { cls: 'adv-tip ' + t.tone + (i === idx ? ' cur' : '') + (st.ipOpen === i ? ' open' : '') + (menuOpen ? ' menu' : ''), text: t.long, short: t.short, hasDev: !!t.dev,
+            canDism: !t.noDism, ok: function () { self.dismissTip(t, 'ok', null); },
+            later: function () { self.setState({ dismMenu: menuOpen ? null : t.key }); }, menuOpen: menuOpen, menuAttr: menuOpen ? 'true' : 'false',
+            opts: opts.map(function (o) { return { label: o.label, when: o.when, cls: 'dm-it' + (o.sep ? ' sep' : ''), pick: o.pick }; }),
             expanded: st.ipOpen === i ? 'true' : 'false', toggle: function () { self.setState({ ipOpen: st.ipOpen === i ? null : i }); },
             moreLabel: st.ipOpen === i ? 'Kevesebb' : 'Több',
             copy: function () { self.copyText(t.long, 'Tipp másolva: beillesztheted (Ctrl+V) üzenetbe.'); },
             devAria: 'Mutasd a térképen: ' + (t.dev && DEVINFO[t.dev] ? DEVINFO[t.dev].name : ''), show: show(t) };
         }),
         n: String(n),
+        hidden: Object.keys(dism).filter(function (k) { return isHidden(k) && (dism[k].mode !== 'ok' || present[k]); }).map(function (k) {
+          var d = dism[k];
+          return { label: d.label || k.split('|').slice(1).join('|'), until: untilText(d), restore: function () { self.restoreTip(k); } };
+        }),
+        hidOpen: !!st.hidOpen, hidAttr: st.hidOpen ? 'true' : 'false', toggleHid: function () { self.setState({ hidOpen: !st.hidOpen }); },
+        dismNote: st.user && st.dismRemote === false ? 'Az elrejtés most csak ezen a lapon él (a Supabase tip_dismissals táblája hiányzik: 005-ös migráció).' : !st.user ? 'Demó: az elrejtés csak ezen a lapon él.' : '',
         mutePressed: st.advMute ? 'true' : 'false',
         muteLabel: st.advMute ? 'Buborék bekapcsolása' : 'Buborék némítása',
         toggleMute: function () { var m = !st.advMute; sSet(LOCAL, ADV_MUTE_KEY, m ? '1' : '0'); self.setState({ advMute: m }); },
@@ -1689,6 +1731,68 @@
         pickV2: function () { self.setState({ advVariant: 2 }); },
         pickV3: function () { self.setState({ advVariant: 3 }); }
       };
+    }
+
+    // ---- tippek elrejtése (Rendben / Később / ennél a vendégnél / soha) ----
+    loadDismissals() {
+      var self = this, st = this.state;
+      if (!this.sb || !st.user || !st.role) return;
+      this.sb.from('tip_dismissals').select('tip_key,mode,until_ts,label').then(function (res) {
+        if (res.error) { self.setState({ dismRemote: false }); return; }
+        var d = {};
+        (res.data || []).forEach(function (r) { d[r.tip_key] = { mode: r.mode, until: r.until_ts ? Date.parse(r.until_ts) : null, label: r.label || '' }; });
+        self.setState({ dism: Object.assign({}, d, self.state.dism || {}), dismRemote: true, dismLoaded: true });
+      }, function () { self.setState({ dismRemote: false }); });
+    }
+
+    saveDismissal(key, d) {
+      var st = this.state;
+      if (!this.sb || !st.user || st.dismRemote !== true) return;
+      var self = this;
+      var q = d ? this.sb.from('tip_dismissals').upsert({ user_id: st.user.id, tip_key: key, mode: d.mode, until_ts: d.until ? new Date(d.until).toISOString() : null, label: d.label || null }, { onConflict: 'user_id,tip_key' })
+        : this.sb.from('tip_dismissals').delete().eq('user_id', st.user.id).eq('tip_key', key);
+      q.then(function (res) { if (res && res.error) self.toast('Az elrejtést nem sikerült menteni: ' + self.errText(res.error, 'hiba'), 'err'); }, function () {});
+    }
+
+    dismissTip(t, mode, until) {
+      var key = t.key || tipKey(t), prev = (this.state.dism || {})[key] || null;
+      var d = { mode: mode, until: until, label: t.short };
+      var dism = Object.assign({}, this.state.dism || {}); dism[key] = d;
+      this.setState({ dism: dism, dismMenu: null, ipOpen: null });
+      this.saveDismissal(key, d);
+      var self = this, msg = mode === 'ok' ? 'Rendben: amíg így marad, nem jelzem.' : mode === 'never' ? 'Ilyen tippet többé nem mutatok (az Elrejtett tippek közt visszakapcsolható).' :
+        (mode === 'booking' ? 'Ennél a vendégnél nem mutatom' : 'Elhalasztva') + ' ' + dayTime(until, Date.now()) + '-ig.';
+      this.toast(msg, 'info', { label: 'Visszavonás', run: function () {
+        var x = Object.assign({}, self.state.dism || {});
+        if (prev) x[key] = prev; else delete x[key];
+        self.setState({ dism: x });
+        self.saveDismissal(key, prev);
+      } });
+    }
+
+    restoreTip(key) {
+      var x = Object.assign({}, this.state.dism || {}); delete x[key];
+      this.setState({ dism: x });
+      this.saveDismissal(key, null);
+      this.toast('A tipp újra látszik, ha még érvényes.', 'ok');
+    }
+
+    // a "Rendben" addig tart, amíg a helyzet fennáll; a lejárt halasztások törlődnek
+    dismCleanup(present, now) {
+      var st = this.state, dism = st.dism || {};
+      if (!st.live || (st.user && !st.dismLoaded && st.dismRemote !== false)) return;
+      var gone = Object.keys(dism).filter(function (k) {
+        var d = dism[k];
+        return (d.mode === 'ok' && !present[k]) || ((d.mode === 'until' || d.mode === 'booking') && d.until != null && now >= d.until);
+      });
+      if (!gone.length || this._dismT) return;
+      var self = this;
+      this._dismT = setTimeout(function () {
+        self._dismT = null;
+        var x = Object.assign({}, self.state.dism || {});
+        gone.forEach(function (k) { delete x[k]; self.saveDismissal(k, null); });
+        self.setState({ dism: x });
+      }, 0);
     }
 
     pickDevice(id, xy) {
@@ -1818,14 +1922,17 @@
         redo: function () { self.redo(); },
         undoDisabled: this.undoStack.length === 0,
         redoDisabled: this.redoStack.length === 0,
-        toasts: st.toasts.map(function (t) { return { text: t.text, cls: 'toast ' + t.kind }; })
+        toasts: st.toasts.map(function (t) {
+          return { text: t.text, cls: 'toast ' + t.kind + (t.action ? ' act' : ''), hasAct: !!t.action, actLabel: t.action ? t.action.label : '',
+            act: function () { if (t.action) t.action.run(); self.setState({ toasts: self.state.toasts.filter(function (x) { return x.id !== t.id; }) }); } };
+        })
       };
     }
 
-    toast(text, kind) {
+    toast(text, kind, action) {
       var id = ++this.toastSeq, self = this;
-      this.setState({ toasts: this.state.toasts.concat([{ id: id, text: text, kind: kind || 'info' }]).slice(-2) });
-      setTimeout(function () { self.setState({ toasts: self.state.toasts.filter(function (t) { return t.id !== id; }) }); }, kind === 'err' ? 6500 : 4000);
+      this.setState({ toasts: this.state.toasts.concat([{ id: id, text: text, kind: kind || 'info', action: action || null }]).slice(-2) });
+      setTimeout(function () { self.setState({ toasts: self.state.toasts.filter(function (t) { return t.id !== id; }) }); }, kind === 'err' ? 6500 : action ? 7000 : 4000);
     }
 
     errText(error, fallback) {
@@ -1946,6 +2053,7 @@
         self.loadHistory();
         self.fetchWeather();
         self.loadBookings();
+        self.loadDismissals();
         clearInterval(self.bkTimer);
         self.bkTimer = setInterval(function () { self.loadBookings(); }, BK_REFRESH_MS);
         clearInterval(self.liveTimer);
@@ -1956,7 +2064,7 @@
     afterLogout() {
       clearInterval(this.liveTimer);
       clearInterval(this.bkTimer);
-      this.setState({ bk: null, calSel: null });
+      this.setState({ bk: null, calSel: null, dism: {}, dismLoaded: false, dismRemote: null, dismMenu: null });
       this.setState({ user: null, role: null, layouts: [], current: null, live: null, saveAs: false, confirmId: null, savedAt: null, savedKey: '{}' });
       this.toast('Kiléptél. A térkép demó módban fut.', 'info');
     }
