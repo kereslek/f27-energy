@@ -5,7 +5,7 @@
 | Workflow | Mikor | Mit csinál |
 |---|---|---|
 | **Eszközfelderítés** (`discover.yml`) | kézzel, és minden hónap 1-jén 04:17 UTC | Tuya eszközlista, párosítás a pink számokhoz, titkosított pillanatkép a repóba, a Supabase `devices` tábla frissítése (eszközazonosító + a státuszkódok skálája) |
-| **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként); óránként egyszer az időjárás: `weather_hourly` |
+| **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként); óránként egyszer az időjárás (`weather_hourly`) és a foglaltság az Airbnb naptárból (`bookings`) |
 
 A GitHub ütemezése nem pontos: a 10 perces futás néha pár percet késik, terhelt időszakban kimaradhat egy-egy. Ez nem hiba.
 
@@ -23,6 +23,19 @@ A GitHub ütemezése nem pontos: a 10 perces futás néha pár percet késik, te
   (ugyanez a négy kör napi kWh-jával egy sorban; az energia oszlopokat csak az owner látja).
   Táblát a `supabase/migrations/003_weather.sql` hozza létre; amíg nincs lefuttatva, az
   adatgyűjtő ezt kihagyja és a Summary-ba kiírja.
+- **`bookings`:** óránként egyszer (ha a legutóbbi letöltés 55 percnél régebbi) az Airbnb
+  naptárexportja (`AIRBNB_ICAL_URL`, GitHub Secret; ha van, a `BOOKING_ICAL_URL` is). Csak a
+  [-30 nap, +400 nap] ablakba eső események kerülnek be, eseményenként egy sor: forrás, fajta
+  (`reservation` = "Reserved", `blocked` = "Airbnb (Not available)", vagyis foglalt vagy lezárt),
+  érkezés és távozás napja. Az azonosító a forrás és az iCal UID sha256 hash-e; a leírás (foglalási
+  link, telefonszám vége), a vendégnév és a nyers UID **soha** nem kerül tárolásra. Ami a mostani
+  letöltésben már nincs benne és a távozása még nem múlt el (lemondás), az törlődik; ha a letöltés
+  hibára fut, semmi nem törlődik. A publikus Summary-ba csak darabszám kerül ("Foglalások: 3
+  foglalás, 2 lezárt időszak frissítve, 1 lemondott vagy megszűnt törölve"), dátum, link, név soha.
+  Ha nincs beállítva a secret: "Foglalások: nincs beállítva AIRBNB_ICAL_URL." Táblát a
+  `supabase/migrations/004_bookings.sql` hozza létre; amíg nincs lefuttatva, ez a lépés kimarad.
+  A Tuya részt nem befolyásolja (akkor is lefut, ha a Tuya hibára fut). Beállítás: `docs/terkep.md`,
+  "A naptár bekötése".
 - **`energy_daily`:** a négy okos kismegszakító (X5 kályha, X7 bojler, X8 főzőlap, X9 klíma) napi kWh-ja, budapesti idő szerinti napokra bontva, a kismegszakító saját fogyasztásszámlálójából. Az első megfigyelés napján 0-ról indul.
 
 ## Tuya API-kvóta
@@ -56,3 +69,4 @@ Actions > **Adatgyűjtés** > jobb fent **„...”** > **Disable workflow**. Vi
 - A kismegszakítók (`dlq`) teljesítménykódja `cur_power`, a fogyasztásszámláló `total_forward_energy` (kWh, általában 2 tizedes skála). Ha más kódot küldenek, a Summary „Fogyasztásszámláló nélküli kismegszakító” sora jelzi.
 - Az `add_ele` kódot is kumulatív számlálónak vesszük; ha valamelyik kör csak ezt küldi és a napi kWh furcsa, szólj.
 - Az IR klímától (11) nem jön állapot; az eszközlistában szerepel, de csak az online jelzője változhat.
+- Az Airbnb exportjában a foglalás SUMMARY-ja "Reserved", a lezárt napoké "Airbnb (Not available)". Ha az Airbnb ezt megváltoztatja, az ismeretlen szöveg óvatosan "foglalt vagy lezárt" lesz (nem vész el, csak nem rózsaszín).

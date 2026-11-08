@@ -120,14 +120,28 @@ energiát kihagyja; mindkettő kiírja a Summary-ba, hogy ezt a fájlt kell futt
 Ha kimarad: az adatgyűjtő az időjárást kihagyja (a Summary-ba kiírja), a térkép közvetlenül
 az Open-Meteótól kéri.
 
+**004_bookings.sql** (foglaltság az Airbnb naptárból, 2026.11.08):
+
+1. Supabase: **SQL Editor** > **New query**.
+2. Másold be a [`supabase/migrations/004_bookings.sql`](../supabase/migrations/004_bookings.sql)
+   teljes tartalmát. **Run**. Ha figyelmeztet („destructive operation”), az a `drop policy if exists`
+   sor miatt van: **Run this query**.
+3. Ellenőrzés: **Table Editor**: megjelent a `bookings` tábla (üres, amíg nincs beállítva az
+   `AIRBNB_ICAL_URL` secret; lásd `docs/terkep.md`, "A naptár bekötése").
+4. Jogosultság: a tulaj és a takarító olvassa, a megtekintő és a névtelen látogató nem; írni csak
+   az adatgyűjtő tud (secret kulcs).
+
+Ha kimarad: az adatgyűjtő a foglaltságot kihagyja (a Summary-ba kiírja), a térkép csempéje
+"nincs adat: hiányzik a bookings tábla" feliratot mutat.
+
 ## Mit tud a séma (röviden)
 
-| Szerepkör | Elrendezés | Aktuális állapot | Eszközlista (Tuya ID) | Energia |
-|---|---|---|---|---|
-| owner | olvas, ír, töröl | olvas | olvas | olvas |
-| cleaner | olvas | olvas | nem | nem |
-| viewer | olvas | olvas | nem | nem |
-| listán kívüli / névtelen | nem | nem | nem | nem |
+| Szerepkör | Elrendezés | Aktuális állapot | Eszközlista (Tuya ID) | Energia | Foglaltság |
+|---|---|---|---|---|---|
+| owner | olvas, ír, töröl | olvas | olvas | olvas | olvas |
+| cleaner | olvas | olvas | nem | nem | olvas |
+| viewer | olvas | olvas | nem | nem | nem |
+| listán kívüli / névtelen | nem | nem | nem | nem | nem |
 
 A mérési adatokat csak a GitHub Actions adatgyűjtő írja a secret kulccsal.
 

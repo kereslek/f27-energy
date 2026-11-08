@@ -24,6 +24,7 @@ A repó publikus, ezért:
 | `f27/crypto.py` | Titkosítás (Python oldal, a böngésző ugyanezt fejti vissza) |
 | `f27/discover.py` | Eszközfelderítés: párosítás a pink számokhoz (otthonszűrő, kategória, pontos név), eszközlista Supabase-be |
 | `f27/collect.py` | Adatgyűjtő: Tuya állapotok és napi energia a Supabase-be (10 percenként) |
+| `f27/bookings.py` | Foglaltság az Airbnb naptárexportból (óránként; csak dátumok, név és kód nélkül) |
 | `f27/supa.py` | Minimális Supabase (PostgREST) kliens a titkos kulccsal, adatmentes hibaüzenetekkel |
 | `config/devices.json` | Pink szám > eszköz név-minta, hely a térképen (ID nélkül) |
 | `web/index.html` | Élő játékos térkép (F27 Energy Quest, G3): húzható bútorok és eszközök, Supabase bejelentkezés, mentett elrendezések, visszavonás, élő eszközállapot |

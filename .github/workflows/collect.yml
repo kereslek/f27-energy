@@ -1,6 +1,7 @@
 name: Adatgyűjtés
 
 # 10 percenként: Tuya állapotok -> Supabase (device_status, energy_daily).
+# Óránként egyszer: időjárás (Open-Meteo) és foglaltság (Airbnb naptárexport, ha be van állítva).
 # Futásonként szokásosan 2 Tuya API-hívás (token + eszközlista).
 # A log publikus: csak darabszámok kerülnek bele, név, azonosító vagy érték nem.
 # Szüneteltetés: Actions > Adatgyűjtés > "..." > Disable workflow.
@@ -34,4 +35,6 @@ jobs:
           TUYA_UID: ${{ secrets.TUYA_UID }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
+          BOOKING_ICAL_URL: ${{ secrets.BOOKING_ICAL_URL }}
         run: python -m f27.collect

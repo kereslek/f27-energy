@@ -14,6 +14,9 @@ Folyamat egy futásban:
      vagy add_ele), a devices.meta skálájával.
   5. public.weather_hourly: óránként egyszer az időjárás (f27.weather, Open-Meteo), a Tuya
      részétől függetlenül (akkor is, ha a Tuya hívás hibára fut).
+  6. public.bookings: óránként egyszer a foglaltság az Airbnb naptárexportból (f27.bookings,
+     AIRBNB_ICAL_URL, ha van BOOKING_ICAL_URL), szintén a Tuyától függetlenül. A logba csak
+     darabszám kerül.
 
 A publikus logba csak darabszámok kerülnek: név, device ID, mérési érték soha.
 
@@ -29,6 +32,7 @@ from zoneinfo import ZoneInfo
 
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError
+from .bookings import collect_bookings
 from .weather import collect_weather
 
 BUDAPEST = ZoneInfo("Europe/Budapest")
@@ -257,6 +261,10 @@ def main() -> int:
     if wx["error"]:
         print(f"::warning::{wx['note']}")
     text = (text + "\n\n" if text else "") + wx["note"]
+    bk = collect_bookings(sb)
+    if bk["error"]:
+        print(f"::warning::{bk['note']}")
+    text += "\n\n" + bk["note"]
     print(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

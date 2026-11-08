@@ -93,3 +93,10 @@ class SupabaseRest:
     def insert(self, table: str, rows: list[dict]) -> None:
         if rows:
             self._req("POST", table, None, rows, prefer="return=minimal")
+
+    def delete(self, table: str, **filters) -> None:
+        """Sorok törlése PostgREST szűrőkkel (pl. id='in.(a,b)'). Szűrő nélkül nem fut:
+        a teljes tábla véletlen törlését így nem lehet elkövetni."""
+        if not filters:
+            raise ValueError("delete: legalább egy szűrő kell")
+        self._req("DELETE", table, dict(filters), prefer="return=minimal")

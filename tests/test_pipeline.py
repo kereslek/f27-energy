@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from f27 import bookings as BK
 from f27 import collect as C
 from f27 import discover as D
 from f27 import weather as WX
@@ -132,7 +133,7 @@ def tuya_server(devices):
 def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
     """Memóriában tartott PostgREST-utánzat. missing: hiányzó oszlopok (pl. 'meta'),
     no_tables: hiányzó táblák (pl. 'weather_hourly')."""
-    db = {"devices": {}, "device_status": [], "energy_daily": {}, "weather_hourly": {}}
+    db = {"devices": {}, "device_status": [], "energy_daily": {}, "weather_hourly": {}, "bookings": {}}
     log = {"bad_auth": 0, "requests": []}
 
     def latest():
@@ -186,6 +187,16 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                     rows.sort(key=lambda r: r["fetched_at"], reverse=True)
                 if "limit" in q:
                     rows = rows[: int(q["limit"])]
+            elif table == "bookings":
+                rows = list(db["bookings"].values())
+                if q.get("source", "").startswith("eq."):
+                    rows = [r for r in rows if r["source"] == q["source"][3:]]
+                if q.get("end_date", "").startswith("gte."):
+                    rows = [r for r in rows if r["end_date"] >= q["end_date"][4:]]
+                if q.get("order") == "seen_at.desc":
+                    rows.sort(key=lambda r: r["seen_at"], reverse=True)
+                if "limit" in q:
+                    rows = rows[: int(q["limit"])]
             elif table == "device_latest":
                 rows = latest()
             elif table == "energy_daily":
@@ -219,6 +230,10 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                 assert q.get("on_conflict") == "ts"
                 for r in rows:
                     db["weather_hourly"][r["ts"]] = r
+            elif table == "bookings":
+                assert q.get("on_conflict") == "id"
+                for r in rows:
+                    db["bookings"][r["id"]] = r
             elif table == "devices":
                 for r in rows:
                     db["devices"][r["pink"]] = {**db["devices"].get(r["pink"], {}), **r}
@@ -229,6 +244,27 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                 for r in rows:
                     db["energy_daily"][(r["day"], r["pink"])] = r
             self.send_response(201)
+            self.end_headers()
+
+        def do_DELETE(self):
+            if not self._auth():
+                return
+            u = urllib.parse.urlparse(self.path)
+            q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
+            table = u.path.split("/")[-1]
+            log["requests"].append((table, "DELETE"))
+            if table in no_tables:
+                return self._json(404, {"code": "PGRST205"})
+            assert table == "bookings" and q, "csak szűrős törlés"
+            for rid, r in list(db["bookings"].items()):
+                ok = True
+                if q.get("source", "").startswith("eq."):
+                    ok &= r["source"] == q["source"][3:]
+                if q.get("id", "").startswith("in.("):
+                    ok &= rid in q["id"][4:-1].split(",")
+                if ok:
+                    del db["bookings"][rid]
+            self.send_response(204)
             self.end_headers()
 
     s = _Server(H)
@@ -512,14 +548,34 @@ class TestCollect(unittest.TestCase):
     def test_main_output_is_public_safe(self):
         self.addCleanup(setattr, WX, "fetch", WX.fetch)
         WX.fetch = lambda timeout=20: meteo(datetime.now(timezone.utc))
+        self.addCleanup(setattr, BK, "fetch", BK.fetch)
+        BK.fetch = lambda url, timeout=20: ical(datetime.now(timezone.utc).date())
         with env(TUYA_ACCESS_ID="id", TUYA_ACCESS_SECRET="sec", TUYA_ENDPOINT=self.tuya.url, TUYA_UID=None,
-                 SUPABASE_URL=self.sb.url, SUPABASE_SECRET_KEY=self.sb.secret, GITHUB_STEP_SUMMARY=None):
+                 SUPABASE_URL=self.sb.url, SUPABASE_SECRET_KEY=self.sb.secret, GITHUB_STEP_SUMMARY=None,
+                 AIRBNB_ICAL_URL=ICAL_URL, BOOKING_ICAL_URL=None):
             rc, out = run_main(C.main)
         self.assertEqual(rc, 0)
         self.assertIn("| Új állapotsor (változás vagy óránkénti életjel) | 17 |", out)
         self.assertIn("Időjárás: 95 órás sor frissítve", out)
+        self.assertIn("Foglalások: 2 foglalás, 2 lezárt időszak frissítve", out)
         assert_public(self, out)
+        assert_booking_public(self, out)
         self.assertNotIn("7.5", out)                      # időjárási érték sem kerül a logba
+
+    def test_main_bookings_without_tuya_still_run(self):
+        self.addCleanup(setattr, WX, "fetch", WX.fetch)
+        WX.fetch = lambda timeout=20: meteo(datetime.now(timezone.utc))
+        self.addCleanup(setattr, BK, "fetch", BK.fetch)
+        BK.fetch = lambda url, timeout=20: ical(datetime.now(timezone.utc).date())
+        self.tuya.state["fail_list"] = True               # a Tuya hibát ad
+        with env(TUYA_ACCESS_ID="id", TUYA_ACCESS_SECRET="sec", TUYA_ENDPOINT=self.tuya.url, TUYA_UID=None,
+                 SUPABASE_URL=self.sb.url, SUPABASE_SECRET_KEY=self.sb.secret, GITHUB_STEP_SUMMARY=None,
+                 AIRBNB_ICAL_URL=ICAL_URL, BOOKING_ICAL_URL=None):
+            rc, out = run_main(C.main)
+        self.assertEqual(rc, 1)
+        self.assertIn("Tuya hiba", out)
+        self.assertIn("Foglalások: 2 foglalás", out)
+        self.assertEqual(len(self.sb.db["bookings"]), 4)
 
     def test_main_without_supabase(self):
         with env(SUPABASE_URL=None, SUPABASE_SECRET_KEY=None):
@@ -615,6 +671,173 @@ class TestWeather(unittest.TestCase):
         self.assertIn("latitude=47.48", u)
         self.assertIn("longitude=19.07", u)
         self.assertIn("past_days=2", u)
+
+
+# ----------------------------------------------------------------------------- foglaltság
+
+ICAL_URL = "https://www.airbnb.com/calendar/ical/999.ics?s=TOKEN-SECRET-abc"
+PRIVATE_BITS = ["TOKEN-SECRET", "airbnb.com", "HMSECRET1", "HMSECRET2", "Phone Number", "4821",
+                "reservations/details", "2026-11-1", "2026-12-", "20261"]
+
+
+def assert_booking_public(t: unittest.TestCase, out: str):
+    for bit in PRIVATE_BITS:
+        t.assertNotIn(bit, out, f"a publikus kimenetben nem lehet: {bit!r}")
+
+
+def ical(today, extra="", folded=True):
+    """Airbnb host naptárexport utánzata a megadott naphoz képest: 2 foglalás (egy DATE és
+    egy DATE-TIME formájú), 2 lezárt időszak, 1 a 30 napos ablakon kívül (régi)."""
+    d = lambda n: (today + timedelta(days=n)).strftime("%Y%m%d")
+    desc = ("DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMSECRET1\\nPho\r\n"
+            " ne Number (Last 4 Digits): 4821") if folded else "DESCRIPTION:Reservation URL: x\\nPhone Number (Last 4 Digits): 4821"
+    return "\r\n".join([
+        "BEGIN:VCALENDAR", "PRODID;X-RICAL-TZSOURCE=TZINFO:-//Airbnb Inc//Hosting Calendar 0.8.8//EN",
+        "CALSCALE:GREGORIAN", "VERSION:2.0",
+        "BEGIN:VEVENT", f"DTEND;VALUE=DATE:{d(3)}", f"DTSTART;VALUE=DATE:{d(1)}",
+        "UID:1418fb94e984-0f3e5ab4c3a5ba1ad9e1d3c3d3a8c1d7@airbnb.c", "\tom" if folded else "", desc,
+        "SUMMARY:Reserved", "END:VEVENT",
+        "BEGIN:VEVENT", f"DTSTART:{d(6)}T140000Z", f"DTEND:{d(9)}T100000Z",
+        "UID:secondUID-HMSECRET2@airbnb.com", "SUMMARY:Reserved", "END:VEVENT",
+        "BEGIN:VEVENT", f"DTEND;VALUE=DATE:{d(12)}", f"DTSTART;VALUE=DATE:{d(10)}",
+        "UID:blockedUID-1@airbnb.com", "SUMMARY:Airbnb (Not available)", "END:VEVENT",
+        "BEGIN:VEVENT", f"DTSTART;TZID=Europe/Budapest:{d(20)}T150000", f"DTEND;TZID=Europe/Budapest:{d(22)}T110000",
+        "UID:blockedUID-2@airbnb.com", "SUMMARY:Airbnb (Not available)", "END:VEVENT",
+        "BEGIN:VEVENT", f"DTEND;VALUE=DATE:{d(-40)}", f"DTSTART;VALUE=DATE:{d(-45)}",
+        "UID:oldUID@airbnb.com", "SUMMARY:Reserved", "END:VEVENT",
+        extra, "END:VCALENDAR", ""]).replace("\r\n\r\n", "\r\n")
+
+
+class TestBookings(unittest.TestCase):
+    def setUp(self):
+        self.sb = supa_server()
+        self.api = SupabaseRest(self.sb.url, self.sb.secret)
+        self.calls = 0
+        self.today = T0.astimezone(BK.BUDAPEST).date()
+        self.text = ical(self.today)
+        self.env = {"AIRBNB_ICAL_URL": ICAL_URL}
+
+    def tearDown(self):
+        self.sb.close()
+
+    def fetcher(self, url):
+        self.calls += 1
+        self.assertEqual(url, ICAL_URL)
+        return self.text
+
+    def run_at(self, when, **kw):
+        return BK.collect_bookings(self.api, now=when, fetcher=kw.pop("fetcher", self.fetcher),
+                                   environ=kw.pop("environ", self.env))
+
+    def test_parse_folding_and_date_forms(self):
+        evs = BK.parse_events(self.text)
+        self.assertEqual(len(evs), 5)
+        first = evs[0]
+        self.assertEqual(first["uid"], "1418fb94e984-0f3e5ab4c3a5ba1ad9e1d3c3d3a8c1d7@airbnb.com")   # összefűzött sor
+        self.assertEqual((first["start"], first["end"]), (self.today + timedelta(days=1), self.today + timedelta(days=3)))
+        self.assertEqual((evs[1]["start"], evs[1]["end"]), (self.today + timedelta(days=6), self.today + timedelta(days=9)))
+        self.assertEqual((evs[3]["start"], evs[3]["end"]), (self.today + timedelta(days=20), self.today + timedelta(days=22)))
+        self.assertNotIn("description", {k.lower() for e in evs for k in e})
+
+    def test_utc_late_evening_is_next_budapest_day(self):
+        txt = "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:x\nDTSTART:20261231T233000Z\nDTEND:20270102T100000Z\nSUMMARY:Reserved\nEND:VEVENT\nEND:VCALENDAR\n"
+        ev = BK.parse_events(txt)[0]
+        self.assertEqual(ev["start"].isoformat(), "2027-01-01")
+        self.assertEqual(ev["end"].isoformat(), "2027-01-02")
+
+    def test_kinds(self):
+        self.assertEqual(BK.kind_of("airbnb", "Reserved"), "reservation")
+        self.assertEqual(BK.kind_of("airbnb", "Airbnb (Not available)"), "blocked")
+        self.assertEqual(BK.kind_of("airbnb", "valami más"), "blocked")
+        self.assertEqual(BK.kind_of("booking", "CLOSED - Not available"), "reservation")
+
+    def test_rows_reserved_vs_blocked_and_window(self):
+        r = self.run_at(T0)
+        self.assertEqual((r["reservations"], r["blocked"], r["deleted"], r["error"]), (2, 2, 0, False))
+        rows = sorted(self.sb.db["bookings"].values(), key=lambda x: x["start_date"])
+        self.assertEqual([x["kind"] for x in rows], ["reservation", "reservation", "blocked", "blocked"])
+        self.assertTrue(all(x["source"] == "airbnb" for x in rows))
+        self.assertEqual(set(rows[0]), {"id", "source", "kind", "start_date", "end_date", "seen_at"})
+
+    def test_privacy_nothing_raw_is_stored(self):
+        r = self.run_at(T0)
+        stored = json.dumps(self.sb.db["bookings"])
+        for bit in ["@airbnb", "UID", "HMSECRET", "4821", "Phone", "Reserved", "Not available", "TOKEN", "http"]:
+            self.assertNotIn(bit, stored)
+        for rid in self.sb.db["bookings"]:
+            self.assertRegex(rid, r"^[0-9a-f]{64}$")
+        assert_booking_public(self, r["note"])
+
+    def test_once_per_55_minutes(self):
+        self.run_at(T0)
+        r2 = self.run_at(T0 + timedelta(minutes=30))
+        self.assertEqual(self.calls, 1)
+        self.assertIn("friss", r2["note"])
+        self.run_at(T0 + timedelta(minutes=56))
+        self.assertEqual(self.calls, 2)
+        self.assertEqual(len(self.sb.db["bookings"]), 4)       # ugyanaz az id: felülírás, nem duplikálás
+
+    def test_cancellation_deletes_only_future_of_that_source(self):
+        self.run_at(T0)
+        past = {"id": "p" * 64, "source": "airbnb", "kind": "reservation", "start_date": "2026-10-20",
+                "end_date": "2026-10-25", "seen_at": "2026-10-20T10:00:00+00:00"}
+        other = {"id": "b" * 64, "source": "booking", "kind": "reservation", "start_date": "2026-11-30",
+                 "end_date": "2026-12-02", "seen_at": "2026-10-20T10:00:00+00:00"}
+        self.sb.db["bookings"][past["id"]] = past
+        self.sb.db["bookings"][other["id"]] = other
+        self.text = self.text.replace("SUMMARY:Reserved\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART:", "SUMMARY:Reserved\r\nEND:VEVENT\r\nBEGIN:VEVENTX\r\nDTSTART:", 1)
+        self.text = self.text.replace("UID:secondUID-HMSECRET2@airbnb.com", "UID:gone").replace("BEGIN:VEVENTX", "BEGIN:VTODO")
+        r = self.run_at(T0 + timedelta(hours=2))
+        self.assertEqual((r["reservations"], r["deleted"]), (1, 1))
+        ids = set(self.sb.db["bookings"])
+        self.assertIn(past["id"], ids)                       # múltbeli sor marad
+        self.assertIn(other["id"], ids)                      # másik forrás sora marad
+        self.assertEqual(len(ids), 5)
+
+    def test_fetch_error_keeps_rows_and_is_not_fatal(self):
+        self.run_at(T0)
+        def boom(url):
+            raise OSError("https://www.airbnb.com/calendar/ical/999.ics?s=TOKEN-SECRET-abc")
+        r = self.run_at(T0 + timedelta(hours=2), fetcher=boom)
+        self.assertFalse(r["error"])
+        self.assertIn("nem olvasható (OSError)", r["note"])
+        assert_booking_public(self, r["note"])
+        self.assertEqual(len(self.sb.db["bookings"]), 4)     # hibánál semmit nem törlünk
+        html = self.run_at(T0 + timedelta(hours=3), fetcher=lambda u: "<html>login</html>")
+        self.assertIn("nem olvasható (ValueError)", html["note"])
+        self.assertEqual(len(self.sb.db["bookings"]), 4)
+
+    def test_missing_table_hint(self):
+        sb2 = supa_server(no_tables=("bookings",))
+        try:
+            r = BK.collect_bookings(SupabaseRest(sb2.url, sb2.secret), now=T0, fetcher=self.fetcher, environ=self.env)
+        finally:
+            sb2.close()
+        self.assertEqual(self.calls, 0)
+        self.assertFalse(r["error"])
+        self.assertIn("004_bookings.sql", r["note"])
+
+    def test_missing_env_skips_silently(self):
+        r = self.run_at(T0, environ={"AIRBNB_ICAL_URL": "  "})
+        self.assertEqual(self.calls, 0)
+        self.assertFalse(r["error"])
+        self.assertEqual(r["note"], "Foglalások: nincs beállítva AIRBNB_ICAL_URL.")
+        self.assertEqual(self.sb.log["requests"], [])
+
+    def test_booking_source_optional(self):
+        env2 = {"AIRBNB_ICAL_URL": ICAL_URL, "BOOKING_ICAL_URL": "https://admin.booking.com/x.ics?t=TOKEN-SECRET-2"}
+        btxt = ("BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:bk1\nDTSTART;VALUE=DATE:" + (self.today + timedelta(days=10)).strftime("%Y%m%d")
+                + "\nDTEND;VALUE=DATE:" + (self.today + timedelta(days=12)).strftime("%Y%m%d")
+                + "\nSUMMARY:CLOSED - Not available\nEND:VEVENT\nEND:VCALENDAR\n")
+        r = self.run_at(T0, environ=env2, fetcher=lambda u: btxt if "booking" in u else self.text)
+        self.assertEqual((r["reservations"], r["blocked"], r["sources"]), (3, 2, 2))
+        srcs = sorted(x["source"] for x in self.sb.db["bookings"].values())
+        self.assertEqual(srcs.count("booking"), 1)
+        assert_booking_public(self, r["note"])
+
+    def test_delete_requires_filter(self):
+        with self.assertRaises(ValueError):
+            self.api.delete("bookings")
 
 
 if __name__ == "__main__":
