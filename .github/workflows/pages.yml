@@ -61,6 +61,13 @@ jobs:
               f.write("window.F27_CONFIG = " + json.dumps(cfg) + ";\n")
           print("config.js kész, Supabase beállítva:", bool(cfg["supabaseUrl"] and cfg["supabaseKey"]))
           PY
+          # Gyorsítótár-törés: a szkriptek URL-je a commit rövid azonosítóját kapja (?v=...), így a
+          # telefon böngészője minden telepítés után az új JS-t tölti be, nem a régit.
+          V="${GITHUB_SHA::8}"
+          for f in _site/index.html _site/alaprajz.html; do
+            [ -f "$f" ] && sed -i -E "s#<script src=\"(js/[^\"?]+\.js|config\.js)\"#<script src=\"\1?v=$V\"#g" "$f"
+          done
+          grep -c "?v=$V" _site/index.html
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v6
