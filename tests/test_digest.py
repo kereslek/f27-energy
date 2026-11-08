@@ -130,6 +130,13 @@ class TestDigest(unittest.TestCase):
             self.assertIn(line, body.splitlines())
         self.assertNotIn("tegnapi", body)
         self.assertNotIn("A kályha megy, pedig", body)               # holnap érkezik vendég
+        # zárt, régóta hallgató nyílászáró: nem hír (a tulaj kérése); nyitva + régóta hallgat: igen
+        db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]
+        r = self.run_at(AT(20, 5, d=1), **{"5": {"age_min": 57 * 60}, "6": {"age_min": 57 * 60}, "9": {"age_min": 57 * 60},
+                                            "10": {"doorcontact_state": True, "age_min": 30 * 60}})
+        body = r["new"][0]["email_body"]
+        self.assertNotIn("Régóta hallgat", body)
+        self.assertIn("- Nyitva jelez, de 30 órája nem jelentett (lehet régi jelzés): Nagy szoba jobb ablak", body.splitlines())
         # ugyanez üres lakással: kályha-javaslat, bojler-javaslat
         db["bookings"].clear()
         db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]

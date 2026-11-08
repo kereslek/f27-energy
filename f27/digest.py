@@ -38,7 +38,11 @@ NAMES = {
     "G": "Zigbee + IR gateway",
 }
 BATTERY_SENSORS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
-STALE = {"1": 6, "2": 6, "3": 6, "4": 6, "5": 24, "6": 24, "7": 24, "8": 24, "9": 24, "10": 24}   # óra
+# Csak a hőmérők: ők rendszeresen jelentenek, a hallgatásuk hiba. A nyílászárók csak nyitáskor és
+# záráskor szólnak, egy zárt, nem használt ablak napokig hallgat, ez nem hír (a tulaj kérése); náluk
+# csak a NYITVA jelzés mellé írjuk oda, ha régi lehet.
+STALE = {"1": 6, "2": 6, "3": 6, "4": 6}   # óra
+CONTACT_STALE_H = 24
 # kör, név, Ft/kWh (alsó, felső): B kör keret felett 60,9; A1 kereten belül 36,2, felett 70,1 (brief, 2026)
 CIRCUITS = (("X5", "Kályha (5-ös kör)", 60.9, 60.9), ("X7", "Bojler (7-es kör)", 60.9, 60.9),
             ("X8", "Konyha (8-as kör)", 36.2, 70.1), ("X9", "Klíma (9-es kör)", 36.2, 70.1))
@@ -103,7 +107,11 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     for pink, name in OPENINGS.items():
         d = snap.get(pink)
         if d and d.get("online") is not False and (d["status"].get("doorcontact_state", d["status"].get("contact_state"))):
-            todo.append(f"Nyitva: {name}")
+            t = last_report(d)
+            if t is not None and now - t > timedelta(hours=CONTACT_STALE_H):
+                todo.append(f"Nyitva jelez, de {int((now - t).total_seconds() // 3600)} órája nem jelentett (lehet régi jelzés): {name}")
+            else:
+                todo.append(f"Nyitva: {name}")
     for pink in BATTERY_SENSORS:
         d = snap.get(pink)
         b = battery_of(d["status"]) if d else None

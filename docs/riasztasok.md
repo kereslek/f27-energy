@@ -45,7 +45,8 @@ vasárnap`. Részei:
 1. **Ma történt:** a nap riasztásai, megszűnései, próbái időponttal (vissza
    tartottakat is jelöli).
 2. **Teendők:** még élő riasztások, nyitott ablak/ajtó, merülő elem (20 % alatt), nem elérhető
-   vagy régóta hallgató érzékelő, üres lakásban menő kályha, holnapi érkezés előtt lekapcsolt bojler
+   vagy régóta hallgató hőmérő (a zárt nyílászárók hallgatása nem hír; NYITVA jelzésnél odaírja, ha
+   24 óránál régebbi), üres lakásban menő kályha, holnapi érkezés előtt lekapcsolt bojler
    (mind csak javaslat).
 3. **Holnap:** érkezés és távozás a foglalási naptárból (csak dátum és idő).
 4. **Mai fogyasztás:** a négy mért kör kWh-ja becsült forinttal (B kör 60,9 Ft/kWh, A1 36,2-70,1
