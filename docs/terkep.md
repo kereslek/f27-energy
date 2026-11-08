@@ -92,6 +92,24 @@ Az "utolsó jelzés" a Tuya saját frissítési ideje (az adatgyűjtő `_upd` ku
 hiányzik, a tárolás ideje. Belépés nélkül demó adat látszik, benne egy merülő elemmel és egy
 régóta hallgató ablakkal.
 
+## Energiaőr (tanácsadó)
+
+A térkép bal alsó sarkában, a lakáson kívül áll (telefonon a képernyő alján). A buborékban egyszerre
+egy rövid, élő tanács látszik, 12 másodpercenként vált (ha fölé viszed az egeret, megáll).
+Kattintásra vagy Enterre megnyílik az **Energiaőr tanácsai** lista, a legfontosabbal kezdve; a
+**Mutasd** gomb a térképen az érintett eszközre nagyít. A **Buborék némítása** gombot a böngésző
+megjegyzi.
+
+Szabályok (élő adatból, belépés nélkül a demó adatból): 10 percnél régebben nyitott ablak vagy
+bejárati ajtó fűtés közben; a kályha fokozata és óránkénti ára (keret felett 60,9 Ft/kWh, 1 kW kb.
+61 Ft óránként); 23 °C feletti szoba (minden 1 °C kb. 6 % fűtési energia), 19 °C alatti szoba
+(komfort); fürdő 24 °C felett; fűtő bojler; merülő elem, régóta hallgató vagy nem elérhető eszköz
+(ugyanazok a szabályok, mint az Eszközök panelen); és ha minden rendben, dicséret.
+
+A lakásban a huzat-szellem csak nyitott ablaknál vagy bejárati ajtónál jelenik meg (annál az
+érzékelőnél), a láng csak akkor, ha a kályha megy. Megjelenés (minta): `?energiaor=1` robot,
+`?energiaor=2` szakértő, `?energiaor=3` zöld szék; a tanácslistában is váltható.
+
 ## Szerepkörök
 
 | Szerepkör | Lát | Betölt | Ment, töröl, alapértelmezett |

@@ -33,7 +33,6 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 @keyframes dash{to{stroke-dashoffset:-48}}
 @keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,60,.7)}100%{box-shadow:0 0 0 12px rgba(255,90,60,0)}}
-.hero{animation:hop 1.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
 .gh1{animation:ghost 3.4s ease-in-out infinite}
 .gh2{animation:ghost 2.7s ease-in-out infinite .9s}
 .coin{animation:spin 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
@@ -239,6 +238,64 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .dp-head::before{content:"";position:absolute;left:50%;top:6px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#c9b68f}
 }
 @keyframes dpup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+
+/* ---- Energiaőr: tanácsadó a térkép bal alsó sarkában (a lakáson kívül) ---- */
+.adv{--adv-play:paused;--adv-talk:0;font-family:"Nunito",sans-serif;color:#1e2a44}
+.adv.talk{--adv-play:running;--adv-talk:1}
+.adv-stage{position:absolute;left:302px;top:646px;width:520px;height:82px;pointer-events:none;z-index:5}
+.adv-char{all:unset;box-sizing:border-box;pointer-events:auto;cursor:pointer;position:absolute;left:0;top:0;width:67px;height:82px;border-radius:16px}
+.adv-char:focus-visible,.adv-bubble:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.adv-char svg{display:block;width:67px;height:82px;overflow:visible}
+.adv-char .mb{position:absolute;right:0;top:4px;width:20px;height:20px;border-radius:50%;background:#ffffff;border:2px solid #1e2a44;display:flex;align-items:center;justify-content:center}
+.adv-bubble{all:unset;box-sizing:border-box;pointer-events:auto;cursor:pointer;position:absolute;left:80px;top:-4px;max-width:430px;min-height:38px;display:flex;align-items:center;gap:8px;padding:6px 10px 6px 12px;border-radius:14px;border:2.5px solid #1e2a44;background:#fffdf7;box-shadow:0 3px 0 #1e2a44;font:900 13px/1.25 "Nunito",sans-serif;color:#1e2a44}
+.adv-bubble::before{content:"";position:absolute;left:-9px;top:11px;width:12px;height:12px;background:inherit;border-left:2.5px solid #1e2a44;border-bottom:2.5px solid #1e2a44;transform:rotate(45deg);border-radius:0 0 0 3px}
+.adv-bubble .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.adv-bubble .c{flex:0 0 auto;font-size:10.5px;font-weight:900;color:#6b7280}
+.adv-bubble.red{background:#ffefe9}.adv-bubble.orange{background:#fff6e0}.adv-bubble.green{background:#e7f8ec}.adv-bubble.blue{background:#eaf5ff}
+.adv.talk .adv-bubble{animation:advpop .32s ease-out}
+@keyframes advpop{0%{transform:scale(.94);opacity:.4}100%{transform:none;opacity:1}}
+.adv-fixed{display:none}
+@media (max-width:700px){
+.adv-stage{display:none}
+.adv-fixed{display:block;position:fixed;left:8px;bottom:8px;width:60px;height:72px;pointer-events:none;z-index:1}
+.adv-fixed .adv-char{width:60px;height:72px}
+.adv-fixed .adv-char svg{width:60px;height:72px}
+.adv-fixed .adv-bubble{left:68px;top:auto;bottom:66px;width:calc(100vw - 92px);max-width:none}
+.adv-fixed .adv-bubble::before{top:auto;bottom:-9px;left:12px;transform:rotate(-45deg)}
+.adv-fixed .adv-bubble .t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+}
+/* a karakterek (szimbólumként, a use példányokba a változók öröklődnek) */
+.adv-bob{animation:advbob 2.8s ease-in-out infinite}
+@keyframes advbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.adv-blink{transform-box:fill-box;transform-origin:center;animation:advblink 4.6s infinite}
+@keyframes advblink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.12)}}
+.adv-eqb{transform-box:fill-box;transform-origin:center bottom;animation:adveq .45s ease-in-out infinite alternate;animation-play-state:var(--adv-play,paused)}
+.adv-eqb:nth-child(2){animation-delay:.15s}.adv-eqb:nth-child(3){animation-delay:.3s}.adv-eqb:nth-child(4){animation-delay:.08s}
+@keyframes adveq{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+.adv-sway{transform-box:view-box;transform-origin:36px 84px;animation:advsway 3.6s ease-in-out infinite}
+@keyframes advsway{0%,100%{transform:rotate(-1.6deg)}50%{transform:rotate(1.6deg)}}
+.adv-wave{transform-box:view-box;transform-origin:53px 43px;animation:advwave .5s ease-in-out infinite alternate;animation-play-state:var(--adv-play,paused)}
+@keyframes advwave{from{transform:rotate(-8deg)}to{transform:rotate(10deg)}}
+.adv-eq{opacity:var(--adv-talk,0);transition:opacity .2s}
+.adv-smile{opacity:calc(1 - var(--adv-talk,0));transition:opacity .2s}
+@media (prefers-reduced-motion:reduce){.adv-bob,.adv-blink,.adv-eqb,.adv-sway,.adv-wave,.adv.talk .adv-bubble{animation:none!important}}
+/* tanácslista */
+.advpop{pointer-events:auto;position:fixed;left:max(8px,var(--adv-x,16px));bottom:var(--adv-y,120px);width:370px;max-width:calc(100vw - 16px);max-height:min(62vh,540px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:20px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpup .2s ease-out;touch-action:pan-y}
+.ap-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 10px 8px 12px;background:linear-gradient(180deg,#e7f8ec,#fffdf7);border-bottom:3px solid #1e2a44}
+.ap-head svg{width:34px;height:42px;flex:0 0 auto}
+.ap-title{font-family:"Fraunces",serif;font-weight:800;font-size:19px;color:#3b2a14;flex:1 1 auto}
+.ap-n{min-width:22px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:999px;background:#1e2a44;color:#ffe066;font:900 12px/22px "Nunito",sans-serif;text-align:center}
+.ap-list{list-style:none;margin:0;padding:10px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
+.adv-tip{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:8px;align-items:start;padding:8px 10px;border-radius:14px;border:2px solid #e3cfa6;background:#ffffff;font-size:12.5px;font-weight:800;line-height:1.35}
+.adv-tip .d{width:10px;height:10px;margin-top:3px;border-radius:50%;border:2px solid #1e2a44}
+.adv-tip.red .d{background:#ff4f6d}.adv-tip.orange .d{background:#ff9f1c}.adv-tip.green .d{background:#3fae6a}.adv-tip.blue .d{background:#4fc3f7}
+.adv-tip.cur{border-color:#1e2a44}
+.ap-foot{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 10px;border-top:2px dashed #e3cfa6;font-size:12px;font-weight:900}
+.ap-var{display:inline-flex;align-items:center;gap:4px;color:#45507a}
+.adv-var{all:unset;box-sizing:border-box;cursor:pointer;height:26px;padding:0 9px;border-radius:999px;border:2px solid #1e2a44;background:#ffffff;font:900 11.5px "Nunito",sans-serif;color:#1e2a44}
+.adv-var.on{background:#3fae6a;color:#ffffff}
+.adv-var:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+@media (max-width:700px){.advpop{left:8px;right:8px;width:auto;bottom:88px}}
 </style>
 </head>
 <body>
@@ -473,34 +530,6 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
 <text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
 
-<sc-if value="{{showPath}}" hint-placeholder-val="{{ true }}">
-<g style="pointer-events: none">
-<sc-for list="{{arcs}}" as="a" hint-placeholder-count="0">
-<g>
-<path d="{{a.d}}" stroke="#1e2a44" stroke-width="7" stroke-dasharray="1 13" stroke-linecap="round" fill="none" opacity="0.3"></path>
-<path class="trail" d="{{a.d}}" stroke="#ffffff" stroke-width="4.5" stroke-dasharray="1 11" stroke-linecap="round" fill="none"></path>
-</g>
-</sc-for>
-<sc-for list="{{pads}}" as="p" hint-placeholder-count="0">
-<g transform="{{p.tr}}">
-<ellipse cx="0" cy="0" rx="14" ry="7" fill="#ffffff" stroke="#1e2a44" stroke-width="2.5" opacity="0.85"></ellipse>
-<ellipse cx="0" cy="0" rx="7" ry="3.5" fill="#ff4fa3"></ellipse>
-</g>
-</sc-for>
-</g>
-</sc-if>
-
-<g style="pointer-events: none">
-<sc-for list="{{coins}}" as="c" hint-placeholder-count="0">
-<g transform="{{c.tr}}" opacity="{{c.op}}">
-<g class="coin" style="animation-delay: {{c.d}}">
-<circle r="11" fill="url(#coinG2)" stroke="#1e2a44" stroke-width="3"></circle>
-<text y="4.5" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="11" fill="#1e2a44">Ft</text>
-</g>
-</g>
-</sc-for>
-</g>
-
 <g transform="{{sc.fx.priv}}" style="pointer-events: none">
 <rect x="-30" y="-36" width="60" height="18" rx="6" fill="#4d311c" stroke="#1e2a44" stroke-width="2.5"></rect>
 <path d="M-22,-29 v-3 a3,3 0 0 1 6,0 v3 M-23.5,-29 h9 v7 h-9 z" fill="#f0cf6a" stroke="#f0cf6a" stroke-width="1.4"></path>
@@ -515,12 +544,6 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <ellipse cx="0" cy="0" rx="13" ry="6.5" fill="#ffffff" fill-opacity="0.25" stroke="#ffffff" stroke-width="2" stroke-dasharray="3 3"></ellipse>
 <text x="0" y="-9" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3" paint-order="stroke">+1</text>
 </g>
-<g transform="{{sc.fx.start}}" style="pointer-events: none">
-<line x1="0" y1="0" x2="0" y2="-44" stroke="#1e2a44" stroke-width="4"></line>
-<rect x="-30" y="-66" width="60" height="24" rx="8" fill="#2f6fe4" stroke="#1e2a44" stroke-width="3"></rect>
-<text x="0" y="-48.5" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="14" fill="#ffffff">START</text>
-</g>
-
 <g transform="{{fx.flag}}" style="pointer-events: none">
 <line x1="0" y1="0" x2="0" y2="-96" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></line>
 <line x1="0" y1="0" x2="0" y2="-96" stroke="#fff7e6" stroke-width="2.5" stroke-linecap="round"></line>
@@ -531,6 +554,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <path class="spark" style="animation-delay: .6s" d="M22,-40 l2.5,-7 l2.5,7 l7,2.5 l-7,2.5 l-2.5,7 l-2.5,-7 l-7,-2.5 z" fill="#ffffff" stroke="#1e2a44" stroke-width="1.5"></path>
 </g>
 
+<sc-if value="{{flameOn}}">
 <g transform="{{sc.fx.flame}}" style="pointer-events: none">
 <g class="mk">
 <path class="fire" d="M0,-30 q18,15 13,31 a13,13 0 0 1 -26,0 q-2,-11 7,-16 q-2,9 4,11 q-4,-15 2,-26z" fill="#ff7a1a" stroke="#1e2a44" stroke-width="3"></path>
@@ -539,6 +563,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <path d="M-3,5 q3,-2 6,0" stroke="#1e2a44" stroke-width="1.8" fill="none"></path>
 </g>
 </g>
+</sc-if>
 
 <g transform="{{sc.fx.boss}}" style="pointer-events: none">
 <rect x="-112" y="-44" width="224" height="60" rx="14" fill="#fff7e6" stroke="#1e2a44" stroke-width="3"></rect>
@@ -549,21 +574,6 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <path d="M-9,16 L0,27 L9,16 Z" fill="#fff7e6" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></path>
 </g>
 
-<sc-if value="{{L.open8}}" hint-placeholder-val="{{ true }}">
-<g transform="{{sc.fx.ghosts}}" style="pointer-events: none">
-<path d="M-56,30 q20,-20 44,-8 q18,8 38,-4" stroke="#e6f6ff" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"></path>
-<g transform="translate(24 -10)"><g class="gh1">
-<path d="M-16,6 a16,16 0 0 1 32,0 v18 l-6,-5 l-5,5 l-5,-5 l-5,5 l-5,-5 l-6,5z" fill="#eefaff" stroke="#1e2a44" stroke-width="3"></path>
-<circle cx="-5" cy="6" r="2.5" fill="#1e2a44"></circle><circle cx="5" cy="6" r="2.5" fill="#1e2a44"></circle>
-<path d="M-4,13 q4,-3 8,0" fill="none" stroke="#1e2a44" stroke-width="2"></path>
-</g></g>
-<text x="4" y="-40" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#ffffff" stroke="#1e2a44" stroke-width="3.5" paint-order="stroke">Huzat-szellem</text>
-<g transform="translate(-16 14)"><g class="gh2">
-<path d="M-12,4 a12,12 0 0 1 24,0 v14 l-5,-4 l-4,4 l-3,-4 l-4,4 l-4,-4 l-4,4z" fill="#eefaff" stroke="#1e2a44" stroke-width="3"></path>
-<circle cx="-4" cy="4" r="2" fill="#1e2a44"></circle><circle cx="4" cy="4" r="2" fill="#1e2a44"></circle>
-</g></g>
-</g>
-</sc-if>
 
 <g transform="{{sc.fx.gw}}" style="pointer-events: none">
 <circle class="ring" r="14" fill="none" stroke="#4fc3f7" stroke-width="2.5"></circle>
@@ -575,31 +585,19 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <ellipse class="ring2" cx="0" cy="0" rx="34" ry="17" fill="none" stroke="{{focusFx.c}}" stroke-width="4"></ellipse>
 </g>
 
-<g transform="{{hero.tr}}" style="pointer-events: none">
-<path d="M-58,30 h22 M-64,42 h28 M-54,54 h16" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.85"></path>
-<g class="hero">
-<ellipse cx="0" cy="54" rx="15" ry="4" fill="#1e2a44" opacity="0.18"></ellipse>
-<path d="M-8,28 L-15,40 M8,28 L17,37" stroke="#1e2a44" stroke-width="7" stroke-linecap="round"></path>
-<ellipse cx="0" cy="8" rx="20" ry="22" fill="#2f6fe4" stroke="#1e2a44" stroke-width="4"></ellipse>
-<path d="M-18,2 L-30,-14" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></path>
-<path d="M18,2 L31,-16" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></path>
-<circle cx="-31" cy="-16" r="4.5" fill="#ffd9b8" stroke="#1e2a44" stroke-width="2.5"></circle>
-<circle cx="32" cy="-18" r="4.5" fill="#ffd9b8" stroke="#1e2a44" stroke-width="2.5"></circle>
-<circle cx="0" cy="-12" r="16" fill="#ffd9b8" stroke="#1e2a44" stroke-width="4"></circle>
-<circle cx="-5" cy="-12" r="2.6" fill="#1e2a44"></circle><circle cx="6" cy="-12" r="2.6" fill="#1e2a44"></circle>
-<path d="M-5,-5 q5,5 11,0" fill="#1e2a44"></path>
-<circle cx="-10" cy="-7" r="3" fill="#ff9db0" opacity="0.85"></circle><circle cx="11" cy="-7" r="3" fill="#ff9db0" opacity="0.85"></circle>
-<path d="M-16,-16 a16,16 0 0 1 32,0z" fill="#ff4f4f" stroke="#1e2a44" stroke-width="4"></path>
-<path d="M-8,-27 v8 M0,-29 v9 M8,-27 v8" stroke="#ffffff" stroke-width="1.6" opacity="0.6"></path>
-<rect x="-17" y="-19" width="34" height="7" rx="3.5" fill="#ffffff" stroke="#1e2a44" stroke-width="3"></rect>
-<circle cx="0" cy="-34" r="5.5" fill="#ffffff" stroke="#1e2a44" stroke-width="3"></circle>
-<path d="M-14,2 H14 V8 H-14z" fill="#ffd23f" stroke="#1e2a44" stroke-width="3"></path>
-<path d="M-10,8 L-22,20 L-16,24 L-4,8z" fill="#ffd23f" stroke="#1e2a44" stroke-width="3"></path>
-<circle cx="0" cy="16" r="5" fill="#ffffff" stroke="#1e2a44" stroke-width="2"></circle>
-<path d="M-1.5,13 l3,0 l-2,3 h3 l-4,5 l1,-3.5 h-2.5z" fill="#ffd23f"></path>
 </g>
+
+<sc-for list="{{ghosts}}" as="g">
+<g transform="{{g.tr}}" style="pointer-events: none" class="draft" data-ghost="{{g.id}}">
+<path d="{{g.wind}}" stroke="#e6f6ff" stroke-width="3.5" stroke-dasharray="7 6" fill="none" stroke-linecap="round" opacity="0.95"></path>
+<g transform="translate(0 -6)"><g class="gh1">
+<path d="M-13,5 a13,13 0 0 1 26,0 v15 l-5,-4 l-4,4 l-4,-4 l-4,4 l-4,-4 l-5,4z" fill="#eefaff" stroke="#1e2a44" stroke-width="2.6"></path>
+<circle cx="-4" cy="5" r="2.1" fill="#1e2a44"></circle><circle cx="4" cy="5" r="2.1" fill="#1e2a44"></circle>
+<path d="M-3,11 q3,-2.5 6,0" fill="none" stroke="#1e2a44" stroke-width="1.8"></path>
+</g></g>
+<sc-if value="{{g.label}}"><text x="0" y="-16" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3.2" paint-order="stroke">Huzat-szellem</text></sc-if>
 </g>
-</g>
+</sc-for>
 
 <sc-if value="{{showMarkers}}" hint-placeholder-val="{{ true }}">
 <g style="pointer-events: none">
@@ -715,7 +713,7 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </div>
 </div>
 
-<div style="position: absolute; left: 312px; width: 816px; top: 684px; height: 44px; display: flex; align-items: center; gap: 8px">
+<div style="position: absolute; left: 380px; width: 748px; top: 684px; height: 44px; display: flex; align-items: center; gap: 8px">
 <div title="Húzd a bútorokat és eszközöket" style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: #1e2a44; color: #fff7e6; font-weight: 900; font-size: 13px">
 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3" fill="none" stroke="#ffe066" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 <span class="sr">Húzd a bútorokat és eszközöket</span>
@@ -735,6 +733,14 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 Elrendezés visszaállítása
 </button>
+</div>
+
+<div class="{{adv.cls}} adv-stage" onPointerEnter="{{adv.enter}}" onPointerLeave="{{adv.leave}}" onFocusIn="{{adv.enter}}" onFocusOut="{{adv.leave}}">
+<button class="adv-char" type="button" onClick="{{adv.toggle}}" aria-expanded="{{adv.openAttr}}" aria-controls="f27-advpop" aria-label="{{adv.btnAria}}" title="Energiaőr tanácsai">
+<svg viewBox="0 0 72 88" aria-hidden="true"><use href="{{adv.href}}"></use></svg>
+<sc-if value="{{adv.muted}}"><span class="mb" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></sc-if>
+</button>
+<sc-if value="{{adv.showBubble}}"><button class="{{adv.tone}}" type="button" onClick="{{adv.toggle}}" aria-label="{{adv.aria}}"><span class="t">{{adv.text}}</span><span class="c">{{adv.count}}</span></button></sc-if>
 </div>
 
 <div class="panel" style="position: absolute; left: 16px; top: 744px; width: 456px; height: 140px; padding: 12px 16px; background: #fff7e6; display: flex; flex-direction: column; gap: 8px">
@@ -858,7 +864,132 @@ Elrendezés visszaállítása
 </div>
 </div>
 </template>
+<!-- Az Energiaőr két mintája (szimbólumként; a példányokba a --adv-* változók öröklődnek). -->
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+<defs>
+<pattern id="advMesh" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.95" fill="#1f6e42"></circle></pattern>
+</defs>
+<symbol id="adv-v1" viewBox="0 0 72 88">
+<ellipse cx="36" cy="84.5" rx="21" ry="3.5" fill="#1e2a44" opacity="0.2"></ellipse>
+<g class="adv-bob">
+<path d="M36 22 V12" stroke="#1e2a44" stroke-width="3" stroke-linecap="round"></path>
+<path d="M36 13 C29.5 12.5 26.5 6.5 28.5 0.8 C35 1.6 38.5 6.8 36 13 Z" fill="#3fae6a" stroke="#1e2a44" stroke-width="2.4" stroke-linejoin="round"></path>
+<path d="M30 3 L35 11" stroke="#1e2a44" stroke-width="1.4" stroke-linecap="round" opacity="0.55"></path>
+<circle cx="40.5" cy="9" r="3" fill="#ffd23f" stroke="#1e2a44" stroke-width="2"></circle>
+<rect x="19" y="73" width="13" height="9" rx="4.5" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.6"></rect>
+<rect x="40" y="73" width="13" height="9" rx="4.5" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.6"></rect>
+<rect x="3" y="46" width="11" height="19" rx="5.5" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.6" transform="rotate(12 8.5 55.5)"></rect>
+<rect x="58" y="46" width="11" height="19" rx="5.5" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.6" transform="rotate(-12 63.5 55.5)"></rect>
+<rect x="10.5" y="19.5" width="51" height="58" rx="19" fill="#fff7e6" stroke="#1e2a44" stroke-width="3"></rect>
+<path d="M17.5 30 q2.5-5.5 9-6.5" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"></path>
+<rect x="16.5" y="27" width="39" height="25" rx="10.5" fill="#1e2a44"></rect>
+<rect x="22.5" y="31" width="11" height="14" rx="5.5" fill="#8ff5b8" opacity="0.28"></rect>
+<rect x="38.5" y="31" width="11" height="14" rx="5.5" fill="#8ff5b8" opacity="0.28"></rect>
+<rect class="adv-blink" x="25" y="33" width="6" height="9.5" rx="3" fill="#8ff5b8"></rect>
+<rect class="adv-blink" x="41" y="33" width="6" height="9.5" rx="3" fill="#8ff5b8"></rect>
+<path class="adv-smile" d="M31.5 46 q4.5 3 9 0" stroke="#8ff5b8" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<g class="adv-eq"><rect class="adv-eqb" x="29.4" y="44" width="2.4" height="5" rx="1.2" fill="#ffd23f"></rect><rect class="adv-eqb" x="33.2" y="43" width="2.4" height="6" rx="1.2" fill="#ffd23f"></rect><rect class="adv-eqb" x="37" y="44" width="2.4" height="5" rx="1.2" fill="#ffd23f"></rect><rect class="adv-eqb" x="40.8" y="45" width="2.4" height="4" rx="1.2" fill="#ffd23f"></rect></g>
+<rect x="13.5" y="55.5" width="45" height="16" rx="6" fill="#3fae6a" stroke="#1e2a44" stroke-width="2.4"></rect>
+<rect x="15" y="57" width="42" height="13" rx="5" fill="url(#advMesh)"></rect>
+<circle cx="36" cy="63.5" r="6" fill="#fff7e6" stroke="#1e2a44" stroke-width="2"></circle>
+<path d="M37 58.8 L33 64.3 H36 L35 68.2 L39 62.7 H36 Z" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.3" stroke-linejoin="round"></path>
+</g>
+</symbol>
+<symbol id="adv-v2" viewBox="0 0 72 88">
+<ellipse cx="36" cy="84.5" rx="21" ry="3.5" fill="#1e2a44" opacity="0.2"></ellipse>
+<g class="adv-bob">
+<path d="M28.5 72 V81 M43.5 72 V81" stroke="#33405f" stroke-width="7.5" stroke-linecap="round"></path>
+<path d="M24 82.5 h9 M39 82.5 h9" stroke="#1e2a44" stroke-width="4" stroke-linecap="round"></path>
+<path d="M14.5 75 C14 56 21 46.5 36 46.5 C51 46.5 58 56 57.5 75 Z" fill="#8fbf9a" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M25 48 Q36 57 47 48" fill="#76a882" stroke="#1e2a44" stroke-width="2.4" stroke-linejoin="round"></path>
+<path d="M36 53 V75" stroke="#1e2a44" stroke-width="1.8"></path>
+<rect x="34.4" y="54" width="3.2" height="5" rx="1" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.2"></rect>
+<path d="M31.5 52 v6 M40.5 52 v6" stroke="#fff7e6" stroke-width="1.6" stroke-linecap="round"></path>
+<circle cx="24.5" cy="62" r="4.6" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.8"></circle>
+<path d="M25.3 58.8 L22.8 62.4 H24.9 L24 65.2 L26.6 61.6 H24.5 Z" fill="#1e2a44"></path>
+<rect x="32" y="40" width="8" height="8" rx="2" fill="#efbf98" stroke="#1e2a44" stroke-width="2.2"></rect>
+<circle cx="21.5" cy="31" r="3.4" fill="#f4c9a4" stroke="#1e2a44" stroke-width="2.2"></circle>
+<circle cx="50.5" cy="31" r="3.4" fill="#f4c9a4" stroke="#1e2a44" stroke-width="2.2"></circle>
+<circle cx="36" cy="29" r="14.5" fill="#f4c9a4" stroke="#1e2a44" stroke-width="3"></circle>
+<path d="M21.8 27 C20.6 17.8 27.4 13 36.4 13 C45 13 51.4 17.6 50.6 26.4 C49.2 23.2 46.6 21.2 43.2 20.4 C38.6 23.6 30.4 24.4 21.8 27 Z" fill="#4a3426" stroke="#1e2a44" stroke-width="2.4" stroke-linejoin="round"></path>
+<path d="M27 19.5 q7 -4.5 15 -2.6" stroke="#7a5a42" stroke-width="1.6" stroke-linecap="round" fill="none"></path>
+<circle cx="30" cy="31" r="5.4" fill="#e8f4ff" fill-opacity="0.55" stroke="#1e2a44" stroke-width="2.2"></circle>
+<circle cx="42" cy="31" r="5.4" fill="#e8f4ff" fill-opacity="0.55" stroke="#1e2a44" stroke-width="2.2"></circle>
+<path d="M35.4 30.6 q0.6 -1 1.2 0 M24.6 30 L22.4 29.4 M47.4 30 L49.6 29.4" stroke="#1e2a44" stroke-width="2" stroke-linecap="round" fill="none"></path>
+<circle class="adv-blink" cx="30" cy="31.2" r="1.7" fill="#1e2a44"></circle>
+<circle class="adv-blink" cx="42" cy="31.2" r="1.7" fill="#1e2a44"></circle>
+<path d="M32.5 38 q3.5 2.6 7 0" stroke="#1e2a44" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<circle cx="25.8" cy="36.4" r="2.2" fill="#ffa98f" opacity="0.5"></circle><circle cx="46.2" cy="36.4" r="2.2" fill="#ffa98f" opacity="0.5"></circle>
+<g transform="rotate(-9 51 62)">
+<rect x="38" y="51.5" width="27" height="20" rx="4" fill="#1e2a44"></rect>
+<rect x="41" y="54.5" width="21" height="14" rx="2.2" fill="#e9fff0"></rect>
+<g><rect class="adv-eqb" x="43.2" y="62" width="3.2" height="5" rx="0.8" fill="#3fae6a"></rect><rect class="adv-eqb" x="47.6" y="59" width="3.2" height="8" rx="0.8" fill="#3fae6a"></rect><rect class="adv-eqb" x="52" y="61" width="3.2" height="6" rx="0.8" fill="#3fae6a"></rect><rect class="adv-eqb" x="56.4" y="57" width="3.2" height="10" rx="0.8" fill="#ffd23f"></rect></g>
+</g>
+<circle cx="39.5" cy="67" r="3.6" fill="#f4c9a4" stroke="#1e2a44" stroke-width="2"></circle>
+<circle cx="63" cy="58.5" r="3.6" fill="#f4c9a4" stroke="#1e2a44" stroke-width="2"></circle>
+</g>
+</symbol>
+<symbol id="adv-v3" viewBox="0 0 72 88">
+<ellipse cx="36" cy="84.5" rx="22" ry="3.5" fill="#1e2a44" opacity="0.2"></ellipse>
+<g class="adv-sway">
+<g class="adv-bob">
+<path d="M29 59 L27 79 M43 59 L45 79" stroke="#1e2a44" stroke-width="5.6" stroke-linecap="round"></path>
+<path d="M29 59 L27 79 M43 59 L45 79" stroke="#2f8f45" stroke-width="2.4" stroke-linecap="round"></path>
+<path d="M25 61 L19.5 82 M47 61 L52.5 82 M21.5 73 H50.5" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></path>
+<path d="M25 61 L19.5 82 M47 61 L52.5 82 M21.5 73 H50.5" stroke="#4fae4f" stroke-width="2.8" stroke-linecap="round"></path>
+<path d="M28 31 V55 M33.3 31 V55 M38.7 31 V55 M44 31 V55" stroke="#1e2a44" stroke-width="5" stroke-linecap="round"></path>
+<path d="M28 31 V55 M33.3 31 V55 M38.7 31 V55 M44 31 V55" stroke="#4fae4f" stroke-width="2.2" stroke-linecap="round"></path>
+<path d="M19.5 28 C18.5 38 19 48 20.5 57 M52.5 28 C53.5 38 53 48 51.5 57" stroke="#1e2a44" stroke-width="6.4" stroke-linecap="round" fill="none"></path>
+<path d="M19.5 28 C18.5 38 19 48 20.5 57 M52.5 28 C53.5 38 53 48 51.5 57" stroke="#3fae6a" stroke-width="3" stroke-linecap="round" fill="none"></path>
+<path d="M14.5 59 C14.5 54.5 24 52.5 36 52.5 C48 52.5 57.5 54.5 57.5 59 C57.5 63.5 48 65.5 36 65.5 C24 65.5 14.5 63.5 14.5 59 Z" fill="#3fae6a" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M20 57.5 C26 55.6 46 55.6 52 57.5" stroke="#8fd69a" stroke-width="1.8" stroke-linecap="round" fill="none"></path>
+<path d="M19 44 L9.5 49.5" stroke="#1e2a44" stroke-width="5" stroke-linecap="round"></path>
+<path d="M19 44 L9.5 49.5" stroke="#4fae4f" stroke-width="2" stroke-linecap="round"></path>
+<path d="M8.6 41.5 L3.6 49.5 H7.6 L5.8 56.5 L12.6 47.2 H8.6 Z" fill="#ffd23f" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path>
+<g class="adv-wave">
+<path d="M53 43 L64 33" stroke="#1e2a44" stroke-width="5" stroke-linecap="round"></path>
+<path d="M53 43 L64 33" stroke="#4fae4f" stroke-width="2" stroke-linecap="round"></path>
+<circle cx="64.6" cy="32.4" r="3.4" fill="#4fae4f" stroke="#1e2a44" stroke-width="2.2"></circle>
+<path d="M66 31 L69.5 27.5" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round"></path>
+</g>
+<path d="M13 22 C13 12.5 22 9.5 36 9.5 C50 9.5 59 12.5 59 22 C59 30 50 32.5 36 32.5 C22 32.5 13 30 13 22 Z" fill="#4fae4f" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M19 15 C25 12.4 33 11.8 40 12.2" stroke="#9be0a3" stroke-width="2.2" stroke-linecap="round" fill="none"></path>
+<path d="M18 27.8 C26 30 46 30 54 27.8" stroke="#2f8f45" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.8"></path>
+<rect class="adv-blink" x="26.6" y="16.6" width="5.2" height="7" rx="2.6" fill="#1e2a44"></rect>
+<rect class="adv-blink" x="40.2" y="16.6" width="5.2" height="7" rx="2.6" fill="#1e2a44"></rect>
+<circle cx="30.4" cy="18.4" r="1.1" fill="#ffffff"></circle><circle cx="44" cy="18.4" r="1.1" fill="#ffffff"></circle>
+<path d="M25.4 14.2 q3 -1.6 6 -0.6 M40.6 13.6 q3 -1 6 0.6" stroke="#1e2a44" stroke-width="1.6" stroke-linecap="round" fill="none"></path>
+<path d="M32.4 26 q3.6 2.6 7.2 0" stroke="#1e2a44" stroke-width="2" stroke-linecap="round" fill="none"></path>
+<circle cx="23.4" cy="24" r="2" fill="#ffd23f" opacity="0.55"></circle><circle cx="48.6" cy="24" r="2" fill="#ffd23f" opacity="0.55"></circle>
+</g>
+</g>
+</symbol>
+</svg>
 <template id="dev-template">
+<div class="{{adv.cls}} adv-fixed" onPointerEnter="{{adv.enter}}" onPointerLeave="{{adv.leave}}">
+<button class="adv-char" type="button" onClick="{{adv.toggle}}" aria-expanded="{{adv.openAttr}}" aria-controls="f27-advpop" aria-label="{{adv.btnAria}}" title="Energiaőr tanácsai">
+<svg viewBox="0 0 72 88" aria-hidden="true"><use href="{{adv.href}}"></use></svg>
+</button>
+<sc-if value="{{adv.showBubble}}"><button class="{{adv.tone}}" type="button" onClick="{{adv.toggle}}" aria-label="{{adv.aria}}"><span class="t">{{adv.text}}</span><span class="c">{{adv.count}}</span></button></sc-if>
+</div>
+<sc-if value="{{adv.open}}">
+<aside id="f27-advpop" class="advpop" role="dialog" aria-label="Energiaőr tanácsai">
+<div class="ap-head">
+<svg viewBox="0 0 72 88" aria-hidden="true"><use href="{{adv.href}}"></use></svg>
+<span class="ap-title">Energiaőr tanácsai</span><span class="ap-n">{{adv.n}}</span>
+<button class="btn ib sm" type="button" onClick="{{adv.close}}" aria-label="Bezárás" title="Bezárás (Esc)">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg>
+</button>
+</div>
+<ol class="ap-list">
+<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><span>{{t.text}}</span><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
+</ol>
+<div class="ap-foot">
+<button class="btn xs" type="button" onClick="{{adv.toggleMute}}" aria-pressed="{{adv.mutePressed}}">{{adv.muteLabel}}</button>
+<span class="ap-var" role="group" aria-label="Megjelenés (minta)">Minta: <button class="{{adv.v1Cls}}" type="button" onClick="{{adv.pickV1}}" aria-pressed="{{adv.v1Pressed}}">Robot</button><button class="{{adv.v2Cls}}" type="button" onClick="{{adv.pickV2}}" aria-pressed="{{adv.v2Pressed}}">Szakértő</button><button class="{{adv.v3Cls}}" type="button" onClick="{{adv.pickV3}}" aria-pressed="{{adv.v3Pressed}}">Szék</button></span>
+</div>
+</aside>
+</sc-if>
 <sc-if value="{{dev.open}}">
 <aside id="f27-devpanel" class="devpanel" role="dialog" aria-label="Eszközök állapota">
 <div class="dp-head">

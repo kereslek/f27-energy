@@ -254,6 +254,89 @@
   // "Régóta hallgat" küszöb (perc). A hálózati eszközöknél 90 perc: az adatgyűjtő változatlan
   // állapotnál csak óránként ír, így a tárolt utolsó jelentés legfeljebb kb. 70 percet késhet.
   var STALE_MIN = { thermo: 6 * 60, contact: 24 * 60, breaker: 90, switch3: 90, gateway: 90 };
+
+  // ---- Energiaőr: tanácsadó a térkép bal alsó sarkában --------------------------------------
+  // Szabályalapú, élő (vagy demó) adatból; az árak a briefből: a kályha keret feletti ára
+  // 60,9 Ft/kWh (1 kW kb. 61 Ft óránként), minden 1 °C kb. 6 % fűtési energia.
+  var ADV_MUTE_KEY = 'f27-advisor-mute';
+  var ADV_ROTATE_MS = 12000;
+  var STOVE_FT_KWH = 60.9;
+  var DRAFT_NAME = { '5': 'A bejárati ajtó', '7': 'A konyhaablak', '8': 'A kis szoba ablaka', '9': 'A nagy szoba bal ablaka', '10': 'A nagy szoba jobb ablaka' };
+  // a huzat-szellem helye az érzékelő horgonyához képest (a tűtől elfelé, hogy ne takarják egymást)
+  var GHOST_OFF = { '5': [24, -30], '7': [22, -34], '8': [42, -16], '9': [-36, 20], '10': [-36, 20] };
+  var ROOM_NAME = { '1': 'A kis szoba', '2': 'A nagy szoba', '4': 'A fürdő' };
+  function advVariantFromUrl() {
+    try { var m = /[?&]energiaor=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
+  }
+  // fűtési szezon: október 15. és április 15. között (a gázkonvektor ilyenkor be van kapcsolva)
+  function heatingSeason(now) {
+    var d = new Date(now), m = d.getMonth() + 1, day = d.getDate();
+    return m >= 11 || m <= 3 || (m === 10 && day >= 15) || (m === 4 && day < 15);
+  }
+  function durText(ms) {
+    var m = Math.max(0, Math.round(ms / 60000));
+    if (m < 60) return m + ' perce';
+    var h = Math.floor(m / 60);
+    return h < 48 ? h + ' órája' : Math.floor(h / 24) + ' napja';
+  }
+  function advTips(all, now) {
+    var by = {}; all.forEach(function (c) { by[c.id] = c; });
+    var tips = [];
+    function add(pri, tone, dev, short, long) { tips.push({ pri: pri, tone: tone, dev: dev, short: short, long: long }); }
+    var P = by.P, stage = P && P.online !== false ? P.stage || 0 : 0;
+    var ac = by.k9 && by.k9.watt != null && by.k9.watt > 100;
+    var season = heatingSeason(now);
+    var heating = stage > 0 || ac || season;
+    var heatWhy = stage > 0 ? 'a kályha megy' : ac ? 'a klíma fűt' : 'fűtési szezon van, a gáz is megy';
+    // nyitott ablak, ajtó fűtés közben
+    Object.keys(DRAFT_NAME).forEach(function (id) {
+      var c = by[id];
+      if (!c || !c.open || c.online === false || c.age == null || c.age < 10 * 60000) return;
+      var who = DRAFT_NAME[id];
+      if (c.stale) add(62, 'orange', id, who + ' NYITVA jelez, de ' + durText(c.age) + ' hallgat', who + ' NYITVA jelzést mutat, de az érzékelő ' + durText(c.age) + ' nem jelentett' + (c.battPct != null && c.battPct < 20 ? ', és merül az eleme (' + c.battPct + ' %)' : '') + '. Nézd meg a helyszínen, vagy kérd meg a takarítót.');
+      else if (heating) add(92, 'red', id, who + ' ' + durText(c.age) + ' nyitva, és fűtünk!', who + ' ' + durText(c.age) + ' nyitva, közben ' + heatWhy + '. A huzat viszi a meleget: csukd be, vagy szólj a vendégnek. Szellőztetni 5-10 perc bőven elég.');
+      else add(25, 'blue', id, who + ' ' + durText(c.age) + ' nyitva', who + ' ' + durText(c.age) + ' nyitva. Fűtés most nincs, így ez nem drága.');
+    });
+    // kályha: keret feletti ár
+    if (stage > 0) {
+      var ft = Math.round(stage * STOVE_FT_KWH);
+      add(stage >= 2 ? 80 : 68, stage >= 2 ? 'red' : 'orange', 'P', 'Kályha ' + stage + '/3 fokozaton: kb. ' + ft + ' Ft óránként',
+        'A cserépkályha ' + stage + ' kW-on megy. Keret felett 60,9 Ft/kWh, vagyis kb. ' + ft + ' Ft óránként (egy éjszaka 10 órája kb. ' + fmtNum(ft * 10, 0) + ' Ft). Ugyanez a hő gázból vagy klímából negyed-fél áron jön.');
+    }
+    // szobahőmérséklet
+    ['1', '2'].forEach(function (id) {
+      var c = by[id];
+      if (!c || c.temp == null || c.online === false) return;
+      var t = c.temp, room = ROOM_NAME[id];
+      if (t > 23) {
+        var pct = Math.round((t - 22) * 6);
+        add(Math.min(88, 55 + Math.round((t - 23) * 8)), 'orange', id, room + ' ' + fmtNum(t, 1) + ' °C: túlfűtve', room + ' ' + fmtNum(t, 1) + ' °C. Minden 1 °C kb. 6 % fűtési energia: 22 °C-on kb. ' + pct + ' %-kal kevesebb fogyna, a komfort még bőven megvan.');
+      } else if (t < 19) {
+        add(78, 'blue', id, room + ' csak ' + fmtNum(t, 1) + ' °C: a vendég fázhat', room + ' csak ' + fmtNum(t, 1) + ' °C. A komfort az első: kapcsold a klímát fűtésre (a legolcsóbb hő), vagy nyisd ki a két szoba közti ajtót.');
+      }
+    });
+    // fürdő és bojler
+    var bath = by['4'];
+    if (bath && bath.temp != null && bath.online !== false && bath.temp > 24) add(40, 'orange', '4', 'A fürdő ' + fmtNum(bath.temp, 1) + ' °C: megy a fali panel?', 'A fürdő ' + fmtNum(bath.temp, 1) + ' °C. Ha nincs vendég, a magasan lévő fali fűtőpanel lekapcsolható.');
+    var boiler = by.k7;
+    if (boiler && boiler.watt != null && boiler.watt > 500) add(35, 'blue', 'k7', 'A bojler most fűt (' + fmtNum(boiler.watt, 0) + ' W)', 'A bojler (7-es kör) most fűt, ' + fmtNum(boiler.watt, 0) + ' W. Üres lakásban a 7-es okos kismegszakítóval távolról lekapcsolható, érkezés előtt 2-3 órával vissza.');
+    // eszközhibák a panel szabályaiból
+    all.forEach(function (c) {
+      if (!c.warn) return;
+      if (c.open && c.stale && DRAFT_NAME[c.id]) return;   // a nyitott ablaknál már szóltunk
+      var b = c.badgeList.filter(function (x) { return x.c === 'red' || x.c === 'orange'; });
+      var detail = b.map(function (x) {
+        if (x.t === 'Elem merül' || x.t === 'Elem lemerült') return x.t.toLowerCase() + ' (' + c.battPct + ' %)';
+        if (x.t === 'Régóta hallgat') return durText(c.age) + ' nem jelentett';
+        return x.t.toLowerCase();
+      }).join(', ');
+      add(c.red ? 70 : 48, c.red ? 'red' : 'orange', c.id, c.name + ': ' + detail, c.name + ': ' + detail + '. ' + (c.red && c.online === false ? 'Nézd meg az áramot vagy a Wi-Fit.' : /elem/.test(detail) ? 'Elemcsere a következő takarításkor.' : 'Lehet, hogy csak alszik; ha sokáig így marad, nézd meg.'));
+    });
+    if (ac && season && stage === 0) add(20, 'green', 'k9', 'A klíma fűt: ez a legolcsóbb meleg', 'A klíma fűt (' + fmtNum(by.k9.watt, 0) + ' W). Hőszivattyúval kb. 12 Ft egy kWh hő, a kályha keret felett kb. 60 Ft.');
+    if (!tips.some(function (t) { return t.pri >= 45; })) add(10, 'green', null, 'Minden rendben: zárt ablakok, kályha pihen', 'Minden rendben: az ablakok zárva, a kályha pihen, a szobák kellemesek. Szép munka!');
+    tips.sort(function (a, b) { return b.pri - a.pri; });
+    return tips;
+  }
   var CAT = {
     temp: { label: 'Hőmérők', tile: '#ffe8a3', icon: 'M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0zM12 9v6' },
     door: { label: 'Nyílászárók', tile: '#d6ebff', icon: 'M6 3h12v18H6zM14 12h.01M6 21h12' },
@@ -330,28 +413,35 @@
 
   // Demó eszközállapot (belépés nélkül): valószerű értékek, egy merülő elemmel és egy régóta
   // hallgató, nyitottnak látszó ablakkal, hogy a figyelmeztetések látszódjanak.
-  function demoDevices(now) {
+  function demoDevices(now, L) {
+    L = L || {};
     var s = function (min) { return Math.round((now - min * 60000) / 1000); };
     var row = function (min, online, st) { st._upd = s(min); return { ts: new Date(now - Math.min(min, 60) * 60000).toISOString(), online: online, status: st, meta: null }; };
+    // a demó a kiválasztott pálya (L) értékeit követi, hogy a térkép, a panel és az Energiaőr egyezzen
+    var t = function (i, def) { var v = parseFloat(String((L.t || [])[i] || '').replace(',', '.')); return Math.round((isFinite(v) ? v : def) * 10); };
+    var w = function (k, def) { var v = parseFloat(String(L[k] || '')); return Math.round((isFinite(v) ? v : def) * 10); };
+    var n = parseInt(String(L.stage || '2'), 10); if (!isFinite(n)) n = 0;
+    var open8 = L.open8 == null ? true : !!L.open8;
     return {
-      '1': row(34, true, { va_temperature: 236, va_humidity: 41, battery_percentage: 80 }),
-      '2': row(52, true, { va_temperature: 205, va_humidity: 44, battery_percentage: 14 }),
-      '3': row(18, true, { va_temperature: 384, va_humidity: 25, battery_percentage: 66 }),
-      '4': row(95, true, { va_temperature: 223, va_humidity: 63, battery_percentage: 58 }),
+      '1': row(34, true, { va_temperature: t(0, 23.6), va_humidity: 41, battery_percentage: 80 }),
+      '2': row(52, true, { va_temperature: t(1, 20.5), va_humidity: 44, battery_percentage: 14 }),
+      '3': row(18, true, { va_temperature: t(2, 38.4), va_humidity: 25, battery_percentage: 66 }),
+      '4': row(95, true, { va_temperature: t(3, 22.3), va_humidity: 63, battery_percentage: 58 }),
       '5': row(41, true, { doorcontact_state: false, battery_percentage: 100 }),
       '6': row(300, true, { doorcontact_state: false, battery_percentage: 92 }),
       '7': row(130, true, { doorcontact_state: false, battery_percentage: 88 }),
-      '8': row(31 * 60, true, { doorcontact_state: true, battery_percentage: 9 }),
+      '8': row(open8 ? 31 * 60 : 200, true, { doorcontact_state: open8, battery_percentage: 9 }),
       '9': row(260, true, { doorcontact_state: false, battery_percentage: 77 }),
       '10': row(260, true, { doorcontact_state: false, battery_percentage: 75 }),
-      'P': row(4, true, { switch_1: true, switch_2: true, switch_3: false }),
-      'X5': row(3, true, { switch: true, cur_power: 19870, cur_voltage: 2296 }),
-      'X7': row(6, true, { switch: true, cur_power: 0, cur_voltage: 2301 }),
-      'X8': row(2, true, { switch: true, cur_power: 0, cur_voltage: 2299 }),
-      'X9': row(5, true, { switch: true, cur_power: 6420, cur_voltage: 2294 }),
+      'P': row(4, true, { switch_1: n >= 1, switch_2: n >= 2, switch_3: n >= 3 }),
+      'X5': row(3, true, { switch: true, cur_power: w('k5', 1987), cur_voltage: 2296 }),
+      'X7': row(6, true, { switch: true, cur_power: w('k7', 0), cur_voltage: 2301 }),
+      'X8': row(2, true, { switch: true, cur_power: w('k8', 0), cur_voltage: 2299 }),
+      'X9': row(5, true, { switch: true, cur_power: w('k9', 642), cur_voltage: 2294 }),
       'G': row(1, true, {})
     };
   }
+
 
   // ---- az alkalmazás ---------------------------------------------------------------------
 
@@ -366,6 +456,7 @@
       this.state = {
         pos: {}, sel: null, drag: null,
         drawer: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
+        advIdx: 0, advHover: false, advOpen: false, advTalk: false, advMute: sGet(LOCAL, ADV_MUTE_KEY) === '1', advVariant: advVariantFromUrl(),
         user: null, role: null, layouts: [], current: null,
         savedKey: '{}', savedAt: null, live: null, toasts: [],
         liveSky: true, now: Date.now(),
@@ -378,6 +469,7 @@
       var self = this;
       if (this._clock) return;
       this._clock = setInterval(function () { self.setState({ now: Date.now() }); }, 60000);
+      this._adv = setInterval(function () { self.advNext(); }, ADV_ROTATE_MS);
     }
 
     // -- jelenet-kiegészítések -----------------------------------------------------------
@@ -482,6 +574,8 @@
       v.ui.devWarn = dv.warnCount > 0;
       v.ui.devWarnCls = 'wdot ' + (dv.red ? 'red' : 'orange');
       v.ui.devAria = 'Eszközök: ' + dv.online + '/' + dv.total + ' online' + (dv.warnCount ? ', ' + dv.warnCount + ' figyelmeztetés' : '');
+      this.sceneVals(v, dv);
+      v.adv = this.advVals(v, dv);
       return v;
     }
 
@@ -489,7 +583,7 @@
 
     devVals(v) {
       var self = this, st = this.state, now = st.now || Date.now(), live = st.live;
-      var demo = !live, src = live || demoDevices(now);
+      var demo = !live, src = live || demoDevices(now, v.L);
       var pinXY = {};
       v.pins.forEach(function (m) { pinXY[m.id] = [m.x, m.y]; });
       var gw = src.G;
@@ -550,6 +644,10 @@
         var expanded = st.devOpenId === id;
         return {
           id: id, order: order, cat: info.cat, warn: warn, red: red, online: online,
+          kind: info.kind, has: has, age: age, stale: stale, open: open, battPct: batt ? batt.pct : null, badgeList: badges,
+          temp: has && info.kind === 'thermo' ? liveTemp(stt, meta) : null,
+          stage: has && info.kind === 'switch3' ? liveStage(stt) : null,
+          watt: has && info.kind === 'breaker' && stt.switch !== false ? livePower(stt, meta) : null,
           pinLabel: id, name: info.name, room: info.room, icon: cat.icon, tile: cat.tile,
           value: value, valCls: 'dc-val ' + valCls,
           hasBatt: !!batt, batt: batt ? (batt.label ? batt.label : batt.pct + ' %') : '', battW: batt ? batt.pct + '%' : '0%',
@@ -581,14 +679,75 @@
         warnCls: 'dp-warn ' + (warnCount ? (all.some(function (c) { return c.red; }) ? 'red' : 'orange') : 'ok'),
         xpW: Math.round(onl / total * 100) + '%',
         srcLabel: demo ? 'DEMO' : 'ÉLŐ', srcCls: 'dp-src ' + (demo ? 'demo' : 'live'),
-        cards: cards, tabs: tabs, empty: cards.length === 0
+        cards: cards, tabs: tabs, empty: cards.length === 0, all: all, demo: demo
+      };
+    }
+
+    // a jelenet díszei a valós (vagy demó) állapotot követik: huzat-szellem csak nyitott
+    // ablaknál/ajtónál, a Túlfűtő láng csak ha a kályha megy
+    sceneVals(v, dv) {
+      var by = {}; dv.all.forEach(function (c) { by[c.id] = c; });
+      v.ghosts = [];
+      v.pins.forEach(function (m) {
+        var c = by[m.id];
+        if (!DRAFT_NAME[m.id] || !c || !c.open || c.online === false) return;
+        var o = GHOST_OFF[m.id] || [0, -36];
+        v.ghosts.push({ tr: 'translate(' + Math.round(m.ax + o[0]) + ' ' + Math.round(m.ay + o[1]) + ')', id: m.id, label: v.ghosts.length === 0,
+          wind: 'M' + (-o[0]) + ',' + (-o[1]) + ' Q' + Math.round(-o[0] / 2 - 6) + ',' + Math.round(-o[1] / 2 - 10) + ' -12,6' });
+      });
+      var P = by.P;
+      v.flameOn = !!(P && P.online !== false && P.stage > 0);
+    }
+
+    advNext() {
+      var st = this.state;
+      if (st.advHover || st.advOpen || st.advMute) return;
+      var self = this;
+      this.setState({ advIdx: (st.advIdx || 0) + 1, advTalk: true });
+      clearTimeout(this._advTalk);
+      this._advTalk = setTimeout(function () { self.setState({ advTalk: false }); }, 1400);
+    }
+
+    advVals(v, dv) {
+      var self = this, st = this.state, now = st.now || Date.now();
+      var tips = advTips(dv.all, now), n = tips.length, idx = (st.advIdx || 0) % n, cur = tips[idx];
+      var pinXY = {}; v.pins.forEach(function (m) { pinXY[m.id] = [m.x, m.y]; });
+      var show = function (t) { return function () { self.setState({ advOpen: false, sel: t.dev ? 'd' + t.dev : st.sel }); if (t.dev && pinXY[t.dev]) focusStage(pinXY[t.dev][0], pinXY[t.dev][1], false); }; };
+      var variant = st.advVariant === 2 || st.advVariant === 3 ? st.advVariant : 1;
+      var name = 'Energiaőr';
+      return {
+        cls: 'adv v' + variant + (st.advTalk ? ' talk' : '') + (st.advMute ? ' muted' : '') + (st.advOpen ? ' open' : ''),
+        href: '#adv-v' + variant,
+        showBubble: !st.advMute, muted: !!st.advMute,
+        text: cur.short, tone: 'adv-bubble ' + cur.tone, count: (idx + 1) + '/' + n,
+        aria: name + ' tanácsa: ' + cur.short + '. Kattints az összes tanácsért.',
+        btnAria: name + ': ' + n + ' tanács. Megnyitás',
+        open: !!st.advOpen, openAttr: st.advOpen ? 'true' : 'false',
+        toggle: function () { self.setState({ advOpen: !st.advOpen, devOpen: false, drawer: false }); },
+        close: function () { self.setState({ advOpen: false }); },
+        enter: function () { if (!st.advHover) self.setState({ advHover: true }); },
+        leave: function () { if (st.advHover) self.setState({ advHover: false }); },
+        list: tips.map(function (t, i) {
+          return { cls: 'adv-tip ' + t.tone + (i === idx ? ' cur' : ''), text: t.long, short: t.short, hasDev: !!t.dev,
+            devAria: 'Mutasd a térképen: ' + (t.dev && DEVINFO[t.dev] ? DEVINFO[t.dev].name : ''), show: show(t) };
+        }),
+        n: String(n),
+        mutePressed: st.advMute ? 'true' : 'false',
+        muteLabel: st.advMute ? 'Buborék bekapcsolása' : 'Buborék némítása',
+        toggleMute: function () { var m = !st.advMute; sSet(LOCAL, ADV_MUTE_KEY, m ? '1' : '0'); self.setState({ advMute: m }); },
+        v1Cls: 'adv-var' + (variant === 1 ? ' on' : ''), v2Cls: 'adv-var' + (variant === 2 ? ' on' : ''),
+        v3Cls: 'adv-var' + (variant === 3 ? ' on' : ''),
+        v1Pressed: variant === 1 ? 'true' : 'false', v2Pressed: variant === 2 ? 'true' : 'false', v3Pressed: variant === 3 ? 'true' : 'false',
+        pickV1: function () { self.setState({ advVariant: 1 }); },
+        pickV2: function () { self.setState({ advVariant: 2 }); },
+        pickV3: function () { self.setState({ advVariant: 3 }); }
       };
     }
 
     pickDevice(id, xy) {
       if (this.state.devOpenId === id) { this.setState({ devOpenId: null }); return; }
       this.setState({ devOpenId: id, sel: 'd' + id });
-      if (xy) focusStage(xy[0], xy[1]);
+      if (xy) focusStage(xy[0], xy[1], true);
     }
 
     // Élő módban az ég, a nap/hold, az ablakok és a lámpák a valódi budapesti időt követik;
@@ -665,7 +824,7 @@
         drawerOpen: st.drawer,
         drawerOpenAttr: st.drawer ? 'true' : 'false',
         toggleDrawer: function () { self.setState({ drawer: !st.drawer, devOpen: false, saveAs: false, confirmId: null }); },
-        toggleDev: function () { self.setState({ devOpen: !st.devOpen, drawer: false, saveAs: false, confirmId: null }); },
+        toggleDev: function () { self.setState({ devOpen: !st.devOpen, drawer: false, advOpen: false, saveAs: false, confirmId: null }); },
         closeDev: function () { self.setState({ devOpen: false }); },
         devOpenAttr: st.devOpen ? 'true' : 'false',
         openDrawer: function () { self.setState({ drawer: true }); },
@@ -996,6 +1155,9 @@
     stageEl.style.transform = 'translate(' + Math.round(view.tx) + 'px,' + Math.round(view.ty) + 'px) scale(' + s + ')';
     // az Eszközök panel a felső sáv alatt indul (nagyítás nélküli helyzet szerint), hogy a sáv gombjai elérhetők maradjanak
     var lay0 = layout();
+    var de = document.documentElement.style;
+    de.setProperty('--adv-x', Math.round(view.tx + 302 * s) + 'px');
+    de.setProperty('--adv-y', Math.round(window.innerHeight - (view.ty + 636 * s)) + 'px');
     document.documentElement.style.setProperty('--dp-top', Math.max(12, Math.round((lay0.h - 900 * lay0.s) / 2 + 90 * lay0.s)) + 'px');
     document.body.classList.toggle('zoomed', view.z > 1.001);
     if (zoomLabel) zoomLabel.textContent = Math.round(view.z * 100) + '%';
@@ -1184,6 +1346,7 @@
     document.addEventListener('keydown', function (e) {
       var t = e.target;
       if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
+      if (e.key === 'Escape' && app.state.advOpen) { app.setState({ advOpen: false }); return; }
       if (e.key === 'Escape' && app.state.devOpen) { app.setState({ devOpen: false }); return; }
       if (editableTarget(t)) return;
       if (!(e.ctrlKey || e.metaKey)) return;
