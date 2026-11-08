@@ -808,6 +808,8 @@
       v.ov = this.ovVals(v, dv, v.cons);
       this.sceneVals(v, dv);
       v.adv = this.advVals(v, dv);
+      v.info = { srcLabel: st.live ? 'ÉLŐ' : 'DEMÓ', srcCls: 'dp-src ' + (st.live ? 'live' : 'demo'),
+        bubbleCls: 'ip-bubble ' + v.adv.curTone + (st.advTalk ? ' talk' : ''), showCur: v.adv.showCur };
       return v;
     }
 
@@ -1142,7 +1144,7 @@
       return {
         cls: 'f' + variant, f1: variant === 1, f2: variant === 2, f3: variant === 3,
         srcLabel: st.live ? 'ÉLŐ' : 'DEMO', srcCls: 'dp-src ' + (st.live ? 'live' : 'demo'),
-        title: st.live ? 'Élő áttekintés' : 'Demó áttekintés', isDemo: !st.live,
+        title: st.live ? 'Élő áttekintés' : 'Áttekintés', isDemo: !st.live,
         srcTip: st.live ? 'A lakás valódi, élő adatai (Supabase).' : 'Kitalált demóadat a kiválasztott pálya szerint. A lakás valódi adatai belépés után látszanak.',
         stove: stove, power: power,
         doors: { rows: doorRows, openCount: String(openCount), anyOpen: openCount > 0, openText: openCount + ' nyitva', heroCls: 'ov-h3o' + (openCount ? ' open' : '') },
@@ -1183,7 +1185,8 @@
         cls: 'adv v' + variant + (st.advTalk ? ' talk' : '') + (st.advMute ? ' muted' : '') + (st.advOpen ? ' open' : ''),
         href: '#adv-v' + variant,
         showBubble: !st.advMute, muted: !!st.advMute,
-        text: cur.short, tone: 'adv-bubble ' + cur.tone, count: (idx + 1) + '/' + n,
+        text: cur.short, tone: 'adv-bubble ' + cur.tone, count: (idx + 1) + '/' + n, curTone: cur.tone,
+        showCur: cur.dev ? show(cur) : function () { self.setState({ advIdx: (st.advIdx || 0) + 1 }); },
         aria: name + ' tanácsa: ' + cur.short + '. Kattints az összes tanácsért.',
         btnAria: name + ': ' + n + ' tanács. Megnyitás',
         open: !!st.advOpen, openAttr: st.advOpen ? 'true' : 'false',
@@ -1192,7 +1195,8 @@
         enter: function () { if (!st.advHover) self.setState({ advHover: true }); },
         leave: function () { if (st.advHover) self.setState({ advHover: false }); },
         list: tips.map(function (t, i) {
-          return { cls: 'adv-tip ' + t.tone + (i === idx ? ' cur' : ''), text: t.long, short: t.short, hasDev: !!t.dev,
+          return { cls: 'adv-tip ' + t.tone + (i === idx ? ' cur' : '') + (st.ipOpen === i ? ' open' : ''), text: t.long, short: t.short, hasDev: !!t.dev,
+            expanded: st.ipOpen === i ? 'true' : 'false', toggle: function () { self.setState({ ipOpen: st.ipOpen === i ? null : i }); },
             devAria: 'Mutasd a térképen: ' + (t.dev && DEVINFO[t.dev] ? DEVINFO[t.dev].name : ''), show: show(t) };
         }),
         n: String(n),

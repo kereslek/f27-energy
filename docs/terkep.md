@@ -147,6 +147,14 @@ nem érhető el, a csip `KINT --`. Időjárás: [Open-Meteo](https://open-meteo.
 
 ## Energiaőr (tanácsadó)
 
+A bal oszlopban (a régi Küldetésnapló helyén) az **Energiaőr** panel: fent a zöld szék, ami a
+buborékban sorra mondja a tippeket (12 másodpercenként vált, ha fölé viszed az egeret, megáll),
+alatta az összes tipp és teendő fontossági sorrendben (pl. csukd be az ablakot, cserélj elemet,
+a klíma nem kap áramot). Egy tippre kattintva kinyílik a teljes szöveg, a **Mutasd** gomb a
+térképen az eszközre nagyít. Telefonon a szék a képernyő alján marad, onnan nyílik a lista. A
+felső sávból kikerült az Energiapont és a Megtakarítva.
+
+
 A térkép bal alsó sarkában, a lakáson kívül áll (telefonon a képernyő alján). A buborékban egyszerre
 egy rövid, élő tanács látszik, 12 másodpercenként vált (ha fölé viszed az egeret, megáll).
 Kattintásra vagy Enterre megnyílik az **Energiaőr tanácsai** lista, a legfontosabbal kezdve; a

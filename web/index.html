@@ -255,6 +255,29 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .adv.talk .adv-bubble{animation:advpop .32s ease-out}
 @keyframes advpop{0%{transform:scale(.94);opacity:.4}100%{transform:none;opacity:1}}
 .adv-fixed{display:none}
+/* bal oszlop: Energiaőr info-panel (a Küldetésnapló helyén) */
+.infopanel{padding:12px 10px 10px;display:flex;flex-direction:column;gap:8px;font-family:"Nunito",sans-serif;color:#1e2a44;box-sizing:border-box;overflow:hidden}
+.ip-head{display:flex;align-items:center;gap:10px;padding:0 4px}
+.ip-char{flex:0 0 auto;width:58px;height:70px}
+.ip-char svg{display:block;width:58px;height:70px;overflow:visible}
+.ip-hd{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ip-title{font-family:"Fraunces",serif;font-weight:800;font-size:23px;color:#3b2a14;line-height:1.05}
+.ip-sub{font-size:11.5px;font-weight:900;color:#7a5a2e}
+.ip-sub .dp-src{font-size:10px;padding:1px 6px}
+.ip-bubble{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:block;margin:2px 2px 0;padding:8px 10px;border-radius:14px;border:2.5px solid #1e2a44;background:#fffdf7;box-shadow:0 3px 0 #1e2a44;font:900 13px/1.3 "Nunito",sans-serif}
+.ip-bubble::before{content:"";position:absolute;left:24px;top:-8px;width:12px;height:12px;background:inherit;border-left:2.5px solid #1e2a44;border-top:2.5px solid #1e2a44;transform:rotate(45deg);border-radius:3px 0 0 0}
+.ip-bubble .c{display:block;margin-top:2px;font-size:10px;color:#6b7280}
+.ip-bubble.red{background:#ffefe9}.ip-bubble.orange{background:#fff6e0}.ip-bubble.green{background:#e7f8ec}.ip-bubble.blue{background:#eaf5ff}
+.ip-bubble:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.adv.talk .ip-bubble,.ip-bubble.talk{animation:advpop .32s ease-out}
+.ip-list{list-style:none;margin:2px 0 0;padding:0 2px 2px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:0;overscroll-behavior:contain}
+.ip-list .adv-tip{font-size:11.5px;padding:6px 8px;gap:6px}
+.ip-list .adv-tip .tx{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left}
+.ip-list .adv-tip .tx:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;border-radius:6px}
+.ip-list .adv-tip:not(.open) .tx span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ip-list .adv-tip .tx b{font-size:12px;font-weight:900}
+.ip-list .adv-tip .tx span{font-weight:700;color:#3d3426}
+.ip-foot{margin:0;padding:6px 4px 0;border-top:2px dashed #e3cfa6;font-size:10px;font-weight:800;color:#8a8f9c;line-height:1.3}
 @media (max-width:700px){
 .adv-stage{display:none}
 .adv-fixed{display:block;position:fixed;left:8px;bottom:8px;width:60px;height:72px;pointer-events:none;z-index:1}
@@ -799,8 +822,6 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <span class="lil" style="font-size: 24px; line-height: 1">F27 ENERGY QUEST</span>
 <span style="font-size: 12px; font-weight: 900; letter-spacing: 1px" title="{{titleTip}}">{{titleLine}}</span>
 </div>
-<div class="chip"><span class="ck">ENERGIAPONT</span><span class="cv">{{L.score}}</span></div>
-<div class="chip"><span class="ck">MEGTAKARÍTVA</span><span class="cv" style="color: #9a6a00">{{L.coins}}</span></div>
 <div class="chip"><span class="ck">KOMFORT (ELSŐ!)</span>
 <div style="display: flex; gap: 4px">
 <sc-for list="{{hearts}}" as="h" hint-placeholder-count="5">
@@ -829,37 +850,20 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </button>
 </div>
 
-<div class="panel" style="position: absolute; left: 16px; top: 96px; width: 280px; height: 632px; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px">
-<div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 4px">
-<span class="fr" style="font-size: 23px; font-weight: 800; color: #3b2a14">Küldetésnapló</span>
-<span style="font-size: 12px; font-weight: 900; color: #7a5a2e">{{questDone}}/5 kész</span>
-</div>
-<sc-for list="{{quests}}" as="q" hint-placeholder-count="5">
-<button class="qb {{q.cls}}" type="button" onClick="{{q.pick}}" aria-label="{{q.aria}}">
-<svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true"><rect x="2" y="2" width="22" height="22" rx="7" fill="{{q.boxFill}}" stroke="#1e2a44" stroke-width="2.5"></rect><path d="{{q.check}}" stroke="#ffffff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
-<span style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
-<span style="font-weight: 900; font-size: 14px; color: #1e2a44">{{q.title}}</span>
-<span style="font-family: 'Lilita One','Baloo 2'; font-size: 13px; color: #9a6a00">{{q.reward}}</span>
-</span>
-<span style="font-size: 12px; font-weight: 700; color: #4a3d28; line-height: 1.35">{{q.desc}}</span>
-<span style="display: flex; align-items: center; gap: 8px">
-<span style="flex: 1 1 auto; height: 8px; border-radius: 4px; background: #eadbbb; border: 1.5px solid #1e2a44; overflow: hidden"><span style="display: block; height: 100%; width: {{q.pw}}; background: {{q.bar}}"></span></span>
-<span style="font-size: 11px; font-weight: 900; color: #4a3d28; min-width: 40px; text-align: right">{{q.prog}}</span>
-</span>
-</span>
-</button>
-</sc-for>
-<div style="flex: 1 1 auto"></div>
-<div style="padding: 12px 16px; border-radius: 18px; background: #1e2a44; color: #fff7e6; box-shadow: 0 4px 0 #0f1628; display: flex; flex-direction: column; gap: 8px">
-<span style="display: flex; justify-content: space-between; align-items: baseline">
-<span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.2px; color: #ffe066">SZINT 7</span>
-<span style="font-size: 11px; font-weight: 900; color: #c9d1ea">1 240 / 2 000 XP</span>
-</span>
-<span class="lil" style="font-size: 20px; line-height: 1.05">Gondos Gazda</span>
-<span style="height: 10px; border-radius: 5px; background: #33416a; overflow: hidden"><span style="display: block; height: 100%; width: 62%; background: #ffe066"></span></span>
+<section class="panel infopanel" aria-label="Energiaőr: tippek és teendők" onPointerEnter="{{adv.enter}}" onPointerLeave="{{adv.leave}}" onFocusIn="{{adv.enter}}" onFocusOut="{{adv.leave}}" style="position: absolute; left: 16px; top: 96px; width: 280px; height: 632px">
+<div class="ip-head">
+<div class="{{adv.cls}} ip-char" aria-hidden="true"><svg viewBox="0 0 72 88"><use href="{{adv.href}}"></use></svg></div>
+<div class="ip-hd">
+<span class="ip-title">Energiaőr</span>
+<span class="ip-sub">{{adv.n}} tipp és teendő · <span class="{{info.srcCls}}">{{info.srcLabel}}</span></span>
 </div>
 </div>
+<button class="{{info.bubbleCls}}" type="button" onClick="{{info.showCur}}" aria-label="{{adv.aria}}" title="A zöld szék most ezt mondja. Kattints: mutasd a térképen.">{{adv.text}}<span class="c">{{adv.count}}</span></button>
+<ol class="ip-list">
+<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><button class="tx" type="button" onClick="{{t.toggle}}" aria-expanded="{{t.expanded}}"><b>{{t.short}}</b><span>{{t.text}}</span></button><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
+</ol>
+<p class="ip-foot">Szabályalapú tippek az élő adatokból és az időjárásból. Ide kerülnek majd az adatgyűjtés elemzései is (pl. hőigény, üres napok).</p>
+</section>
 
 <section class="panel ovpanel {{ov.cls}}" tabindex="-1" aria-label="Élő áttekintés" style="position: absolute; left: 1144px; top: 96px; width: 280px; height: 632px">
 <ov-slot></ov-slot>
@@ -887,13 +891,6 @@ Elrendezés visszaállítása
 </button>
 </div>
 
-<div class="{{adv.cls}} adv-stage" onPointerEnter="{{adv.enter}}" onPointerLeave="{{adv.leave}}" onFocusIn="{{adv.enter}}" onFocusOut="{{adv.leave}}">
-<button class="adv-char" type="button" onClick="{{adv.toggle}}" aria-expanded="{{adv.openAttr}}" aria-controls="f27-advpop" aria-label="{{adv.btnAria}}" title="Energiaőr tanácsai">
-<svg viewBox="0 0 72 88" aria-hidden="true"><use href="{{adv.href}}"></use></svg>
-<sc-if value="{{adv.muted}}"><span class="mb" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></sc-if>
-</button>
-<sc-if value="{{adv.showBubble}}"><button class="{{adv.tone}}" type="button" onClick="{{adv.toggle}}" aria-label="{{adv.aria}}"><span class="t">{{adv.text}}</span><span class="c">{{adv.count}}</span></button></sc-if>
-</div>
 
 <div class="panel" style="position: absolute; left: 16px; top: 744px; width: 456px; height: 140px; padding: 12px 16px; background: #fff7e6; display: flex; flex-direction: column; gap: 8px">
 <div style="display: flex; justify-content: space-between; align-items: baseline">

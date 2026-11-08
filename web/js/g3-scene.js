@@ -547,18 +547,12 @@ class G3Scene extends MiniDC.Component {
     for (var aa = 0; aa < 14; aa++) { var tt = aa / 14 * Math.PI * 2; wd.push(P(202.3, 521 + 6.5 * Math.cos(tt), 10 + 6.5 * Math.sin(tt))); wd2.push(P(202.4, 521 + 4.6 * Math.cos(tt), 10 + 4.6 * Math.sin(tt))); }
     add(182, 510, 20, 22, 0, 20, WHITE, { f1: pth(wd), f1c: '#26221f' });
     add(181, 509, 23, 24, 20, 2, MARBLE, { bias: 1, f1: pth(wd2), f1c: '#7fd3ea' });
-    piece('counter2', 'Alsó szekrény márványhatású munkalappal (a polcoszlop és a mosógép között)');
-    add(182, 488, 20, 21, 0, 20, CAB, { lines: seg(P(202.3, 498.5, 2), P(202.3, 498.5, 18)), lc: '#c9c3b5' });
-    add(181, 487.5, 23, 22, 20, 2, MARBLE, { bias: 1 });
+    piece('counter2', 'Alsó szekrények sík, márványhatású munkalappal (a tűzhely és a mosógép között)');
+    add(182, 474.5, 20, 34.5, 0, 20, CAB, { lines: seg(P(202.3, 486, 2), P(202.3, 486, 18)) + seg(P(202.3, 497.5, 2), P(202.3, 497.5, 18)), lc: '#c9c3b5' });
+    add(181, 474.5, 23, 35, 20, 2, MARBLE, { bias: 1 });
     piece('cooker', 'Candy villanytűzhely kerámialappal, sütővel, a sarokban (fölötte a mikró)');
     add(182, 453, 20, 21, 0, 22, WHITE, { f1: faceX(202.1, 456, 471, 4, 14), f1c: '#2b2b2b' });
     add(183, 454, 18, 19, 22, 0.8, BLACK, { bias: 1 });
-    piece('column', 'Keskeny nyitott polcoszlop (wenge keret): kenyérpirító, vágódeszkák');
-    add(182, 476.5, 20, 11, 0, 14, CAB, { lines: grid(182, 476.5, 20, 11, 0, 14, 1, 1, 1), lc: '#c9c3b5' });
-    add(182, 476.5, 20, 11, 14, 40, DKWOOD, { bias: 1, f1: faceX(202.1, 478, 486, 16, 52), f1c: '#f6f4ef' });
-    add(186, 478.5, 8, 7, 20, 7, STEEL, { bias: 2 });
-    add(184, 478, 2, 8, 34, 12, ['#d9a86a', '#b98a50', '#a07646'], { bias: 2 });
-    add(187, 478, 2, 8, 34, 10, ['#e8c48a', '#c9a66c', '#b0905c'], { bias: 2 });
     piece('fridge', 'Beko inox hűtő-fagyasztó az északi fal mentén, a tűzhely mellett');
     add(214, 453, 27, 21, 0, 54, STEEL, { lines: seg(P(216, 474.2, 15), P(239, 474.2, 15)) + seg(P(236, 474.2, 20), P(236, 474.2, 34)) + seg(P(236, 474.2, 6), P(236, 474.2, 12)), lc: '#5c636e' });
     piece('urnbox', 'Nyitott wenge doboz: kék-fehér porcelán urnák, befőttesüvegek, növény', false);
@@ -637,7 +631,7 @@ class G3Scene extends MiniDC.Component {
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
         stoveTop: tr(341, 303, 110), flame: tr(380, 312, 6), boss: tr(341, 303, 154), ch1: tr(377, 190, 70), ch2: tr(404, 470, 70),
-        ghosts: tr(414, 552, 34), compass: tr(560, 430, 0), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
+        ghosts: tr(414, 552, 34), compass: tr(640, 470, 0), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };
     this._sc = sc;
