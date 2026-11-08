@@ -17,6 +17,9 @@ Folyamat egy futásban:
   6. public.bookings: óránként egyszer a foglaltság az Airbnb naptárexportból (f27.bookings,
      AIRBNB_ICAL_URL, ha van BOOKING_ICAL_URL), szintén a Tuyától függetlenül. A logba csak
      darabszám kerül.
+  7. Riasztások (f27.alerts): minden körben a szabályok kiértékelése a friss device_latest-ből,
+     értesítés ntfy pushon és e-mailben (alert_settings, alert_state, alert_log). A Tuya és a
+     többi lépés hibájától független; a logba csak darabszám kerül.
 
 A publikus logba csak darabszámok kerülnek: név, device ID, mérési érték soha.
 
@@ -33,6 +36,7 @@ from zoneinfo import ZoneInfo
 
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError
+from .alerts import run_alerts
 from .bookings import collect_bookings
 from .weather import collect_weather
 
@@ -317,6 +321,13 @@ def main() -> int:
     if bk["error"]:
         print(f"::warning::{bk['note']}")
     text += "\n\n" + bk["note"]
+    try:
+        al = run_alerts(sb)
+    except Exception as e:              # a riasztás hibája ne állítsa meg a gyűjtést
+        al = {"error": True, "note": f"Riasztások: HIBA ({type(e).__name__})."}
+    if al["error"]:
+        print(f"::warning::{al['note']}")
+    text += "\n\n" + al["note"]
     print(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

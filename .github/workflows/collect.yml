@@ -2,6 +2,7 @@ name: Adatgyűjtés
 
 # 10 percenként: Tuya állapotok -> Supabase (device_status, energy_daily).
 # Óránként egyszer: időjárás (Open-Meteo) és foglaltság (Airbnb naptárexport, ha be van állítva).
+# Minden körben: riasztások kiértékelése és értesítés (ntfy push, e-mail), csak jelez, nem kapcsol.
 # Körönként szokásosan 2 Tuya API-hívás (token + eszközlista).
 # A log publikus: csak darabszámok kerülnek bele, név, azonosító vagy érték nem.
 #
@@ -45,6 +46,17 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
           BOOKING_ICAL_URL: ${{ secrets.BOOKING_ICAL_URL }}
+          # Riasztások (docs/riasztasok.md): push (ntfy), e-mail (SMTP), WhatsApp (CallMeBot, nem kötelező)
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+          ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
+          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
         run: |
           end=$(( $(date +%s) + 55 * 60 ))
           n=0

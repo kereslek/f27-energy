@@ -133,7 +133,8 @@ def tuya_server(devices):
 def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
     """Memóriában tartott PostgREST-utánzat. missing: hiányzó oszlopok (pl. 'meta'),
     no_tables: hiányzó táblák (pl. 'weather_hourly')."""
-    db = {"devices": {}, "device_status": [], "energy_daily": {}, "weather_hourly": {}, "bookings": {}}
+    db = {"devices": {}, "device_status": [], "energy_daily": {}, "weather_hourly": {}, "bookings": {},
+          "alert_settings": {}, "alert_state": {}, "alert_log": []}
     log = {"bad_auth": 0, "requests": []}
 
     def latest():
@@ -199,6 +200,20 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                     rows = rows[: int(q["limit"])]
             elif table == "device_latest":
                 rows = latest()
+            elif table == "alert_settings":
+                rows = list(db["alert_settings"].values())
+                if q.get("id", "").startswith("eq."):
+                    rows = [r for r in rows if str(r["id"]) == q["id"][3:]]
+            elif table == "alert_state":
+                rows = list(db["alert_state"].values())
+            elif table == "alert_log":
+                rows = list(db["alert_log"])
+                if q.get("kind", "").startswith("eq."):
+                    rows = [r for r in rows if r["kind"] == q["kind"][3:]]
+                if q.get("order") == "ts.desc":
+                    rows.sort(key=lambda r: r["ts"], reverse=True)
+                if "limit" in q:
+                    rows = rows[: int(q["limit"])]
             elif table == "energy_daily":
                 rows = list(db["energy_daily"].values())
                 if q.get("pink", "").startswith("in.("):
@@ -237,6 +252,16 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
             elif table == "devices":
                 for r in rows:
                     db["devices"][r["pink"]] = {**db["devices"].get(r["pink"], {}), **r}
+            elif table == "alert_state":
+                assert q.get("on_conflict") == "rule_key"
+                for r in rows:
+                    db["alert_state"][r["rule_key"]] = r
+            elif table == "alert_settings":
+                for r in rows:
+                    db["alert_settings"][r.get("id", 1)] = {**db["alert_settings"].get(r.get("id", 1), {}), **r}
+            elif table == "alert_log":
+                for r in rows:
+                    db["alert_log"].append({"id": len(db["alert_log"]) + 1, **r})
             elif table == "device_status":
                 db["device_status"].extend(rows)
             elif table == "energy_daily":
