@@ -178,7 +178,15 @@
 
     startDrag(e, id, kind) {
       this._before = posKey(this.state.pos);
+      this._beforePos = Object.assign({}, this.state.pos || {});
       super.startDrag(e, id, kind);
+    }
+
+    // Megszakított húzás (pl. a második ujj csippentést kezd): a tárgy visszaáll, nincs visszavonási lépés.
+    cancelDrag() {
+      if (!this._drag) return;
+      super.endDrag();
+      this.setState({ pos: this._beforePos || {} });
     }
 
     endDrag() {
@@ -533,22 +541,206 @@
 
   // ---- indítás ----------------------------------------------------------------------------------
 
-  function fit() {
-    var st = document.getElementById('stage');
-    var s = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
-    st.style.transform = 'translate(' + Math.round((window.innerWidth - 1440 * s) / 2) + 'px,' + Math.round((window.innerHeight - 900 * s) / 2) + 'px) scale(' + s + ')';
+  // ---- nézet: illesztés + nagyítás + mozgatás -----------------------------------------------------
+  // A színpad mindig 1440x900; az illesztett lépték fölött z-szeresre nagyítható (1-4x).
+  // Nagyítás: Ctrl/Cmd + görgő, touchpad-csippentés, érintőképernyős csippentés, +/- gombok,
+  // billentyűk (Ctrl/Cmd + plusz/mínusz/0, vagy csak +, -, 0). Nagyítva: görgő vagy húzás mozgat.
+  var ZMIN = 1, ZMAX = 4;
+  var view = { z: 1, tx: 0, ty: 0 };
+  var stageEl = null, zoomLabel = null, zoomOutBtn = null, zoomInBtn = null;
+
+  // Ha a színpad alatt vagy mellett nincs elég szabad perem a nagyítósávnak, alul helyet hagyunk neki,
+  // hogy ne takarja a térkép jobb alsó sarkát (érmek). Ilyenkor a térkép kicsit kisebb.
+  var BAR_H = 56, BAR_W = 220;
+  function layout() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var s = Math.min(vw / 1440, vh / 900);
+    var freeV = vh - 900 * s, freeH = vw - 1440 * s;
+    if (freeV >= BAR_H || freeH / 2 >= BAR_W) return { s: s, h: vh };
+    return { s: Math.min(vw / 1440, (vh - BAR_H) / 900), h: vh - BAR_H };
+  }
+  function baseScale() { return layout().s; }
+
+  function clampView() {
+    var lay = layout(), s = lay.s * view.z, W = 1440 * s, H = 900 * s, vw = window.innerWidth, vh = lay.h;
+    view.tx = W <= vw ? (vw - W) / 2 : Math.min(0, Math.max(vw - W, view.tx));
+    view.ty = H <= vh ? (vh - H) / 2 : Math.min(0, Math.max(vh - H, view.ty));
+  }
+
+  function applyView() {
+    clampView();
+    var s = baseScale() * view.z;
+    stageEl.style.transform = 'translate(' + Math.round(view.tx) + 'px,' + Math.round(view.ty) + 'px) scale(' + s + ')';
+    document.body.classList.toggle('zoomed', view.z > 1.001);
+    if (zoomLabel) zoomLabel.textContent = Math.round(view.z * 100) + '%';
+    if (zoomOutBtn) zoomOutBtn.disabled = view.z <= ZMIN + 0.001;
+    if (zoomInBtn) zoomInBtn.disabled = view.z >= ZMAX - 0.001;
+  }
+
+  // Nagyítás egy képernyőpont körül: a pont alatti tartalom a helyén marad.
+  function zoomTo(z, cx, cy) {
+    var nz = Math.min(ZMAX, Math.max(ZMIN, z));
+    if (cx == null) { cx = window.innerWidth / 2; cy = window.innerHeight / 2; }
+    var f = nz / view.z;
+    view.tx = cx - (cx - view.tx) * f;
+    view.ty = cy - (cy - view.ty) * f;
+    view.z = nz;
+    applyView();
+  }
+  function zoomBy(factor, cx, cy) { zoomTo(view.z * factor, cx, cy); }
+  function resetView() { view.z = 1; applyView(); }
+  function panBy(dx, dy) { view.tx += dx; view.ty += dy; applyView(); }
+
+  function editableTarget(t) {
+    var tag = t && t.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable);
+  }
+  // Görgethető elem a célpont felett (pl. a Fiók és mentés panel listája): annak hagyjuk a görgőt.
+  function scrollableAncestor(t, dy) {
+    for (var el = t; el && el !== stageEl && el.nodeType === 1; el = el.parentElement) {
+      var cs = window.getComputedStyle(el);
+      if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+        if ((dy < 0 && el.scrollTop > 0) || (dy > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1)) return el;
+      }
+    }
+    return null;
+  }
+
+  function buildZoomBar() {
+    var bar = document.createElement('div');
+    bar.className = 'zoombar';
+    bar.setAttribute('role', 'group');
+    bar.setAttribute('aria-label', 'Nagyítás');
+    function mk(label, title, onClick, html) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'zb'; b.title = title; b.setAttribute('aria-label', title);
+      if (html) b.innerHTML = html; else b.textContent = label;
+      b.addEventListener('click', onClick);
+      bar.appendChild(b);
+      return b;
+    }
+    zoomOutBtn = mk('−', 'Kicsinyítés (Ctrl + görgő vagy -)', function () { zoomBy(1 / 1.25); });
+    zoomLabel = document.createElement('span');
+    zoomLabel.className = 'zl';
+    zoomLabel.setAttribute('aria-live', 'polite');
+    bar.appendChild(zoomLabel);
+    zoomInBtn = mk('+', 'Nagyítás (Ctrl + görgő vagy +)', function () { zoomBy(1.25); });
+    mk('', 'Teljes nézet (0)', resetView,
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>');
+    document.body.appendChild(bar);
+  }
+
+  function initViewControls(app) {
+    stageEl = document.getElementById('stage');
+    buildZoomBar();
+    applyView();
+    window.addEventListener('resize', applyView);
+
+    // Ctrl/Cmd + görgő és touchpad-csippentés (a Chrome ctrlKey-es wheel eseményként küldi).
+    window.addEventListener('wheel', function (e) {
+      var unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
+      var dx = e.deltaX * unit, dy = e.deltaY * unit;
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        zoomBy(Math.exp(-dy * 0.0025), e.clientX, e.clientY);
+        return;
+      }
+      if (view.z > 1.001 && !scrollableAncestor(e.target, dy)) {
+        e.preventDefault();
+        if (e.shiftKey && !dx) { dx = dy; dy = 0; }
+        panBy(-dx, -dy);
+      }
+    }, { passive: false });
+
+    // Safari touchpad-csippentés.
+    var g0 = null;
+    window.addEventListener('gesturestart', function (e) { e.preventDefault(); g0 = view.z; }, { passive: false });
+    window.addEventListener('gesturechange', function (e) { e.preventDefault(); if (g0 != null) zoomTo(g0 * e.scale, e.clientX, e.clientY); }, { passive: false });
+    window.addEventListener('gestureend', function (e) { e.preventDefault(); g0 = null; }, { passive: false });
+
+    // Érintés: két ujj = csippentés (és közben mozgatás), egy ujj vagy egér az üres részen = mozgatás nagyítva.
+    var touches = {}, pinch = null, pan = null;
+    function tcount() { return Object.keys(touches).length; }
+    function pinchGeo() {
+      var ids = Object.keys(touches), a = touches[ids[0]], b = touches[ids[1]];
+      return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+    }
+    window.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'touch') return;
+      touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (tcount() === 2) {
+        app.cancelDrag();             // a két ujj csippentés, nem bútorhúzás
+        pan = null;
+        var g = pinchGeo();
+        pinch = { d0: g.d, z0: view.z, cx0: g.cx, cy0: g.cy, tx0: view.tx, ty0: view.ty };
+      }
+    }, true);
+    window.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch' && touches[e.pointerId]) {
+        touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+        if (pinch && tcount() >= 2) {
+          var g = pinchGeo();
+          var nz = Math.min(ZMAX, Math.max(ZMIN, pinch.z0 * g.d / pinch.d0)), f = nz / pinch.z0;
+          view.z = nz;
+          view.tx = g.cx - (pinch.cx0 - pinch.tx0) * f;
+          view.ty = g.cy - (pinch.cy0 - pinch.ty0) * f;
+          applyView();
+          return;
+        }
+      }
+      if (pan && e.pointerId === pan.id) {
+        view.tx = pan.tx0 + (e.clientX - pan.x0);
+        view.ty = pan.ty0 + (e.clientY - pan.y0);
+        applyView();
+      }
+    }, true);
+    function lift(e) {
+      if (e.pointerType === 'touch') { delete touches[e.pointerId]; if (tcount() < 2) pinch = null; }
+      if (pan && e.pointerId === pan.id) { pan = null; document.body.classList.remove('panning'); }
+    }
+    window.addEventListener('pointerup', lift, true);
+    window.addEventListener('pointercancel', lift, true);
+
+    // Mozgatás nagyítva: a bútorok és tűk saját húzása (stopPropagation) és a gombok/mezők kivételével
+    // bárhol a színpadon; középső egérgombbal mindenhol.
+    stageEl.addEventListener('pointerdown', function (e) {
+      if (view.z <= 1.001 || pinch) return;
+      var t = e.target;
+      var middle = e.button === 1;
+      if (!middle) {
+        if (e.button > 0) return;
+        if (editableTarget(t) || (t.closest && t.closest('button, a, label, select, .drawer'))) return;
+      }
+      e.preventDefault();
+      pan = { id: e.pointerId, x0: e.clientX, y0: e.clientY, tx0: view.tx, ty0: view.ty };
+      document.body.classList.add('panning');
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (editableTarget(e.target)) return;
+      var k = e.key, mod = e.ctrlKey || e.metaKey;
+      if (k === '+' || k === '=' || (mod && k === 'Add')) { if (mod || !e.altKey) { e.preventDefault(); zoomBy(1.25); } return; }
+      if (k === '-' || k === '_' || (mod && k === 'Subtract')) { if (mod || !e.altKey) { e.preventDefault(); zoomBy(1 / 1.25); } return; }
+      if (k === '0' && !e.altKey) { e.preventDefault(); resetView(); return; }
+      if (!mod && view.z > 1.001) {
+        var step = 60;
+        if (k === 'ArrowLeft') { e.preventDefault(); panBy(step, 0); }
+        else if (k === 'ArrowRight') { e.preventDefault(); panBy(-step, 0); }
+        else if (k === 'ArrowUp') { e.preventDefault(); panBy(0, step); }
+        else if (k === 'ArrowDown') { e.preventDefault(); panBy(0, -step); }
+      }
+    });
   }
 
   function start() {
     var app = new G3App({ showPath: true, showMarkers: true, snap: true });
     app.initSupabase();
     window.MiniDC.mount(document.getElementById('stage'), document.getElementById('g3-template'), app);
-    fit();
-    window.addEventListener('resize', fit);
+    initViewControls(app);
     document.addEventListener('keydown', function (e) {
-      var t = e.target, tag = t && t.tagName;
+      var t = e.target;
       if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+      if (editableTarget(t)) return;
       if (!(e.ctrlKey || e.metaKey)) return;
       var k = e.key.toLowerCase();
       if (k === 'z' && !e.shiftKey) { e.preventDefault(); app.undo(); }

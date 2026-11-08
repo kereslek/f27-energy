@@ -38,6 +38,18 @@ Az alsó sáv állapotjelzője: **Nem mentett változás** (piros pont) vagy **M
 - Újra: a másik nyíl gomb, vagy **Ctrl+Shift+Z** / **Ctrl+Y**.
 - **Elrendezés visszaállítása**: minden alaphelyzetbe; ez is visszavonható.
 
+## Nagyítás és mozgatás
+
+A jobb alsó sarokban a nagyítósáv: **−**, a nagyítás mértéke, **+**, és a **teljes nézet** gomb. 100% és 400% között.
+
+- **Egér:** Ctrl (Macen Cmd) + görgő a kurzor körül nagyít. Nagyítva a sima görgő fel-le, Shift + görgő oldalra mozgat.
+- **Touchpad:** két ujjas csippentés nagyít, két ujjas húzás mozgat.
+- **Telefon, tablet:** két ujjas csippentés nagyít, egy ujjal az üres részen húzva mozgat.
+- **Billentyűk:** `+` és `-` (Ctrl-lal is), `0` a teljes nézet, nagyítva a nyilak mozgatnak.
+- **Húzás nagyítva:** a bútor vagy az eszköz megfogva továbbra is a tárgyat mozgatja; az üres részen (ég, padló, panelek háttere) húzva a nézet mozdul. Középső egérgombbal mindenhol a nézet mozdul.
+
+A böngésző saját nagyítása (Ctrl + görgő) ezen az oldalon a térképet nagyítja, nem az egész oldalt.
+
 ## Szerepkörök
 
 | Szerepkör | Lát | Betölt | Ment, töröl, alapértelmezett |
