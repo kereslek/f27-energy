@@ -101,6 +101,43 @@
 
   function r1(n) { return Math.round(n * 10) / 10; }
   function dbPink(pin) { return PIN_TO_DB[pin] || pin; }
+
+  // ---- "Emlékezz rám": a Supabase munkamenet tárolója ---------------------------------------
+  // Bekapcsolva a munkamenet a localStorage-ba kerül (a böngésző bezárása után is megmarad),
+  // kikapcsolva a sessionStorage-ba (a lap bezárásával elvész). Csak a beállítás (igen/nem)
+  // kerül a localStorage-ba. Ha a tároló nem elérhető (privát mód), memóriában tartjuk.
+  var REMEMBER_KEY = 'f27-remember';
+  function probeStore(name) {
+    try { var s = window[name], k = '__f27_probe'; s.setItem(k, '1'); s.removeItem(k); return s; } catch (e) { return null; }
+  }
+  var LOCAL = probeStore('localStorage'), SESSION = probeStore('sessionStorage'), MEM = {};
+  function sGet(st, k) { try { return st ? st.getItem(k) : null; } catch (e) { return null; } }
+  function sSet(st, k, v) { try { if (st) { st.setItem(k, v); return true; } } catch (e) { /* tele vagy tiltott */ } return false; }
+  function sDel(st, k) { try { if (st) st.removeItem(k); } catch (e) { /* tiltott */ } }
+  var authStore = {
+    remember: sGet(LOCAL, REMEMBER_KEY) !== '0',
+    setRemember: function (on) { this.remember = !!on; sSet(LOCAL, REMEMBER_KEY, on ? '1' : '0'); },
+    primary: function () { return this.remember ? LOCAL : SESSION; },
+    other: function () { return this.remember ? SESSION : LOCAL; },
+    getItem: function (k) {
+      var v = sGet(this.primary(), k);
+      if (v == null) v = sGet(this.other(), k);
+      return v == null ? (Object.prototype.hasOwnProperty.call(MEM, k) ? MEM[k] : null) : v;
+    },
+    setItem: function (k, v) {
+      if (sSet(this.primary(), k, v)) delete MEM[k]; else MEM[k] = v;
+      sDel(this.other(), k);
+    },
+    removeItem: function (k) { sDel(LOCAL, k); sDel(SESSION, k); delete MEM[k]; },
+    // kilépéskor: minden Supabase munkamenet-kulcs törlése mindkét tárolóból
+    clearAuth: function () {
+      [LOCAL, SESSION].forEach(function (st) {
+        if (!st) return;
+        try { for (var i = st.length - 1; i >= 0; i--) { var k = st.key(i); if (k && /^sb-.*-auth-token/.test(k)) st.removeItem(k); } } catch (e) { /* tiltott */ }
+      });
+      MEM = {};
+    }
+  };
   function hhmm(iso) {
     var d = iso ? new Date(iso) : new Date();
     if (isNaN(d)) return '';
@@ -204,7 +241,7 @@
       this.liveTimer = 0;
       this.state = {
         pos: {}, sel: null, drag: null,
-        drawer: false, saveAs: false, confirmId: null, busy: false,
+        drawer: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
         user: null, role: null, layouts: [], current: null,
         savedKey: '{}', savedAt: null, live: null, toasts: [],
         liveSky: true, now: Date.now()
@@ -400,6 +437,14 @@
         roleLabel: role.label, roleColor: role.color,
         busy: st.busy,
         login: function (e) { e.preventDefault(); self.login(); },
+        passType: st.peek ? 'text' : 'password',
+        peekPressed: st.peek ? 'true' : 'false',
+        peekLabel: st.peek ? 'Jelszó elrejtése' : 'Jelszó megjelenítése',
+        peekOn: !!st.peek, peekOff: !st.peek,
+        peekKeep: function (e) { e.preventDefault(); },
+        peek: function () { self.togglePeek(); },
+        remember: st.remember ? true : null,
+        setRemember: function (e) { authStore.setRemember(e.target.checked); self.setState({ remember: e.target.checked }); },
         logout: function () { self.logout(); },
         currentName: st.current ? st.current.name : 'nincs mentve',
         chip: chip, chipCls: chipCls,
@@ -481,7 +526,9 @@
       if (!cfg.supabaseUrl || !cfg.supabaseKey || !window.supabase || !window.supabase.createClient) return;
       var self = this;
       try {
-        this.sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+        this.sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+          auth: { storage: authStore, persistSession: true, autoRefreshToken: true }
+        });
       } catch (e) {
         this.sb = null;
         return;
@@ -508,16 +555,29 @@
         self.setState({ busy: false });
         if (res.error) { self.toast(self.errText(res.error, 'Sikertelen belépés.'), 'err'); return; }
         var p = document.getElementById('f27-pass');
-        if (p) p.value = '';
+        if (p) { p.value = ''; p.type = 'password'; }
+        self.setState({ peek: false });
       }, function (err) {
         self.setState({ busy: false });
         self.toast(self.errText(err, 'Sikertelen belépés.'), 'err');
       });
     }
 
+    // Jelszó megjelenítése / elrejtése: a fókusz és a kurzor a mezőben marad.
+    togglePeek() {
+      var inp = document.getElementById('f27-pass'), on = !this.state.peek;
+      var focused = inp && document.activeElement === inp;
+      var a = inp ? inp.selectionStart : null, b = inp ? inp.selectionEnd : null;
+      if (inp) inp.type = on ? 'text' : 'password';
+      this.setState({ peek: on });
+      // a típusváltás a kurzort a mező elejére tenné: a kirajzolás után visszaállítjuk
+      var restore = function () { try { inp.focus(); if (a != null) inp.setSelectionRange(a, b); } catch (e) { /* nem baj */ } };
+      if (focused) { restore(); requestAnimationFrame(function () { requestAnimationFrame(restore); }); }
+    }
+
     logout() {
       var self = this;
-      this.sb.auth.signOut().then(function () { self.afterLogout(); }, function (err) { self.toast(self.errText(err, 'Sikertelen kilépés.'), 'err'); });
+      this.sb.auth.signOut().then(function () { authStore.clearAuth(); self.afterLogout(); }, function (err) { authStore.clearAuth(); self.toast(self.errText(err, 'Sikertelen kilépés.'), 'err'); });
     }
 
     afterLogin(user) {

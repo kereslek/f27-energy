@@ -15,6 +15,17 @@ teszi bele az oldalba; a secret kulcs soha nem kerül az oldalba (a build ezt el
 Jobb felső sarok: **Belépés**. E-mail és jelszó: a Supabase-ben létrehozott felhasználó
 (Authentication > Users). Regisztrálni az oldalon nem lehet.
 
+- **Szem ikon** a jelszómező jobb szélén: megmutatja vagy elrejti a beírt jelszót (a kurzor a
+  mezőben marad). Az Enter a jelszómezőben belép.
+- A mezők jelszókezelő-barátok (`username` és `current-password`): a böngésző felajánlja a
+  mentést és később kitölti.
+- **Emlékezz rám** (alapból be van jelölve): bejelölve a belépés a böngésző bezárása után is
+  megmarad (localStorage); kivéve csak az adott lapon él, a lap vagy a böngésző bezárásával
+  kilépsz (sessionStorage). Közös vagy idegen gépen vedd ki a pipát. A böngésző csak a
+  választást jegyzi meg (`f27-remember`), a belépés előtt kell beállítani. A **Kilépés**
+  mindkét helyről törli a munkamenetet. Privát módban, ha a böngésző tiltja a tárolást, a
+  belépés csak az oldal újratöltéséig él.
+
 Belépés nélkül a térkép **demó módban** fut: minden kipróbálható, csak menteni nem lehet.
 A **DEMO ADATOK** jelzés akkor látszik, ha valamelyik eszköz értéke nem élő mérés.
 
