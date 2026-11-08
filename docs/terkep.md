@@ -134,6 +134,13 @@ nem a lakás valódi állapota. Megjelenés: az alap (`?attekintes=1`) a
 szekciós lista a csempés műszerfal kályha-csempéjével; `?attekintes=2` csempés műszerfal,
 `?attekintes=3` fülek; a panel fejlécében is váltható.
 
+## Bútorok mozgatása (Szerkesztés)
+
+Alapból a bútorok és az eszköztűk **nem** mozdulnak el: egy kattintás csak kijelöli őket, a
+húzás pedig (nagyítva) a térképet mozgatja. Átrendezéshez kapcsold be a **Szerkesztés** módot:
+a ✥ gomb a térkép alatti eszköztáron vagy a jobb alsó nagyítósávban, vagy az **E** billentyű.
+Bekapcsolva a bútorok és a tűk húzhatók; ugyanazzal a gombbal (vagy E-vel) kapcsolod ki.
+
 ## Utolsó mozgás
 
 A felső sáv **UTOLSÓ MOZGÁS** csempéje azt mutatja, mikor mozdult utoljára valami a lakásban,
@@ -144,6 +151,12 @@ eltelt idő (óra, perc), alatta melyik érzékelő és pontosan mikor. Kattint�
 A nyílászáróknál az Élő áttekintés is pontosan írja, mióta (óra, perc) és mikor (nap, időpont)
 változott az állapot. Ha az előzményben (30 nap) nincs váltás, "legalább ... óta" a legrégebbi
 ismert sor (pl. az adatgyűjtés kezdete) óta.
+
+A foglaltsági sáv és a naptár fejlécében az ÉLŐ jelzés mellett **frissítés gomb** van: azonnal
+újratölti a foglalásokat, az eszközállapotot és az időjárást. A gomb buboréka megmutatja, mikor
+olvasta be utoljára az adatgyűjtő a naptárt. A Booking-foglalások (az Airbnb naptárában lezárt
+napként érkeznek) világosabb rózsaszínnel, Booking néven látszanak, az Airbnb-foglalások
+sötétebb rózsaszínnel.
 
 ## Kint (időjárás)
 

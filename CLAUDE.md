@@ -216,6 +216,12 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 
 **Mielőtt bármilyen automatika gyakrabban vagy távolról kapcsolná a kályhát:** fokozatonként 16 A-es kontaktor vagy mérős relé az elosztóba, a LUXION csak vezérlőjelet adjon. Villanyszerelő végezze. Ez a hardverkeret első tétele.
 
+### KAPCSOLÁSI SZABÁLY (a tulaj kérése, 2026.11.08; minden jövőbeli vezérlésre kötelező)
+
+- **Soha ne kapcsold egyszerre a cserépkályha mindhárom körét** (be sem, ki sem).
+- **Soha ne kapcsolj egyszerre több eszközt.** Bármely két kapcsolás között **legalább 3 másodperc** szünet: a kályha egyes 1 kW-os fokozatai (Switch 1/2/3) külön-külön, 3 mp-re egymástól; ugyanígy a bojler, a sütő/főzőlap, a klíma (IR és a 9-es kör), és minden más kapcsolható eszköz.
+- Jelenleg **semmit nem vezérlünk**, a rendszer csak olvas. Ha később lesz vezérlés, a kódban központi, sorba állító kapcsoló-réteg érvényesítse ezt (egyszerre egy parancs, utána min. 3 mp várakozás), és a kályha a kontaktor beépítése előtt távolról nem kapcsolható.
+
 ## 10. Döntések és keretek
 
 - Architektúra: a **K-Telemetry** mintájára (GitHub repó + felhős futtatás, Claude Code).
@@ -235,7 +241,7 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 - A bojler beállított hőfoka.
 - A gázmérő gyári száma és rendszeres leolvasása.
 - Az okos kismegszakítók előzménye: a Smart Life appban a kismegszakító oldalán az **Electricity** fül mutatja a korábbi fogyasztást (a tulaj jelezte, 2026.11.08), és az oldal mutatja az összesített (Total Ele) és a mai (Today Ele) kWh-t, a teljesítményt, a feszültséget és az áramot. Kérdés: a Tuya API statisztika végpontjai (`/v1.0/devices/{id}/statistics/days|months?code=...`) elérhetők-e a mi felhőprojektünkből; ha igen, a napi/havi előzmény visszamenőleg betölthető az `energy_daily`-be, és a múltbeli időjárással (Open-Meteo archív) azonnal lehet elemezni.
-- Az Airbnb hirdetés pontos be- és kijelentkezési ideje (a térkép 15:00 / 11:00-val számol), és hogy a Booking-foglalások valóban "Airbnb (Not available)" napként jelennek-e meg az Airbnb exportjában.
+- Az Airbnb hirdetés pontos be- és kijelentkezési ideje: a tulaj szerint a kijelentkezés hivatalosan 10:00 (a vendégek gyakran 11 körül mennek), a térkép 15:00 / 10:00-val számol; a hirdetésben ellenőrizendő. A Booking-foglalások az Airbnb exportjában "Airbnb (Not available)" napként jelennek meg; a tulaj szerint ezek 99%-ban valódi Booking-foglalások (a térkép világosabb rózsaszínnel, Booking néven mutatja).
 - A 4 okos kismegszakító közül kettő a TONGOU rendelésből van, a másik kettő eredete nem ismert; mindegyik mér a tulaj szerint.
 
 ## 12. Következő lépések

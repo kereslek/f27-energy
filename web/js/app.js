@@ -404,7 +404,7 @@
   // ---- Foglaltság: az Airbnb naptárexport (bookings tábla) ---------------------------------------
   // Érkezés és távozás a hirdetés beállítása szerint. EZ AZ EGYETLEN HELY: ha a tulaj mást állít be
   // az Airbnb-n, itt kell átírni (a Python oldalnak nincs szüksége rá, ott csak napok vannak).
-  var STAY = { checkin: '15:00', checkout: '11:00', heatStart: '12:00' };
+  var STAY = { checkin: '15:00', checkout: '10:00', heatStart: '12:00' };   // a hirdetés szerint a kijelentkezés 10:00 (a vendégek gyakran 11 körül mennek)
   var BK_REFRESH_MS = 30 * 60000;
   var BK_STALE_MS = 3 * 3600000;
   var BK_SRC = { airbnb: 'Airbnb', booking: 'Booking' };
@@ -464,7 +464,7 @@
     }
     return hit;
   }
-  function bkWhat(b) { return b.kind === 'reservation' ? BK_SRC[b.source] + ' foglalás' : 'foglalt vagy lezárt (valószínűleg Booking-vendég)'; }
+  function bkWhat(b) { return b.kind === 'reservation' ? BK_SRC[b.source] + ' foglalás' : 'Booking-foglalás'; }
   function bkSpan(b) {
     var n = dayDiff(b.s, b.e);
     return fullDay(b.s) + ' ' + STAY.checkin + ' - ' + fullDay(b.e) + ' ' + STAY.checkout + ', ' + n + ' éjszaka';
@@ -650,7 +650,7 @@
       var z = dayAdd(s.s, s.n);
       if (!s.b) return '- ' + rng(s.s, z) + ': üres (' + s.n + ' éj)';
       if (s.b.kind === 'reservation') nRes += s.n; else nBlk += s.n;
-      return '- ' + rng(s.s, z) + ': ' + (s.b.kind === 'reservation' ? BK_SRC[s.b.source] : 'foglalt vagy lezárt') + ' (' + s.n + ' éj' +
+      return '- ' + rng(s.s, z) + ': ' + (s.b.kind === 'reservation' ? BK_SRC[s.b.source] : 'Booking') + ' (' + s.n + ' éj' +
         (s.b.s < s.s || s.b.e > z ? ', a foglalás ' + rng(s.b.s, s.b.e) : '') + ')';
     });
     var booked = nRes + nBlk;
@@ -668,10 +668,10 @@
     var ta = m.todayArr;
     if (ta) {
       var res = ta.kind === 'reservation';
-      var who = res ? 'vendég érkezik (' + BK_SRC[ta.source] + ', ' + dayDiff(ta.s, ta.e) + ' éjszaka)' : 'kezdődik egy foglalt vagy lezárt időszak (valószínűleg Booking-vendég, de lehet csak lezárt nap is)';
+      var who = res ? 'vendég érkezik (' + BK_SRC[ta.source] + ', ' + dayDiff(ta.s, ta.e) + ' éjszaka)' : 'vendég érkezik (Booking)';
       var plan = 'Felfűtési terv: ' + STAY.heatStart + '-tól klíma fűtésre, 22 °C a kis szobában, a két szoba közti ajtó nyitva, a gázkonvektor közepes fokozaton. A kályha csak kiegészítő (nagy hidegben 1 fokozat). Kérd meg a takarítót, hogy 14:00-kor nézze meg: ablakok zárva, 21-22 °C.';
       if (boilerOff) add(86, 'red', 'k7', 'Ma vendég jön, de a bojler le van kapcsolva', 'Ma ' + STAY.checkin + '-kor ' + who + ', a bojler (7-es kör) viszont le van kapcsolva. Kapcsold vissza legkésőbb ' + STAY.heatStart + '-kor a Smart Life appban, hogy ' + STAY.checkin + '-ra meleg legyen a víz. ' + plan + ' Csak javaslat.');
-      else add(now >= heatMs ? 72 : 64, 'blue', '11', res ? 'Ma ' + STAY.checkin + '-kor vendég érkezik (' + BK_SRC[ta.source] + ')' : 'Ma ' + STAY.checkin + '-tól foglalt vagy lezárt', 'Ma ' + STAY.checkin + '-kor ' + who + '. ' + plan + ' Csak javaslat.');
+      else add(now >= heatMs ? 72 : 64, 'blue', '11', res ? 'Ma ' + STAY.checkin + '-kor vendég érkezik (' + BK_SRC[ta.source] + ')' : 'Ma ' + STAY.checkin + '-kor vendég érkezik (Booking)', 'Ma ' + STAY.checkin + '-kor ' + who + '. ' + plan + ' Csak javaslat.');
     }
     // üres a lakás, de megy a kályha: ez a nagy tétel
     var empty = !m.cur && !(ta && now >= heatMs);
@@ -960,7 +960,10 @@
       });
     }
 
+    // Bútorok és tűk csak Szerkesztés módban mozgathatók; alapból egy koppintás csak kijelöl,
+    // a húzás pedig a térképet mozgatja (nagyítva), így nem kap el véletlenül egy bútort.
     startDrag(e, id, kind) {
+      if (!this.state.editMode) { if (this.state.sel !== id) this.setState({ sel: id }); return; }
       this._before = posKey(this.state.pos);
       this._beforePos = Object.assign({}, this.state.pos || {});
       super.startDrag(e, id, kind);
@@ -1259,7 +1262,7 @@
 
     // A foglaltság közös modellje és a csempe (A) meg a 14 napos sáv (B) értékei.
     bkVals(v) {
-      var st = this.state, now = st.now || Date.now();
+      var self = this, st = this.state, now = st.now || Date.now();
       var demo = !st.user, rows = null, why = '', stale = '';
       if (demo) rows = demoBookings(now);
       else if (!st.role) why = 'a fiókod nincs a jogosultsági listán';
@@ -1287,16 +1290,16 @@
         c = { ck: 'VENDÉG BENT · ' + BK_SRC[m.cur.source].toUpperCase(), cv: dayWord(m.cur.e, today) + ' ' + STAY.checkout + '-ig', cs: cs, k: 'in',
           tip: 'Vendég bent: ' + BK_SRC[m.cur.source] + ' foglalás, ' + bkSpan(m.cur) + '.' + (m.confirm ? ' A bejárati ajtó ' + budTime(m.confirm) + '-kor nyílt.' : '') };
       } else if (m.cur) {
-        c = { ck: 'FOGLALT VAGY LEZÁRT', cv: dayWord(m.cur.e, today) + ' ' + STAY.checkout + '-ig', cs: 'valószínűleg Booking-vendég', k: 'blocked',
-          tip: 'A naptár szerint foglalt vagy lezárt (' + bkSpan(m.cur) + '). Ez lehet importált Booking-foglalás, vagy csak lezárt nap (előkészítési idő, kézi lezárás).' };
+        c = { ck: 'VENDÉG BENT · BOOKING', cv: dayWord(m.cur.e, today) + ' ' + STAY.checkout + '-ig', cs: 'az Airbnb naptárából', k: 'blocked',
+          tip: 'Booking-foglalás (' + bkSpan(m.cur) + '). Az Airbnb naptárában lezárt napként látszik; a tulaj szerint ezek a Bookingról szinkronizált foglalások.' };
       } else if (m.todayArr) {
         var ta = m.todayArr, before = now < budMs(today, STAY.heatStart);
-        c = { ck: ta.kind === 'reservation' ? 'MA ÉRKEZIK · ' + BK_SRC[ta.source].toUpperCase() : 'MA: FOGLALT VAGY LEZÁRT', cv: STAY.checkin + ' · ' + durHM(ta.arr - now),
+        c = { ck: ta.kind === 'reservation' ? 'MA ÉRKEZIK · ' + BK_SRC[ta.source].toUpperCase() : 'MA ÉRKEZIK · BOOKING', cv: STAY.checkin + ' · ' + durHM(ta.arr - now),
           cs: before ? 'felfűtés indul ' + STAY.heatStart + '-kor' : 'felfűtés: ' + STAY.heatStart + ' óta', k: 'today',
-          tip: (ta.kind === 'reservation' ? 'Ma érkezik vendég: ' : 'Ma kezdődik egy foglalt vagy lezárt időszak (valószínűleg Booking-vendég): ') + bkSpan(ta) + '. Felfűtés ' + STAY.heatStart + '-tól.' };
+          tip: (ta.kind === 'reservation' ? 'Ma érkezik vendég: ' : 'Ma érkezik vendég (Booking): ') + bkSpan(ta) + '. Felfűtés ' + STAY.heatStart + '-tól.' };
       } else if (m.next) {
         var nx = m.next, res = nx.kind === 'reservation';
-        c = { ck: res ? 'ÜRES · KÖVETKEZŐ VENDÉG' : 'ÜRES · UTÁNA FOGLALT/LEZÁRT', cv: dayWord(nx.s, today) + ' ' + STAY.checkin, cs: relText(nx.arr - now) + ' · takarékmód', k: 'free',
+        c = { ck: res ? 'ÜRES · KÖVETKEZŐ VENDÉG' : 'ÜRES · KÖVETKEZŐ: BOOKING', cv: dayWord(nx.s, today) + ' ' + STAY.checkin, cs: relText(nx.arr - now) + ' · takarékmód', k: 'free',
           tip: 'Most nincs vendég. Következő: ' + bkWhat(nx) + ', ' + bkSpan(nx) + '. Addig takarékmód: bojler LE, kályha KI vagy temperálás (csak javaslat).' };
       } else c = { ck: 'ÜRES', cv: 'nincs foglalás', cs: 'a naptárban nincs következő', k: 'free', tip: 'Most nincs vendég, és a naptárban nincs következő foglalás.' };
       if (stale) { c.cs = stale; c.k += ' stale'; c.tip += ' Figyelem: ' + stale + '.'; }
@@ -1315,7 +1318,7 @@
           var parts = [];
           if (leave) parts.push('távozás ' + STAY.checkout + ' (' + bkWhat(prev) + ')' + (cur ? '' : ', utána bojler LE, kályha KI'));
           if (arrive) parts.push('érkezés ' + STAY.checkin + ' (' + bkWhat(cur) + ')' + (prev ? '' : ', felfűtés ' + STAY.heatStart + '-tól, bojler BE legkésőbb ' + STAY.heatStart + '-kor'));
-          if (!leave && !arrive) parts.push(prev && prev.kind === 'reservation' ? 'vendég bent (' + BK_SRC[prev.source] + ')' : 'foglalt vagy lezárt (valószínűleg Booking-vendég)');
+          if (!leave && !arrive) parts.push(prev && prev.kind === 'reservation' ? 'vendég bent (' + BK_SRC[prev.source] + ')' : 'Booking-foglalás');
           tip += parts.join('; ') + '.';
         }
         var dw = dowOf(key);
@@ -1334,7 +1337,7 @@
         if (x1 <= 0 || x0 >= 1) return;
         var cl = x0 < 0, cr = x1 > 1, a = Math.max(0, x0), z = Math.min(1, x1), wpx = (z - a) * 416;
         var res = b.kind === 'reservation';
-        bars.push({ x: (a * 100).toFixed(3), w: ((z - a) * 100).toFixed(3), label: res ? (wpx >= 38 ? BK_SRC[b.source] : '') : (wpx >= 84 ? 'foglalt/lezárt' : wpx >= 44 ? 'lezárt' : ''),
+        bars.push({ x: (a * 100).toFixed(3), w: ((z - a) * 100).toFixed(3), label: res ? (wpx >= 38 ? BK_SRC[b.source] : '') : (wpx >= 42 ? 'Booking' : ''),
           cls: 'bk-bar ' + (res ? 'res ' + b.source : 'blk') + (cl ? ' cl' : '') + (cr ? ' cr' : ''), tip: bkWhat(b) + ': ' + bkSpan(b) });
       });
       var hm = budKey(now).slice(11), nowX = ((hmMin(hm) / 1440) / N * 100).toFixed(3);
@@ -1342,6 +1345,13 @@
         model: m, demo: demo, chip: c, days: days, bars: bars, nowX: nowX, hasNow: !!m, none: !m, why: why,
         srcLabel: demo ? 'DEMÓ' : 'ÉLŐ', srcCls: 'dp-src ' + (demo ? 'demo' : 'live'),
         srcTip: demo ? 'Kitalált foglalások a mai naphoz igazítva. A valódi naptár belépés után látszik (tulaj, takarító).' : 'Az Airbnb naptárexportja (óránként frissül, Supabase).',
+        refresh: function () { self.refreshAll(); }, refCls: 'btn ib sm refbtn' + (self.state.refBusy ? ' busy' : ''),
+        refTip: (function () {
+          var rows = (self.state.bk && self.state.bk.rows) || [], last = 0;
+          rows.forEach(function (r) { var t = Date.parse(r.seen_at); if (isFinite(t) && t > last) last = t; });
+          return 'Frissítés most: foglalások, eszközállapot, időjárás.' + (last ? ' A naptárt az adatgyűjtő utoljára ' + dayTime(last, now) + '-kor olvasta be.' : '') +
+            (self.state.bk && self.state.bk.at ? ' Betöltve: ' + budTime(self.state.bk.at) + '.' : '');
+        })(),
         headTip: 'Érkezés ' + STAY.checkin + ', távozás ' + STAY.checkout + ' (a hirdetés beállítása). Felfűtés érkezés napján ' + STAY.heatStart + '-tól.'
       };
     }
@@ -1370,7 +1380,7 @@
         cells.push({ key: key, d: String(Number(key.slice(8))), out: !inM,
           cls: 'cal-d' + (inM ? '' : ' out') + (key === today ? ' today' : '') + (st.calSel === key ? ' sel' : '') + (free ? ' free' : '') + (key < today ? ' past' : ''),
           lc: 'cal-h l ' + half(prev), rc: 'cal-h r ' + half(cur), lines: lines.map(function (t) { return { t: t }; }), hasLines: lines.length > 0,
-          aria: fullDay(key) + (key === today ? ' (ma)' : '') + ': ' + (!m ? 'nincs adat' : free ? 'üres' : lines.length ? lines.join(', ') : cur && cur.kind === 'reservation' ? 'vendég' : 'foglalt vagy lezárt'),
+          aria: fullDay(key) + (key === today ? ' (ma)' : '') + ': ' + (!m ? 'nincs adat' : free ? 'üres' : lines.length ? lines.join(', ') : cur && cur.kind === 'reservation' ? 'vendég' : 'Booking-vendég'),
           pressed: st.calSel === key ? 'true' : 'false',
           pick: (function (k) { return function () { self.setState({ calSel: st.calSel === k ? null : k }); }; })(key),
           kd: (function (k) { return function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); self.setState({ calSel: st.calSel === k ? null : k }); } }; })(key) });
@@ -1384,7 +1394,7 @@
       if (st.calSel) {
         var k = st.calSel, p0 = m ? nightOf(list, dayAdd(k, -1)) : null, c0 = m ? nightOf(list, k) : null, span = function (b) {
           return shortDate(b.s) + ' ' + STAY.checkin + ' - ' + shortDate(b.e) + ' ' + STAY.checkout + ', ' + dayDiff(b.s, b.e) + ' éjszaka';
-        }, nm = function (b) { return b.kind === 'reservation' ? BK_SRC[b.source] + ' foglalás' : 'Foglalt vagy lezárt (valószínűleg Booking)'; };
+        }, nm = function (b) { return b.kind === 'reservation' ? BK_SRC[b.source] + ' foglalás' : 'Booking-foglalás'; };
         det = fullDay(k) + ': ';
         if (!m) det += 'nincs adat.';
         else if (!p0 && !c0) det += k < today ? 'üres nap volt.' : 'üres nap: bojler LE, kályha KI javasolt (csak javaslat).';
@@ -1393,10 +1403,10 @@
         else if (p0 && !c0) det += 'távozás ' + STAY.checkout + '. ' + nm(p0) + ': ' + span(p0) + '.';
         else det += nm(c0) + ': ' + span(c0) + '.';
       }
-      var sum = m ? 'Foglalt éj: ' + booked + (nBlk ? ' (Airbnb ' + nRes + ', lezárt ' + nBlk + ')' : '') + ' · üres éj: ' + freeN + ' · kihasználtság: ' + Math.round(booked / dim * 100) + ' %' : 'Nincs adat: ' + bk.why + '.';
+      var sum = m ? 'Foglalt éj: ' + booked + (nBlk ? ' (Airbnb ' + nRes + ', Booking ' + nBlk + ')' : '') + ' · üres éj: ' + freeN + ' · kihasználtság: ' + Math.round(booked / dim * 100) + ' %' : 'Nincs adat: ' + bk.why + '.';
       return {
         open: !!st.calOpen, openAttr: st.calOpen ? 'true' : 'false', title: y + '. ' + mname, checkin: STAY.checkin, checkout: STAY.checkout, demo: bk.demo, none: !m, why: bk.why,
-        srcLabel: bk.srcLabel, srcCls: bk.srcCls, srcTip: bk.srcTip,
+        srcLabel: bk.srcLabel, srcCls: bk.srcCls, srcTip: bk.srcTip, refresh: bk.refresh, refCls: bk.refCls, refTip: bk.refTip,
         weeks: wk, heads: ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'].map(function (h) { return { h: h }; }),
         sum: sum, old: old, oldText: 'Régebbi hónap: a naptár csak kb. 30 napot tart meg visszafelé.',
         det: det, hasDet: !!det,
@@ -1405,7 +1415,7 @@
         copy: function () { self.copyText(calText(list, mon, dim, today, bk), 'Naptár másolva: beillesztheted (Ctrl+V).'); },
         close: function () { self.closeCal(); },
         toggle: function () { if (st.calOpen) self.closeCal(); else self.openCal(); },
-        chipSub: !m ? 'nincs adat' : m.cur ? (m.cur.kind === 'reservation' ? 'ma vendég bent' : 'ma foglalt vagy lezárt') : m.todayArr ? 'ma érkezik ' + STAY.checkin : m.next ? 'következő: ' + dayWord(m.next.s, today) + ' ' + STAY.checkin : 'nincs következő'
+        chipSub: !m ? 'nincs adat' : m.cur ? (m.cur.kind === 'reservation' ? 'ma vendég bent' : 'ma vendég bent (Booking)') : m.todayArr ? 'ma érkezik ' + STAY.checkin : m.next ? 'következő: ' + dayWord(m.next.s, today) + ' ' + STAY.checkin : 'nincs következő'
       };
     }
 
@@ -1722,6 +1732,7 @@
 
     uiVals(demo) {
       var self = this, st = this.state, cur = posKey(st.pos);
+      var editing = !!st.editMode;
       var dirty = cur !== st.savedKey;
       var owner = st.role === 'owner';
       var loggedIn = !!st.user;
@@ -1739,6 +1750,7 @@
       var layouts = st.layouts.map(function (l) {
         var confirm = st.confirmId === l.id;
         return {
+
           name: l.name, isDefault: !!l.is_default, time: 'Módosítva: ' + dateTime(l.updated_at),
           cls: 'lrow' + (st.current && st.current.id === l.id ? ' cur' : ''),
           confirm: confirm, actions: !confirm, canEdit: owner, canDefault: owner && !l.is_default,
@@ -1753,6 +1765,10 @@
 
       var role = ROLE[st.role] || { label: 'NINCS JOG', color: '#8a8f9c' };
       return {
+        editCls: editing ? 'editing' : '', editPressed: editing ? 'true' : 'false',
+        editTitle: editing ? 'Szerkesztés BE: a bútorok és az eszközök húzhatók. Kattints a kikapcsoláshoz.' : 'Bútorok és eszközök mozgatása (Szerkesztés). Kikapcsolva a húzás a térképet mozgatja.',
+        editBtnCls: 'editbtn' + (editing ? ' on' : ''),
+        toggleEdit: function () { self.toggleEdit(); },
         showDemo: demo,
         acctLabel: loggedIn ? (role.label === 'TULAJ' ? 'Fiók és mentés' : 'Fiók') : 'Belépés',
         drawerOpen: st.drawer,
@@ -1956,6 +1972,23 @@
       }, function (err) { self.toast(self.errText(err, 'Az elrendezések betöltése nem sikerült.'), 'err'); });
     }
 
+    // Szerkesztés mód (bútorok és tűk húzása) be/ki; a nagyítósáv gombját is szinkronban tartja
+    toggleEdit() {
+      var on = !this.state.editMode;
+      this.setState({ editMode: on, drag: null });
+      this.toast(on ? 'Szerkesztés BE: húzd a bútorokat és az eszközöket.' : 'Szerkesztés KI: a húzás a térképet mozgatja.', 'info');
+      syncEditBtn(on);
+    }
+
+    // Kézi frissítés (a naptár és a sáv gombja): foglalások, élő állapot, előzmény, időjárás.
+    refreshAll() {
+      var self = this, st = this.state;
+      if (!this.sb || !st.user || !st.role) { this.toast('Demó mód: a valódi adatokhoz lépj be.', 'info'); return; }
+      this.setState({ refBusy: true });
+      this.loadBookings(); this.refreshLive(); this.loadHistory(); this.fetchWeather();
+      setTimeout(function () { self.setState({ refBusy: false }); self.toast('Frissítve ' + budTime(Date.now()) + '-kor.', 'ok'); }, 900);
+    }
+
     refreshLive() {
       var self = this;
       if (!this.sb || !this.state.user || !this.state.role) return;
@@ -2151,7 +2184,14 @@
     return null;
   }
 
-  function buildZoomBar() {
+  var editBtnZ = null;
+  function syncEditBtn(on) {
+    if (!editBtnZ) return;
+    editBtnZ.setAttribute('aria-pressed', on ? 'true' : 'false');
+    editBtnZ.classList.toggle('on', !!on);
+    editBtnZ.title = on ? 'Szerkesztés BE: a bútorok és az eszközök húzhatók (E)' : 'Bútorok és eszközök mozgatása: Szerkesztés (E)';
+  }
+  function buildZoomBar(app) {
     var bar = document.createElement('div');
     bar.className = 'zoombar';
     bar.setAttribute('role', 'group');
@@ -2170,6 +2210,10 @@
     zoomLabel.setAttribute('aria-live', 'polite');
     bar.appendChild(zoomLabel);
     zoomInBtn = mk('+', 'Nagyítás (Ctrl + görgő vagy +)', function () { zoomBy(1.25); });
+    editBtnZ = mk('', 'Bútorok és eszközök mozgatása: Szerkesztés (E)', function () { app.toggleEdit(); },
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>');
+    editBtnZ.classList.add('zedit');
+    syncEditBtn(false);
     mk('', 'Teljes nézet (0)', resetView,
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>');
     document.body.appendChild(bar);
@@ -2177,7 +2221,7 @@
 
   function initViewControls(app) {
     stageEl = document.getElementById('stage');
-    buildZoomBar();
+    buildZoomBar(app);
     applyView();
     window.addEventListener('resize', applyView);
 
@@ -2306,6 +2350,7 @@
       if (e.key === 'Escape' && app.state.devOpen) { app.setState({ devOpen: false }); return; }
       if (e.key === 'Escape' && app.state.ovSheet) { app.setState({ ovSheet: false }); return; }
       if (editableTarget(t)) return;
+      if ((e.key === 'e' || e.key === 'E') && !(e.ctrlKey || e.metaKey || e.altKey)) { app.toggleEdit(); return; }
       if (!(e.ctrlKey || e.metaKey)) return;
       var k = e.key.toLowerCase();
       if (k === 'z' && !e.shiftKey) { e.preventDefault(); app.undo(); }

@@ -2,9 +2,16 @@ name: Adatgyűjtés
 
 # 10 percenként: Tuya állapotok -> Supabase (device_status, energy_daily).
 # Óránként egyszer: időjárás (Open-Meteo) és foglaltság (Airbnb naptárexport, ha be van állítva).
-# Futásonként szokásosan 2 Tuya API-hívás (token + eszközlista).
+# Körönként szokásosan 2 Tuya API-hívás (token + eszközlista).
 # A log publikus: csak darabszámok kerülnek bele, név, azonosító vagy érték nem.
-# Szüneteltetés: Actions > Adatgyűjtés > "..." > Disable workflow.
+#
+# Ütemezés: a GitHub cron-időzítője nem megbízható (2026.11.08-án órákig egyszer sem indult el),
+# ezért egy futás kb. 1 órán át 10 percenként gyűjt, a végén pedig maga indítja a következő
+# futást (workflow_dispatch). A cron csak tartalék: ha a lánc valamiért megszakad, újraindítja.
+# Egyszerre legfeljebb egy futás megy (concurrency), a többi sorba áll.
+#
+# Szüneteltetés: Actions > Adatgyűjtés > "..." > Disable workflow (ez a láncot is megállítja).
+# Kézi indítás: Actions > Adatgyűjtés > Run workflow.
 
 on:
   schedule:
@@ -13,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  actions: write   # a következő futás elindításához
 
 concurrency:
   group: collect
@@ -21,13 +29,13 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Adatgyűjtés
+      - name: Adatgyűjtés (10 percenként, kb. 1 órán át)
         env:
           TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
           TUYA_ACCESS_SECRET: ${{ secrets.TUYA_ACCESS_SECRET }}
@@ -37,4 +45,20 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
           BOOKING_ICAL_URL: ${{ secrets.BOOKING_ICAL_URL }}
-        run: python -m f27.collect
+        run: |
+          end=$(( $(date +%s) + 55 * 60 ))
+          n=0
+          while :; do
+            n=$((n + 1))
+            echo "::group::$n. kör"
+            python -m f27.collect || echo "::warning::A(z) $n. kör hibával zárult, a következő 10 perc múlva jön."
+            echo "::endgroup::"
+            [ $(( $(date +%s) + 600 )) -lt "$end" ] || break
+            sleep 600
+          done
+          echo "Körök ebben a futásban: $n"
+      - name: Következő futás indítása
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run collect.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}"

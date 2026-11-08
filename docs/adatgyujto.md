@@ -7,7 +7,10 @@
 | **Eszközfelderítés** (`discover.yml`) | kézzel, és minden hónap 1-jén 04:17 UTC | Tuya eszközlista, párosítás a pink számokhoz, titkosított pillanatkép a repóba, a Supabase `devices` tábla frissítése (eszközazonosító + a státuszkódok skálája) |
 | **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként); óránként egyszer az időjárás (`weather_hourly`) és a foglaltság az Airbnb naptárból (`bookings`) |
 
-A GitHub ütemezése nem pontos: a 10 perces futás néha pár percet késik, terhelt időszakban kimaradhat egy-egy. Ez nem hiba.
+A GitHub cron-ütemezése nem megbízható (2026.11.08-án órákig egyszer sem indult el). Ezért egy
+futás kb. 1 órán át 10 percenként gyűjt (6 kör), a végén pedig maga indítja a következő futást;
+a cron csak tartalék, ha a lánc megszakadna. Egyszerre csak egy futás megy. Ha a térkép régi
+adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot.
 
 ## Mit ír az adatgyűjtő
 

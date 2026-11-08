@@ -54,7 +54,13 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .trail{animation:dash 1.6s linear infinite}
 .breathe{animation:breathe 3.6s ease-in-out infinite}
 .root{user-select:none;-webkit-user-select:none}
-.pc{cursor:grab;touch-action:none}
+.pc{cursor:pointer}
+.root.editing .pc{cursor:grab;touch-action:none}
+.root.editing .pc:hover{filter:drop-shadow(0 0 3px #ffe066)}
+.zoombar .zb.zedit.on{background:#1e2a44;color:#ffe066}
+.editbtn{appearance:none;font:inherit;flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:14px;border:3px solid #1e2a44;background:#fffdf7;color:#1e2a44;cursor:pointer;box-shadow:0 3px 0 #1e2a44}
+.editbtn.on{background:#1e2a44;color:#ffe066}
+.editbtn:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .pc:hover{filter:brightness(1.06) drop-shadow(0 0 3px #ffffff)}
 .pc.sel{filter:drop-shadow(0 0 4px #ff4fa3) drop-shadow(0 0 2px #ff4fa3)}
 .pc.drag{cursor:grabbing;filter:drop-shadow(0 14px 6px rgba(30,42,68,.45)) brightness(1.08)}
@@ -86,7 +92,8 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .cv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44}
 .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;border:3px solid #1e2a44;box-sizing:border-box}
 .tag{font-size:9.5px;font-weight:900;letter-spacing:.8px;color:#ffffff;padding:2px 8px;border-radius:999px;border:2px solid #1e2a44}
-.pin{all:unset;position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;cursor:grab;touch-action:none;z-index:2}
+.pin{all:unset;position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;cursor:pointer;z-index:2}
+.root.editing .pin{cursor:grab;touch-action:none}
 .pin:active{cursor:grabbing}
 .pin.drag{z-index:5}
 .pin .dot{position:absolute;inset:0;border-radius:50%;border:3px solid #1e2a44;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#ffffff;font-family:"Lilita One","Baloo 2",sans-serif;font-size:13px;box-shadow:0 3px 0 #1e2a44;transition:transform .12s}
@@ -248,7 +255,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .bkchip.in{background:#ffe1ea}.bkchip.in .cv{color:#c8321f}
 .bkchip.today{background:#fff1c9}.bkchip.today .cv{color:#9a6a00}
 .bkchip.free{background:#e7f8ec}.bkchip.free .cv{color:#2f7d4f}
-.bkchip.blocked{background:#e3e8f0}.bkchip.blocked .cv{color:#3d4b66}
+.bkchip.blocked{background:#ffeef2}.bkchip.blocked .cv{color:#a3324f}
 .bkchip.none{background:#eceff4}.bkchip.none .cv{color:#6b7280}
 .bkchip.stale .cs{color:#b45309}
 .calchip{flex:0 0 auto;appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;gap:1px;padding-top:4px;padding-bottom:4px;background:#fffdf7;max-width:190px}
@@ -280,11 +287,11 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .bk-ic{width:13px;height:13px;display:block}
 .bk-ic.s{width:11px;height:11px;display:inline-block;vertical-align:-1px;margin-right:2px}
 .bk-arr{position:absolute;left:0;right:0;top:46px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:9px;font-weight:900;color:#c8321f;line-height:1}
-.bk-arr.q{color:#3d4b66}
+.bk-arr.q{color:#c8321f}
 .bk-bar{position:absolute;top:28px;height:14px;box-sizing:border-box;border:1.5px solid #1e2a44;border-radius:8px;font-size:9px;font-weight:900;line-height:11px;padding:0 5px;white-space:nowrap;overflow:hidden;text-overflow:clip;color:#ffffff}
 .bk-bar.res{background:#ff5a7a}
 .bk-bar.res.booking{background:#2f6fdb}
-.bk-bar.blk{background:repeating-linear-gradient(135deg,#b7c3d6 0 4px,#dfe5ef 4px 8px);color:#26324d}
+.bk-bar.blk{background:#ffb8c8;color:#7a1f35}
 .bk-bar.cl{border-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
 .bk-bar.cr{border-right:0;border-top-right-radius:0;border-bottom-right-radius:0}
 .bk-now{position:absolute;top:26px;bottom:0;width:2px;margin-left:-1px;background:#ff4fa3;opacity:.8;pointer-events:none}
@@ -294,13 +301,18 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .bk-leg .r{margin-left:auto}
 .sw{display:inline-block;width:12px;height:9px;border-radius:4px;border:1.5px solid #1e2a44;box-sizing:border-box}
 .sw.res{background:#ff5a7a}
-.sw.blk{background:repeating-linear-gradient(135deg,#b7c3d6 0 3px,#dfe5ef 3px 6px)}
+.sw.blk{background:#ffb8c8}
 .sw.gap{background:#e7f8ec;border:1.5px dashed #3fae6a}
 .sw.free{background:#ffffff}
 .cal-back{pointer-events:auto;position:fixed;inset:0;background:rgba(14,20,40,.28)}
 .calpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
 .cal-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 14px 8px;background:linear-gradient(180deg,#fff1c9,#fffdf7)}
 .cal-head .calic{width:24px;height:24px}
+.btn.ib.sm.refbtn{width:30px;height:30px;min-width:30px;min-height:0;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.bk-head .btn.ib.sm.refbtn{width:22px;height:22px;min-width:22px;border-width:2px;box-shadow:none}
+.bk-head .refbtn svg{width:12px;height:12px}
+.refbtn.busy svg{animation:refspin .8s linear infinite}
+@keyframes refspin{to{transform:rotate(360deg)}}
 .cal-t{font-family:"Fraunces",serif;font-weight:800;font-size:21px;color:#3b2a14;flex:1 1 auto}
 .cal-nav{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 14px 10px;border-bottom:3px solid #1e2a44}
 .cal-m{font-family:"Fraunces",serif;font-weight:800;font-size:18px;min-width:150px;text-align:center}
@@ -317,8 +329,8 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .cal-d.sel{border-width:3px;border-color:#2f6fe4}
 .cal-h{position:absolute;top:0;bottom:0;width:50%}
 .cal-h.l{left:0}.cal-h.r{right:0}
-.cal-h.res{background:#ffb3c2}
-.cal-h.blk{background:repeating-linear-gradient(135deg,#c3cddd 0 4px,#e6ebf3 4px 8px)}
+.cal-h.res{background:#ff8fa6}
+.cal-h.blk{background:#ffd3dd}
 .cal-h.free{background:transparent}
 .cal-d.free:not(.past):not(.out){background:#eefaf1}
 .cal-n{position:absolute;left:5px;top:3px;font:400 15px/1 "Lilita One","Baloo 2",sans-serif}
@@ -629,7 +641,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <div id="devlayer"></div>
 <!-- A G3 sablon: a js/minidc.js értelmezi ({{ }} értékek, sc-for, sc-if, onX események). -->
 <template id="g3-template">
-<div class="root" data-root="1" onPointerMove="{{onMove}}" onPointerUp="{{onUp}}" onPointerCancel="{{onUp}}" style="width: 1440px; height: 900px; position: relative; overflow: hidden; font-family: 'Nunito', system-ui, sans-serif; color: #1e2a44; background: #8fd3ff">
+<div class="root {{ui.editCls}}" data-root="1" onPointerMove="{{onMove}}" onPointerUp="{{onUp}}" onPointerCancel="{{onUp}}" style="width: 1440px; height: 900px; position: relative; overflow: hidden; font-family: 'Nunito', system-ui, sans-serif; color: #1e2a44; background: #8fd3ff">
 
 <svg width="1440" height="900" viewBox="0 0 1440 900" style="position: absolute; left: 0; top: 0" role="img" aria-label="A lakás izometrikus platformer pályaként. A bútorok és az eszközök húzhatók.">
 <defs>
@@ -1002,10 +1014,10 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </section>
 
 <div style="position: absolute; left: 380px; width: 748px; top: 684px; height: 44px; display: flex; align-items: center; gap: 8px">
-<div title="Húzd a bútorokat és eszközöket" style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: #1e2a44; color: #fff7e6; font-weight: 900; font-size: 13px">
-<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3" fill="none" stroke="#ffe066" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-<span class="sr">Húzd a bútorokat és eszközöket</span>
-</div>
+<button class="{{ui.editBtnCls}}" type="button" onClick="{{ui.toggleEdit}}" aria-pressed="{{ui.editPressed}}" title="{{ui.editTitle}}">
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="sr">Bútorok mozgatása (Szerkesztés)</span>
+</button>
 <button class="btn ib" type="button" onClick="{{ui.undo}}" disabled="{{ui.undoDisabled}}" aria-label="Visszavonás (Ctrl+Z)" title="Visszavonás (Ctrl+Z)">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 </button>
@@ -1027,7 +1039,7 @@ Elrendezés visszaállítása
 <section class="panel bkpanel" aria-label="Foglaltság: a következő 14 nap" style="position: absolute; left: 16px; top: 744px; width: 456px; height: 140px">
 <div class="bk-head">
 <span class="lil bk-title" title="{{bk.headTip}}">Foglaltság</span>
-<span class="{{bk.srcCls}}" title="{{bk.srcTip}}">{{bk.srcLabel}}</span>
+<span class="{{bk.srcCls}}" title="{{bk.srcTip}}">{{bk.srcLabel}}</span><button class="{{bk.refCls}}" type="button" onClick="{{bk.refresh}}" aria-label="Frissítés" title="{{bk.refTip}}"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
 <span class="bk-14" title="{{bk.headTip}}">14 nap</span>
 <span class="bk-sp"></span>
 <span class="bk-lvs" role="group" aria-label="Pálya-előbeállítások: kitalált napszak és időjárás">
@@ -1041,7 +1053,7 @@ Elrendezés visszaállítása
 <sc-if value="{{bk.hasNow}}"><span class="bk-now" style="left: {{bk.nowX}}%" title="most" aria-hidden="true"></span></sc-if>
 <sc-if value="{{bk.none}}"><div class="bk-none">Nincs adat: {{bk.why}}</div></sc-if>
 </div>
-<div class="bk-leg" title="{{bk.headTip}}"><span><i class="sw res"></i>Airbnb</span><span><i class="sw blk"></i>foglalt/lezárt</span><span><i class="sw gap"></i>üres: bojler LE, kályha KI</span><span class="r"><svg class="bk-ic s" viewBox="0 0 24 24"><path d="M12 2.5c3 4 6.5 6 6.5 11a6.5 6.5 0 0 1-13 0c0-3 2-5 3.5-6 0 3 1 4.5 3 4.5 0-4-1-6.5 0-9.5z" fill="#ff7a1a" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path></svg>felfűtés 12:00</span></div>
+<div class="bk-leg" title="{{bk.headTip}}"><span><i class="sw res"></i>Airbnb</span><span><i class="sw blk"></i>Booking</span><span><i class="sw gap"></i>üres: bojler LE, kályha KI</span><span class="r"><svg class="bk-ic s" viewBox="0 0 24 24"><path d="M12 2.5c3 4 6.5 6 6.5 11a6.5 6.5 0 0 1-13 0c0-3 2-5 3.5-6 0 3 1 4.5 3 4.5 0-4-1-6.5 0-9.5z" fill="#ff7a1a" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path></svg>felfűtés 12:00</span></div>
 </section>
 
 <div class="panel" style="position: absolute; left: 492px; top: 744px; width: 456px; height: 140px; padding: 10px 16px; background: #fff7e6; display: flex; flex-direction: column; gap: 2px">
@@ -1388,7 +1400,7 @@ Elrendezés visszaállítása
 <div class="cal-head">
 <svg class="calic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h3v3H8z" fill="#fff1c9" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></path></svg>
 <span class="cal-t" id="f27-cal-title">Foglalási naptár</span>
-<span class="{{cal.srcCls}}" title="{{cal.srcTip}}">{{cal.srcLabel}}</span>
+<span class="{{cal.srcCls}}" title="{{cal.srcTip}}">{{cal.srcLabel}}</span><button class="{{cal.refCls}}" type="button" onClick="{{cal.refresh}}" aria-label="Frissítés" title="{{cal.refTip}}"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
 <button class="btn ib sm cal-x" type="button" onClick="{{cal.close}}" aria-label="Bezárás" title="Bezárás (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg></button>
 </div>
 <div class="cal-nav">
@@ -1408,7 +1420,7 @@ Elrendezés visszaállítása
 <p class="cal-sum">{{cal.sum}}</p>
 <sc-if value="{{cal.old}}"><p class="cal-note">{{cal.oldText}}</p></sc-if>
 <sc-if value="{{cal.none}}"><p class="cal-note">Beállítás: Airbnb > Naptár > Elérhetőség > Naptárak összekapcsolása > Naptár exportálása; a linket a GitHub repó Settings > Secrets and variables > Actions alatt AIRBNB_ICAL_URL néven kell elmenteni (soha nem a chatbe). Részletek: docs/terkep.md, Foglaltság.</p></sc-if>
-<div class="cal-leg"><span><i class="sw res"></i>Airbnb foglalás</span><span><i class="sw blk"></i>foglalt vagy lezárt (valószínűleg Booking)</span><span><i class="sw free"></i>üres</span><span>Fél cella: érkezés {{cal.checkin}}, távozás {{cal.checkout}}.</span></div>
+<div class="cal-leg"><span><i class="sw res"></i>Airbnb foglalás</span><span><i class="sw blk"></i>Booking-foglalás (az Airbnb naptárából)</span><span><i class="sw free"></i>üres</span><span>Fél cella: érkezés {{cal.checkin}}, távozás {{cal.checkout}}.</span></div>
 </div>
 </aside>
 </sc-if>
