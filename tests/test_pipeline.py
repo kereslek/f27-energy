@@ -605,6 +605,41 @@ def meteo(now, hours=96, start_back=48):
                        "weather_code": [3] * hours, "is_day": [1, 0] * (hours // 2)}}
 
 
+class TestStalePower(unittest.TestCase):
+    """A felhőben ragadt kismegszakító-teljesítmény javítása a számlálóból."""
+
+    def test_stuck_value_fixed_when_counter_flat(self):
+        cache, t = {}, T0
+        st = {"cur_power": 18000, "total_forward_energy": 398929}
+        self.assertFalse(C.counter_check(st, None, "X7", t, cache))           # első kör: nincs mihez mérni
+        st = {"cur_power": 18000, "total_forward_energy": 398929}
+        self.assertTrue(C.counter_check(st, None, "X7", t + timedelta(minutes=10), cache))
+        self.assertEqual((st["cur_power"], st["_cur_power_raw"], st["_power_from"], st["_avgw"]), (0, 18000, "counter", 0))
+
+    def test_real_heating_kept(self):
+        cache = {}
+        C.counter_check({"cur_power": 18000, "total_forward_energy": 100000}, None, "X7", T0, cache)
+        st = {"cur_power": 18000, "total_forward_energy": 100030}             # +0,30 kWh 10 perc alatt = 1,8 kW
+        self.assertFalse(C.counter_check(st, None, "X7", T0 + timedelta(minutes=10), cache))
+        self.assertEqual((st["cur_power"], st["_avgw"]), (18000, 1800))
+
+    def test_changed_raw_value_is_trusted(self):
+        cache = {}
+        C.counter_check({"cur_power": 0, "total_forward_energy": 100000}, None, "X7", T0, cache)
+        st = {"cur_power": 18000, "total_forward_energy": 100000}             # épp most kapcsolt be
+        self.assertFalse(C.counter_check(st, None, "X7", T0 + timedelta(minutes=10), cache))
+        self.assertEqual(st["cur_power"], 18000)
+
+    def test_gap_too_long_or_counter_reset_ignored(self):
+        cache = {}
+        C.counter_check({"cur_power": 18000, "total_forward_energy": 100000}, None, "X7", T0, cache)
+        st = {"cur_power": 18000, "total_forward_energy": 100000}
+        self.assertFalse(C.counter_check(st, None, "X7", T0 + timedelta(minutes=45), cache))
+        C.counter_check({"cur_power": 18000, "total_forward_energy": 100000}, None, "X5", T0, cache)
+        st = {"cur_power": 18000, "total_forward_energy": 5}
+        self.assertFalse(C.counter_check(st, None, "X5", T0 + timedelta(minutes=10), cache))
+
+
 class TestWeather(unittest.TestCase):
     def setUp(self):
         self.sb = supa_server()

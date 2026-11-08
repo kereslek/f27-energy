@@ -39,6 +39,12 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
   `supabase/migrations/004_bookings.sql` hozza létre; amíg nincs lefuttatva, ez a lépés kimarad.
   A Tuya részt nem befolyásolja (akkor is lefut, ha a Tuya hibára fut). Beállítás: `docs/terkep.md`,
   "A naptár bekötése".
+- **Beragadt teljesítmény javítása:** egyes mérős kismegszakítók a felhőbe nem jelentik, amikor a
+  teljesítmény visszaesik (pl. a bojler termosztátja lekapcsol): a felhő a régi 1,8 kW-ot mutatja, az
+  app 0 W-ot. Ha a jelentett érték két egymást követő körben változatlan, és a fogyasztásszámláló az
+  elmúlt kb. 10 percben ennél sokkal kevesebbet nőtt, az adatgyűjtő a számlálóból számolt átlagot írja
+  be (`_avgw`, a nyers érték `_cur_power_raw`, jelölés `_power_from: counter`). A Summary-ban: "Felhőben
+  ragadt teljesítmény javítva a számlálóból".
 - **`energy_daily`:** a négy okos kismegszakító (X5 kályha, X7 bojler, X8 főzőlap, X9 klíma) napi kWh-ja, budapesti idő szerinti napokra bontva, a kismegszakító saját fogyasztásszámlálójából. Az első megfigyelés napján 0-ról indul.
 
 ## Tuya API-kvóta

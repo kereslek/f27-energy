@@ -270,8 +270,9 @@
     if (s.switch === false) return { kind: 'off', w: 0, tag: 'LE', short: 'nincs áram', text: 'Nincs áram: ' + br + ' le van kapcsolva, ' + L.who + ' nem kap áramot.' };
     var w = livePower(s, d.meta);
     if (w == null) return { kind: 'idle', w: null, tag: 'BE', short: 'áram van', text: cap1(br) + ' be van kapcsolva, a teljesítmény nem ismert.' };
-    if (w > L.on) return { kind: 'run', w: w, tag: L.onT, short: L.onT + ', ' + fmtW(w), text: cap1(L.who) + ' ' + L.onT + ': ' + fmtW(w) + ' a ' + L.num + ' körön.' };
-    return { kind: 'idle', w: w, tag: L.offT, short: L.offT, text: cap1(L.who) + ' ' + L.idle + ' (' + fmtW(w) + '; a kismegszakító be van kapcsolva, áram van).' };
+    var fixed = s._power_from === 'counter' ? ' A kismegszakító felhős értéke beragadt (' + fmtW(livePower({ cur_power: s._cur_power_raw }, d.meta)) + '), ezért a fogyasztásszámlálóból számoltuk.' : '';
+    if (w > L.on) return { kind: 'run', w: w, tag: L.onT, short: L.onT + ', ' + fmtW(w), text: cap1(L.who) + ' ' + L.onT + ': ' + fmtW(w) + ' a ' + L.num + ' körön.' + fixed };
+    return { kind: 'idle', w: w, tag: L.offT, short: L.offT, text: cap1(L.who) + ' ' + L.idle + ' (' + fmtW(w) + '; a kismegszakító be van kapcsolva, áram van).' + fixed };
   }
   function acPower(src) { return circuitState(src, 'k9'); }
   // "Régóta hallgat" küszöb (perc), csak az elemes érzékelőkre. A hálózati eszközök (kismegszakítók,
@@ -789,13 +790,15 @@
     cur_power: 'Teljesítmény', cur_voltage: 'Feszültség', cur_current: 'Áramerősség',
     total_forward_energy: 'Összes fogyasztás', forward_energy_total: 'Összes fogyasztás', add_ele: 'Fogyasztás-számláló',
     temp_unit_convert: 'Mértékegység', child_lock: 'Gyerekzár', relay_status: 'Áramszünet utáni állapot',
-    light_mode: 'Jelzőfény', fault: 'Hibakód', countdown_1: 'Visszaszámláló', _upd: 'Utolsó jelentés'
+    light_mode: 'Jelzőfény', fault: 'Hibakód', countdown_1: 'Visszaszámláló', _upd: 'Utolsó jelentés',
+    _avgw: 'Átlag a számlálóból (kb. 10 perc)', _cur_power_raw: 'Felhőben jelentett (beragadt) érték', _power_from: 'Teljesítmény forrása'
   };
   // alapértelmezett skála és mértékegység, ha a specifikáció (devices.meta) nem elérhető
   var CODE_DEF = {
     va_temperature: [1, '°C'], temp_current: [1, '°C'], va_humidity: [0, '%'], humidity_value: [0, '%'],
     battery_percentage: [0, '%'], va_battery: [0, '%'], battery_value: [0, '%'],
     cur_power: [1, 'W'], cur_voltage: [1, 'V'], cur_current: [0, 'mA'],
+    _cur_power_raw: [1, 'W'], _avgw: [0, 'W'],
     total_forward_energy: [2, 'kWh'], forward_energy_total: [2, 'kWh'], add_ele: [3, 'kWh']
   };
   var BATT_STATE = { low: [12, 'alacsony'], middle: [55, 'közepes'], high: [90, 'jó'] };

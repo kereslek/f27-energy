@@ -25,6 +25,7 @@ Futtatás:  python -m f27.collect
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -87,6 +88,39 @@ def power_changed(old: dict, new: dict, meta: dict | None) -> bool:
     return abs(a - b) >= POWER_DELTA_W
 
 
+STALE_POWER_W = 300   # ennyivel (és a mért érték felével) nagyobb jelentett teljesítmény már gyanús
+
+
+def counter_check(status: dict, meta: dict | None, pink: str, now: datetime, cache: dict) -> bool:
+    """A felhőben ragadt teljesítmény javítása a fogyasztásszámlálóból.
+
+    Egyes mérős kismegszakítók a felhőbe nem jelentik, amikor a teljesítmény visszaesik
+    (pl. a bojler termosztátja lekapcsol): a felhő a régi 1,8 kW-ot mutatja, az app 0 W-ot.
+    Ha a jelentett érték két kör óta változatlan, és a számláló az elmúlt kb. 10 percben
+    ennél sokkal kevesebbet nőtt, a cur_power helyére a számlálóból számolt átlag kerül
+    (a nyers érték _cur_power_raw néven megmarad). Visszaad: történt-e javítás."""
+    c, raw = energy_counter(status, meta), status.get("cur_power")
+    prev = cache.get(pink) or {}
+    cache[pink] = {"t": now.timestamp(), "c": c, "raw": raw}
+    if c is None or not isinstance(raw, (int, float)) or prev.get("c") is None:
+        return False
+    dt = now.timestamp() - float(prev.get("t") or 0)
+    if dt < 300 or dt > 1800:
+        return False
+    dk = c - prev["c"]
+    if dk < 0:
+        return False
+    avg = dk * 1000 * 3600 / dt
+    status["_avgw"] = round(avg)
+    w = watts(status, meta) or 0.0
+    if prev.get("raw") == raw and w - avg > max(STALE_POWER_W, 0.5 * w):
+        status["_cur_power_raw"] = raw
+        status["cur_power"] = round(avg * 10 ** scale_of(meta, "cur_power"))
+        status["_power_from"] = "counter"
+        return True
+    return False
+
+
 def parse_ts(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
@@ -133,10 +167,13 @@ def next_energy_row(prev_rows: list[dict], pink: str, counter: float, today: str
             "last_counter": round(counter, 4)}, anomaly
 
 
-def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, uid: str | None = None) -> dict:
+def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, uid: str | None = None,
+            cache: dict | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
+    cache = {} if cache is None else cache
     stats = {"devices": 0, "received": 0, "written": 0, "unchanged": 0, "energy": 0,
-             "energy_skipped": 0, "anomalies": 0, "errors": 0, "tuya_calls": 0, "notes": []}
+             "energy_skipped": 0, "anomalies": 0, "errors": 0, "tuya_calls": 0, "notes": [],
+             "power_fixed": 0}
 
     try:
         devs = sb.select("devices", "pink,role,tuya_device_id,meta")
@@ -178,6 +215,8 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
             stats["errors"] += 1
             continue
         stats["received"] += 1
+        if d.get("role") == "breaker" and counter_check(status, meta, pink, now, cache):
+            stats["power_fixed"] += 1
         if needs_write(latest.get(pink), status, online, now, meta):
             rows.append({"pink": pink, "online": online, "status": status, "ts": now.isoformat()})
         else:
@@ -227,6 +266,7 @@ def report(stats: dict) -> str:
         f"| Kiszűrt számláló-ugrás | {stats['anomalies']} |",
         f"| Hiányzó eszköz (hiba) | {stats['errors']} |",
         f"| Tuya API-hívás ebben a futásban | {stats['tuya_calls']} |",
+        f"| Felhőben ragadt teljesítmény javítva a számlálóból | {stats.get('power_fixed', 0)} |",
     ]
     if stats["notes"]:
         lines += [""] + [f"- {n}" for n in stats["notes"]]
@@ -246,8 +286,20 @@ def main() -> int:
     uid = os.environ.get("TUYA_UID", "").strip() or None
     rc = 0
     text = ""
+    # körök közti állapot (a számláló előző értéke) ugyanabban a GitHub-futásban
+    state_path = os.environ.get("F27_STATE_FILE", "/tmp/f27-collect-state.json")
     try:
-        stats = collect(client, sb, uid=uid)
+        with open(state_path, encoding="utf-8") as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    try:
+        stats = collect(client, sb, uid=uid, cache=cache)
+        try:
+            with open(state_path, "w", encoding="utf-8") as f:
+                json.dump(cache, f)
+        except OSError:
+            pass
         if stats["errors"]:
             print(f"::warning::{stats['errors']} párosított eszköz nem jött vissza a Tuya-tól.")
         text = report(stats)
