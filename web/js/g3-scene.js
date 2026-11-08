@@ -197,6 +197,8 @@ class G3Scene extends MiniDC.Component {
     var GSOFA = ['#e2e5e7', '#c5cbcf', '#b0b7bc'];
     var GSOFA2 = ['#d3d8dc', '#b4bcc2', '#9fa8af'];
     var GCUSH = ['#c7ced3', '#aab3b9', '#97a1a8'];
+    var LSOFA = ['#bcc3c9', '#98a1a9', '#838d96'];     // a sarokkanapé: középszürke, hogy jól látsszon
+    var LCUSH = ['#a5aeb6', '#869098', '#727c86'];
     var SAGE = ['#a9c1a0', '#8eaa86', '#7c9775'];
     var SAGEC = ['#a3bd9c', '#89a682', '#77936f'];
     var STOVE = ['#8e3e30', '#702b21', '#5c221a'];
@@ -267,15 +269,15 @@ class G3Scene extends MiniDC.Component {
     add(375, 54.5, 9, 9, 17, 11, GLASSG, { bias: 2 });
     add(377.5, 57, 4, 4, 28, 4, GLASSG, { bias: 3 });
 
-    piece('sofa', 'Világosszürke sarokkanapé');
-    add(398, 51, 74, 8, 0, 28, GSOFA);
-    add(465, 59, 7, 40, 0, 28, GSOFA, { bias: 1 });
-    add(398, 59, 67, 22, 0, 13, GSOFA, { bias: 2 });
-    add(445, 81, 20, 48, 0, 13, GSOFA, { bias: 3 });
-    add(398, 59, 5, 22, 0, 19, GSOFA, { bias: 4 });
-    add(445, 129, 27, 4, 0, 19, GSOFA, { bias: 5 });
-    [404, 417, 430, 443].forEach(function (cx) { add(cx, 59.5, 11, 5, 13, 11, GCUSH, { bias: 6 }); });
-    add(459, 66, 5, 12, 13, 11, GCUSH, { bias: 7 });
+    piece('sofa', 'Szürke L-alakú sarokkanapé a jobb oldali (10-es) ablak alatt');
+    add(398, 51, 74, 8, 0, 28, LSOFA);
+    add(465, 59, 7, 40, 0, 28, LSOFA, { bias: 1 });
+    add(398, 59, 67, 22, 0, 13, LSOFA, { bias: 2 });
+    add(445, 81, 20, 48, 0, 13, LSOFA, { bias: 3 });
+    add(398, 59, 5, 22, 0, 19, LSOFA, { bias: 4 });
+    add(445, 129, 27, 4, 0, 19, LSOFA, { bias: 5 });
+    [404, 417, 430, 443].forEach(function (cx) { add(cx, 59.5, 11, 5, 13, 11, LCUSH, { bias: 6 }); });
+    add(459, 66, 5, 12, 13, 11, LCUSH, { bias: 7 });
 
     piece('arclamp', 'Fekete ívlámpa lenvászon ernyővel');
     add(389.5, 65.5, 6, 6, 0, 2, BLACK);
@@ -289,22 +291,22 @@ class G3Scene extends MiniDC.Component {
     add(421, 103, 6, 6, 12, 9, GLASSG, { bias: 3, lines: seg(P(423, 109.2, 12), P(423, 109.2, 21)) + seg(P(425, 109.2, 12), P(425, 109.2, 21)), lc: '#2a6b57' });
     add(420, 102, 8, 8, 21, 5, ['#ffe2c8', '#ef9a6a', '#d77a48'], { bias: 4 });
 
-    piece('bed', 'Franciaágy a nyugati falon, a cserépkályhától kicsit távolabb, fölötte ezüst tükör');
+    piece('bed', 'Franciaágy a nyugati falon, a cserépkályhától távolabb, az utcai ablak felé tolva, fölötte ezüst tükör');
     var spind = '';
-    for (var sy = 173; sy <= 229; sy += 4) spind += seg(P(287.2, sy, 12), P(287.2, sy, 34));
-    add(282, 170, 5, 62, 0, 36, WHITE, { lines: spind, lc: '#b9bec5' });
-    add(287, 172, 62, 58, 0, 10, WHITE, { bias: 1 });
-    add(288, 173, 62, 57, 10, 6, LINEN, { bias: 2, lines: seg(P(300, 230.2, 10), P(348, 230.2, 10)) + seg(P(350.2, 175, 10), P(350.2, 228, 10)), lc: '#cbbf9f' });
-    add(289, 176, 9, 50, 16, 5, WHITE, { bias: 3 });
-    add(292, 178, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 180, 17), P(301.2, 196, 23)) + seg(P(301.2, 180, 23), P(301.2, 196, 17)), lc: '#f4f1ea' });
-    add(292, 204, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 206, 17), P(301.2, 222, 23)) + seg(P(301.2, 206, 23), P(301.2, 222, 17)), lc: '#f4f1ea' });
-    add(280, 180, 2, 42, 40, 24, SILVER, { bias: 5, f1: faceX(282.1, 184, 218, 43, 61), f1c: '#a9bccd' });
+    for (var sy = 149; sy <= 205; sy += 4) spind += seg(P(287.2, sy, 12), P(287.2, sy, 34));
+    add(282, 146, 5, 62, 0, 36, WHITE, { lines: spind, lc: '#b9bec5' });
+    add(287, 148, 62, 58, 0, 10, WHITE, { bias: 1 });
+    add(288, 149, 62, 57, 10, 6, LINEN, { bias: 2, lines: seg(P(300, 206.2, 10), P(348, 206.2, 10)) + seg(P(350.2, 151, 10), P(350.2, 204, 10)), lc: '#cbbf9f' });
+    add(289, 152, 9, 50, 16, 5, WHITE, { bias: 3 });
+    add(292, 154, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 156, 17), P(301.2, 172, 23)) + seg(P(301.2, 156, 23), P(301.2, 172, 17)), lc: '#f4f1ea' });
+    add(292, 180, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 182, 17), P(301.2, 198, 23)) + seg(P(301.2, 182, 23), P(301.2, 198, 17)), lc: '#f4f1ea' });
+    add(280, 156, 2, 42, 40, 24, SILVER, { bias: 5, f1: faceX(282.1, 160, 194, 43, 61), f1c: '#a9bccd' });
 
     piece('night', 'Fehér éjjeliszekrények rattan lámpával');
-    add(282, 155, 13, 13, 0, 16, WHITE, { lines: seg(P(295.2, 157, 11), P(295.2, 166, 11)), lc: '#aeb4bb' });
-    add(285.5, 158.5, 6, 6, 16, 8, RATTAN, { bias: 1 });
-    add(282, 234, 13, 13, 0, 16, WHITE, { bias: 2, lines: seg(P(295.2, 236, 11), P(295.2, 245, 11)), lc: '#aeb4bb' });
-    add(285.5, 237.5, 6, 6, 16, 8, RATTAN, { bias: 3 });
+    add(282, 131, 13, 13, 0, 16, WHITE, { lines: seg(P(295.2, 133, 11), P(295.2, 142, 11)), lc: '#aeb4bb' });
+    add(285.5, 134.5, 6, 6, 16, 8, RATTAN, { bias: 1 });
+    add(282, 210, 13, 13, 0, 16, WHITE, { bias: 2, lines: seg(P(295.2, 212, 11), P(295.2, 221, 11)), lc: '#aeb4bb' });
+    add(285.5, 213.5, 6, 6, 16, 8, RATTAN, { bias: 3 });
 
     piece('dresser', 'Fehér 8 fiókos komód, TV, hangprojektor, acél nyelvdob');
     add(454, 166, 18, 70, 0, 22, WHITE, { lines: grid(454, 166, 18, 70, 0, 22, 1, 4, 3), lc: '#aeb4bb' });
@@ -770,7 +772,7 @@ class G3Scene extends MiniDC.Component {
     // eszköz-tűk (HTML), vezetővonallal a horgonyhoz
     var DEV = [
       { id: '1', name: 'Hőmérő, kis szoba', p: [470, 440, 46], o: [0, -36], val: L.t[0], show: true, kind: 't' },
-      { id: '2', name: 'Hőmérő, nagy szoba', p: [470, 150, 46], o: [24, -32], val: L.t[1], show: true, kind: 't' },
+      { id: '2', name: 'Hőmérő, nagy szoba', p: [470, 196, 46], o: [-44, -26], val: L.t[1], show: true, kind: 't' },
       { id: '3', name: 'Hőmérő, kályha mögött', p: [362, 292, 46], o: [28, -24], val: L.t[2], show: true, kind: 'hot' },
       { id: '4', name: 'Hőmérő, fürdő', p: [300, 400, 30], o: [-44, -14], val: L.t[3], show: true, kind: 't', vl: true },
       { id: '5', name: 'Bejárati ajtó: nyitásérzékelő az ajtókeret tetején', p: [301, 590, 49], o: [-34, 46], val: 'zárva' },
@@ -853,7 +855,7 @@ class G3Scene extends MiniDC.Component {
 
     return {
       sc: sc, L: L, wins: wins, layers: layers, arcs: arcs, coins: coins, pads: pads, hero: hero, pins: pins,
-      fx: { horn: trw(344, 428, 28, 'sewing'), plant: trw(367, 59, 25, 'stand'), lamp: trw(298, 52, 56, 'flamp'), lamp2: trw(417, 68, 50, 'arclamp'), lamp3: trw(288.5, 161.5, 26, 'night'), lamp4: trw(288.5, 240.5, 26, 'night'), flag: trw(343, 406, 0, 'gchair1'), seat5: trw(400, 486, 0, 'dining') },
+      fx: { horn: trw(344, 428, 28, 'sewing'), plant: trw(367, 59, 25, 'stand'), lamp: trw(298, 52, 56, 'flamp'), lamp2: trw(417, 68, 50, 'arclamp'), lamp3: trw(288.5, 137.5, 26, 'night'), lamp4: trw(288.5, 216.5, 26, 'night'), flag: trw(343, 406, 0, 'gchair1'), seat5: trw(400, 486, 0, 'dining') },
       focusFx: { tr: trw(ft[0], ft[1], ft[2], ft[3]), c: colors[focus] || '#4fc3f7' },
       bossW: Math.round(196 * L.boss),
       tools: tools, eq: { name: eq.name, effect: eq.effect, stat: eq.stat, color: eq.color, targetLabel: eq.targetLabel },
