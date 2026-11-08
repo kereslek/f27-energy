@@ -5,13 +5,24 @@
 | Workflow | Mikor | Mit csinál |
 |---|---|---|
 | **Eszközfelderítés** (`discover.yml`) | kézzel, és minden hónap 1-jén 04:17 UTC | Tuya eszközlista, párosítás a pink számokhoz, titkosított pillanatkép a repóba, a Supabase `devices` tábla frissítése (eszközazonosító + a státuszkódok skálája) |
-| **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként) |
+| **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként); óránként egyszer az időjárás: `weather_hourly` |
 
 A GitHub ütemezése nem pontos: a 10 perces futás néha pár percet késik, terhelt időszakban kimaradhat egy-egy. Ez nem hiba.
 
 ## Mit ír az adatgyűjtő
 
 - **`device_status`:** új sor csak akkor, ha az eszköz állapota érdemben változott (pl. nyílt egy ablak, kapcsolt a kályha, 25 W-nál többet változott egy kör teljesítménye, offline lett egy eszköz), vagy ha a legutóbbi sor 60 percnél régebbi (óránkénti életjel). A feszültség, áram és a fogyasztásmérő-számláló apró változása nem ok új sorra. Így az adatbázis évente kb. 100-150 MB-tal nő, bőven az ingyenes 500 MB alatt.
+- **`weather_hourly`:** óránként egyszer (ha a legutóbbi lekérés 55 percnél régebbi) az Open-Meteo
+  órás adatai a IX. kerületre (kerületi pontossággal): hőmérséklet, hőérzet, páratartalom, harmatpont,
+  csapadék, felhőzet, szél, széllökés, napsugárzás (W/m²), időjáráskód. Egy lekérés az elmúlt 2 nap
+  és a következő kb. 1 nap óráit hozza: az eltelt órák mért (modell-elemzés) értékként, a többi
+  előrejelzésként (`is_forecast`) kerül be, és a következő órák lekérései felülírják. Évente kb.
+  9 000 sor, néhány MB. Ha az Open-Meteo épp nem válaszol, a következő futás pótolja; a Tuya részt
+  nem befolyásolja. Napi összesítés: `weather_daily` nézet (átlag/min/max, fűtési és hűtési
+  hőfokhíd az Eurostat szerint, napsugárzás kWh/m², csapadék), és `energy_weather_daily` nézet
+  (ugyanez a négy kör napi kWh-jával egy sorban; az energia oszlopokat csak az owner látja).
+  Táblát a `supabase/migrations/003_weather.sql` hozza létre; amíg nincs lefuttatva, az
+  adatgyűjtő ezt kihagyja és a Summary-ba kiírja.
 - **`energy_daily`:** a négy okos kismegszakító (X5 kályha, X7 bojler, X8 főzőlap, X9 klíma) napi kWh-ja, budapesti idő szerinti napokra bontva, a kismegszakító saját fogyasztásszámlálójából. Az első megfigyelés napján 0-ról indul.
 
 ## Tuya API-kvóta

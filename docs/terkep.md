@@ -126,8 +126,10 @@ szekciós lista a csempés műszerfal kályha-csempéjével; `?attekintes=2` cse
 
 ## Kint (időjárás)
 
-A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, kulcs
-nélkül, a böngészőből, 15 percenként frissül, csak memóriában): ikon, mostani hőmérséklet, és kb.
+A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, 15
+percenként frissül, csak memóriában). Belépve a Supabase `weather_hourly` táblájából olvas (az
+adatgyűjtő óránként tölti); ha ott nincs 3 óránál frissebb adat, vagy nincs belépés, közvetlenül az
+Open-Meteótól kér (kulcs nélkül, a böngészőből). A csip: ikon, mostani hőmérséklet, és kb.
 3 óra múlvai érték trenddel (pl. `15:00 → 9,6 °C ↑`; a nyíl fél foknál nagyobb változásnál
 fordul). A hely a IX. kerület (kerületi pontossággal). Rákattintva vagy fölé víve rövid fűtési
 tipp: napos, melegedő órák előtt "a kályhát most le lehet venni", hidegedő éjszaka előtt "a

@@ -22,6 +22,7 @@ from pathlib import Path
 
 from f27 import collect as C
 from f27 import discover as D
+from f27 import weather as WX
 from f27.supa import SupabaseRest
 from f27.tuya import TuyaClient
 
@@ -128,9 +129,10 @@ def tuya_server(devices):
     return s
 
 
-def supa_server(secret="sb_secret_TEST", missing=()):
-    """Memóriában tartott PostgREST-utánzat. missing: hiányzó oszlopok (pl. 'meta')."""
-    db = {"devices": {}, "device_status": [], "energy_daily": {}}
+def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
+    """Memóriában tartott PostgREST-utánzat. missing: hiányzó oszlopok (pl. 'meta'),
+    no_tables: hiányzó táblák (pl. 'weather_hourly')."""
+    db = {"devices": {}, "device_status": [], "energy_daily": {}, "weather_hourly": {}}
     log = {"bad_auth": 0, "requests": []}
 
     def latest():
@@ -174,8 +176,16 @@ def supa_server(secret="sb_secret_TEST", missing=()):
             cols = [c for c in q.get("select", "*").split(",") if c != "*"]
             if self._missing_col(cols):
                 return
+            if table in no_tables:
+                return self._json(404, {"code": "PGRST205"})
             if table == "devices":
                 rows = list(db["devices"].values())
+            elif table == "weather_hourly":
+                rows = list(db["weather_hourly"].values())
+                if q.get("order") == "fetched_at.desc":
+                    rows.sort(key=lambda r: r["fetched_at"], reverse=True)
+                if "limit" in q:
+                    rows = rows[: int(q["limit"])]
             elif table == "device_latest":
                 rows = latest()
             elif table == "energy_daily":
@@ -203,7 +213,13 @@ def supa_server(secret="sb_secret_TEST", missing=()):
             log["requests"].append((table, len(rows)))
             if self._missing_col({k for r in rows for k in r}):
                 return
-            if table == "devices":
+            if table in no_tables:
+                return self._json(404, {"code": "PGRST205"})
+            if table == "weather_hourly":
+                assert q.get("on_conflict") == "ts"
+                for r in rows:
+                    db["weather_hourly"][r["ts"]] = r
+            elif table == "devices":
                 for r in rows:
                     db["devices"][r["pink"]] = {**db["devices"].get(r["pink"], {}), **r}
             elif table == "device_status":
@@ -494,12 +510,16 @@ class TestCollect(unittest.TestCase):
             sb2.close()
 
     def test_main_output_is_public_safe(self):
+        self.addCleanup(setattr, WX, "fetch", WX.fetch)
+        WX.fetch = lambda timeout=20: meteo(datetime.now(timezone.utc))
         with env(TUYA_ACCESS_ID="id", TUYA_ACCESS_SECRET="sec", TUYA_ENDPOINT=self.tuya.url, TUYA_UID=None,
                  SUPABASE_URL=self.sb.url, SUPABASE_SECRET_KEY=self.sb.secret, GITHUB_STEP_SUMMARY=None):
             rc, out = run_main(C.main)
         self.assertEqual(rc, 0)
         self.assertIn("| Új állapotsor (változás vagy óránkénti életjel) | 17 |", out)
+        self.assertIn("Időjárás: 95 órás sor frissítve", out)
         assert_public(self, out)
+        self.assertNotIn("7.5", out)                      # időjárási érték sem kerül a logba
 
     def test_main_without_supabase(self):
         with env(SUPABASE_URL=None, SUPABASE_SECRET_KEY=None):
@@ -513,6 +533,88 @@ class TestCollect(unittest.TestCase):
             C.collect(TuyaClient("id", "sec", self.tuya.url), bad, now=T0)
         self.assertIn("HTTP 401", str(cm.exception))
         self.assertNotIn("Invalid API key", str(cm.exception))
+
+
+
+def meteo(now, hours=96, start_back=48):
+    """Open-Meteo hourly válasz utánzata: óránként 7,5 °C, a 3. órában hiányzó adat."""
+    t0 = int((now - timedelta(hours=start_back)).replace(minute=0, second=0, microsecond=0).timestamp())
+    times = [t0 + 3600 * i for i in range(hours)]
+    temp = [7.5] * hours
+    temp[3] = None
+    return {"hourly": {"time": times, "temperature_2m": temp, "apparent_temperature": [5.0] * hours,
+                       "relative_humidity_2m": [80.4] * hours, "dew_point_2m": [4.2] * hours,
+                       "precipitation": [0.0] * hours, "cloud_cover": [55] * hours, "wind_speed_10m": [12.34] * hours,
+                       "wind_gusts_10m": [30.0] * hours, "shortwave_radiation": [210.0] * hours,
+                       "weather_code": [3] * hours, "is_day": [1, 0] * (hours // 2)}}
+
+
+class TestWeather(unittest.TestCase):
+    def setUp(self):
+        self.sb = supa_server()
+        self.api = SupabaseRest(self.sb.url, self.sb.secret)
+        self.calls = 0
+
+    def tearDown(self):
+        self.sb.close()
+
+    def fetcher(self, now):
+        def f():
+            self.calls += 1
+            return meteo(now)
+        return f
+
+    def test_hourly_rows_once_per_hour(self):
+        r1 = WX.collect_weather(self.api, now=T0, fetcher=self.fetcher(T0))
+        self.assertEqual(self.calls, 1)
+        self.assertEqual(r1["written"], 95)                     # 96 óra, egy hiányzó hőmérséklet
+        self.assertEqual(r1["past"] + r1["forecast"], 95)
+        rows = self.sb.db["weather_hourly"]
+        self.assertEqual(len(rows), 95)
+        past = [r for r in rows.values() if not r["is_forecast"]]
+        fut = [r for r in rows.values() if r["is_forecast"]]
+        self.assertTrue(all(WX.parse_ts(r["ts"]) + timedelta(hours=1) <= T0 for r in past))
+        self.assertTrue(all(WX.parse_ts(r["ts"]) + timedelta(hours=1) > T0 for r in fut))
+        one = past[0]
+        self.assertEqual((one["temp"], one["humidity"], one["cloud"], one["wind"], one["weather_code"]), (7.5, 80, 55, 12.3, 3))
+        self.assertIn(one["is_day"], (True, False))
+        r2 = WX.collect_weather(self.api, now=T0 + timedelta(minutes=10), fetcher=self.fetcher(T0))
+        self.assertEqual((self.calls, r2["written"]), (1, 0))  # 10 perc múlva nem kér le újra
+        r3 = WX.collect_weather(self.api, now=T0 + timedelta(minutes=60), fetcher=self.fetcher(T0 + timedelta(minutes=60)))
+        self.assertEqual(self.calls, 2)
+        self.assertGreater(r3["written"], 0)
+
+    def test_forecast_hour_becomes_measured(self):
+        WX.collect_weather(self.api, now=T0, fetcher=self.fetcher(T0))
+        later = T0 + timedelta(hours=3)
+        WX.collect_weather(self.api, now=later, fetcher=lambda: meteo(T0))
+        rows = self.sb.db["weather_hourly"]
+        hour = (T0 + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0).isoformat(timespec="seconds")
+        self.assertFalse(rows[hour]["is_forecast"])
+
+    def test_api_down_is_not_fatal(self):
+        def boom():
+            raise OSError("down")
+        r = WX.collect_weather(self.api, now=T0, fetcher=boom)
+        self.assertEqual(r["written"], 0)
+        self.assertFalse(r["error"])
+        self.assertIn("nem érhető el", r["note"])
+
+    def test_missing_table_hint(self):
+        sb2 = supa_server(no_tables=("weather_hourly",))
+        try:
+            r = WX.collect_weather(SupabaseRest(sb2.url, sb2.secret), now=T0, fetcher=self.fetcher(T0))
+        finally:
+            sb2.close()
+        self.assertEqual(self.calls, 0)
+        self.assertFalse(r["error"])
+        self.assertIn("003_weather.sql", r["note"])
+
+    def test_url_is_district_level(self):
+        u = WX.url()
+        self.assertIn("latitude=47.48", u)
+        self.assertIn("longitude=19.07", u)
+        self.assertIn("past_days=2", u)
 
 
 if __name__ == "__main__":

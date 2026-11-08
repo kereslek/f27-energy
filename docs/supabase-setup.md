@@ -106,6 +106,20 @@ mappában. Mindegyik újrafuttatható, adatot nem töröl.
 Ha kimarad: a felderítés skálák nélkül tölti fel az eszközlistát, az adatgyűjtő pedig a napi
 energiát kihagyja; mindkettő kiírja a Summary-ba, hogy ezt a fájlt kell futtatni.
 
+**003_weather.sql** (időjárás-gyűjtés, 2026.11.08):
+
+1. Supabase: **SQL Editor** > **New query**.
+2. Másold be a [`supabase/migrations/003_weather.sql`](../supabase/migrations/003_weather.sql)
+   teljes tartalmát. **Run**. Ha figyelmeztet („destructive operation”), az a `drop policy if exists`
+   sor miatt van: **Run this query**.
+3. Ellenőrzés: **Table Editor**: megjelent a `weather_hourly` tábla. A következő adatgyűjtés
+   (legfeljebb 10 perc) feltölti kb. 96 órával; utána óránként frissül.
+4. Elemzéshez: **SQL Editor**: `select * from weather_daily order by day desc;` és
+   `select * from energy_weather_daily order by day desc;` (ez utóbbi csak owner-ként mutat energiát).
+
+Ha kimarad: az adatgyűjtő az időjárást kihagyja (a Summary-ba kiírja), a térkép közvetlenül
+az Open-Meteótól kéri.
+
 ## Mit tud a séma (röviden)
 
 | Szerepkör | Elrendezés | Aktuális állapot | Eszközlista (Tuya ID) | Energia |

@@ -388,6 +388,28 @@
     });
     return { t: t, app: wxNum(c.apparent_temperature), code: wxNum(c.weather_code), day: wxNum(c.is_day), cloud: wxNum(c.cloud_cover), hourly: hourly };
   }
+  // A Supabase weather_hourly soraiból (az adatgyűjtő óránként tölti) ugyanaz a szerkezet,
+  // mint a parseWeather eredménye. null, ha nincs friss sor az aktuális órára.
+  var WX_DB_STALE_MS = 3 * 3600000;
+  function weatherFromRows(rows, now) {
+    if (!Array.isArray(rows) || !rows.length) return null;
+    var hourly = [], cur = null, newest = 0;
+    rows.forEach(function (r) {
+      var ms = Date.parse(r.ts), t = wxNum(r.temp == null ? null : Number(r.temp));
+      if (!isFinite(ms) || t == null) return;
+      var f = Date.parse(r.fetched_at); if (isFinite(f) && f > newest) newest = f;
+      var key = budKey(ms);
+      var h = { key: key, hh: key.slice(11, 16), t: t, code: wxNum(r.weather_code), cloud: wxNum(r.cloud),
+        sw: wxNum(r.radiation == null ? null : Number(r.radiation)), day: r.is_day == null ? null : r.is_day ? 1 : 0,
+        app: wxNum(r.apparent == null ? null : Number(r.apparent)), ms: ms };
+      hourly.push(h);
+      if (ms <= now && (!cur || ms > cur.ms)) cur = h;
+    });
+    if (!cur || now - cur.ms > 2 * 3600000 || (newest && now - newest > WX_DB_STALE_MS)) return null;
+    hourly.sort(function (a, b) { return a.ms - b.ms; });
+    return { t: cur.t, app: cur.app, code: cur.code, day: cur.day, cloud: cur.cloud, src: 'db',
+      hourly: hourly.map(function (h) { return { key: h.key, hh: h.hh, t: h.t, code: h.code, cloud: h.cloud, sw: h.sw, day: h.day }; }) };
+  }
   // WMO időjáráskód + nappal/éjszaka: ikon és rövid magyar leírás
   function wxKind(code, day) {
     var d = day !== 0;
@@ -889,14 +911,29 @@
       v.flameOn = !!(P && P.online !== false && P.stage > 0);
     }
 
+    // Belépve (listán szereplő szerepkörrel) a Supabase-ből olvas (az adatgyűjtő óránként tölti);
+    // ha ott nincs friss adat, vagy nincs belépés, közvetlenül az Open-Meteótól kér.
     fetchWeather() {
       var self = this;
-      if (!window.fetch) { this.setState({ weather: { ok: false } }); return; }
       var done = function (data) {
         self.setState({ weather: data ? { ok: true, data: data, at: Date.now() } : (self.state.weather && self.state.weather.ok ? self.state.weather : { ok: false }) });
       };
-      fetch(WX_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { done(parseWeather(j)); }, function () { done(null); });
+      var direct = function () {
+        if (!window.fetch) { done(null); return; }
+        fetch(WX_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { var d = parseWeather(j); if (d) d.src = 'api'; done(d); }, function () { done(null); });
+      };
+      if (this.sb && this.state.role) {
+        var now = Date.now();
+        this.sb.from('weather_hourly').select('ts,temp,apparent,weather_code,cloud,radiation,is_day,fetched_at')
+          .gte('ts', new Date(now - 3 * 3600000).toISOString()).order('ts', { ascending: true }).limit(48)
+          .then(function (res) {
+            var d = res && !res.error ? weatherFromRows(res.data, Date.now()) : null;
+            if (d) done(d); else direct();
+          }, direct);
+        return;
+      }
+      direct();
     }
 
     // a KINT csip: Élő módban valós időjárás + kb. 3 órás előrejelzés, előbeállításnál a pálya értéke
@@ -924,7 +961,8 @@
         if (fc) { o.hasFc = true; o.fc = fc.label; o.hint = fc.hint.text; o.hintCls = 'wx-hint ' + fc.hint.kind; }
         else { o.hint = 'Előrejelzés most nincs.'; o.hintCls = 'wx-hint steady'; }
         o.title = 'Kint most ' + o.now + ', ' + k[1] + (o.app ? ' (' + o.app.toLowerCase() + ')' : '') + '.' +
-          (fc ? ' Várható ' + fc.at.hh + '-kor ' + wxRound(fc.at.t) + ' °C. ' + fc.hint.text : '') + ' ' + WX_SRC;
+          (fc ? ' Várható ' + fc.at.hh + '-kor ' + fmtNum(fc.at.t, 1) + ' °C. ' + fc.hint.text : '') + ' ' + WX_SRC +
+          (d.src === 'db' ? ' (az adatgyűjtő óránkénti adata, Supabase).' : '.');
       }
       o.hasApp = !!o.app;
       o.aria = 'Kint: ' + o.now + (o.hasFc ? ', várható ' + o.fc : '') + '. Részletek';
@@ -1388,6 +1426,7 @@
         self.refreshLayouts(true);
         self.refreshLive();
         self.loadHistory();
+        self.fetchWeather();
         clearInterval(self.liveTimer);
         self.liveTimer = setInterval(function () { self.refreshLive(); }, LIVE_REFRESH_MS);
       }, function (err) { self.toast(self.errText(err, 'A jogosultság lekérése nem sikerült.'), 'err'); });

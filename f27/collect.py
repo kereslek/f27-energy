@@ -12,6 +12,8 @@ Folyamat egy futásban:
   4. public.energy_daily: a kismegszakítók napi kWh-ja (Europe/Budapest szerinti nap)
      a kumulatív fogyasztásszámlálóból (total_forward_energy, forward_energy_total,
      vagy add_ele), a devices.meta skálájával.
+  5. public.weather_hourly: óránként egyszer az időjárás (f27.weather, Open-Meteo), a Tuya
+     részétől függetlenül (akkor is, ha a Tuya hívás hibára fut).
 
 A publikus logba csak darabszámok kerülnek: név, device ID, mérési érték soha.
 
@@ -27,6 +29,7 @@ from zoneinfo import ZoneInfo
 
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError
+from .weather import collect_weather
 
 BUDAPEST = ZoneInfo("Europe/Budapest")
 HEARTBEAT = timedelta(minutes=60)
@@ -238,17 +241,22 @@ def main() -> int:
         return 1
     uid = os.environ.get("TUYA_UID", "").strip() or None
     rc = 0
+    text = ""
     try:
         stats = collect(client, sb, uid=uid)
+        if stats["errors"]:
+            print(f"::warning::{stats['errors']} párosított eszköz nem jött vissza a Tuya-tól.")
+        text = report(stats)
     except TuyaError as e:
         print(f"::error::Tuya hiba: code={e.code} msg={e.msg}")
-        return 1
+        rc = 1
     except SupabaseError as e:
         print(f"::error::{e}")
-        return 1
-    if stats["errors"]:
-        print(f"::warning::{stats['errors']} párosított eszköz nem jött vissza a Tuya-tól.")
-    text = report(stats)
+        rc = 1
+    wx = collect_weather(sb)
+    if wx["error"]:
+        print(f"::warning::{wx['note']}")
+    text = (text + "\n\n" if text else "") + wx["note"]
     print(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
