@@ -1245,7 +1245,8 @@
         if (batt && batt.pct < 10) { badges.push({ t: 'Elem lemerült', c: 'red' }); warn = red = true; }
         else if (batt && batt.pct < 20) { badges.push({ t: 'Elem merül', c: 'orange' }); warn = true; }
         var lim = STALE_MIN[info.kind];
-        var stale = has && lim != null && age != null && age > lim * 60000;
+        // nyílászáró: csak NYITVA jelzésnél számít a hallgatás (zárt, nem használt ablak napokig hallgat, ez nem hiba)
+        var stale = has && lim != null && age != null && age > lim * 60000 && (info.kind !== 'contact' || !!open);
         if (stale) { badges.push({ t: 'Régóta hallgat', c: 'orange' }); warn = true; }
         if (!warn && has && !ir && age != null && age < 10 * 60000 && online !== false) badges.push({ t: 'Friss', c: 'green' });
         var note = '';
@@ -2630,12 +2631,24 @@
   }
   function baseScale() { return layout().s; }
 
+  // Telefonon a felső Élő áttekintés gomb és az alsó vezérlők (Energiaőr, nagyítósáv) takarják a kép
+  // szélét: nagyítva a színpad ezek alól is kihúzható, hogy a sarkok is elérhetők legyenek.
+  function phonePads(vw, vh) {
+    if (vw > 700) return { t: 0, b: 0 };
+    var t = 0, b = vh;
+    var top = document.querySelector('.ovphone');
+    if (top) { var r = top.getBoundingClientRect(); if (r.height) t = r.bottom + 6; }
+    document.querySelectorAll('.zoombar, .adv-fixed').forEach(function (el) { var r = el.getBoundingClientRect(); if (r.height && r.top > vh / 2) b = Math.min(b, r.top - 6); });
+    return { t: t, b: vh - b };
+  }
   function clampView() {
     var lay = layout(), s = lay.s * view.z, W = 1440 * s, H = 900 * s, vw = window.innerWidth, vh = lay.h;
     view.tx = W <= vw ? (vw - W) / 2 : Math.min(0, Math.max(vw - W, view.tx));
     // telefonon a nyitott Eszközök lap alá is be lehet húzni a színpadot, hogy a kiválasztott tű a lap felett legyen
-    var sheet = vw <= 700 && (document.getElementById('f27-devpanel') || document.getElementById('f27-ovsheet')), padB = sheet ? sheet.offsetHeight : 0;
-    view.ty = H + padB <= vh ? (vh - H) / 2 : Math.min(0, Math.max(vh - H - padB, view.ty));
+    var pads = phonePads(vw, vh);
+    var sheet = vw <= 700 && (document.getElementById('f27-devpanel') || document.getElementById('f27-ovsheet'));
+    var padB = Math.max(sheet ? sheet.offsetHeight : 0, view.z > 1.001 ? pads.b : 0), padT = view.z > 1.001 ? pads.t : 0;
+    view.ty = H + padB + padT <= vh ? (vh - H) / 2 : Math.min(padT, Math.max(vh - H - padB, view.ty));
   }
 
   function applyView() {
@@ -2792,6 +2805,15 @@
           return;
         }
       }
+      if (pan && e.pointerId === pan.id && pan.pending) {
+        var mx = e.clientX - pan.x0, my = e.clientY - pan.y0;
+        if (Math.hypot(mx, my) < 8) return;
+        // görgethető listán (pl. tippek) a függőleges húzás a listát görgeti, nem a térképet
+        if (Math.abs(my) > Math.abs(mx) && scrollableAncestor(pan.target, -my)) { pan = null; return; }
+        pan.pending = false;
+        pan.moved = true;
+        document.body.classList.add('panning');
+      }
       if (pan && e.pointerId === pan.id) {
         view.tx = pan.tx0 + (e.clientX - pan.x0);
         view.ty = pan.ty0 + (e.clientY - pan.y0);
@@ -2800,10 +2822,72 @@
     }, true);
     function lift(e) {
       if (e.pointerType === 'touch') { delete touches[e.pointerId]; if (tcount() < 2) pinch = null; }
-      if (pan && e.pointerId === pan.id) { pan = null; document.body.classList.remove('panning'); }
+      if (pan && e.pointerId === pan.id) {
+        // ha a húzás egy gombon kezdődött, a végén ne számítson koppintásnak
+        if (pan.moved && e.type === 'pointerup') {
+          var swallow = function (ev) { ev.preventDefault(); ev.stopPropagation(); };
+          window.addEventListener('click', swallow, true);
+          setTimeout(function () { window.removeEventListener('click', swallow, true); }, 350);
+        }
+        pan = null; document.body.classList.remove('panning');
+      }
     }
     window.addEventListener('pointerup', lift, true);
     window.addEventListener('pointercancel', lift, true);
+
+    // Dupla koppintás (egy kézzel, telefonon): nagyítás a pont körül 2x-ig, majd 4x, utána vissza 100%-ra.
+    var lastTap = null;
+    stageEl.addEventListener('pointerup', function (e) {
+      if (e.pointerType !== 'touch' || pinch || tcount() > 0) { if (e.pointerType === 'touch' && tcount() > 0) lastTap = null; return; }
+      var t = e.target;
+      if (editableTarget(t) || (t.closest && t.closest('button, a, label, select, .drawer, .pin'))) { lastTap = null; return; }
+      var now = Date.now();
+      if (lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+        lastTap = null;
+        stageEl.style.transition = 'transform .25s ease';
+        if (view.z >= ZMAX - 0.01) resetView(); else zoomTo(view.z < 1.9 ? 2 : ZMAX, e.clientX, e.clientY);
+        setTimeout(function () { stageEl.style.transition = ''; }, 280);
+        return;
+      }
+      lastTap = { t: now, x: e.clientX, y: e.clientY };
+    });
+
+    // Telefonos alsó lapok: a fejlécükön lefelé húzva bezárulnak (mintha a Bezárás gombot nyomnád).
+    var swipe = null;
+    document.addEventListener('pointerdown', function (e) {
+      if (window.innerWidth > 700 || !e.isPrimary) return;
+      var head = e.target.closest && e.target.closest('.al-head, .cal-head, .dp-head, .ovsheet .ov-head, .drawer .dhead');
+      if (!head || e.target.closest('button, a, input, select, label')) return;
+      var sheet = head.closest('.alpop, .calpop, .devpanel, .drawer');
+      if (!sheet) return;
+      swipe = { id: e.pointerId, y0: e.clientY, t0: Date.now(), sheet: sheet, dy: 0 };
+      sheet.style.transition = 'none';
+    }, true);
+    document.addEventListener('pointermove', function (e) {
+      if (!swipe || e.pointerId !== swipe.id) return;
+      swipe.dy = Math.max(0, e.clientY - swipe.y0);
+      swipe.sheet.style.transform = swipe.dy ? 'translateY(' + swipe.dy + 'px)' : '';
+    }, true);
+    function swipeEnd(e) {
+      if (!swipe || e.pointerId !== swipe.id) return;
+      var sw = swipe; swipe = null;
+      var fast = sw.dy > 40 && sw.dy / Math.max(1, Date.now() - sw.t0) > 0.5;
+      if (e.type === 'pointerup' && (sw.dy > 90 || fast)) {
+        sw.sheet.style.transition = 'transform .18s ease-in';
+        sw.sheet.style.transform = 'translateY(100%)';
+        setTimeout(function () {
+          var x = sw.sheet.querySelector('.al-x, .cal-x, [aria-label="Bezárás"]');
+          if (x) x.click();
+          sw.sheet.style.transition = ''; sw.sheet.style.transform = '';
+        }, 170);
+      } else {
+        sw.sheet.style.transition = 'transform .18s ease-out';
+        sw.sheet.style.transform = '';
+        setTimeout(function () { sw.sheet.style.transition = ''; }, 200);
+      }
+    }
+    document.addEventListener('pointerup', swipeEnd, true);
+    document.addEventListener('pointercancel', swipeEnd, true);
 
     // Mozgatás nagyítva: a bútorok és tűk saját húzása (stopPropagation) és a gombok/mezők kivételével
     // bárhol a színpadon; középső egérgombbal mindenhol.
@@ -2811,13 +2895,15 @@
       if (view.z <= 1.001 || pinch) return;
       var t = e.target;
       var middle = e.button === 1;
+      var pending = false;
       if (!middle) {
         if (e.button > 0) return;
-        if (editableTarget(t) || (t.closest && t.closest('button, a, label, select, .drawer'))) return;
+        if (editableTarget(t) || (t.closest && t.closest('select, .drawer'))) return;
+        // gombon vagy érintéssel: csak 8 px elmozdulás után mozgat, addig a koppintás koppintás marad
+        pending = e.pointerType === 'touch' || !!(t.closest && t.closest('button, a, label, [role=button]'));
       }
-      e.preventDefault();
-      pan = { id: e.pointerId, x0: e.clientX, y0: e.clientY, tx0: view.tx, ty0: view.ty };
-      document.body.classList.add('panning');
+      if (!pending) { e.preventDefault(); document.body.classList.add('panning'); }
+      pan = { id: e.pointerId, x0: e.clientX, y0: e.clientY, tx0: view.tx, ty0: view.ty, pending: pending, target: t, moved: false };
     });
 
     document.addEventListener('keydown', function (e) {

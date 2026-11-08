@@ -84,8 +84,9 @@ felváltva nyílik.
   Nyílászárók, Áram, Egyéb. A figyelmeztetések elöl.
 - Kártyánként: érték, elem (kis életerő-csík), online pötty, utolsó jelzés ideje.
 - Jelvények: **Elem merül** (20 % alatt), **Elem lemerült** (10 % alatt), **Nem elérhető**
-  (offline), **Régóta hallgat** (csak az elemes érzékelőknél: hőmérő 6 óra, nyitásérzékelő 24 óra
-  óta nem jelentett), **Friss** (10 percen belül).
+  (offline), **Régóta hallgat** (csak az elemes érzékelőknél: hőmérő 6 óra óta nem jelentett;
+  nyitásérzékelő csak akkor, ha NYITVA jelez és 24 óra óta nem jelentett, mert egy zárt, nem használt
+  ablak napokig hallgat, és ez nem hiba), **Friss** (10 percen belül).
 - A hálózati eszközök (kismegszakítók, a LUXION kapcsoló, a gateway, az IR klíma) a Tuyának csak
   változáskor jelentenek: egy álló bojler vagy egy érintetlen kályhakapcsoló napokig hallgathat, és
   ez nem hiba. Náluk nincs "Régóta hallgat", csak a Tuya online jelzője számít (**Nem elérhető**).
