@@ -13,9 +13,9 @@ friss eszközállapotot, és ha valami a beállított határon kívül van:
 | Szabály | Mikor szól | Alapból |
 |---|---|---|
 | Hőmérő 1-4 sávon kívül | a hőmérő a beállított sáv alatt (túl hideg) vagy felett (túl meleg) van legalább 10 percig | Kis szoba 19-24 °C, Nagy szoba 19-22 °C, Kályha mögött 20-38 °C, Fürdő 19-25 °C (a fürdő alapból KI) |
-| Nyitott ablak fűtés/hűtés közben | megy a kályha (LUXION fokozat > 0, vagy az 5-ös kör > 300 W) vagy a klíma (9-es kör > 100 W), és nyitva van egy ablak (7, 8, 9, 10) vagy a bejárati ajtó (5) legalább N percig | BE, 10 perc (5/10/15/30) |
+| Nyitott ablak fűtés/hűtés közben | megy a kályha (LUXION fokozat > 0, vagy az 5-ös kör > 300 W) vagy a klíma (9-es kör > 100 W), és nyitva van egy ablak (8, 9, 10; a 7-es konyhaablak csak ha a figyelése be van kapcsolva) vagy a bejárati ajtó (5) legalább N percig | BE, 10 perc (5/10/15/30) |
 | Klíma nagy teljesítményen, nyitott ablakkal | a 9-es kör a határ felett megy, és nyitva van egy ablak | BE, 900 W (600/900/1200) |
-| Konyhaablak kivétel | a két ablakos szabály a 7-es (konyha) ablakot nem nézi, pl. főzés közbeni szellőztetéskor; bekapcsolásakor a futó konyhaablak-riasztás csendben lezárul | KI (a konyhaablak is riaszt) |
+| A konyhaablakot is figyelje | a két ablakos szabály a 7-es (konyha) ablakot is nézi; kikapcsolva a konyhaablak nyitása nem riaszt (pl. főzés közbeni szellőztetés), és a futó konyhaablak-riasztás csendben lezárul | KI (a tulaj kérése: a konyhaablak nem riaszt) |
 | Lemerült nyílászárók kihagyása | a nem elérhető, 10 % alatti elemű vagy 24 órája nem jelentő érzékelő NYITVA jelzése nem számít (lehet régi) | BE |
 
 A 6-os (privát tároló) ajtaja nem számít. A hőmérőből csak friss (6 órán belüli), elérhető érték

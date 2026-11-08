@@ -896,7 +896,7 @@
   var AL_DEFAULT = {
     temps: { '1': { on: true, lo: 19, hi: 24 }, '2': { on: true, lo: 19, hi: 22 }, '3': { on: true, lo: 20, hi: 38 }, '4': { on: false, lo: 19, hi: 25 } },
     minDuration: { minutes: 10 }, openHeat: { on: true, minutes: 10 }, acMaxOpen: { on: true, watts: 900 },
-    skipDeadContacts: true, skipKitchen: false, cooldownMin: 60, resolvedMsg: true,
+    skipDeadContacts: true, watchKitchen: false, cooldownMin: 60, resolvedMsg: true,
     quiet: { on: false, from: '23:00', to: '07:00' }, quietExceptStoveC: 40,
     channels: { push: true, whatsapp: false },
     digest: { on: true, time: '20:00' }
@@ -925,7 +925,7 @@
       if ('on' in c[x[0]]) c[x[0]].on = alBool(sub.on, c[x[0]].on);
     });
     c.skipDeadContacts = alBool(s.skipDeadContacts, c.skipDeadContacts);
-    c.skipKitchen = alBool(s.skipKitchen, c.skipKitchen);
+    c.watchKitchen = alBool(s.watchKitchen, c.watchKitchen);
     c.cooldownMin = alNum(s.cooldownMin, 5, 1440, c.cooldownMin);
     c.resolvedMsg = alBool(s.resolvedMsg, c.resolvedMsg);
     c.quietExceptStoveC = alNum(s.quietExceptStoveC, 20, 80, c.quietExceptStoveC);
@@ -993,12 +993,12 @@
     if (w9 != null && w9 > 100) heat.push('a klíma megy (' + fmtW(w9) + ')');
     if (c.openHeat.on && heat.length) {
       Object.keys(AL_OPEN).forEach(function (p) {
-        if (c.skipKitchen && p === '7') return;
+        if (!c.watchKitchen && p === '7') return;
         if (alContact(src, p, now, c.skipDeadContacts)) out.push({ key: 'open_heat:' + p, short: AL_OPEN[p] + ' nyitva', text: AL_OPEN[p] + ' nyitva, közben ' + heat.join(' és ') });
       });
     }
     if (c.acMaxOpen.on && w9 != null && w9 > c.acMaxOpen.watts) {
-      var opened = AL_WINDOWS.filter(function (p) { return !(c.skipKitchen && p === '7') && alContact(src, p, now, c.skipDeadContacts); }).map(function (p) { return AL_OPEN[p]; });
+      var opened = AL_WINDOWS.filter(function (p) { return (c.watchKitchen || p !== '7') && alContact(src, p, now, c.skipDeadContacts); }).map(function (p) { return AL_OPEN[p]; });
       if (opened.length) out.push({ key: 'ac_max_open', short: 'klíma ' + fmtW(w9) + ', ablak nyitva', text: 'a klíma ' + fmtW(w9) + ' (határ ' + c.acMaxOpen.watts + ' W), nyitva: ' + opened.join(', ') });
     }
     return out;
@@ -1786,7 +1786,7 @@
         heatMin: seg([5, 10, 15, 30], cfg.openHeat.minutes, function (x) { return x + ' perc'; }, function (c, x) { c.openHeat.minutes = x; }),
         acMax: sw(cfg.acMaxOpen.on, 'A klíma nagy teljesítményen megy, és nyitva van egy ablak. Határ:', function (c) { c.acMaxOpen.on = !c.acMaxOpen.on; }),
         acW: seg([600, 900, 1200], cfg.acMaxOpen.watts, function (x) { return x + ' W'; }, function (c, x) { c.acMaxOpen.watts = x; }),
-        kitchen: sw(cfg.skipKitchen, 'Konyhaablak kivétel: a két ablakos szabály a konyhaablakot nem nézi (alapból ki, vagyis a konyhaablak is riaszt)', function (c) { c.skipKitchen = !c.skipKitchen; }),
+        kitchen: sw(cfg.watchKitchen, 'A konyhaablakot is figyelje (alapból ki: a konyhaablak nyitása nem riaszt)', function (c) { c.watchKitchen = !c.watchKitchen; }),
         dead: sw(cfg.skipDeadContacts, 'Lemerült elemes, nem elérhető vagy 24 órája hallgató nyílászárót kihagy (alapból be)', function (c) { c.skipDeadContacts = !c.skipDeadContacts; }),
         push: sw(cfg.channels.push, 'Push (ntfy)', function (c) { c.channels.push = !c.channels.push; }),
         digest: sw(cfg.digest.on, 'Napi e-mail összefoglaló', function (c) { c.digest.on = !c.digest.on; }),

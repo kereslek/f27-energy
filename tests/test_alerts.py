@@ -235,26 +235,35 @@ class TestRules(Base):
         r = self.run_at(T0 + timedelta(minutes=70), **o)
         self.assertIn("Kis szoba ablak", self.texts(r)[0])
 
-    def test_kitchen_window_alerts_by_default_and_can_be_excepted(self):
+    def test_kitchen_window_ignored_by_default_and_can_be_watched(self):
         o = {"7": {"doorcontact_state": True}, "P": {"switch_1": True}, "X9": {"cur_power": 11000}}
+        # alapból a konyhaablak nem riaszt (a tulaj kérése)
         self.run_at(T0, **o)
-        r = self.run_at(T0 + timedelta(minutes=10), **o)
+        self.assertEqual(self.run_at(T0 + timedelta(minutes=10), **o)["new"], [])
+        self.assertNotIn("open_heat:7", self.sb.db["alert_state"])
+        # "A konyhaablakot is figyelje" bekapcsolva: mindkét ablakos szabály nézi
+        self.settings(watchKitchen=True)
+        self.run_at(T0 + timedelta(minutes=20), **o)
+        r = self.run_at(T0 + timedelta(minutes=30), **o)
         txt = self.texts(r)[0]
         self.assertIn("Konyha ablak 10 perce", txt)
-        self.assertIn("nyitva: Konyha ablak", txt)                 # a klíma-szabály is nézi
-        # kivétel bekapcsolva: a nyitott ablak + fűtés riasztás csendben lezárul, a klímásnál
+        self.assertIn("nyitva: Konyha ablak", txt)
+        # vissza kikapcsolva: a nyitott ablak + fűtés riasztás csendben lezárul, a klímásnál
         # a megszűnt üzenet megmondja, miért; utána egyik sem jön újra
-        self.settings(skipKitchen=True)
-        r = self.run_at(T0 + timedelta(minutes=20), **o)
-        self.assertEqual(self.texts(r), ["F27: megszűnt: csak a konyhaablak van nyitva, az kivétel.\n\nTérkép: " + A.MAP_URL])
+        self.settings(watchKitchen=False)
+        r = self.run_at(T0 + timedelta(minutes=40), **o)
+        self.assertEqual(self.texts(r), ["F27: megszűnt: csak a konyhaablak van nyitva, azt nem figyeljük.\n\nTérkép: " + A.MAP_URL])
         self.assertFalse(self.sb.db["alert_state"]["open_heat:7"]["active"])
-        self.assertEqual(self.run_at(T0 + timedelta(minutes=90), **o)["new"], [])
+        self.assertEqual(self.run_at(T0 + timedelta(minutes=110), **o)["new"], [])
         # a többi ablak ettől még riaszt
         o2 = dict(o, **{"8": {"doorcontact_state": True}})
-        self.run_at(T0 + timedelta(minutes=100), **o2)
-        r = self.run_at(T0 + timedelta(minutes=110), **o2)
+        self.run_at(T0 + timedelta(minutes=120), **o2)
+        r = self.run_at(T0 + timedelta(minutes=130), **o2)
         self.assertIn("Kis szoba ablak", self.texts(r)[0])
         self.assertNotIn("Konyha", self.texts(r)[0])
+
+    def test_old_skip_kitchen_key_is_ignored(self):
+        self.assertFalse(A.merge_config({"skipKitchen": False})["watchKitchen"])
 
     def test_stale_or_offline_thermometer_is_skipped(self):
         o = {"3": {"va_temperature": 450, "age_min": 7 * 60}}
@@ -420,7 +429,7 @@ class TestTestAndChannels(Base):
         self.assertEqual(cfg["digest"], {"on": True, "time": "20:00"})
         self.assertEqual(cfg["acMaxOpen"]["watts"], 900)
         self.assertFalse(cfg["skipDeadContacts"])
-        self.assertFalse(cfg["skipKitchen"])
+        self.assertFalse(cfg["watchKitchen"])
         self.assertNotIn("ismeretlen", cfg)
         self.assertEqual(A.merge_config(None), A.DEFAULT_CONFIG)
         self.assertEqual(A.rules_on(A.DEFAULT_CONFIG), 5)

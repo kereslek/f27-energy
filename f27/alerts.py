@@ -69,7 +69,8 @@ DEFAULT_CONFIG = {
     "openHeat": {"on": True, "minutes": 10},
     "acMaxOpen": {"on": True, "watts": 900},
     "skipDeadContacts": True,
-    "skipKitchen": False,     # konyhaablak kivétel a két ablakos szabálynál (alapból ki: a konyhaablak is riaszt)
+    "watchKitchen": False,    # a két ablakos szabály a konyhaablakot is figyelje? alapból NEM (a tulaj kérése);
+                              # a régi skipKitchen kulcsot szándékosan nem olvassuk, hogy az új alapérték érvényesüljön
     "cooldownMin": 60,
     "resolvedMsg": True,
     "quiet": {"on": False, "from": "23:00", "to": "07:00"},   # a tulaj kérése: nincs csendes időszak (a telefonon szundiz)
@@ -124,7 +125,7 @@ def merge_config(stored) -> dict:
         if "on" in cfg[key]:
             cfg[key]["on"] = _bool(sub.get("on"), cfg[key]["on"])
     cfg["skipDeadContacts"] = _bool(s.get("skipDeadContacts"), cfg["skipDeadContacts"])
-    cfg["skipKitchen"] = _bool(s.get("skipKitchen"), cfg["skipKitchen"])
+    cfg["watchKitchen"] = _bool(s.get("watchKitchen"), cfg["watchKitchen"])
     cfg["cooldownMin"] = _num(s.get("cooldownMin"), 5, 1440, cfg["cooldownMin"])
     cfg["resolvedMsg"] = _bool(s.get("resolvedMsg"), cfg["resolvedMsg"])
     cfg["quietExceptStoveC"] = _num(s.get("quietExceptStoveC"), 20, 80, cfg["quietExceptStoveC"])
@@ -347,7 +348,7 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "quiet_ok": key == STOVE_KEY and v > cfg["quietExceptStoveC"],
             }
     skip = cfg["skipDeadContacts"]
-    kitchen_out = {"7"} if cfg["skipKitchen"] else set()
+    kitchen_out = set() if cfg["watchKitchen"] else {"7"}
     if cfg["openHeat"]["on"]:
         hs = heat_sources(snap)
         for pink, name in OPENINGS.items():
@@ -393,7 +394,7 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "text": (lambda age, w=w9, lm=limit, wh=where:
                          f"F27: a klíma nagy teljesítményen megy ({fmt_w(w)}, határ {lm} W), és nyitva: {wh}."),
                 "rtext": (f"F27: megszűnt: a klíma már nem megy nagy teljesítményen ({fmt_w(w9)})." if w9 <= limit
-                          else "F27: megszűnt: csak a konyhaablak van nyitva, az kivétel." if kitchen_open
+                          else "F27: megszűnt: csak a konyhaablak van nyitva, azt nem figyeljük." if kitchen_open
                           else "F27: megszűnt: az ablakok zárva."),
                 "minutes": mins, "quiet_ok": False,
             }
