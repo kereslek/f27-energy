@@ -178,7 +178,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .drawer .who .em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawer .sect{margin-top:4px;font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;border-top:2px dashed #e3cfa6;padding-top:10px}
 .drawer .cur{font-size:13px;font-weight:700}
-.drawer .note{margin:0;font-size:12px;font-weight:800;color:#9a3412;background:#fff1c9;border:2px solid #e3cfa6;border-radius:10px;padding:6px 8px}
+.drawer .note{animation:none;margin:0;font-size:12px;font-weight:800;color:#9a3412;background:#fff1c9;border:2px solid #e3cfa6;border-radius:10px;padding:6px 8px}
 .drawer .list{display:flex;flex-direction:column;gap:6px}
 .drawer .lrow{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;border:2px solid #e3cfa6;background:#fffaf0}
 .drawer .lrow.cur{border-color:#1e2a44;background:#fff1c9}
@@ -250,10 +250,21 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .dc-det .k.raw{font-weight:700;color:#8a8f9c}
 .dc-det .v{font-weight:900;text-align:right;white-space:nowrap}
 @media (max-width:700px){
-.devpanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;height:62vh;border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
+.devpanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;height:calc(var(--app-h,100vh) * .62);border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
 .dp-head{padding-top:18px;position:relative}
 .dp-head::before{content:"";position:absolute;left:50%;top:6px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#c9b68f}
 }
+/* Fiók és mentés, értesítések telefonon: a devlayer-ben, képernyőméretben (asztalon a színpadon). */
+#devlayer .drawer{pointer-events:auto;position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;height:auto;max-height:calc(var(--app-h,100vh) - 56px);z-index:8;box-sizing:border-box;padding:14px 16px 22px;border-radius:22px 22px 0 0;border-bottom:0;background:#fff7e6;animation:dpup .24s ease-out;font-size:15px}
+#devlayer .drawer .dhead{position:relative;padding-top:10px}
+#devlayer .drawer .dhead::before{content:"";position:absolute;left:50%;top:-6px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#c9b68f}
+#devlayer .drawer input{font-size:16px;height:44px}
+#devlayer .drawer .btn{min-height:40px}
+#devlayer .drawer-back{z-index:7}
+#devlayer .drawer>*{flex-shrink:0}
+#devlayer .drawer .cur{line-height:1.5}
+#devlayer .drawer .cur .mini{display:inline-flex;margin-top:8px}
+#devlayer .toasts{position:fixed;left:8px;right:8px;top:60px;width:auto;z-index:70}
 /* Telefonos alsó lapok: a fejléc a fogantyú, lefelé húzva bezár (app.js); a lap követi az ujjat. */
 @media (max-width:700px){
 .al-head,.cal-head,.dp-head,.ovsheet .ov-head,.drawer .dhead{touch-action:none;cursor:grab}
@@ -322,7 +333,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .sw.gap{background:#e7f8ec;border:1.5px dashed #3fae6a}
 .sw.free{background:#ffffff}
 .cal-back{pointer-events:auto;position:fixed;inset:0;background:rgba(14,20,40,.28)}
-.calpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
+.calpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:560px;max-width:calc(100vw - 24px);max-height:calc(var(--app-h,100vh) - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
 .cal-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 14px 8px;background:linear-gradient(180deg,#fff1c9,#fffdf7)}
 .cal-head .calic{width:24px;height:24px}
 .btn.ib.sm.refbtn{width:30px;height:30px;min-width:30px;min-height:0;padding:0;display:inline-flex;align-items:center;justify-content:center}
@@ -360,7 +371,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .cal-leg{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;font-weight:900;color:#45507a}
 .cal-leg span{display:inline-flex;align-items:center;gap:4px}
 @media (max-width:700px){
-.calpop{left:0;right:0;top:auto;bottom:0;transform:none;width:auto;max-width:none;max-height:92vh;border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
+.calpop{left:0;right:0;top:auto;bottom:0;transform:none;width:auto;max-width:none;max-height:calc(var(--app-h,100vh) - 56px);border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
 .cal-head{padding-top:16px}
 .cal-nav{gap:6px;padding:0 10px 8px}
 .cal-m{min-width:0;flex:0 1 auto;font-size:16px}
@@ -462,7 +473,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .adv-smile{opacity:calc(1 - var(--adv-talk,0));transition:opacity .2s}
 @media (prefers-reduced-motion:reduce){.adv-bob,.adv-blink,.adv-eqb,.adv-sway,.adv-wave,.adv.talk .adv-bubble{animation:none!important}}
 /* tanácslista */
-.advpop{pointer-events:auto;position:fixed;z-index:6;left:max(8px,var(--adv-x,16px));bottom:var(--adv-y,120px);width:370px;max-width:calc(100vw - 16px);max-height:min(62vh,540px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:20px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpup .2s ease-out;touch-action:pan-y}
+.advpop{pointer-events:auto;position:fixed;z-index:6;left:max(8px,var(--adv-x,16px));bottom:var(--adv-y,120px);width:370px;max-width:calc(100vw - 16px);max-height:min(calc(var(--app-h,100vh) * .62),540px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:20px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpup .2s ease-out;touch-action:pan-y}
 .ap-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 10px 8px 12px;background:linear-gradient(180deg,#e7f8ec,#fffdf7);border-bottom:3px solid #1e2a44}
 .ap-head svg{width:34px;height:42px;flex:0 0 auto}
 .ap-title{font-family:"Fraunces",serif;font-weight:800;font-size:19px;color:#3b2a14;flex:1 1 auto}
@@ -688,7 +699,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .alchip.ok{background:#e7f8ec}.alchip.ok .cv{color:#2f7d4f}.alchip.ok:hover{background:#d6f2df}
 .alchip.alarm{background:#ffe1d6;border-color:#c8321f;box-shadow:0 4px 0 #c8321f}.alchip.alarm .ck,.alchip.alarm .cv{color:#c8321f}.alchip.alarm .cs{color:#9a3412}.alchip.alarm:hover{background:#ffd3c4}
 .alchip.alarm.prev{border-color:#1e2a44;box-shadow:0 4px 0 #1e2a44}
-.alpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:600px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
+.alpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:600px;max-width:calc(100vw - 24px);max-height:calc(var(--app-h,100vh) - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
 .al-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 14px 10px;background:linear-gradient(180deg,#ffe1d6,#fffdf7);border-bottom:3px solid #1e2a44}
 .al-head .calic{width:24px;height:24px}
 .al-t{font-family:"Fraunces",serif;font-weight:800;font-size:21px;color:#3b2a14;flex:1 1 auto}
@@ -755,7 +766,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .al-save:not(:disabled){background:#1e2a44;color:#ffe066}
 .al-pend{font-weight:800;font-size:11.5px;color:#2f7d4f}
 @media (max-width:700px){
-.alpop{left:0;right:0;top:auto;bottom:0;transform:none;width:auto;max-width:none;max-height:92vh;border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
+.alpop{left:0;right:0;top:auto;bottom:0;transform:none;width:auto;max-width:none;max-height:calc(var(--app-h,100vh) - 56px);border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
 .al-head{padding-top:18px;position:relative}
 .al-head::before{content:"";position:absolute;left:50%;top:6px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#c9b68f}
 .al-body{padding:2px 12px 12px}
@@ -1222,79 +1233,7 @@ Elrendezés visszaállítása
 </div>
 
 
-<sc-if value="{{ui.drawerOpen}}">
-<div id="f27-drawer" class="{{ui.drawerCls}}" role="dialog" aria-label="Fiók és elrendezések" onPointerDown="{{ui.drawerStay}}" onKeyDown="{{ui.drawerStay}}" onWheel="{{ui.drawerStay}}" onTouchStart="{{ui.drawerStay}}">
-<div class="dhead">
-<span class="fr" style="font-size: 21px; font-weight: 800; color: #3b2a14">Fiók és mentés</span>
-<button class="btn ib sm" type="button" onClick="{{ui.closeDrawer}}" aria-label="Bezárás" title="Bezárás (Esc)">
-<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg>
-</button>
-</div>
-<sc-if value="{{ui.showLogin}}">
-<form class="login" onSubmit="{{ui.login}}">
-<label for="f27-email">E-mail</label>
-<input id="f27-email" name="email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" required>
-<label for="f27-pass">Jelszó</label>
-<div class="passw">
-<input id="f27-pass" name="password" type="{{ui.passType}}" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
-<button class="peek" type="button" onPointerDown="{{ui.peekKeep}}" onClick="{{ui.peek}}" aria-controls="f27-pass" aria-pressed="{{ui.peekPressed}}" aria-label="{{ui.peekLabel}}" title="{{ui.peekLabel}}">
-<sc-if value="{{ui.peekOff}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7s10 7 10 7s-3.6 7-10 7S2 12 2 12z" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" fill="none" stroke="#1e2a44" stroke-width="2.2"></circle></svg></sc-if>
-<sc-if value="{{ui.peekOn}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
-</button>
-</div>
-<label class="remember"><input id="f27-remember" type="checkbox" checked="{{ui.remember}}" onChange="{{ui.setRemember}}">Emlékezz rám</label>
-<button class="btn primary" type="submit" disabled="{{ui.busy}}">Belépés</button>
-</form>
-</sc-if>
-<sc-if value="{{ui.loggedIn}}">
-<sc-if value="{{ui.drawerAuto}}"><div class="dauto" role="status"><span>15 mp múlva magától bezárul, hogy látsd az Élő áttekintést. Kattints bárhová a kártyán, és nyitva marad.</span><i aria-hidden="true"></i></div></sc-if>
-<div class="who"><span class="em">{{ui.email}}</span><span class="tag" style="background: {{ui.roleColor}}">{{ui.roleLabel}}</span></div>
-<button class="btn sm logout" type="button" onClick="{{ui.logout}}" title="Kijelentkezés: a térkép demó módba vált">
-<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-Kilépés (kijelentkezés)</button>
-</sc-if>
-<div class="sect">ELRENDEZÉS</div>
-<div class="cur">Jelenlegi: <b>{{ui.currentName}}</b><br><span class="{{ui.chipCls}} mini"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</span></div>
-<sc-if value="{{ui.saveHint}}"><p class="note">{{ui.saveHint}}</p></sc-if>
-<div class="row">
-<button class="btn sm" type="button" onClick="{{ui.save}}" disabled="{{ui.saveDisabled}}">Mentés</button>
-<button class="btn sm" type="button" onClick="{{ui.saveAsOpen}}" disabled="{{ui.saveAsDisabled}}">Mentés másként</button>
-</div>
-<sc-if value="{{ui.saveAsShown}}">
-<form class="row" onSubmit="{{ui.saveAs}}">
-<input id="f27-newname" type="text" maxlength="80" placeholder="Elrendezés neve" aria-label="Új elrendezés neve" required>
-<button class="btn xs primary" type="submit">OK</button>
-<button class="btn xs" type="button" onClick="{{ui.saveAsCancel}}">Mégse</button>
-</form>
-</sc-if>
-<sc-if value="{{ui.loggedIn}}">
-<div class="sect">MENTETT ELRENDEZÉSEK</div>
-<sc-if value="{{ui.noLayouts}}"><p class="note">Még nincs mentett elrendezés.</p></sc-if>
-<div class="list">
-<sc-for list="{{ui.layouts}}" as="l">
-<div class="{{l.cls}}">
-<div class="lname"><span>{{l.name}}</span><sc-if value="{{l.isDefault}}"><span class="tag" style="background: #3fae6a">ALAP</span></sc-if></div>
-<div class="ltime">{{l.time}}</div>
-<sc-if value="{{l.confirm}}">
-<div class="row"><span class="warn">Biztosan törlöd?</span><button class="btn xs danger" type="button" onClick="{{l.doDelete}}">Igen</button><button class="btn xs" type="button" onClick="{{l.cancelDelete}}">Mégse</button></div>
-</sc-if>
-<sc-if value="{{l.actions}}">
-<div class="row">
-<button class="btn xs" type="button" onClick="{{l.load}}">Betöltés</button>
-<sc-if value="{{l.canDefault}}"><button class="btn xs" type="button" onClick="{{l.makeDefault}}">Alapértelmezett</button></sc-if>
-<sc-if value="{{l.canEdit}}"><button class="btn xs" type="button" onClick="{{l.askDelete}}" aria-label="{{l.delAria}}">Törlés</button></sc-if>
-</div>
-</sc-if>
-</div>
-</sc-for>
-</div>
-</sc-if>
-<a class="alap" href="alaprajz.html">Egyszerű alaprajz megnyitása (titkosított adat)</a>
-</div>
-</sc-if>
-<div class="toasts" aria-live="polite">
-<sc-for list="{{ui.toasts}}" as="t"><div class="{{t.cls}}" role="status">{{t.text}}<sc-if value="{{t.hasAct}}"> <button class="tact" type="button" onClick="{{t.act}}">{{t.actLabel}}</button></sc-if></div></sc-for>
-</div>
+<acct-slot></acct-slot>
 </div>
 </template>
 <!-- Az Energiaőr két mintája (szimbólumként; a példányokba a --adv-* változók öröklődnek). -->
@@ -1407,6 +1346,84 @@ Kilépés (kijelentkezés)</button>
 <symbol id="wx-fog" viewBox="0 0 24 24"><path d="M6.5 12h11a3.6 3.6 0 0 0 .3-7.2A5.3 5.3 0 0 0 6.6 4 4 4 0 0 0 6.5 12Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path><path d="M3 15.5h16M5 19h15M3 22h10" stroke="#8a8f9c" stroke-width="2.2" stroke-linecap="round"></path></symbol>
 <symbol id="wx-storm" viewBox="0 0 24 24"><path d="M6.5 14h11a4 4 0 0 0 .4-8A5.8 5.8 0 0 0 6.6 5 4.5 4.5 0 0 0 6.5 14Z" fill="#cfd6e3" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path><path d="M12.5 13l-3 5h3l-1.5 4.5 4.5-6h-3l1.5-3.5Z" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.5" stroke-linejoin="round"></path></symbol>
 </svg>
+<!-- A Fiók és mentés kártya és az értesítések: asztalon a színpadon, telefonon (képernyőméretben) a
+     devlayer-ben, alsó lapként; az app.js a két helyre más feltétellel teszi be. -->
+<template id="acct-template">
+<sc-if value="{{ui.drawerHere}}">
+<sc-if value="{{ui.drawerBack}}"><div class="cal-back drawer-back" onClick="{{ui.closeDrawer}}"></div></sc-if>
+<div id="f27-drawer" class="{{ui.drawerCls}}" role="dialog" aria-label="Fiók és elrendezések" onPointerDown="{{ui.drawerStay}}" onKeyDown="{{ui.drawerStay}}" onWheel="{{ui.drawerStay}}" onTouchStart="{{ui.drawerStay}}">
+<div class="dhead">
+<span class="fr" style="font-size: 21px; font-weight: 800; color: #3b2a14">Fiók és mentés</span>
+<button class="btn ib sm" type="button" onClick="{{ui.closeDrawer}}" aria-label="Bezárás" title="Bezárás (Esc)">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg>
+</button>
+</div>
+<sc-if value="{{ui.showLogin}}">
+<form class="login" onSubmit="{{ui.login}}">
+<label for="f27-email">E-mail</label>
+<input id="f27-email" name="email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+<label for="f27-pass">Jelszó</label>
+<div class="passw">
+<input id="f27-pass" name="password" type="{{ui.passType}}" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
+<button class="peek" type="button" onPointerDown="{{ui.peekKeep}}" onClick="{{ui.peek}}" aria-controls="f27-pass" aria-pressed="{{ui.peekPressed}}" aria-label="{{ui.peekLabel}}" title="{{ui.peekLabel}}">
+<sc-if value="{{ui.peekOff}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7s10 7 10 7s-3.6 7-10 7S2 12 2 12z" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" fill="none" stroke="#1e2a44" stroke-width="2.2"></circle></svg></sc-if>
+<sc-if value="{{ui.peekOn}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+</button>
+</div>
+<label class="remember"><input id="f27-remember" type="checkbox" checked="{{ui.remember}}" onChange="{{ui.setRemember}}">Emlékezz rám</label>
+<button class="btn primary" type="submit" disabled="{{ui.busy}}">Belépés</button>
+</form>
+</sc-if>
+<sc-if value="{{ui.loggedIn}}">
+<sc-if value="{{ui.drawerAuto}}"><div class="dauto" role="status"><span>15 mp múlva magától bezárul, hogy látsd az Élő áttekintést. Kattints bárhová a kártyán, és nyitva marad.</span><i aria-hidden="true"></i></div></sc-if>
+<div class="who"><span class="em">{{ui.email}}</span><span class="tag" style="background: {{ui.roleColor}}">{{ui.roleLabel}}</span></div>
+<button class="btn sm logout" type="button" onClick="{{ui.logout}}" title="Kijelentkezés: a térkép demó módba vált">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+Kilépés (kijelentkezés)</button>
+</sc-if>
+<div class="sect">ELRENDEZÉS</div>
+<div class="cur">Jelenlegi: <b>{{ui.currentName}}</b><br><span class="{{ui.chipCls}} mini"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</span></div>
+<sc-if value="{{ui.saveHint}}"><p class="note">{{ui.saveHint}}</p></sc-if>
+<div class="row">
+<button class="btn sm" type="button" onClick="{{ui.save}}" disabled="{{ui.saveDisabled}}">Mentés</button>
+<button class="btn sm" type="button" onClick="{{ui.saveAsOpen}}" disabled="{{ui.saveAsDisabled}}">Mentés másként</button>
+</div>
+<sc-if value="{{ui.saveAsShown}}">
+<form class="row" onSubmit="{{ui.saveAs}}">
+<input id="f27-newname" type="text" maxlength="80" placeholder="Elrendezés neve" aria-label="Új elrendezés neve" required>
+<button class="btn xs primary" type="submit">OK</button>
+<button class="btn xs" type="button" onClick="{{ui.saveAsCancel}}">Mégse</button>
+</form>
+</sc-if>
+<sc-if value="{{ui.loggedIn}}">
+<div class="sect">MENTETT ELRENDEZÉSEK</div>
+<sc-if value="{{ui.noLayouts}}"><p class="note">Még nincs mentett elrendezés.</p></sc-if>
+<div class="list">
+<sc-for list="{{ui.layouts}}" as="l">
+<div class="{{l.cls}}">
+<div class="lname"><span>{{l.name}}</span><sc-if value="{{l.isDefault}}"><span class="tag" style="background: #3fae6a">ALAP</span></sc-if></div>
+<div class="ltime">{{l.time}}</div>
+<sc-if value="{{l.confirm}}">
+<div class="row"><span class="warn">Biztosan törlöd?</span><button class="btn xs danger" type="button" onClick="{{l.doDelete}}">Igen</button><button class="btn xs" type="button" onClick="{{l.cancelDelete}}">Mégse</button></div>
+</sc-if>
+<sc-if value="{{l.actions}}">
+<div class="row">
+<button class="btn xs" type="button" onClick="{{l.load}}">Betöltés</button>
+<sc-if value="{{l.canDefault}}"><button class="btn xs" type="button" onClick="{{l.makeDefault}}">Alapértelmezett</button></sc-if>
+<sc-if value="{{l.canEdit}}"><button class="btn xs" type="button" onClick="{{l.askDelete}}" aria-label="{{l.delAria}}">Törlés</button></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<a class="alap" href="alaprajz.html">Egyszerű alaprajz megnyitása (titkosított adat)</a>
+</div>
+</sc-if>
+<sc-if value="{{ui.toastsHere}}"><div class="toasts" aria-live="polite">
+<sc-for list="{{ui.toasts}}" as="t"><div class="{{t.cls}}" role="status">{{t.text}}<sc-if value="{{t.hasAct}}"> <button class="tact" type="button" onClick="{{t.act}}">{{t.actLabel}}</button></sc-if></div></sc-for>
+</div></sc-if>
+</template>
 <template id="ov-template">
 <div class="ov-head">
 <span class="ov-title" title="{{ov.srcTip}}">{{ov.title}}</span>
@@ -1488,6 +1505,7 @@ Kilépés (kijelentkezés)</button>
 </sc-if>
 </template>
 <template id="dev-template">
+<acct-slot></acct-slot>
 <button class="ovphone" type="button" onClick="{{ov.btn}}" aria-expanded="{{ov.sheetAttr}}" aria-controls="f27-ovsheet"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path></svg>Élő áttekintés · {{cons.btnText}}<sc-if value="{{ov.doors.anyOpen}}"><span class="ovp-open">{{ov.doors.openCount}} nyitva</span></sc-if></button>
 <sc-if value="{{ov.sheetOpen}}">
 <aside id="f27-ovsheet" class="devpanel ovsheet {{ov.cls}}" role="dialog" aria-label="Élő áttekintés">

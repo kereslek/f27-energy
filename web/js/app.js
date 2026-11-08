@@ -1040,7 +1040,7 @@
       this.liveTimer = 0;
       this.state = {
         pos: {}, sel: null, drag: null,
-        drawer: false, drawerAuto: false, drawerFade: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
+        drawer: false, drawerAuto: false, drawerFade: false, phone: window.innerWidth <= 700, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
         weather: null, wxOpen: false, wxAt: null, hist: null, histAt: 0, ovVariant: ovVariantFromUrl(), ovTab: 'power', ovSheet: false,
         advIdx: 0, advHover: false, advOpen: false, advTalk: false, advMute: sGet(LOCAL, ADV_MUTE_KEY) === '1', advVariant: advVariantFromUrl(),
         user: null, role: null, layouts: [], current: null,
@@ -2254,6 +2254,8 @@
         showDemo: demo,
         acctLabel: loggedIn ? (role.label === 'TULAJ' ? 'Fiók és mentés' : 'Fiók') : 'Belépés',
         drawerOpen: st.drawer,
+        drawerInStage: st.drawer && !st.phone, drawerInSheet: st.drawer && !!st.phone,
+        toastsInStage: !st.phone, toastsInSheet: !!st.phone,
         drawerOpenAttr: st.drawer ? 'true' : 'false',
         toggleDrawer: function () { self.drawerStay(); self.setState({ drawer: !st.drawer, devOpen: false, calOpen: false, alOpen: false, saveAs: false, confirmId: null }); },
         drawerCls: 'panel drawer' + (st.drawerFade ? ' fading' : ''),
@@ -2868,11 +2870,9 @@
       swipe.dy = Math.max(0, e.clientY - swipe.y0);
       swipe.sheet.style.transform = swipe.dy ? 'translateY(' + swipe.dy + 'px)' : '';
     }, true);
-    function swipeEnd(e) {
-      if (!swipe || e.pointerId !== swipe.id) return;
-      var sw = swipe; swipe = null;
+    function sheetRelease(sw, done) {
       var fast = sw.dy > 40 && sw.dy / Math.max(1, Date.now() - sw.t0) > 0.5;
-      if (e.type === 'pointerup' && (sw.dy > 90 || fast)) {
+      if (done && (sw.dy > 90 || fast)) {
         sw.sheet.style.transition = 'transform .18s ease-in';
         sw.sheet.style.transform = 'translateY(100%)';
         setTimeout(function () {
@@ -2886,8 +2886,55 @@
         setTimeout(function () { sw.sheet.style.transition = ''; }, 200);
       }
     }
+    function swipeEnd(e) {
+      if (!swipe || e.pointerId !== swipe.id) return;
+      var sw = swipe; swipe = null;
+      sheetRelease(sw, e.type === 'pointerup');
+    }
     document.addEventListener('pointerup', swipeEnd, true);
     document.addEventListener('pointercancel', swipeEnd, true);
+
+    // A lap tartalmán is lehúzható (mint az iPhone saját lapjai): ha a lista a tetején áll, a lefelé
+    // húzás a lapot viszi, nem a listát. Érintéssel (touch események), mert a görgetést el kell venni.
+    var pull = null;
+    function scrollerIn(t, sheet) {
+      for (var el = t; el && el !== sheet.parentNode; el = el.parentElement) {
+        var cs = window.getComputedStyle(el);
+        if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) return el;
+        if (el === sheet) break;
+      }
+      return null;
+    }
+    document.addEventListener('touchstart', function (e) {
+      pull = null;
+      if (window.innerWidth > 700 || e.touches.length !== 1 || swipe) return;
+      var t = e.target;
+      var sheet = t.closest && t.closest('.alpop, .calpop, .devpanel, .advpop, #devlayer .drawer');
+      if (!sheet || t.closest('input, select, textarea, .al-head, .cal-head, .dp-head, .ovsheet .ov-head')) return;
+      var sc = scrollerIn(t, sheet);
+      if (sc && sc.scrollTop > 0) return;
+      pull = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: Date.now(), sheet: sheet, sc: sc, dy: 0, on: false };
+    }, { passive: true, capture: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!pull || e.touches.length !== 1) { if (pull && pull.on) sheetRelease(pull, false); pull = null; return; }
+      var dx = e.touches[0].clientX - pull.x0, dy = e.touches[0].clientY - pull.y0;
+      if (!pull.on) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (dy <= 0 || Math.abs(dx) > Math.abs(dy) || (pull.sc && pull.sc.scrollTop > 0)) { pull = null; return; }
+        pull.on = true;
+        pull.sheet.style.transition = 'none';
+      }
+      if (e.cancelable) e.preventDefault();
+      pull.dy = Math.max(0, dy);
+      pull.sheet.style.transform = pull.dy ? 'translateY(' + pull.dy + 'px)' : '';
+    }, { passive: false, capture: true });
+    function pullEnd(e) {
+      if (!pull) return;
+      var pl = pull; pull = null;
+      if (pl.on) sheetRelease(pl, e.type === 'touchend');
+    }
+    document.addEventListener('touchend', pullEnd, true);
+    document.addEventListener('touchcancel', pullEnd, true);
 
     // Mozgatás nagyítva: a bútorok és tűk saját húzása (stopPropagation) és a gombok/mezők kivételével
     // bárhol a színpadon; középső egérgombbal mindenhol.
@@ -2922,6 +2969,19 @@
     });
   }
 
+  // A látható magasság px-ben (--app-h). iPhone Safariban a 100vh a lenyitott eszköztár nélküli
+  // magasság, így az alulra tett lap teteje (az X-szel) a képernyő fölé csúszna; ezért a lapok
+  // magasságát ebből a mért értékből számoljuk.
+  function syncAppHeight() {
+    var vv = window.visualViewport;
+    var h = Math.round(Math.min(window.innerHeight, vv && vv.height ? vv.height * (vv.scale || 1) : window.innerHeight));
+    document.documentElement.style.setProperty('--app-h', h + 'px');
+  }
+  syncAppHeight();
+  window.addEventListener('resize', syncAppHeight);
+  window.addEventListener('orientationchange', function () { setTimeout(syncAppHeight, 250); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAppHeight);
+
   function start() {
     // az Élő áttekintés sablonja két helyre kerül: a színpad jobb oszlopába és a telefonos alsó lapba
     var ovTpl = document.getElementById('ov-template');
@@ -2932,8 +2992,20 @@
         t.innerHTML = t.innerHTML.replace('<ov-slot></ov-slot>', html);
       });
     }
+    // a Fiók és mentés kártya és az értesítések: asztalon a színpadon, telefonon a devlayer-ben
+    var acctTpl = document.getElementById('acct-template');
+    if (acctTpl) {
+      [['g3-template', 'drawerInStage', 'toastsInStage', 'false'], ['dev-template', 'drawerInSheet', 'toastsInSheet', 'ui.drawerInSheet']].forEach(function (x) {
+        var t = document.getElementById(x[0]);
+        var html = acctTpl.innerHTML.replace(/\{\{ui\.drawerHere\}\}/g, '{{ui.' + x[1] + '}}')
+          .replace(/\{\{ui\.toastsHere\}\}/g, '{{ui.' + x[2] + '}}')
+          .replace(/\{\{ui\.drawerBack\}\}/g, x[3] === 'false' ? '{{ false }}' : '{{' + x[3] + '}}');
+        t.innerHTML = t.innerHTML.replace('<acct-slot></acct-slot>', html);
+      });
+    }
     var app = new G3App({ showPath: true, showMarkers: true, snap: true });
     app.initSupabase();
+    window.addEventListener('resize', function () { var ph = window.innerWidth <= 700; if (ph !== !!app.state.phone) app.setState({ phone: ph }); });
     window.MiniDC.mount(document.getElementById('stage'), document.getElementById('g3-template'), app);
     window.MiniDC.mountExtra(document.getElementById('devlayer'), document.getElementById('dev-template'), app);
     initViewControls(app);
