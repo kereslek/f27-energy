@@ -892,6 +892,7 @@
   // ---- Riasztások: szabályok (ugyanaz, mint az adatgyűjtő f27/alerts.py-ja) ---------------------
   // A beállítás az alert_settings (id = 1) config mezője. A térkép az előnézetet (demó, vagy ha
   // hiányzik a 006-os migráció) ugyanezekkel a szabályokkal a böngészőben számolja, tartósság nélkül.
+  var DRAWER_AUTO_MS = 15000;
   var AL_DEFAULT = {
     temps: { '1': { on: true, lo: 19, hi: 24 }, '2': { on: true, lo: 19, hi: 22 }, '3': { on: true, lo: 20, hi: 38 }, '4': { on: false, lo: 19, hi: 25 } },
     minDuration: { minutes: 10 }, openHeat: { on: true, minutes: 10 }, acMaxOpen: { on: true, watts: 900 },
@@ -1039,7 +1040,7 @@
       this.liveTimer = 0;
       this.state = {
         pos: {}, sel: null, drag: null,
-        drawer: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
+        drawer: false, drawerAuto: false, drawerFade: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
         weather: null, wxOpen: false, wxAt: null, hist: null, histAt: 0, ovVariant: ovVariantFromUrl(), ovTab: 'power', ovSheet: false,
         advIdx: 0, advHover: false, advOpen: false, advTalk: false, advMute: sGet(LOCAL, ADV_MUTE_KEY) === '1', advVariant: advVariantFromUrl(),
         user: null, role: null, layouts: [], current: null,
@@ -2253,12 +2254,15 @@
         acctLabel: loggedIn ? (role.label === 'TULAJ' ? 'Fiók és mentés' : 'Fiók') : 'Belépés',
         drawerOpen: st.drawer,
         drawerOpenAttr: st.drawer ? 'true' : 'false',
-        toggleDrawer: function () { self.setState({ drawer: !st.drawer, devOpen: false, calOpen: false, alOpen: false, saveAs: false, confirmId: null }); },
+        toggleDrawer: function () { self.drawerStay(); self.setState({ drawer: !st.drawer, devOpen: false, calOpen: false, alOpen: false, saveAs: false, confirmId: null }); },
+        drawerCls: 'panel drawer' + (st.drawerFade ? ' fading' : ''),
+        drawerAuto: st.drawer && st.drawerAuto,
+        drawerStay: function () { if (self.state.drawerAuto) self.drawerStay(); },
         toggleDev: function () { self.setState({ devOpen: !st.devOpen, drawer: false, calOpen: false, alOpen: false, advOpen: false, ovSheet: false, saveAs: false, confirmId: null }); },
         closeDev: function () { self.setState({ devOpen: false }); },
         devOpenAttr: st.devOpen ? 'true' : 'false',
-        openDrawer: function () { self.setState({ drawer: true }); },
-        closeDrawer: function () { self.setState({ drawer: false, saveAs: false, confirmId: null }); },
+        openDrawer: function () { self.drawerStay(); self.setState({ drawer: true }); },
+        closeDrawer: function () { self.drawerStay(); self.setState({ drawer: false, saveAs: false, confirmId: null }); },
         noConfig: !this.sb,
         showLogin: !!this.sb && !loggedIn,
         loggedIn: loggedIn,
@@ -2389,6 +2393,7 @@
         var p = document.getElementById('f27-pass');
         if (p) { p.value = ''; p.type = 'password'; }
         self.setState({ peek: false });
+        self.drawerAutoClose();
       }, function (err) {
         self.setState({ busy: false });
         self.toast(self.errText(err, 'Sikertelen belépés.'), 'err');
@@ -2407,8 +2412,30 @@
       if (focused) { restore(); requestAnimationFrame(function () { requestAnimationFrame(restore); }); }
     }
 
+    // Belépés után a Fiók és mentés kártya 15 mp múlva elhalványul és bezárul, hogy alatta
+    // látsszon az Élő áttekintés; ha közben használják (kattintás, gépelés, görgetés), nyitva marad.
+    drawerAutoClose() {
+      var self = this;
+      this.drawerStay();
+      this.setState({ drawerAuto: true, drawerFade: false });
+      this._drawerT1 = setTimeout(function () { if (self.state.drawer) self.setState({ drawerFade: true }); }, DRAWER_AUTO_MS - 1000);
+      this._drawerT2 = setTimeout(function () {
+        self._drawerT1 = self._drawerT2 = null;
+        var inDrawer = document.activeElement && document.activeElement.closest && document.activeElement.closest('#f27-drawer');
+        self.setState({ drawer: false, drawerAuto: false, drawerFade: false, saveAs: false, confirmId: null });
+        if (inDrawer) { var b = document.querySelector('.btn.acct'); if (b) b.focus({ preventScroll: true }); }
+      }, DRAWER_AUTO_MS);
+    }
+
+    drawerStay() {
+      clearTimeout(this._drawerT1); clearTimeout(this._drawerT2);
+      this._drawerT1 = this._drawerT2 = null;
+      if (this.state.drawerAuto || this.state.drawerFade) this.setState({ drawerAuto: false, drawerFade: false });
+    }
+
     logout() {
       var self = this;
+      this.drawerStay();
       this.sb.auth.signOut().then(function () { authStore.clearAuth(); self.afterLogout(); }, function (err) { authStore.clearAuth(); self.toast(self.errText(err, 'Sikertelen kilépés.'), 'err'); });
     }
 
@@ -2833,7 +2860,7 @@
       if (e.key === 'Escape' && app.state.alOpen) { app.closeAlerts(); return; }
       if (e.key === 'Escape' && app.state.calOpen) { app.closeCal(); return; }
       if (app.state.calOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !editableTarget(t) && !(e.ctrlKey || e.metaKey || e.altKey)) { e.preventDefault(); app.calPage(e.key === 'ArrowLeft' ? -1 : 1); return; }
-      if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
+      if (e.key === 'Escape' && app.state.drawer) { app.drawerStay(); app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
       if (e.key === 'Escape' && app.state.wxOpen) { app.setState({ wxOpen: false }); return; }
       if (e.key === 'Escape' && app.state.advOpen) { app.setState({ advOpen: false }); return; }
       if (e.key === 'Escape' && app.state.devOpen) { app.setState({ devOpen: false }); return; }

@@ -164,6 +164,13 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .drawer label.remember input{width:20px;height:20px;margin:0;accent-color:#3fae6a;cursor:pointer}
 .drawer .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .drawer form.row input{flex:1 1 120px;width:auto;height:30px}
+.drawer{transition:opacity .9s ease}
+.drawer.fading{opacity:0}
+.drawer .dauto{position:relative;overflow:hidden;font-size:11.5px;font-weight:800;line-height:1.35;color:#45507a;background:#eef5ff;border:2px solid #bcd0ee;border-radius:10px;padding:6px 8px 9px}
+.drawer .dauto i{position:absolute;left:0;bottom:0;height:3px;width:100%;background:#2f6fdb;transform-origin:left;animation:dauto 15s linear forwards}
+@keyframes dauto{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}.drawer .dauto i{animation:none}}
+.drawer .logout{align-self:flex-start;display:inline-flex;align-items:center;gap:6px}
 .drawer .who{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:800}
 .drawer .who .em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawer .sect{margin-top:4px;font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;border-top:2px dashed #e3cfa6;padding-top:10px}
@@ -1206,7 +1213,7 @@ Elrendezés visszaállítása
 
 
 <sc-if value="{{ui.drawerOpen}}">
-<div id="f27-drawer" class="panel drawer" role="dialog" aria-label="Fiók és elrendezések">
+<div id="f27-drawer" class="{{ui.drawerCls}}" role="dialog" aria-label="Fiók és elrendezések" onPointerDown="{{ui.drawerStay}}" onKeyDown="{{ui.drawerStay}}" onWheel="{{ui.drawerStay}}" onTouchStart="{{ui.drawerStay}}">
 <div class="dhead">
 <span class="fr" style="font-size: 21px; font-weight: 800; color: #3b2a14">Fiók és mentés</span>
 <button class="btn ib sm" type="button" onClick="{{ui.closeDrawer}}" aria-label="Bezárás" title="Bezárás (Esc)">
@@ -1230,8 +1237,11 @@ Elrendezés visszaállítása
 </form>
 </sc-if>
 <sc-if value="{{ui.loggedIn}}">
+<sc-if value="{{ui.drawerAuto}}"><div class="dauto" role="status"><span>15 mp múlva magától bezárul, hogy látsd az Élő áttekintést. Kattints bárhová a kártyán, és nyitva marad.</span><i aria-hidden="true"></i></div></sc-if>
 <div class="who"><span class="em">{{ui.email}}</span><span class="tag" style="background: {{ui.roleColor}}">{{ui.roleLabel}}</span></div>
-<button class="btn sm" type="button" onClick="{{ui.logout}}">Kilépés</button>
+<button class="btn sm logout" type="button" onClick="{{ui.logout}}" title="Kijelentkezés: a térkép demó módba vált">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+Kilépés (kijelentkezés)</button>
 </sc-if>
 <div class="sect">ELRENDEZÉS</div>
 <div class="cur">Jelenlegi: <b>{{ui.currentName}}</b><br><span class="{{ui.chipCls}} mini"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</span></div>
