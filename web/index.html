@@ -604,7 +604,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </sc-for>
 
 <sc-for list="{{layers}}" as="ly" hint-placeholder-count="0">
-<g class="{{ly.cls}}" transform="{{ly.tr}}" onPointerDown="{{ly.down}}">
+<g class="{{ly.cls}}" data-piece="{{ly.id}}" transform="{{ly.tr}}" onPointerDown="{{ly.down}}">
 <sc-for list="{{ly.boxes}}" as="b" hint-placeholder-count="0">
 <g>
 <polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="{{b.sw}}" stroke-linejoin="round"></polygon>
@@ -699,6 +699,22 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
 <text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
 
+<g class="compass" transform="{{sc.fx.compass}}" style="pointer-events: none" aria-label="Iránytű: észak a Ferenc körút felé">
+<ellipse cx="0" cy="3" rx="50" ry="25" fill="#1e2a44" opacity="0.18"></ellipse>
+<ellipse cx="0" cy="0" rx="50" ry="25" fill="#fff7e6" fill-opacity="0.92" stroke="#1e2a44" stroke-width="3"></ellipse>
+<ellipse cx="0" cy="0" rx="36" ry="18" fill="none" stroke="#d9c9a6" stroke-width="1.5"></ellipse>
+<polygon points="-2.7,-5.4 32,-16 2.7,5.4" fill="#e8432f" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
+<polygon points="-2.7,-5.4 -32,16 2.7,5.4" fill="#ffffff" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
+<polygon points="2.7,-5.4 32,16 -2.7,5.4" fill="#45507a" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
+<polygon points="2.7,-5.4 -32,-16 -2.7,5.4" fill="#45507a" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
+<circle cx="0" cy="0" r="3" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.5"></circle>
+<g font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="14" text-anchor="middle" stroke="#1e2a44" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">
+<text x="47" y="-22" fill="#ff6b52">É</text>
+<text x="48" y="34" fill="#ffffff">K</text>
+<text x="-47" y="34" fill="#ffffff">D</text>
+<text x="-50" y="-22" fill="#ffffff">NY</text>
+</g>
+</g>
 <g transform="{{sc.fx.priv}}" style="pointer-events: none">
 <rect x="-30" y="-36" width="60" height="18" rx="6" fill="#4d311c" stroke="#1e2a44" stroke-width="2.5"></rect>
 <path d="M-22,-29 v-3 a3,3 0 0 1 6,0 v3 M-23.5,-29 h9 v7 h-9 z" fill="#f0cf6a" stroke="#f0cf6a" stroke-width="1.4"></path>
@@ -713,15 +729,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <ellipse cx="0" cy="0" rx="13" ry="6.5" fill="#ffffff" fill-opacity="0.25" stroke="#ffffff" stroke-width="2" stroke-dasharray="3 3"></ellipse>
 <text x="0" y="-9" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3" paint-order="stroke">+1</text>
 </g>
-<g transform="{{fx.flag}}" style="pointer-events: none">
-<line x1="0" y1="0" x2="0" y2="-96" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"></line>
-<line x1="0" y1="0" x2="0" y2="-96" stroke="#fff7e6" stroke-width="2.5" stroke-linecap="round"></line>
-<circle cx="0" cy="-100" r="6" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.5"></circle>
-<g class="flag"><path d="M2,-96 H104 L96,-82 L104,-68 H2 Z" fill="#3fae6a" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"></path><text x="49" y="-78" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff">CÉL: Zöld szék</text></g>
 
-<path class="spark" d="M-26,-30 l3,-9 l3,9 l9,3 l-9,3 l-3,9 l-3,-9 l-9,-3 z" fill="#fff3a6" stroke="#1e2a44" stroke-width="1.5"></path>
-<path class="spark" style="animation-delay: .6s" d="M22,-40 l2.5,-7 l2.5,7 l7,2.5 l-7,2.5 l-2.5,7 l-2.5,-7 l-7,-2.5 z" fill="#ffffff" stroke="#1e2a44" stroke-width="1.5"></path>
-</g>
 
 <sc-if value="{{flameOn}}">
 <g transform="{{sc.fx.flame}}" style="pointer-events: none">
@@ -734,14 +742,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </g>
 </sc-if>
 
-<g transform="{{sc.fx.boss}}" style="pointer-events: none">
-<rect x="-112" y="-44" width="224" height="60" rx="14" fill="#fff7e6" stroke="#1e2a44" stroke-width="3"></rect>
-<text x="0" y="-22" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="15" fill="#e8432f">BOSS: Keret feletti Kályha</text>
-<rect x="-98" y="-14" width="196" height="12" rx="6" fill="#ffd9cc" stroke="#1e2a44" stroke-width="2"></rect>
-<rect x="-98" y="-14" width="{{bossW}}" height="12" rx="6" fill="#e8432f"></rect>
-<text x="0" y="11" text-anchor="middle" font-family="Nunito" font-weight="900" font-size="11" fill="#1e2a44">~60 Ft / kWh hő</text>
-<path d="M-9,16 L0,27 L9,16 Z" fill="#fff7e6" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></path>
-</g>
+
 
 
 <g transform="{{sc.fx.gw}}" style="pointer-events: none">

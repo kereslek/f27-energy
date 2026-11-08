@@ -2,6 +2,8 @@
 
 A lakás izometrikus, játékos térképe: `https://kereslek.github.io/f27-energy/`
 Telefonon is működik (a teljes képernyő arányosan kicsinyítve).
+A lakás mellett, kint egy iránytű mutatja az égtájakat: É (a Ferenc körút felé), K, D (a gang
+és a belső udvar felé), NY.
 
 ## Egyszeri beállítás: GitHub Pages bekapcsolása
 

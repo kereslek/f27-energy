@@ -289,22 +289,22 @@ class G3Scene extends MiniDC.Component {
     add(421, 103, 6, 6, 12, 9, GLASSG, { bias: 3, lines: seg(P(423, 109.2, 12), P(423, 109.2, 21)) + seg(P(425, 109.2, 12), P(425, 109.2, 21)), lc: '#2a6b57' });
     add(420, 102, 8, 8, 21, 5, ['#ffe2c8', '#ef9a6a', '#d77a48'], { bias: 4 });
 
-    piece('bed', 'Franciaágy a nyugati fal közepén, kicsit a fürdő felé, fölötte ezüst tükör');
+    piece('bed', 'Franciaágy a nyugati falon, a cserépkályhától kicsit távolabb, fölötte ezüst tükör');
     var spind = '';
-    for (var sy = 187; sy <= 243; sy += 4) spind += seg(P(287.2, sy, 12), P(287.2, sy, 34));
-    add(282, 184, 5, 62, 0, 36, WHITE, { lines: spind, lc: '#b9bec5' });
-    add(287, 186, 62, 58, 0, 10, WHITE, { bias: 1 });
-    add(288, 187, 62, 57, 10, 6, LINEN, { bias: 2, lines: seg(P(300, 244.2, 10), P(348, 244.2, 10)) + seg(P(350.2, 189, 10), P(350.2, 242, 10)), lc: '#cbbf9f' });
-    add(289, 190, 9, 50, 16, 5, WHITE, { bias: 3 });
-    add(292, 192, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 194, 17), P(301.2, 210, 23)) + seg(P(301.2, 194, 23), P(301.2, 210, 17)), lc: '#f4f1ea' });
-    add(292, 218, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 220, 17), P(301.2, 236, 23)) + seg(P(301.2, 220, 23), P(301.2, 236, 17)), lc: '#f4f1ea' });
-    add(280, 194, 2, 42, 40, 24, SILVER, { bias: 5, f1: faceX(282.1, 198, 232, 43, 61), f1c: '#a9bccd' });
+    for (var sy = 173; sy <= 229; sy += 4) spind += seg(P(287.2, sy, 12), P(287.2, sy, 34));
+    add(282, 170, 5, 62, 0, 36, WHITE, { lines: spind, lc: '#b9bec5' });
+    add(287, 172, 62, 58, 0, 10, WHITE, { bias: 1 });
+    add(288, 173, 62, 57, 10, 6, LINEN, { bias: 2, lines: seg(P(300, 230.2, 10), P(348, 230.2, 10)) + seg(P(350.2, 175, 10), P(350.2, 228, 10)), lc: '#cbbf9f' });
+    add(289, 176, 9, 50, 16, 5, WHITE, { bias: 3 });
+    add(292, 178, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 180, 17), P(301.2, 196, 23)) + seg(P(301.2, 180, 23), P(301.2, 196, 17)), lc: '#f4f1ea' });
+    add(292, 204, 9, 20, 16, 8, SAGE, { bias: 4, lines: seg(P(301.2, 206, 17), P(301.2, 222, 23)) + seg(P(301.2, 206, 23), P(301.2, 222, 17)), lc: '#f4f1ea' });
+    add(280, 180, 2, 42, 40, 24, SILVER, { bias: 5, f1: faceX(282.1, 184, 218, 43, 61), f1c: '#a9bccd' });
 
     piece('night', 'Fehér éjjeliszekrények rattan lámpával');
-    add(282, 169, 13, 13, 0, 16, WHITE, { lines: seg(P(295.2, 171, 11), P(295.2, 180, 11)), lc: '#aeb4bb' });
-    add(285.5, 172.5, 6, 6, 16, 8, RATTAN, { bias: 1 });
-    add(282, 248, 13, 13, 0, 16, WHITE, { bias: 2, lines: seg(P(295.2, 250, 11), P(295.2, 259, 11)), lc: '#aeb4bb' });
-    add(285.5, 251.5, 6, 6, 16, 8, RATTAN, { bias: 3 });
+    add(282, 155, 13, 13, 0, 16, WHITE, { lines: seg(P(295.2, 157, 11), P(295.2, 166, 11)), lc: '#aeb4bb' });
+    add(285.5, 158.5, 6, 6, 16, 8, RATTAN, { bias: 1 });
+    add(282, 234, 13, 13, 0, 16, WHITE, { bias: 2, lines: seg(P(295.2, 236, 11), P(295.2, 245, 11)), lc: '#aeb4bb' });
+    add(285.5, 237.5, 6, 6, 16, 8, RATTAN, { bias: 3 });
 
     piece('dresser', 'Fehér 8 fiókos komód, TV, hangprojektor, acél nyelvdob');
     add(454, 166, 18, 70, 0, 22, WHITE, { lines: grid(454, 166, 18, 70, 0, 22, 1, 4, 3), lc: '#aeb4bb' });
@@ -487,8 +487,6 @@ class G3Scene extends MiniDC.Component {
     add(292, 459, 38, 11, 0, 34, WALNUT, { lines: seg(P(292, 470.2, 11), P(330, 470.2, 11)) + seg(P(292, 470.2, 22), P(330, 470.2, 22)), lc: '#3a2414' });
     piece('rack', 'Fogas');
     add(262, 512, 5, 5, 0, 46, WALNUT);
-    piece('bench', 'Cipőpad');
-    add(300, 512, 18, 10, 0, 12, WOOD);
     piece('panelbox', 'Mérő- és elosztószekrény (k5, k7, k8, k9): magas fehér beépített szekrény a bejárati ajtó mellett');
     var CABW = ['#fbfbfa', '#e3e5e7', '#d2d5d9'];
     add(321, 582.5, 10, 7, 0, 1.2, CABW);
@@ -547,31 +545,36 @@ class G3Scene extends MiniDC.Component {
     for (var aa = 0; aa < 14; aa++) { var tt = aa / 14 * Math.PI * 2; wd.push(P(202.3, 521 + 6.5 * Math.cos(tt), 10 + 6.5 * Math.sin(tt))); wd2.push(P(202.4, 521 + 4.6 * Math.cos(tt), 10 + 4.6 * Math.sin(tt))); }
     add(182, 510, 20, 22, 0, 20, WHITE, { f1: pth(wd), f1c: '#26221f' });
     add(181, 509, 23, 24, 20, 2, MARBLE, { bias: 1, f1: pth(wd2), f1c: '#7fd3ea' });
-    piece('cooker', 'Candy villanytűzhely kerámialappal, sütővel');
-    add(182, 488, 20, 21, 0, 22, WHITE, { f1: faceX(202.1, 491, 506, 4, 14), f1c: '#2b2b2b' });
-    add(183, 489, 18, 19, 22, 0.8, BLACK, { bias: 1 });
+    piece('counter2', 'Alsó szekrény márványhatású munkalappal (a polcoszlop és a mosógép között)');
+    add(182, 488, 20, 21, 0, 20, CAB, { lines: seg(P(202.3, 498.5, 2), P(202.3, 498.5, 18)), lc: '#c9c3b5' });
+    add(181, 487.5, 23, 22, 20, 2, MARBLE, { bias: 1 });
+    piece('cooker', 'Candy villanytűzhely kerámialappal, sütővel, a sarokban (fölötte a mikró)');
+    add(182, 453, 20, 21, 0, 22, WHITE, { f1: faceX(202.1, 456, 471, 4, 14), f1c: '#2b2b2b' });
+    add(183, 454, 18, 19, 22, 0.8, BLACK, { bias: 1 });
     piece('column', 'Keskeny nyitott polcoszlop (wenge keret): kenyérpirító, vágódeszkák');
     add(182, 476.5, 20, 11, 0, 14, CAB, { lines: grid(182, 476.5, 20, 11, 0, 14, 1, 1, 1), lc: '#c9c3b5' });
     add(182, 476.5, 20, 11, 14, 40, DKWOOD, { bias: 1, f1: faceX(202.1, 478, 486, 16, 52), f1c: '#f6f4ef' });
     add(186, 478.5, 8, 7, 20, 7, STEEL, { bias: 2 });
     add(184, 478, 2, 8, 34, 12, ['#d9a86a', '#b98a50', '#a07646'], { bias: 2 });
     add(187, 478, 2, 8, 34, 10, ['#e8c48a', '#c9a66c', '#b0905c'], { bias: 2 });
-    piece('fridge', 'Beko inox hűtő-fagyasztó a sarokban, 90 fokkal elfordítva');
-    add(186, 453, 27, 21, 0, 54, STEEL, { lines: seg(P(188, 474.2, 15), P(211, 474.2, 15)) + seg(P(208, 474.2, 20), P(208, 474.2, 34)) + seg(P(208, 474.2, 6), P(208, 474.2, 12)), lc: '#5c636e' });
+    piece('fridge', 'Beko inox hűtő-fagyasztó az északi fal mentén, a tűzhely mellett');
+    add(214, 453, 27, 21, 0, 54, STEEL, { lines: seg(P(216, 474.2, 15), P(239, 474.2, 15)) + seg(P(236, 474.2, 20), P(236, 474.2, 34)) + seg(P(236, 474.2, 6), P(236, 474.2, 12)), lc: '#5c636e' });
     piece('urnbox', 'Nyitott wenge doboz: kék-fehér porcelán urnák, befőttesüvegek, növény', false);
-    add(182.5, 453, 32, 35, 56, 2, DKWOOD);
-    add(182.5, 453, 32, 2, 58, 16, DKWOOD, { bias: 1 });
-    add(212.5, 453, 2, 35, 58, 16, DKWOOD, { bias: 2 });
-    add(184.5, 455, 28, 31, 64, 1.6, WHITE, { bias: 3 });
+    add(213.5, 453, 32, 35, 56, 2, DKWOOD);
+    add(213.5, 453, 32, 2, 58, 16, DKWOOD, { bias: 1 });
+    add(243.5, 453, 2, 35, 58, 16, DKWOOD, { bias: 2 });
+    add(215.5, 455, 28, 31, 64, 1.6, WHITE, { bias: 3 });
     var BLUEW = ['#f4f7fb', '#3d6fb6', '#2f5a99'];
-    [[188, 462], [196, 470]].forEach(function (u) { add(u[0], u[1], 6, 6, 58, 6, BLUEW, { bias: 4, lines: seg(P(u[0], u[1] + 6.2, 60.5), P(u[0] + 6, u[1] + 6.2, 60.5)), lc: '#2f5a99' }); add(u[0] + 1.5, u[1] + 1.5, 3, 3, 64, 1.4, BLUEW, { bias: 5 }); });
-    add(204, 458, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
-    add(204, 478, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
-    add(189, 478, 5, 5, 58, 4, ['#f4f1ea', '#dcd6ca', '#cbc4b6'], { bias: 4 });
-    add(188.5, 477.5, 6, 6, 62, 5, IVY, { bias: 5 });
+    [[219, 462], [227, 470]].forEach(function (u) { add(u[0], u[1], 6, 6, 58, 6, BLUEW, { bias: 4, lines: seg(P(u[0], u[1] + 6.2, 60.5), P(u[0] + 6, u[1] + 6.2, 60.5)), lc: '#2f5a99' }); add(u[0] + 1.5, u[1] + 1.5, 3, 3, 64, 1.4, BLUEW, { bias: 5 }); });
+    add(235, 458, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
+    add(235, 478, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
+    add(220, 478, 5, 5, 58, 4, ['#f4f1ea', '#dcd6ca', '#cbc4b6'], { bias: 4 });
+    add(219.5, 477.5, 6, 6, 62, 5, IVY, { bias: 5 });
     piece('uppers', 'Fehér kazettás felső szekrények, mikró, LED-szalag', false);
-    add(180.5, 488, 11, 100, 46, 18, CAB, { lines: seg(P(191.6, 512, 46), P(191.6, 512, 64)) + seg(P(191.6, 538, 46), P(191.6, 538, 64)) + seg(P(191.6, 563, 46), P(191.6, 563, 64)), lc: '#c9c3b5',
-      f1: faceX(191.7, 494, 508, 48, 58), f1c: '#26221f' });
+    add(180.5, 488, 11, 100, 46, 18, CAB, { lines: seg(P(191.6, 512, 46), P(191.6, 512, 64)) + seg(P(191.6, 538, 46), P(191.6, 538, 64)) + seg(P(191.6, 563, 46), P(191.6, 563, 64)), lc: '#c9c3b5' });
+    add(180.5, 453, 13, 22, 40, 24, CAB, { lines: seg(P(193.6, 453.5, 52), P(193.6, 474.5, 52)), lc: '#c9c3b5',
+      f1: faceX(193.7, 456, 467, 42, 50) , f1c: '#26221f' });
+    add(180.5, 453, 13, 22, 64, 2, DKWOOD, { bias: 1 });
     add(180.5, 488, 11, 100, 64, 2, DKWOOD, { bias: 1 });
     add(191.2, 490, 0.8, 96, 45.2, 0.6, ['#fff6c8', '#ffe98a', '#ffe070'], { bias: 2 });
     piece('herbs', 'Fűszernövények a falisínen, fekete eszközsín');
@@ -632,7 +635,7 @@ class G3Scene extends MiniDC.Component {
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
         stoveTop: tr(341, 303, 110), flame: tr(380, 312, 6), boss: tr(341, 303, 154), ch1: tr(377, 190, 70), ch2: tr(404, 470, 70),
-        ghosts: tr(414, 552, 34), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
+        ghosts: tr(414, 552, 34), compass: tr(560, 430, 0), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };
     this._sc = sc;
@@ -731,13 +734,13 @@ class G3Scene extends MiniDC.Component {
     function trw(x, y, z, id) { var p = P(x, y, z), o = id ? off(id) : [0, 0]; return trp([p[0] + o[0], p[1] + o[1]]); }
 
     // rétegek: falak + húzható bútorok mélység szerint
-    var layers = sc.walls.map(function (b) { return { key: b.key, tr: '', cls: 'wall', boxes: [b], down: null }; });
+    var layers = sc.walls.map(function (b) { return { id: '', key: b.key, tr: '', cls: 'wall', boxes: [b], down: null }; });
     sc.pieces.forEach(function (p) {
       var o = off(p.id);
       var cls = p.drag ? 'pc' : 'wall';
       if (st.sel === p.id) cls += ' sel';
       if (st.drag === p.id) cls += ' drag';
-      layers.push({ key: p.key + 2 * o[1] + (st.drag === p.id ? 0.5 : 0), tr: 'translate(' + r1(o[0]) + ',' + r1(o[1]) + ')', cls: cls, boxes: p.boxes,
+      layers.push({ id: p.id, key: p.key + 2 * o[1] + (st.drag === p.id ? 0.5 : 0), tr: 'translate(' + r1(o[0]) + ',' + r1(o[1]) + ')', cls: cls, boxes: p.boxes,
         down: p.drag ? function (e) { self.startDrag(e, p.id, 'piece'); } : function () { self.setState({ sel: p.id }); } });
     });
     layers.sort(function (a, b) { return a.key - b.key; });
@@ -850,7 +853,7 @@ class G3Scene extends MiniDC.Component {
 
     return {
       sc: sc, L: L, wins: wins, layers: layers, arcs: arcs, coins: coins, pads: pads, hero: hero, pins: pins,
-      fx: { horn: trw(344, 428, 28, 'sewing'), plant: trw(367, 59, 25, 'stand'), lamp: trw(298, 52, 56, 'flamp'), lamp2: trw(417, 68, 50, 'arclamp'), lamp3: trw(288.5, 175.5, 26, 'night'), lamp4: trw(288.5, 254.5, 26, 'night'), flag: trw(343, 406, 0, 'gchair1'), seat5: trw(400, 486, 0, 'dining') },
+      fx: { horn: trw(344, 428, 28, 'sewing'), plant: trw(367, 59, 25, 'stand'), lamp: trw(298, 52, 56, 'flamp'), lamp2: trw(417, 68, 50, 'arclamp'), lamp3: trw(288.5, 161.5, 26, 'night'), lamp4: trw(288.5, 240.5, 26, 'night'), flag: trw(343, 406, 0, 'gchair1'), seat5: trw(400, 486, 0, 'dining') },
       focusFx: { tr: trw(ft[0], ft[1], ft[2], ft[3]), c: colors[focus] || '#4fc3f7' },
       bossW: Math.round(196 * L.boss),
       tools: tools, eq: { name: eq.name, effect: eq.effect, stat: eq.stat, color: eq.color, targetLabel: eq.targetLabel },
