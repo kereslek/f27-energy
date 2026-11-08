@@ -889,6 +889,142 @@
   }
 
 
+  // ---- Riasztások: szabályok (ugyanaz, mint az adatgyűjtő f27/alerts.py-ja) ---------------------
+  // A beállítás az alert_settings (id = 1) config mezője. A térkép az előnézetet (demó, vagy ha
+  // hiányzik a 006-os migráció) ugyanezekkel a szabályokkal a böngészőben számolja, tartósság nélkül.
+  var AL_DEFAULT = {
+    temps: { '1': { on: true, lo: 19, hi: 24 }, '2': { on: true, lo: 19, hi: 22 }, '3': { on: true, lo: 20, hi: 38 }, '4': { on: false, lo: 19, hi: 25 } },
+    minDuration: { minutes: 10 }, openHeat: { on: true, minutes: 10 }, acMaxOpen: { on: true, watts: 900 },
+    skipDeadContacts: true, cooldownMin: 60, resolvedMsg: true,
+    quiet: { on: true, from: '23:00', to: '07:00' }, quietExceptStoveC: 40,
+    channels: { push: true, whatsapp: false },
+    digest: { on: true, time: '20:00' }
+  };
+  var AL_DIGEST_TIMES = ['18:00', '19:00', '20:00', '21:00'];
+  var AL_THERMO = { '1': 'Kis szoba', '2': 'Nagy szoba', '3': 'Kályha mögött', '4': 'Fürdő' };
+  var AL_RANGE = { '1': [12, 30], '2': [12, 30], '3': [10, 45], '4': [12, 30] };
+  var AL_OPEN = { '5': 'Bejárati ajtó', '7': 'Konyha ablak', '8': 'Kis szoba ablak', '9': 'Nagy szoba bal ablak', '10': 'Nagy szoba jobb ablak' };
+  var AL_WINDOWS = ['7', '8', '9', '10'];
+  var AL_REFRESH_MS = 2 * 60000;
+  var AL_HOURS = (function () { var o = []; for (var h = 0; h < 24; h++) { o.push((h < 10 ? '0' : '') + h + ':00'); o.push((h < 10 ? '0' : '') + h + ':30'); } return o; })();
+  function alNum(v, lo, hi, def) { return typeof v === 'number' && isFinite(v) && v >= lo && v <= hi ? v : def; }
+  function alBool(v, def) { return typeof v === 'boolean' ? v : def; }
+  function alObj(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
+  function alMerge(stored) {
+    var c = JSON.parse(JSON.stringify(AL_DEFAULT)), s = alObj(stored), temps = alObj(s.temps);
+    Object.keys(c.temps).forEach(function (p) {
+      var d = c.temps[p], t = alObj(temps[p]);
+      d.on = alBool(t.on, d.on);
+      var lo = alNum(t.lo, -10, 80, d.lo), hi = alNum(t.hi, -10, 80, d.hi);
+      if (lo < hi) { d.lo = lo; d.hi = hi; }
+    });
+    [['minDuration', 'minutes', 0, 240], ['openHeat', 'minutes', 0, 240], ['acMaxOpen', 'watts', 100, 5000]].forEach(function (x) {
+      var sub = alObj(s[x[0]]);
+      c[x[0]][x[1]] = alNum(sub[x[1]], x[2], x[3], c[x[0]][x[1]]);
+      if ('on' in c[x[0]]) c[x[0]].on = alBool(sub.on, c[x[0]].on);
+    });
+    c.skipDeadContacts = alBool(s.skipDeadContacts, c.skipDeadContacts);
+    c.cooldownMin = alNum(s.cooldownMin, 5, 1440, c.cooldownMin);
+    c.resolvedMsg = alBool(s.resolvedMsg, c.resolvedMsg);
+    c.quietExceptStoveC = alNum(s.quietExceptStoveC, 20, 80, c.quietExceptStoveC);
+    var q = alObj(s.quiet);
+    c.quiet.on = alBool(q.on, c.quiet.on);
+    ['from', 'to'].forEach(function (k) { if (typeof q[k] === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(q[k])) c.quiet[k] = q[k]; });
+    var ch = alObj(s.channels);
+    Object.keys(c.channels).forEach(function (k) { c.channels[k] = alBool(ch[k], c.channels[k]); });
+    var dg = alObj(s.digest);
+    c.digest.on = alBool(dg.on, c.digest.on);
+    if (typeof dg.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(dg.time)) c.digest.time = dg.time;
+    return c;
+  }
+  function alRulesOn(c) {
+    return Object.keys(c.temps).filter(function (p) { return c.temps[p].on; }).length + (c.openHeat.on ? 1 : 0) + (c.acMaxOpen.on ? 1 : 0);
+  }
+  function alThr(v) { return Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : fmtNum(v, 1); }
+  function alLast(d) {
+    var u = d && d.status && d.status._upd;
+    if (typeof u === 'number' && u > 0) return u * 1000;
+    var t = d && d.ts ? Date.parse(d.ts) : NaN;
+    return isFinite(t) ? t : null;
+  }
+  function alThermo(src, p, now) {
+    var d = src[p];
+    if (!d || d.online === false) return null;
+    var t = alLast(d);
+    if (t == null || now - t > 6 * 3600000) return null;
+    return liveTemp(d.status || {}, d.meta);
+  }
+  function alContact(src, p, now, skip) {
+    var d = src[p];
+    if (!d) return null;
+    if (skip) {
+      if (d.online === false) return null;
+      var b = batteryOf(d.status || {});
+      if (b && b.pct < 10) return null;
+      var t = alLast(d);
+      if (t == null || now - t > 24 * 3600000) return null;
+    }
+    return liveOpen(d.status || {});
+  }
+  function alWatts(src, pink) {
+    var d = src[pink];
+    if (!d || d.online === false) return null;
+    var s = d.status || {};
+    return s.switch === false ? 0 : livePower(s, d.meta);
+  }
+  // A böngészőben számolt előnézet: most mi riasztana (a tartósságot és a türelmi időt nem nézi).
+  function alEval(c, src, now) {
+    var out = [];
+    Object.keys(AL_THERMO).forEach(function (p) {
+      var t = c.temps[p];
+      if (!t.on) return;
+      var v = alThermo(src, p, now);
+      if (v == null) return;
+      var short = AL_THERMO[p] + ' ' + fmtNum(v, 1) + ' °C';
+      if (v > t.hi) out.push({ key: 'temp_hi:' + p, short: short, text: short + ' (határ ' + alThr(t.hi) + ' °C)' });
+      else if (v < t.lo) out.push({ key: 'temp_lo:' + p, short: short, text: short + ' (alsó határ ' + alThr(t.lo) + ' °C)' });
+    });
+    var P = src.P, stage = P && P.online !== false ? liveStage(P.status || {}) : null;
+    var w5 = alWatts(src, 'X5'), w9 = alWatts(src, 'X9'), heat = [];
+    if (stage > 0) heat.push('a kályha ' + stage + ' kW-on');
+    else if (w5 != null && w5 > 300) heat.push('a kályha fűt (' + fmtW(w5) + ')');
+    if (w9 != null && w9 > 100) heat.push('a klíma megy (' + fmtW(w9) + ')');
+    if (c.openHeat.on && heat.length) {
+      Object.keys(AL_OPEN).forEach(function (p) {
+        if (alContact(src, p, now, c.skipDeadContacts)) out.push({ key: 'open_heat:' + p, short: AL_OPEN[p] + ' nyitva', text: AL_OPEN[p] + ' nyitva, közben ' + heat.join(' és ') });
+      });
+    }
+    if (c.acMaxOpen.on && w9 != null && w9 > c.acMaxOpen.watts) {
+      var opened = AL_WINDOWS.filter(function (p) { return alContact(src, p, now, c.skipDeadContacts); }).map(function (p) { return AL_OPEN[p]; });
+      if (opened.length) out.push({ key: 'ac_max_open', short: 'klíma ' + fmtW(w9) + ', ablak nyitva', text: 'a klíma ' + fmtW(w9) + ' (határ ' + c.acMaxOpen.watts + ' W), nyitva: ' + opened.join(', ') });
+    }
+    return out;
+  }
+  // a mentett üzenetszövegből (alert_state.last_text) rövid felirat a csempére
+  function alShort(key, text) {
+    var k = String(key || '');
+    if (k.indexOf('open_heat:') === 0) return (AL_OPEN[k.slice(10)] || 'ablak') + ' nyitva';
+    if (k === 'ac_max_open') return 'klíma, ablak nyitva';
+    var t = String(text || '').replace(/^F27( riasztás)?( \(még fennáll\))?:\s*(megszűnt:\s*)?/, '');
+    var i = t.indexOf(' (');
+    return (i > 0 ? t.slice(0, i) : t).replace(/\.$/, '') || k;
+  }
+  function alInQuiet(c, ms) {
+    if (!c.quiet.on) return false;
+    var m = hmMin(budKey(ms).slice(11, 16)), a = hmMin(c.quiet.from), b = hmMin(c.quiet.to);
+    if (a === b) return false;
+    return a < b ? m >= a && m < b : m >= a || m < b;
+  }
+  function alDemoLog(now) {
+    var t = function (min) { return new Date(now - min * 60000).toISOString(); };
+    return [
+      { ts: t(95), rule_key: 'open_heat:8', kind: 'resolved', text: 'F27: megszűnt: Kis szoba ablak becsukva.', channels: 'push' },
+      { ts: t(140), rule_key: 'open_heat:8', kind: 'fired', text: 'F27: ablak nyitva fűtés közben: Kis szoba ablak 14 perce, közben a kályha 1 kW-on.', channels: 'push' },
+      { ts: t(22 * 60), rule_key: 'digest', kind: 'digest', text: 'F27 napi összefoglaló (e-mail)', channels: 'email' },
+      { ts: t(26 * 60), rule_key: 'test', kind: 'test', text: 'F27 próba-értesítés: a riasztás működik (5 szabály bekapcsolva). Ez csak próba, nincs teendő.', channels: 'push' }
+    ];
+  }
+
   // ---- az alkalmazás ---------------------------------------------------------------------
 
   class G3App extends window.G3Scene {
@@ -908,7 +1044,8 @@
         savedKey: '{}', savedAt: null, live: null, toasts: [],
         liveSky: true, now: Date.now(),
         devOpen: false, devFilter: 'all', devOpenId: null,
-        bk: null, calOpen: false, calMonth: null, calSel: null
+        bk: null, calOpen: false, calMonth: null, calSel: null,
+        al: null, alOpen: false, alLogOpen: false, alDemo: null, alBusy: false
       };
     }
 
@@ -991,6 +1128,18 @@
       if (dragging) this.recordChange(this._before);
     }
 
+    // A beviteli mezők élő értéke (value) a felhasználói húzás után már nem követi az attribútumot:
+    // a riasztás-panel csúszkáit és listáit kirajzolás után a data-val szerint igazítjuk.
+    didRender() {
+      if (!this.state.alOpen) return;
+      var els = document.querySelectorAll('#f27-alerts [data-val]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i], want = el.getAttribute('data-val');
+        if (el.value !== want && document.activeElement !== el) el.value = want;
+        else if (el.value !== want && el.type === 'range' && Number(el.value) !== Number(want)) el.value = want;
+      }
+    }
+
     renderVals() {
       var v = super.renderVals(), self = this, st = this.state, live = st.live, demo = !live;
       var valued = { '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1, '7': 1, '8': 1, '9': 1, '10': 1, 'P': 1, 'k5': 1, 'k7': 1, 'k8': 1, 'k9': 1, 'G': 1 };
@@ -1034,6 +1183,7 @@
       v.wx = this.wxVals(v);
       v.bk = this.bkVals(v);
       v.cal = this.calVals(v.bk);
+      v.al = this.alVals(v, dv);
       v.cons = this.consVals(v, dv);
       v.ov = this.ovVals(v, dv, v.cons);
       this.sceneVals(v, dv);
@@ -1437,13 +1587,233 @@
     }
 
     openCal() {
-      this.setState({ calOpen: true, calMonth: null, calSel: null, devOpen: false, drawer: false, advOpen: false, wxOpen: false, ovSheet: false });
+      this.setState({ calOpen: true, calMonth: null, calSel: null, alOpen: false, devOpen: false, drawer: false, advOpen: false, wxOpen: false, ovSheet: false });
       setTimeout(function () { var b = document.querySelector('#f27-cal .cal-x'); if (b) b.focus(); }, 60);
     }
 
     closeCal() {
       this.setState({ calOpen: false });
       setTimeout(function () { var b = document.querySelector('#stage .calchip'); if (b) b.focus({ preventScroll: true }); }, 30);
+    }
+
+    // ---- Riasztások (csempe a felső sávban + beállító panel) ----------------------------------
+
+    // Beállítás, állapot és (a tulajnak) a napló a Supabase-ből (006_alerts.sql).
+    loadAlerts() {
+      var self = this, st = this.state;
+      if (!this.sb || !st.user || !st.role) return;
+      if (st.role !== 'owner' && st.role !== 'cleaner') { this.setState({ al: { err: 'role' } }); return; }
+      var missing = function (e) { var c = (e && e.code) || '', m = (e && e.message) || ''; return c === 'PGRST205' || c === '42P01' || /does not exist|Could not find the table/i.test(m); };
+      var fail = function (e) { self.setState({ al: { err: missing(e) ? 'missing' : 'other', at: Date.now() } }); };
+      Promise.all([
+        this.sb.from('alert_settings').select('config,test_requested_at,updated_at').eq('id', 1).maybeSingle(),
+        this.sb.from('alert_state').select('rule_key,active,since,last_sent,last_text')
+      ]).then(function (r) {
+        if (r[0].error) return fail(r[0].error);
+        if (r[1].error) return fail(r[1].error);
+        var row = r[0].data, prev = self.state.al || {};
+        var cfg = alMerge(row ? row.config : null), dirty = prev.draft && JSON.stringify(prev.draft) !== JSON.stringify(prev.saved);
+        self.setState({ al: { err: null, at: Date.now(), row: row, saved: cfg, draft: dirty ? prev.draft : cfg, state: r[1].data || [], log: prev.log || null, testAt: row ? row.test_requested_at : null } });
+        if (self.state.role === 'owner' && (self.state.alLogOpen || !prev.log)) self.loadAlertLog();
+      }, fail);
+    }
+
+    loadAlertLog() {
+      var self = this;
+      if (!this.sb || this.state.role !== 'owner') return;
+      this.sb.from('alert_log').select('id,ts,rule_key,kind,text,channels').order('ts', { ascending: false }).limit(20).then(function (res) {
+        var al = Object.assign({}, self.state.al || {});
+        al.log = res.error ? { err: true, rows: [] } : { rows: res.data || [] };
+        self.setState({ al: al });
+      }, function () {});
+    }
+
+    // a szerkesztett (még nem mentett) beállítás: belépve az al.draft, demóban a memóriában
+    alDraft() {
+      var st = this.state, al = st.al;
+      if (st.user && al && al.draft) return al.draft;
+      return st.alDemo || alMerge(null);
+    }
+
+    alEdit(fn) {
+      var st = this.state, c = JSON.parse(JSON.stringify(this.alDraft()));
+      fn(c);
+      if (st.user && st.al && st.al.draft) this.setState({ al: Object.assign({}, st.al, { draft: c }) });
+      else this.setState({ alDemo: c });
+    }
+
+    openAlerts() {
+      this.setState({ alOpen: true, alLogOpen: false, calOpen: false, devOpen: false, drawer: false, advOpen: false, wxOpen: false, ovSheet: false });
+      if (this.state.user) this.loadAlerts();
+      setTimeout(function () { var b = document.querySelector('#f27-alerts .al-x'); if (b) b.focus(); }, 60);
+    }
+
+    closeAlerts() {
+      this.setState({ alOpen: false });
+      setTimeout(function () { var b = document.querySelector('#stage .alchip'); if (b) b.focus({ preventScroll: true }); }, 30);
+    }
+
+    saveAlerts() {
+      var self = this, st = this.state, al = st.al;
+      if (!st.user) { this.toast('Demó: a beállítás csak ezen a lapon él, nem mentődik. Mentéshez lépj be tulajként.', 'info'); return; }
+      if (st.role !== 'owner') { this.toast('Csak olvasás: a riasztásokat a tulaj állítja be.', 'err'); return; }
+      if (!al || al.err) { this.toast(al && al.err === 'missing' ? 'Hiányzik az alert_settings tábla: futtasd a 006-os migrációt.' : 'A riasztások most nem érhetők el.', 'err'); return; }
+      var cfg = alMerge(al.draft);
+      this.setState({ alBusy: true });
+      this.sb.from('alert_settings').upsert({ id: 1, config: cfg }, { onConflict: 'id' }).then(function (res) {
+        self.setState({ alBusy: false });
+        if (res.error) { self.toast(self.errText(res.error, 'A mentés nem sikerült.'), 'err'); return; }
+        self.setState({ al: Object.assign({}, self.state.al, { saved: cfg, draft: cfg, row: Object.assign({}, al.row || {}, { config: cfg }) }) });
+        self.toast('Riasztások mentve. Az adatgyűjtő a következő 10 perces körtől ezzel számol.', 'ok');
+      }, function (err) { self.setState({ alBusy: false }); self.toast(self.errText(err, 'A mentés nem sikerült.'), 'err'); });
+    }
+
+    testAlert() {
+      var self = this, st = this.state, al = st.al;
+      if (!st.user) { this.toast('Demó: a próba-értesítéshez lépj be tulajként.', 'info'); return; }
+      if (st.role !== 'owner') { this.toast('Próba-értesítést a tulaj kérhet.', 'err'); return; }
+      if (!al || al.err) { this.toast(al && al.err === 'missing' ? 'Hiányzik az alert_settings tábla: futtasd a 006-os migrációt.' : 'A riasztások most nem érhetők el.', 'err'); return; }
+      var now = new Date().toISOString();
+      var q = al.row ? this.sb.from('alert_settings').update({ test_requested_at: now }).eq('id', 1)
+        : this.sb.from('alert_settings').upsert({ id: 1, config: alMerge(al.draft), test_requested_at: now }, { onConflict: 'id' });
+      this.setState({ alBusy: true });
+      q.then(function (res) {
+        self.setState({ alBusy: false });
+        if (res.error) { self.toast(self.errText(res.error, 'A próba kérése nem sikerült.'), 'err'); return; }
+        var row = Object.assign({}, al.row || { config: alMerge(al.draft) }, { test_requested_at: now });
+        self.setState({ al: Object.assign({}, self.state.al, { row: row, testAt: now, saved: al.row ? al.saved : alMerge(al.draft) }) });
+        self.toast('A próba-értesítés a következő 10 perces körben megy ki.', 'ok');
+      }, function (err) { self.setState({ alBusy: false }); self.toast(self.errText(err, 'A próba kérése nem sikerült.'), 'err'); });
+    }
+
+    alVals(v, dv) {
+      var self = this, st = this.state, now = st.now || Date.now(), al = st.al || null;
+      var src = st.live || demoDevices(now, v.L);
+      var loggedIn = !!(st.user && st.role), owner = st.role === 'owner';
+      var cfg = this.alDraft(), saved = loggedIn && al && al.saved ? al.saved : null;
+      var mode = !loggedIn ? 'demo' : !al ? 'load' : al.err === 'missing' ? 'missing' : al.err === 'role' ? 'role' : al.err ? 'err' : 'live';
+      var ro = loggedIn && !(owner && mode === 'live');
+      var dirty = mode === 'live' && JSON.stringify(cfg) !== JSON.stringify(saved);
+      var nOn = alRulesOn(cfg), prev = alEval(cfg, src, now);
+      // -- csempe --
+      var chip;
+      if (mode === 'live') {
+        var rows = al.state || [], act = rows.filter(function (r) { return r.active; });
+        var nSaved = alRulesOn(saved || cfg);
+        if (act.length) {
+          act.sort(function (a, b) { return (a.rule_key === 'temp_hi:3' ? -1 : 0) - (b.rule_key === 'temp_hi:3' ? -1 : 0) || String(a.since || '').localeCompare(String(b.since || '')); });
+          var a0 = act[0], sent = a0.last_sent && a0.since && a0.last_sent >= a0.since ? Date.parse(a0.last_sent) : null;
+          chip = { k: 'alarm', ck: 'RIASZTÁS · MOST', cv: alShort(a0.rule_key, a0.last_text),
+            cs: (act.length > 1 ? '+' + (act.length - 1) + ' további · ' : '') + (sent ? 'elküldve ' + dayTime(sent, now) : alInQuiet(saved || cfg, now) ? 'csendes órák: később megy ki' : 'még nem ment ki'),
+            tip: 'Aktív riasztás: ' + act.map(function (r) { return r.last_text || r.rule_key; }).join(' ') + ' Kattints a beállításokért.' };
+        } else {
+          var last = null;
+          rows.forEach(function (r) { var t = r.last_sent ? Date.parse(r.last_sent) : NaN; if (isFinite(t) && (!last || t > last.t)) last = { t: t, r: r }; });
+          chip = { k: 'ok', ck: 'RIASZTÁSOK', cv: 'minden rendben',
+            cs: nSaved + ' szabály be · ' + (last ? 'utolsó: ' + dayTime(last.t, now) + ' (' + alShort(last.r.rule_key, last.r.last_text) + ')' : 'még nem volt riasztás'),
+            tip: 'Riasztások: ' + nSaved + ' szabály bekapcsolva, most nincs aktív riasztás. Az adatgyűjtő 10 percenként ellenőriz.' };
+        }
+      } else {
+        var lab = mode === 'demo' ? 'demó előnézet' : mode === 'missing' ? 'nincs 006-os migráció' : mode === 'load' ? 'betöltés...' : 'a böngésző számolja';
+        if (prev.length) chip = { k: 'alarm prev', ck: mode === 'demo' ? 'RIASZTÁS · DEMÓ' : 'RIASZTÁS · ELŐNÉZET', cv: prev[0].short, cs: (prev.length > 1 ? '+' + (prev.length - 1) + ' további · ' : '') + lab,
+          tip: 'Előnézet a böngészőben (' + lab + '): most riasztana: ' + prev.map(function (p) { return p.text; }).join('; ') + '.' };
+        else chip = { k: 'ok prev', ck: 'RIASZTÁSOK', cv: 'minden rendben', cs: nOn + ' szabály be · ' + lab, tip: 'Előnézet a böngészőben (' + lab + '): most nem riasztana semmi.' };
+      }
+      chip.cv = String(chip.cv).replace(/ °C/g, '°');      // a csempén tömören (38,4°), mint a térképen
+      chip.cls = 'chip alchip ' + chip.k;
+      // -- panel --
+      var edit = function (fn) { return function () { if (!ro) self.alEdit(fn); }; };
+      var temps = Object.keys(AL_THERMO).map(function (p) {
+        var t = cfg.temps[p], r = AL_RANGE[p], span = r[1] - r[0];
+        var pct = function (x) { return Math.max(0, Math.min(100, (x - r[0]) / span * 100)).toFixed(2); };
+        var cur = alThermo(src, p, now);
+        var state = cur == null ? '' : cur > t.hi ? ' hot' : cur < t.lo ? ' cold' : ' ok';
+        var setter = function (which) {
+          return function (e) {
+            var x = Math.round(Number(e.target.value) * 2) / 2;
+            if (!isFinite(x) || ro) return;
+            var cc = self.alDraft().temps[p];
+            if (which === 'lo') x = Math.min(x, cc.hi - 0.5); else x = Math.max(x, cc.lo + 0.5);
+            if (String(e.target.value) !== String(x)) e.target.value = x;
+            self.alEdit(function (c) { c.temps[p][which] = x; });
+          };
+        };
+        return { pink: p, name: AL_THERMO[p], min: r[0], max: r[1], lo: t.lo, hi: t.hi,
+          loPct: pct(t.lo), hiPct: pct(t.hi), curPct: cur == null ? '0' : pct(cur), hasCur: cur != null,
+          now: cur == null ? 'most nincs friss adat' : 'most ' + fmtNum(cur, 1) + ' °C',
+          loText: alThr(t.lo) + ' °C', hiText: alThr(t.hi) + ' °C',
+          loAria: AL_THERMO[p] + ': túl hideg határ', hiAria: AL_THERMO[p] + ': túl meleg határ',
+          cls: 'al-trow' + (t.on ? '' : ' off') + state, on: t.on, onAttr: t.on ? 'true' : 'false',
+          swCls: 'al-sw' + (t.on ? ' on' : ''), swAria: AL_THERMO[p] + ' riasztás ' + (t.on ? 'bekapcsolva' : 'kikapcsolva'),
+          toggle: edit(function (c) { c.temps[p].on = !c.temps[p].on; }), setLo: setter('lo'), setHi: setter('hi') };
+      });
+      var seg = function (vals, cur, fmt, set) {
+        return vals.map(function (x) { return { label: fmt(x), cls: 'al-sg' + (x === cur ? ' on' : ''), pressed: x === cur ? 'true' : 'false', pick: edit(function (c) { set(c, x); }) }; });
+      };
+      var sw = function (on, label, set) { return { cls: 'al-sw' + (on ? ' on' : ''), on: on ? 'true' : 'false', label: label, toggle: edit(set) }; };
+      var hrs = function (cur) { return AL_HOURS.map(function (h) { return { v: h, sel: h === cur }; }); };
+      var stoveOpts = [35, 38, 40, 42, 45].map(function (x) { return { v: String(x), sel: x === cfg.quietExceptStoveC }; });
+      var logRows = null, logNote = '';
+      if (mode === 'demo') { logRows = alDemoLog(now); logNote = 'Demó: kitalált napló.'; }
+      else if (!owner) logNote = 'A naplót a tulaj látja.';
+      else if (mode === 'missing') logNote = 'Hiányzik az alert_log tábla: futtasd a 006-os migrációt.';
+      else if (!al || !al.log) logNote = 'Betöltés...';
+      else if (al.log.err) logNote = 'A napló most nem érhető el.';
+      else { logRows = al.log.rows; if (!logRows.length) logNote = 'Még nincs bejegyzés.'; }
+      var KIND = { fired: 'Riasztás', resolved: 'Megszűnt', test: 'Próba', digest: 'Napi e-mail' };
+      var note = '', noteCls = 'al-note';
+      if (mode === 'demo') note = 'Demó: a beállítás csak ezen a lapon él, nem mentődik. Mentéshez lépj be tulajként.';
+      else if (mode === 'missing') { note = 'Hiányzik az alert_settings tábla: a tulaj futtassa a supabase/migrations/006_alerts.sql-t (docs/riasztasok.md). Addig a csempe a böngészőben számolt előnézetet mutatja.'; noteCls += ' warn'; }
+      else if (mode === 'role') note = 'A riasztásokat a tulaj és a takarító látja.';
+      else if (mode === 'err') { note = 'A riasztások most nem érhetők el.'; noteCls += ' warn'; }
+      else if (mode === 'load') note = 'Betöltés...';
+      else if (!owner) note = 'Csak olvasás: a riasztásokat a tulaj állítja be.';
+      else if (dirty) { note = 'Nem mentett változás: a Mentés után számol vele az adatgyűjtő.'; noteCls += ' dirty'; }
+      var testPending = mode === 'live' && al.testAt && (!al.log || !al.log.rows || !al.log.rows.some(function (r) { return r.kind === 'test' && r.ts >= al.testAt; })) && now - Date.parse(al.testAt) < 30 * 60000;
+      return {
+        chip: chip, open: !!st.alOpen, openAttr: st.alOpen ? 'true' : 'false',
+        toggle: function () { if (st.alOpen) self.closeAlerts(); else self.openAlerts(); },
+        close: function () { self.closeAlerts(); },
+        srcLabel: mode === 'live' ? 'ÉLŐ' : mode === 'demo' ? 'DEMÓ' : 'ELŐNÉZET', srcCls: 'dp-src ' + (mode === 'live' ? 'live' : 'demo'),
+        srcTip: mode === 'live' ? 'A Supabase-ben mentett beállítás; az adatgyűjtő 10 percenként ellenőriz.' : 'A böngészőben számolt előnézet, nem mentődik.',
+        ro: ro, note: note, hasNote: !!note, noteCls: noteCls,
+        temps: temps,
+        heat: sw(cfg.openHeat.on, 'Megy a kályha vagy a klíma, és bármelyik ablak vagy a bejárati ajtó nyitva több mint', function (c) { c.openHeat.on = !c.openHeat.on; }),
+        heatMin: seg([5, 10, 15, 30], cfg.openHeat.minutes, function (x) { return x + ' perc'; }, function (c, x) { c.openHeat.minutes = x; }),
+        acMax: sw(cfg.acMaxOpen.on, 'A klíma nagy teljesítményen megy, és nyitva van egy ablak. Határ:', function (c) { c.acMaxOpen.on = !c.acMaxOpen.on; }),
+        acW: seg([600, 900, 1200], cfg.acMaxOpen.watts, function (x) { return x + ' W'; }, function (c, x) { c.acMaxOpen.watts = x; }),
+        dead: sw(cfg.skipDeadContacts, 'Lemerült elemes, nem elérhető vagy 24 órája hallgató nyílászárót kihagy (alapból be)', function (c) { c.skipDeadContacts = !c.skipDeadContacts; }),
+        push: sw(cfg.channels.push, 'Push (ntfy)', function (c) { c.channels.push = !c.channels.push; }),
+        digest: sw(cfg.digest.on, 'Napi e-mail összefoglaló', function (c) { c.digest.on = !c.digest.on; }),
+        digestTimes: AL_DIGEST_TIMES.concat(AL_DIGEST_TIMES.indexOf(cfg.digest.time) < 0 ? [cfg.digest.time] : []).map(function (h) { return { v: h, sel: h === cfg.digest.time }; }),
+        digestV: cfg.digest.time, digestOff: !cfg.digest.on || ro,
+        setDigest: function (e) { var x = e.target.value; if (!ro) self.alEdit(function (c) { c.digest.time = x; }); },
+        wa: sw(cfg.channels.whatsapp, 'WhatsApp (CallMeBot, nem kötelező)', function (c) { c.channels.whatsapp = !c.channels.whatsapp; }),
+        cool: seg([30, 60, 120], cfg.cooldownMin, function (x) { return x === 30 ? '30 percenként' : x === 60 ? 'óránként' : '2 óránként'; }, function (c, x) { c.cooldownMin = x; }),
+        resolved: sw(cfg.resolvedMsg, 'Megszűnéskor is szól ("megszűnt" üzenet)', function (c) { c.resolvedMsg = !c.resolvedMsg; }),
+        quiet: sw(cfg.quiet.on, 'Csendes órák', function (c) { c.quiet.on = !c.quiet.on; }),
+        qFrom: hrs(cfg.quiet.from), qTo: hrs(cfg.quiet.to), qFromV: cfg.quiet.from, qToV: cfg.quiet.to, stoveOpts: stoveOpts, stoveV: String(cfg.quietExceptStoveC),
+        qOff: !cfg.quiet.on || ro,
+        setFrom: function (e) { var x = e.target.value; if (!ro) self.alEdit(function (c) { c.quiet.from = x; }); },
+        setTo: function (e) { var x = e.target.value; if (!ro) self.alEdit(function (c) { c.quiet.to = x; }); },
+        setStove: function (e) { var x = Number(e.target.value); if (!ro && isFinite(x)) self.alEdit(function (c) { c.quietExceptStoveC = x; }); },
+        prevText: prev.length ? 'Most riasztana: ' + prev.map(function (p) { return p.text; }).join('; ') + '.' : 'Most nem riasztana semmi.',
+        prevCls: 'al-prev' + (prev.length ? ' bad' : ' good'),
+        prevNote: 'A böngésző a mostani értékekből számolja; az adatgyűjtő csak ' + cfg.minDuration.minutes + ' perc tartós eltérés után szól' + (cfg.quiet.on ? ', csendes órákban (' + cfg.quiet.from + '-' + cfg.quiet.to + ') csak a kályha ' + cfg.quietExceptStoveC + ' °C fölött.' : '.'),
+        saveDisabled: ro || st.alBusy || (mode === 'live' && !dirty),
+        saveLabel: mode === 'live' && !dirty ? 'Mentve' : 'Mentés',
+        save: function () { self.saveAlerts(); },
+        testDisabled: (loggedIn && (!owner || mode !== 'live')) || !!st.alBusy,
+        test: function () { self.testAlert(); }, testPending: !!testPending,
+        logOpen: !!st.alLogOpen, logAttr: st.alLogOpen ? 'true' : 'false',
+        toggleLog: function () { var o = !st.alLogOpen; self.setState({ alLogOpen: o }); if (o) self.loadAlertLog(); },
+        logNote: logNote, hasLogNote: !!logNote,
+        log: (logRows || []).map(function (r) {
+          var t = Date.parse(r.ts);
+          return { when: isFinite(t) ? dayTime(t, now) : '', kind: KIND[r.kind] || r.kind, kcls: 'al-lk ' + (r.kind || ''), text: r.text || r.rule_key || '', ch: r.channels || '' };
+        }),
+        hasLog: !!(logRows && logRows.length)
+      };
     }
 
     consVals(v, dv) {
@@ -1694,7 +2064,7 @@
         aria: name + ' tanácsa: ' + cur.short + '. Kattints az összes tanácsért.',
         btnAria: name + ': ' + n + ' tanács. Megnyitás',
         open: !!st.advOpen, openAttr: st.advOpen ? 'true' : 'false',
-        toggle: function () { self.setState({ advOpen: !st.advOpen, devOpen: false, drawer: false, wxOpen: false, ovSheet: false }); },
+        toggle: function () { self.setState({ advOpen: !st.advOpen, devOpen: false, drawer: false, wxOpen: false, ovSheet: false, alOpen: false }); },
         close: function () { self.setState({ advOpen: false }); },
         enter: function () { if (!st.advHover) self.setState({ advHover: true }); },
         leave: function () { if (st.advHover) self.setState({ advHover: false }); },
@@ -1880,8 +2250,8 @@
         acctLabel: loggedIn ? (role.label === 'TULAJ' ? 'Fiók és mentés' : 'Fiók') : 'Belépés',
         drawerOpen: st.drawer,
         drawerOpenAttr: st.drawer ? 'true' : 'false',
-        toggleDrawer: function () { self.setState({ drawer: !st.drawer, devOpen: false, calOpen: false, saveAs: false, confirmId: null }); },
-        toggleDev: function () { self.setState({ devOpen: !st.devOpen, drawer: false, calOpen: false, advOpen: false, ovSheet: false, saveAs: false, confirmId: null }); },
+        toggleDrawer: function () { self.setState({ drawer: !st.drawer, devOpen: false, calOpen: false, alOpen: false, saveAs: false, confirmId: null }); },
+        toggleDev: function () { self.setState({ devOpen: !st.devOpen, drawer: false, calOpen: false, alOpen: false, advOpen: false, ovSheet: false, saveAs: false, confirmId: null }); },
         closeDev: function () { self.setState({ devOpen: false }); },
         devOpenAttr: st.devOpen ? 'true' : 'false',
         openDrawer: function () { self.setState({ drawer: true }); },
@@ -2054,6 +2424,9 @@
         self.fetchWeather();
         self.loadBookings();
         self.loadDismissals();
+        self.loadAlerts();
+        clearInterval(self.alTimer);
+        self.alTimer = setInterval(function () { self.loadAlerts(); }, AL_REFRESH_MS);
         clearInterval(self.bkTimer);
         self.bkTimer = setInterval(function () { self.loadBookings(); }, BK_REFRESH_MS);
         clearInterval(self.liveTimer);
@@ -2064,7 +2437,8 @@
     afterLogout() {
       clearInterval(this.liveTimer);
       clearInterval(this.bkTimer);
-      this.setState({ bk: null, calSel: null, dism: {}, dismLoaded: false, dismRemote: null, dismMenu: null });
+      clearInterval(this.alTimer);
+      this.setState({ bk: null, calSel: null, dism: {}, dismLoaded: false, dismRemote: null, dismMenu: null, al: null, alLogOpen: false });
       this.setState({ user: null, role: null, layouts: [], current: null, live: null, saveAs: false, confirmId: null, savedAt: null, savedKey: '{}' });
       this.toast('Kiléptél. A térkép demó módban fut.', 'info');
     }
@@ -2096,7 +2470,7 @@
       var self = this, st = this.state;
       if (!this.sb || !st.user || !st.role) { this.toast('Demó mód: a valódi adatokhoz lépj be.', 'info'); return; }
       this.setState({ refBusy: true });
-      this.loadBookings(); this.refreshLive(); this.loadHistory(); this.fetchWeather();
+      this.loadBookings(); this.refreshLive(); this.loadHistory(); this.fetchWeather(); this.loadAlerts();
       setTimeout(function () { self.setState({ refBusy: false }); self.toast('Frissítve ' + budTime(Date.now()) + '-kor.', 'ok'); }, 900);
     }
 
@@ -2422,7 +2796,7 @@
       if (k === '+' || k === '=' || (mod && k === 'Add')) { if (mod || !e.altKey) { e.preventDefault(); zoomBy(1.25); } return; }
       if (k === '-' || k === '_' || (mod && k === 'Subtract')) { if (mod || !e.altKey) { e.preventDefault(); zoomBy(1 / 1.25); } return; }
       if (k === '0' && !e.altKey) { e.preventDefault(); resetView(); return; }
-      if (!mod && view.z > 1.001 && !document.getElementById('f27-cal')) {
+      if (!mod && view.z > 1.001 && !document.getElementById('f27-cal') && !document.getElementById('f27-alerts')) {
         var step = 60;
         if (k === 'ArrowLeft') { e.preventDefault(); panBy(step, 0); }
         else if (k === 'ArrowRight') { e.preventDefault(); panBy(-step, 0); }
@@ -2453,6 +2827,7 @@
     });
     document.addEventListener('keydown', function (e) {
       var t = e.target;
+      if (e.key === 'Escape' && app.state.alOpen) { app.closeAlerts(); return; }
       if (e.key === 'Escape' && app.state.calOpen) { app.closeCal(); return; }
       if (app.state.calOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !editableTarget(t) && !(e.ctrlKey || e.metaKey || e.altKey)) { e.preventDefault(); app.calPage(e.key === 'ArrowLeft' ? -1 : 1); return; }
       if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
@@ -2461,6 +2836,7 @@
       if (e.key === 'Escape' && app.state.devOpen) { app.setState({ devOpen: false }); return; }
       if (e.key === 'Escape' && app.state.ovSheet) { app.setState({ ovSheet: false }); return; }
       if (editableTarget(t)) return;
+      if (app.state.alOpen || app.state.calOpen) return;
       if ((e.key === 'e' || e.key === 'E') && !(e.ctrlKey || e.metaKey || e.altKey)) { app.toggleEdit(); return; }
       if (!(e.ctrlKey || e.metaKey)) return;
       var k = e.key.toLowerCase();

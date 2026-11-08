@@ -5,7 +5,7 @@
 | Workflow | Mikor | Mit csinál |
 |---|---|---|
 | **Eszközfelderítés** (`discover.yml`) | kézzel, és minden hónap 1-jén 04:17 UTC | Tuya eszközlista, párosítás a pink számokhoz, titkosított pillanatkép a repóba, a Supabase `devices` tábla frissítése (eszközazonosító + a státuszkódok skálája) |
-| **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként); óránként egyszer az időjárás (`weather_hourly`) és a foglaltság az Airbnb naptárból (`bookings`) |
+| **Adatgyűjtés** (`collect.yml`) | 10 percenként (és kézzel) | Tuya állapotok a Supabase-be: `device_status` (állapot-idősor), `energy_daily` (napi kWh körönként); óránként egyszer az időjárás (`weather_hourly`) és a foglaltság az Airbnb naptárból (`bookings`); minden körben a riasztások kiértékelése és push-értesítés, naponta egyszer (alapból 20:00) e-mail összefoglaló |
 
 A GitHub cron-ütemezése nem megbízható (2026.11.08-án órákig egyszer sem indult el). Ezért egy
 futás kb. 1 órán át 10 percenként gyűjt (6 kör), a végén pedig maga indítja a következő futást;
@@ -45,6 +45,19 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
   elmúlt kb. 10 percben ennél sokkal kevesebbet nőtt, az adatgyűjtő a számlálóból számolt átlagot írja
   be (`_avgw`, a nyers érték `_cur_power_raw`, jelölés `_power_from: counter`). A Summary-ban: "Felhőben
   ragadt teljesítmény javítva a számlálóból".
+- **Riasztások** (`f27/alerts.py`, `alert_settings`, `alert_state`, `alert_log`): minden körben, a
+  Tuya rész után (attól függetlenül, akkor is, ha a Tuya hibára fut) a friss `device_latest`-ből
+  kiértékeli a térkép Riasztások panelján beállított szabályokat (hőmérő-sávok, nyitott ablak
+  fűtés/klíma közben, klíma nagy teljesítményen nyitott ablakkal). Ha egy feltétel legalább a
+  beállított ideig fennáll, push megy (ntfy, `NTFY_TOPIC`; ha be van kapcsolva, WhatsApp is),
+  riasztásonként legfeljebb óránként; csendes órákban csak a kályha mögötti túlmelegedés. A
+  Summary-ban csak darabszám: "Riasztások: 2 aktív, 1 értesítés elküldve, 0 hiba".
+- **Napi e-mail összefoglaló** (`f27/digest.py`): naponta legfeljebb egy levél a beállított
+  időpontban (alapból 20:00, budapesti idő; ha az a kör kimarad, a következő pótolja éjfélig): a nap
+  riasztásai, teendők, holnapi érkezés/távozás, mai fogyasztás körönként. Secretek: `SMTP_HOST`,
+  `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `ALERT_EMAIL_TO`. Summary: "Napi összefoglaló: elküldve"
+  / "nem kellett" / "hiba (...)". Táblát a `supabase/migrations/006_alerts.sql` hozza létre;
+  amíg nincs lefuttatva, mindkét lépés kimarad. Beállítás: [`docs/riasztasok.md`](riasztasok.md).
 - **`energy_daily`:** a négy okos kismegszakító (X5 kályha, X7 bojler, X8 főzőlap, X9 klíma) napi kWh-ja, budapesti idő szerinti napokra bontva, a kismegszakító saját fogyasztásszámlálójából. Az első megfigyelés napján 0-ról indul.
 
 ## Tuya API-kvóta

@@ -247,10 +247,10 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 @keyframes dpup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 
 /* ---- Foglaltság: csempe (A), 14 napos sáv (B), naptár ---- */
-.bkchip{flex:0 0 auto;gap:1px;padding-top:4px;padding-bottom:4px;max-width:236px}
+.bkchip{flex:0 4 auto;min-width:120px;gap:1px;padding-top:4px;padding-bottom:4px;max-width:236px}
 .bkchip .ck,.calchip .ck{letter-spacing:.7px}
 .bkchip .ck{line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bkchip .cv{font-size:19px;line-height:1;white-space:nowrap}
+.bkchip .cv{font-size:19px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bkchip .cs{line-height:1.15;font-size:10.5px;font-weight:900;color:#6b5a3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bkchip.in{background:#ffe1ea}.bkchip.in .cv{color:#c8321f}
 .bkchip.today{background:#fff1c9}.bkchip.today .cv{color:#9a6a00}
@@ -463,7 +463,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 @media (max-width:700px){.advpop{left:8px;right:8px;width:auto;bottom:88px}}
 
 /* ---- KINT csip: valós időjárás (Open-Meteo) ---- */
-.mvchip{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;gap:1px;max-width:230px;background:#eef6ff}
+.mvchip{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;gap:1px;max-width:164px;min-width:120px;flex:0 1 auto;background:#eef6ff}
 .mvchip:hover{background:#dcecff}
 .mvchip{padding-top:4px;padding-bottom:4px}
 .mvchip .ck{line-height:1.1}
@@ -658,6 +658,94 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ovphone{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;position:fixed;left:8px;right:8px;top:8px;min-height:44px;padding:0 14px;box-sizing:border-box;border-radius:14px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 4px 0 #1e2a44;font:900 14px "Nunito",sans-serif;color:#1e2a44;cursor:pointer}
 .ovphone .ovp-open{margin-left:auto;padding:2px 8px;border-radius:999px;background:#ff5a3c;color:#ffffff;font-size:12px}
 .ovphone:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+}
+.demopill{align-self:center;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 9px;border-radius:12px;background:#1e2a44;color:#ffe066;font-weight:900;line-height:1.1;white-space:nowrap}
+.demopill b{font-size:12px;letter-spacing:1.2px}
+.demopill span{font-size:9.5px;letter-spacing:.3px}
+/* ---- Riasztások: csempe a felső sávban és a beállító panel (A változat: csúszkák hőmérőnként) ---- */
+.alchip{flex:0 0 auto;appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;gap:1px;padding:4px 10px;max-width:184px}
+.alchip:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.alchip .ck{line-height:1.1;letter-spacing:.7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alchip .cv{font-family:"Baloo 2","Nunito",sans-serif;font-weight:800;font-size:16px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alchip .cs{line-height:1.15;font-size:10.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alchip.ok{background:#e7f8ec}.alchip.ok .cv{color:#2f7d4f}.alchip.ok:hover{background:#d6f2df}
+.alchip.alarm{background:#ffe1d6;border-color:#c8321f;box-shadow:0 4px 0 #c8321f}.alchip.alarm .ck,.alchip.alarm .cv{color:#c8321f}.alchip.alarm .cs{color:#9a3412}.alchip.alarm:hover{background:#ffd3c4}
+.alchip.alarm.prev{border-color:#1e2a44;box-shadow:0 4px 0 #1e2a44}
+.alpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:600px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
+.al-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 14px 10px;background:linear-gradient(180deg,#ffe1d6,#fffdf7);border-bottom:3px solid #1e2a44}
+.al-head .calic{width:24px;height:24px}
+.al-t{font-family:"Fraunces",serif;font-weight:800;font-size:21px;color:#3b2a14;flex:1 1 auto}
+.al-body{flex:1 1 auto;overflow-y:auto;padding:4px 16px 12px;overscroll-behavior:contain}
+.al-h{margin:12px 0 6px;font:900 11.5px/1.2 "Nunito",sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:#45507a}
+.al-h span{text-transform:none;letter-spacing:.2px;font-weight:800}
+.al-note{margin:10px 0 0;padding:7px 10px;border-radius:12px;background:#eef6ff;border:2px solid #c9dcf5;font-weight:800;font-size:12.5px;line-height:1.35}
+.al-note.warn{background:#fff1c9;border-color:#e3cfa6;color:#9a3412}
+.al-note.dirty{background:#fff1c9;border-color:#ffb74d}
+.al-trow{display:grid;grid-template-columns:118px minmax(0,1fr) 48px;align-items:center;gap:10px;padding:2px 0 4px}
+.al-tn{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.al-tn b{font-weight:900;font-size:13px}
+.al-tn small{font-weight:800;font-size:11px;color:#6b7280}
+.al-trow.hot .al-tn small{color:#c8321f}.al-trow.cold .al-tn small{color:#1d6fb8}
+.al-sl{position:relative;height:44px}
+.al-track{position:absolute;left:0;right:0;top:25px;height:8px;border-radius:5px;border:2px solid #1e2a44;background:linear-gradient(90deg,#4fb3f0 0,#4fb3f0 var(--lo),#7ccf96 var(--lo),#7ccf96 var(--hi),#ff7a59 var(--hi),#ff7a59 100%)}
+.al-trow.off .al-track,.al-trow.off .al-lab{opacity:.38}
+.al-cur{position:absolute;top:18px;width:3px;height:22px;margin-left:-1.5px;background:#1e2a44;border-radius:2px;pointer-events:none;z-index:1}
+.al-lab{position:absolute;top:2px;transform:translateX(-50%);font-weight:900;font-size:10.5px;white-space:nowrap;pointer-events:none}
+.al-r{position:absolute;left:-9px;right:-9px;width:calc(100% + 18px);top:18px;height:22px;margin:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;z-index:2}
+.al-r:focus{outline:none}
+.al-r::-webkit-slider-runnable-track{height:22px;background:transparent;border:0}
+.al-r::-moz-range-track{height:22px;background:transparent;border:0}
+.al-r::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;pointer-events:auto;width:20px;height:20px;margin-top:1px;border-radius:50%;background:#ffffff;border:3px solid #1e2a44;box-shadow:0 2px 0 #1e2a44;cursor:grab}
+.al-r::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:#ffffff;border:3px solid #1e2a44;box-shadow:0 2px 0 #1e2a44;cursor:grab}
+.al-r:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px #ff4fa3}
+.al-r:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px #ff4fa3}
+.al-r:disabled::-webkit-slider-thumb{cursor:default;background:#eef0f4}
+.al-r:disabled::-moz-range-thumb{cursor:default;background:#eef0f4}
+.al-sw{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 auto;position:relative;width:44px;height:26px;border-radius:999px;border:2.5px solid #1e2a44;background:#e5e7eb;box-shadow:0 2px 0 #1e2a44}
+.al-sw span{position:absolute;left:2px;top:2px;width:17px;height:17px;border-radius:50%;background:#ffffff;border:2px solid #1e2a44;box-sizing:border-box;transition:left .14s}
+.al-sw.on{background:#3fae6a}
+.al-sw.on span{left:20px}
+.al-sw:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.al-sw:disabled{cursor:default;opacity:.6}
+.al-box{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:16px;border:2px solid #e3cfa6;background:#fffaf0}
+.al-rule{display:flex;align-items:flex-start;gap:10px}
+.al-rt{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;font-weight:800;font-size:12.5px;line-height:1.35;min-width:0;flex:1 1 auto;padding-top:3px}
+.al-seg{display:inline-flex;flex-wrap:wrap;gap:4px}
+.al-sg{all:unset;box-sizing:border-box;cursor:pointer;height:24px;padding:0 9px;border-radius:999px;border:2px solid #1e2a44;background:#ffffff;font:900 11.5px/20px "Nunito",sans-serif;white-space:nowrap}
+.al-sg.on{background:#1e2a44;color:#ffe066}
+.al-sg:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.al-sg:disabled{cursor:default;opacity:.6}
+.al-chs{display:flex;flex-wrap:wrap;gap:8px 16px}
+.al-ch{display:inline-flex;align-items:center;gap:8px;font-weight:900;font-size:13px;cursor:pointer}
+.al-ch.sm{font-weight:800;font-size:12px;color:#45507a}
+.al-small{margin:0;font-weight:700;font-size:11.5px;line-height:1.35;color:#6b7280}
+.al-sel{-webkit-appearance:none;appearance:none;height:26px;padding:0 24px 0 8px;border-radius:9px;border:2px solid #1e2a44;font:900 12px "Nunito",sans-serif;color:#1e2a44;cursor:pointer;background-color:#ffffff;background-image:linear-gradient(45deg,transparent 50%,#1e2a44 50%),linear-gradient(135deg,#1e2a44 50%,transparent 50%);background-position:calc(100% - 13px) 10px,calc(100% - 8px) 10px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.al-sel:disabled{opacity:.5;cursor:default}
+.al-sel:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.al-prev{margin:12px 0 4px;padding:8px 10px;border-radius:12px;border:2px solid #1e2a44;font-weight:900;font-size:12.5px;line-height:1.35}
+.al-prev.good{background:#e7f8ec;color:#1e5a36}
+.al-prev.bad{background:#ffe1d6;color:#9a3412}
+.al-log{margin-top:6px}
+.al-ll{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.al-ll li{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:2px 8px;align-items:baseline;padding:6px 8px;border-radius:10px;border:2px solid #e3cfa6;background:#ffffff;font-size:12px}
+.al-lw{font-weight:900;white-space:nowrap}
+.al-lk{font-weight:900;font-size:10.5px;padding:0 6px;border-radius:999px;border:1.5px solid #1e2a44;white-space:nowrap}
+.al-lk.fired{background:#ffd3c4}.al-lk.resolved{background:#c8f2d4}.al-lk.test{background:#e5e7eb}
+.al-lc{font-weight:800;font-size:11px;color:#6b7280;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.al-lt{grid-column:1 / -1;font-weight:700;line-height:1.35}
+.al-foot{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px 12px;border-top:3px solid #1e2a44;background:#fff7e6}
+.al-foot .btn:disabled{opacity:.45;cursor:default}
+.al-save:not(:disabled){background:#1e2a44;color:#ffe066}
+.al-pend{font-weight:800;font-size:11.5px;color:#2f7d4f}
+@media (max-width:700px){
+.alpop{left:0;right:0;top:auto;bottom:0;transform:none;width:auto;max-width:none;max-height:92vh;border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
+.al-head{padding-top:18px;position:relative}
+.al-head::before{content:"";position:absolute;left:50%;top:6px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#c9b68f}
+.al-body{padding:2px 12px 12px}
+.al-trow{grid-template-columns:76px minmax(0,1fr) 46px;gap:8px}
+.al-tn b{font-size:12px}
+.al-foot{padding:8px 10px 12px}
+.al-foot .btn{flex:1 1 auto;justify-content:center;padding:0 8px}
 }
 </style>
 </head>
@@ -991,17 +1079,18 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </div>
 </sc-if>
 
-<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 10px">
-<div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 20px; border-radius: 18px; background: #ff4fa3; border: 3px solid #1e2a44; box-shadow: 0 4px 0 #1e2a44; color: #ffffff">
-<span class="lil" style="font-size: 24px; line-height: 1">F27 ENERGY QUEST</span>
+<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 8px">
+<div style="flex: 0 0 auto; white-space: nowrap; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 16px; border-radius: 18px; background: #ff4fa3; border: 3px solid #1e2a44; box-shadow: 0 4px 0 #1e2a44; color: #ffffff">
+<span class="lil" style="font-size: 22px; line-height: 1">F27 ENERGY QUEST</span>
 <span style="font-size: 12px; font-weight: 900; letter-spacing: 1px" title="{{titleTip}}">{{titleLine}}</span>
 </div>
-<button class="chip calchip" type="button" onClick="{{cal.toggle}}" aria-expanded="{{cal.openAttr}}" aria-controls="f27-cal" aria-haspopup="dialog" title="Foglalási naptár: havi nézet az Airbnb naptárából"><span class="ck">FOGLALÁSI NAPTÁR</span><span class="cv"><svg class="calic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h3v3H8z" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"></path></svg>Naptár</span><span class="cs">{{cal.chipSub}}</span></button>
+<button class="chip calchip" type="button" onClick="{{cal.toggle}}" aria-expanded="{{cal.openAttr}}" aria-controls="f27-cal" aria-haspopup="dialog" title="Foglalási naptár: havi nézet az Airbnb naptárából"><span class="ck">FOGLALÁSOK</span><span class="cv"><svg class="calic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h3v3H8z" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"></path></svg>Naptár</span><span class="cs">{{cal.chipSub}}</span></button>
 <button class="chip wxchip" type="button" onClick="{{wx.toggle}}" title="{{wx.title}}" aria-label="{{wx.aria}}" aria-expanded="{{wx.openAttr}}" aria-controls="f27-wxcard"><span class="ck">KINT<sc-if value="{{wx.hasFc}}"><span class="wxf"> · {{wx.fc}}</span></sc-if></span><span class="cv wxv"><sc-if value="{{wx.hasIcon}}"><svg class="wxi" viewBox="0 0 24 24" aria-hidden="true"><use href="{{wx.icon}}"></use></svg></sc-if>{{wx.now}}</span></button>
 <div class="{{bk.chip.cls}}" title="{{bk.chip.tip}}"><span class="ck">{{bk.chip.ck}}</span><span class="cv">{{bk.chip.cv}}</span><span class="cs">{{bk.chip.cs}}</span></div>
 <button class="{{ov.motion.cls}}" type="button" onClick="{{ov.motion.pick}}" title="{{ov.motion.tip}}" aria-label="{{ov.motion.tip}}"><span class="ck">UTOLSÓ MOZGÁS</span><span class="cv">{{ov.motion.big}}</span><span class="cs">{{ov.motion.sub}}</span></button>
+<button class="{{al.chip.cls}}" type="button" onClick="{{al.toggle}}" title="{{al.chip.tip}}" aria-expanded="{{al.openAttr}}" aria-controls="f27-alerts" aria-haspopup="dialog"><span class="ck">{{al.chip.ck}}</span><span class="cv">{{al.chip.cv}}</span><span class="cs">{{al.chip.cs}}</span></button>
 <div style="flex: 1 1 auto"></div>
-<sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 6px 10px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 11.5px; letter-spacing: 1px" title="Kitalált demóadatok a kiválasztott pálya szerint. A lakás valódi értékei belépés után látszanak.">DEMÓ · kitalált adat</div></sc-if>
+<sc-if value="{{ui.showDemo}}"><div class="demopill" title="Kitalált demóadatok a kiválasztott pálya szerint. A lakás valódi értékei belépés után látszanak."><b>DEMÓ</b><span>kitalált adat</span></div></sc-if>
 <div class="tbcol">
 <button class="btn devbtn" type="button" onClick="{{ui.toggleDev}}" aria-expanded="{{ui.devOpenAttr}}" aria-controls="f27-devpanel" aria-label="{{ui.devAria}}" title="Eszközök állapota">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6v6H5zM13 4h6v6h-6zM5 14h6v6H5zM16 14v6M13 17h6" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
@@ -1447,6 +1536,78 @@ Elrendezés visszaállítása
 <sc-if value="{{cal.old}}"><p class="cal-note">{{cal.oldText}}</p></sc-if>
 <sc-if value="{{cal.none}}"><p class="cal-note">Beállítás: Airbnb > Naptár > Elérhetőség > Naptárak összekapcsolása > Naptár exportálása; a linket a GitHub repó Settings > Secrets and variables > Actions alatt AIRBNB_ICAL_URL néven kell elmenteni (soha nem a chatbe). Részletek: docs/terkep.md, Foglaltság.</p></sc-if>
 <div class="cal-leg"><span><i class="sw res"></i>Airbnb foglalás</span><span><i class="sw blk"></i>Booking-foglalás (az Airbnb naptárából)</span><span><i class="sw free"></i>üres</span><span>Fél cella: érkezés {{cal.checkin}}, távozás {{cal.checkout}}.</span></div>
+</div>
+</aside>
+</sc-if>
+<sc-if value="{{al.open}}">
+<div class="cal-back" onClick="{{al.close}}"></div>
+<aside id="f27-alerts" class="alpop" role="dialog" aria-modal="true" aria-labelledby="f27-al-title">
+<div class="al-head">
+<svg class="calic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" fill="#ffd3c4" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+<span class="al-t" id="f27-al-title">Riasztások</span>
+<span class="{{al.srcCls}}" title="{{al.srcTip}}">{{al.srcLabel}}</span>
+<button class="btn ib sm al-x" type="button" onClick="{{al.close}}" aria-label="Bezárás" title="Bezárás (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg></button>
+</div>
+<div class="al-body">
+<sc-if value="{{al.hasNote}}"><p class="{{al.noteCls}}">{{al.note}}</p></sc-if>
+<h3 class="al-h">Hőmérséklet <span>(a zöld sáv a rendben, a két végén riaszt)</span></h3>
+<sc-for list="{{al.temps}}" as="t">
+<div class="{{t.cls}}" data-pink="{{t.pink}}">
+<div class="al-tn"><b>{{t.pink}} · {{t.name}}</b><small>{{t.now}}</small></div>
+<div class="al-sl" style="--lo: {{t.loPct}}%; --hi: {{t.hiPct}}%">
+<div class="al-track" aria-hidden="true"></div>
+<sc-if value="{{t.hasCur}}"><span class="al-cur" style="left: {{t.curPct}}%" aria-hidden="true"></span></sc-if>
+<span class="al-lab lo" style="left: {{t.loPct}}%" aria-hidden="true">{{t.loText}}</span>
+<span class="al-lab hi" style="left: {{t.hiPct}}%" aria-hidden="true">{{t.hiText}}</span>
+<input class="al-r lo" type="range" min="{{t.min}}" max="{{t.max}}" step="0.5" value="{{t.lo}}" data-val="{{t.lo}}" aria-label="{{t.loAria}}" aria-valuetext="{{t.loText}}" disabled="{{al.ro}}" onInput="{{t.setLo}}">
+<input class="al-r hi" type="range" min="{{t.min}}" max="{{t.max}}" step="0.5" value="{{t.hi}}" data-val="{{t.hi}}" aria-label="{{t.hiAria}}" aria-valuetext="{{t.hiText}}" disabled="{{al.ro}}" onInput="{{t.setHi}}">
+</div>
+<button class="{{t.swCls}}" type="button" role="switch" aria-checked="{{t.onAttr}}" aria-label="{{t.swAria}}" onClick="{{t.toggle}}" disabled="{{al.ro}}"><span></span></button>
+</div>
+</sc-for>
+<h3 class="al-h">Fűtés / hűtés és nyitott ablak</h3>
+<div class="al-box">
+<div class="al-rule"><button class="{{al.heat.cls}}" type="button" role="switch" aria-checked="{{al.heat.on}}" aria-label="{{al.heat.label}}" onClick="{{al.heat.toggle}}" disabled="{{al.ro}}"><span></span></button>
+<div class="al-rt"><span>{{al.heat.label}}</span><span class="al-seg" role="group" aria-label="Perc"><sc-for list="{{al.heatMin}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div></div>
+<div class="al-rule"><button class="{{al.acMax.cls}}" type="button" role="switch" aria-checked="{{al.acMax.on}}" aria-label="{{al.acMax.label}}" onClick="{{al.acMax.toggle}}" disabled="{{al.ro}}"><span></span></button>
+<div class="al-rt"><span>{{al.acMax.label}}</span><span class="al-seg" role="group" aria-label="Teljesítményhatár"><sc-for list="{{al.acW}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div></div>
+<div class="al-rule"><button class="{{al.dead.cls}}" type="button" role="switch" aria-checked="{{al.dead.on}}" aria-label="{{al.dead.label}}" onClick="{{al.dead.toggle}}" disabled="{{al.ro}}"><span></span></button>
+<div class="al-rt"><span>{{al.dead.label}}</span></div></div>
+</div>
+<h3 class="al-h">Hova és mikor</h3>
+<div class="al-box">
+<div class="al-chs">
+<label class="al-ch"><button class="{{al.push.cls}}" type="button" role="switch" aria-checked="{{al.push.on}}" aria-label="{{al.push.label}}" onClick="{{al.push.toggle}}" disabled="{{al.ro}}"><span></span></button>{{al.push.label}}</label>
+<span class="al-ch"><label class="al-ch"><button class="{{al.digest.cls}}" type="button" role="switch" aria-checked="{{al.digest.on}}" aria-label="{{al.digest.label}}" onClick="{{al.digest.toggle}}" disabled="{{al.ro}}"><span></span></button>{{al.digest.label}}</label>
+<select class="al-sel al-dt" aria-label="A napi e-mail ideje" data-val="{{al.digestV}}" onChange="{{al.setDigest}}" disabled="{{al.digestOff}}"><sc-for list="{{al.digestTimes}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}}</option></sc-for></select></span>
+<label class="al-ch sm"><button class="{{al.wa.cls}}" type="button" role="switch" aria-checked="{{al.wa.on}}" aria-label="{{al.wa.label}}" onClick="{{al.wa.toggle}}" disabled="{{al.ro}}"><span></span></button>{{al.wa.label}}</label>
+</div>
+<p class="al-small">Az azonnali riasztás pushon (ntfy) jön. Az e-mail csak a napi összefoglalóban jön, naponta legfeljebb egy: a nap riasztásai, teendők, holnapi érkezés, mai fogyasztás. A címek és a kulcsok GitHub Secretben vannak (NTFY_TOPIC, SMTP_..., ALERT_EMAIL_TO; lásd docs/riasztasok.md), itt csak ki-be kapcsolod.</p>
+<div class="al-rt"><span>Ugyanarra legfeljebb</span><span class="al-seg" role="group" aria-label="Türelmi idő"><sc-for list="{{al.cool}}" as="o"><button class="{{o.cls}}" type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" disabled="{{al.ro}}">{{o.label}}</button></sc-for></span></div>
+<div class="al-rule"><button class="{{al.resolved.cls}}" type="button" role="switch" aria-checked="{{al.resolved.on}}" aria-label="{{al.resolved.label}}" onClick="{{al.resolved.toggle}}" disabled="{{al.ro}}"><span></span></button><div class="al-rt"><span>{{al.resolved.label}}</span></div></div>
+<div class="al-rule"><button class="{{al.quiet.cls}}" type="button" role="switch" aria-checked="{{al.quiet.on}}" aria-label="{{al.quiet.label}}" onClick="{{al.quiet.toggle}}" disabled="{{al.ro}}"><span></span></button>
+<div class="al-rt"><span>{{al.quiet.label}}</span>
+<select class="al-sel al-qf" aria-label="Csendes órák kezdete" data-val="{{al.qFromV}}" onChange="{{al.setFrom}}" disabled="{{al.qOff}}"><sc-for list="{{al.qFrom}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}}</option></sc-for></select><span>-</span>
+<select class="al-sel al-qt" aria-label="Csendes órák vége" data-val="{{al.qToV}}" onChange="{{al.setTo}}" disabled="{{al.qOff}}"><sc-for list="{{al.qTo}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}}</option></sc-for></select>
+<span>kivéve, ha a kályha mögött</span>
+<select class="al-sel al-qs" aria-label="Kályha-kivétel, °C" data-val="{{al.stoveV}}" onChange="{{al.setStove}}" disabled="{{al.qOff}}"><sc-for list="{{al.stoveOpts}}" as="o"><option value="{{o.v}}" selected="{{o.sel}}">{{o.v}} °C</option></sc-for></select><span>fölött van</span>
+</div></div>
+</div>
+<p class="{{al.prevCls}}" aria-live="polite">{{al.prevText}}</p>
+<p class="al-small">{{al.prevNote}}</p>
+<sc-if value="{{al.logOpen}}">
+<div class="al-log" id="f27-al-log">
+<h3 class="al-h">Napló <span>(utolsó 20)</span></h3>
+<sc-if value="{{al.hasLogNote}}"><p class="al-small">{{al.logNote}}</p></sc-if>
+<sc-if value="{{al.hasLog}}"><ol class="al-ll"><sc-for list="{{al.log}}" as="r"><li><span class="al-lw">{{r.when}}</span><span class="{{r.kcls}}">{{r.kind}}</span><span class="al-lc">{{r.ch}}</span><span class="al-lt">{{r.text}}</span></li></sc-for></ol></sc-if>
+</div>
+</sc-if>
+</div>
+<div class="al-foot">
+<button class="btn sm al-save" type="button" onClick="{{al.save}}" disabled="{{al.saveDisabled}}">{{al.saveLabel}}</button>
+<button class="btn sm al-test" type="button" onClick="{{al.test}}" disabled="{{al.testDisabled}}" title="A következő 10 perces körben egy próbaüzenet megy pushon (e-mailben nem: az csak a napi összefoglaló)">Próba-értesítés</button>
+<button class="btn sm al-logb" type="button" onClick="{{al.toggleLog}}" aria-expanded="{{al.logAttr}}" aria-controls="f27-al-log">Napló (utolsó 20)</button>
+<sc-if value="{{al.testPending}}"><span class="al-pend">próba kérve, a következő körben megy</span></sc-if>
 </div>
 </aside>
 </sc-if>

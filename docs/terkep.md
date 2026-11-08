@@ -158,6 +158,17 @@ olvasta be utoljára az adatgyűjtő a naptárt. A Booking-foglalások (az Airbn
 napként érkeznek) világosabb rózsaszínnel, Booking néven látszanak, az Airbnb-foglalások
 sötétebb rózsaszínnel.
 
+## Riasztások
+
+Az **UTOLSÓ MOZGÁS** mellett a **RIASZTÁSOK** csempe: zöld "minden rendben" (alatta hány szabály
+van bekapcsolva és mikor volt az utolsó riasztás), vagy piros "RIASZTÁS · MOST" az aktív riasztás
+rövid szövegével. Kattintásra nyílik a beállító panel: hőmérőnként kétfogantyús csúszka (túl hideg /
+túl meleg, a zöld sáv a rendben, a fekete vonal a mostani érték), a nyitott ablak + fűtés/klíma
+szabályok, a csatornák (push azonnal, e-mail csak a napi 20:00-s összefoglalóban), türelmi idő és
+csendes órák, Mentés (tulaj), Próba-értesítés, Napló. Belépés nélkül, vagy ha még nincs lefuttatva a
+006-os migráció, a csempe a böngészőben számolt előnézetet mutatja. Részletek és a beállítás
+lépései (ntfy app, Gmail alkalmazásjelszó, GitHub Secrets): [`docs/riasztasok.md`](riasztasok.md).
+
 ## Kint (időjárás)
 
 A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, 15

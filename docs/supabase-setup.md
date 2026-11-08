@@ -139,6 +139,23 @@ New query > a [`supabase/migrations/005_tip_dismissals.sql`](../supabase/migrati
 teljes tartalma > Run. Ellenőrzés: Table Editor > `tip_dismissals` (üres). Ha kimarad, a térkép
 jelzi, és az elrejtés csak az adott lapon él.
 
+**006_alerts.sql** (riasztások és napi e-mail összefoglaló, 2026.11.08):
+
+1. Supabase: **SQL Editor** > **New query**.
+2. Másold be a [`supabase/migrations/006_alerts.sql`](../supabase/migrations/006_alerts.sql)
+   teljes tartalmát. **Run**. Ha "destructive operation" figyelmeztetést ad, az a `drop policy if
+   exists` és a `drop constraint if exists` sorok miatt van: **Run this query**.
+3. Ellenőrzés: **Table Editor**: megjelent az `alert_settings`, `alert_state` és `alert_log` tábla
+   (üresek; az `alert_settings` sora a térkép Riasztások paneljén az első Mentéskor jön létre, addig
+   az alapértelmezett szabályok élnek).
+4. Jogosultság: a beállítást a tulaj írja, a takarító olvassa; az állapotot a tulaj és a takarító
+   olvassa; a naplót csak a tulaj. Az állapotot és a naplót csak az adatgyűjtő írja (secret kulcs).
+5. Utána a csatornák beállítása: [`docs/riasztasok.md`](riasztasok.md) (ntfy topic, Gmail
+   alkalmazásjelszó, GitHub Secrets).
+
+Ha kimarad: az adatgyűjtő a riasztást és a napi összefoglalót kihagyja (a Summary-ba kiírja), a
+térkép csempéje a böngészőben számolt előnézetet mutatja "nincs 006-os migráció" jelöléssel.
+
 ## Mit tud a séma (röviden)
 
 | Szerepkör | Elrendezés | Aktuális állapot | Eszközlista (Tuya ID) | Energia | Foglaltság |
