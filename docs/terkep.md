@@ -71,6 +71,27 @@ A jobb alsó sarokban a nagyítósáv: **−**, a nagyítás mértéke, **+**, �
 
 A böngésző saját nagyítása (Ctrl + görgő) ezen az oldalon a térképet nagyítja, nem az egész oldalt.
 
+## Eszközök panel
+
+Felső sáv: **Eszközök** gomb, rajta az eszközök száma; piros vagy narancs pötty, ha valami
+figyelmet kér. A panel jobb oldalt nyílik (telefonon alulról), az Esc bezárja; a Fiók panellel
+felváltva nyílik.
+
+- Fejléc: hány eszköz online, és hány figyelmeztetés van. Szűrők: Mind, Figyelem, Hőmérők,
+  Nyílászárók, Áram, Egyéb. A figyelmeztetések elöl.
+- Kártyánként: érték, elem (kis életerő-csík), online pötty, utolsó jelzés ideje.
+- Jelvények: **Elem merül** (20 % alatt), **Elem lemerült** (10 % alatt), **Nem elérhető**
+  (offline), **Régóta hallgat** (hőmérő 6 óra, nyitásérzékelő 24 óra, kapcsoló, kismegszakító,
+  gateway 90 perc óta nem jelentett), **Friss** (10 percen belül).
+- Ha egy NYITVA jelzésű érzékelő régóta hallgat vagy merül az eleme, a kártya figyelmeztet, hogy a
+  jelzés lehet régi.
+- Kártyára kattintva a térkép rá nagyít az eszközre, kijelöli, és kinyílnak a részletek: minden
+  Tuya-állapotkód magyar névvel (az ismeretlenek nyersen).
+
+Az "utolsó jelzés" a Tuya saját frissítési ideje (az adatgyűjtő `_upd` kulcsként tárolja); ha ez
+hiányzik, a tárolás ideje. Belépés nélkül demó adat látszik, benne egy merülő elemmel és egy
+régóta hallgató ablakkal.
+
 ## Szerepkörök
 
 | Szerepkör | Lát | Betölt | Ment, töröl, alapértelmezett |

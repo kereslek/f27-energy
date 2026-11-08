@@ -229,6 +229,130 @@
   }
   function fmtTemp(t) { return t.toFixed(1).replace('.', ',') + '°'; }
 
+  // ---- Eszközök panel: katalógus, kódnevek, figyelmeztetési szabályok -----------------------
+
+  // kind: thermo (alvó Wi-Fi hőmérő), contact (Zigbee nyitásérzékelő), breaker, switch3, gateway, ir
+  var DEVINFO = {
+    '1': { name: 'Hőmérő, kis szoba', room: 'Kis szoba', kind: 'thermo', cat: 'temp' },
+    '2': { name: 'Hőmérő, nagy szoba', room: 'Nagy szoba', kind: 'thermo', cat: 'temp' },
+    '3': { name: 'Hőmérő, kályha mögött', room: 'Nagy szoba', kind: 'thermo', cat: 'temp' },
+    '4': { name: 'Hőmérő, fürdő', room: 'Fürdő', kind: 'thermo', cat: 'temp' },
+    '5': { name: 'Bejárati ajtó', room: 'Előszoba', kind: 'contact', cat: 'door' },
+    '6': { name: 'Tároló ajtó (privát)', room: 'Előszoba', kind: 'contact', cat: 'door' },
+    '7': { name: 'Konyha ablak', room: 'Konyha', kind: 'contact', cat: 'door' },
+    '8': { name: 'Kis szoba ablak', room: 'Kis szoba', kind: 'contact', cat: 'door' },
+    '9': { name: 'Nagy szoba bal ablak', room: 'Nagy szoba', kind: 'contact', cat: 'door' },
+    '10': { name: 'Nagy szoba jobb ablak', room: 'Nagy szoba', kind: 'contact', cat: 'door' },
+    '11': { name: 'Klíma (Gree, IR)', room: 'Kis szoba', kind: 'ir', cat: 'other' },
+    'P': { name: 'Kályhakapcsoló (LUXION)', room: 'Nagy szoba', kind: 'switch3', cat: 'power' },
+    'k5': { name: 'Kör 5: cserépkályha', room: 'Elosztó', kind: 'breaker', cat: 'power' },
+    'k7': { name: 'Kör 7: bojler', room: 'Elosztó', kind: 'breaker', cat: 'power' },
+    'k8': { name: 'Kör 8: főzőlap és sütő', room: 'Elosztó', kind: 'breaker', cat: 'power' },
+    'k9': { name: 'Kör 9: klíma', room: 'Elosztó', kind: 'breaker', cat: 'power' },
+    'G': { name: 'Zigbee + IR gateway', room: 'Kis szoba', kind: 'gateway', cat: 'other' }
+  };
+  // "Régóta hallgat" küszöb (perc). A hálózati eszközöknél 90 perc: az adatgyűjtő változatlan
+  // állapotnál csak óránként ír, így a tárolt utolsó jelentés legfeljebb kb. 70 percet késhet.
+  var STALE_MIN = { thermo: 6 * 60, contact: 24 * 60, breaker: 90, switch3: 90, gateway: 90 };
+  var CAT = {
+    temp: { label: 'Hőmérők', tile: '#ffe8a3', icon: 'M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0zM12 9v6' },
+    door: { label: 'Nyílászárók', tile: '#d6ebff', icon: 'M6 3h12v18H6zM14 12h.01M6 21h12' },
+    power: { label: 'Áram', tile: '#ffdcc7', icon: 'M13 2 4 14h7l-1 8 9-12h-7z' },
+    other: { label: 'Egyéb', tile: '#e6defc', icon: 'M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0M12 12v.01M4 16h16v4H4z' }
+  };
+  var FRIENDLY = {
+    va_temperature: 'Hőmérséklet', temp_current: 'Hőmérséklet', temperature: 'Hőmérséklet',
+    va_humidity: 'Páratartalom', humidity_value: 'Páratartalom', humidity: 'Páratartalom',
+    battery_percentage: 'Elem', va_battery: 'Elem', battery_value: 'Elem', battery_state: 'Elem állapota',
+    doorcontact_state: 'Nyitva', contact_state: 'Nyitva', tamper_alarm: 'Szabotázsriasztás',
+    switch: 'Bekapcsolva', switch_1: '1. fokozat (1 kW)', switch_2: '2. fokozat (1 kW)', switch_3: '3. fokozat (1 kW)',
+    cur_power: 'Teljesítmény', cur_voltage: 'Feszültség', cur_current: 'Áramerősség',
+    total_forward_energy: 'Összes fogyasztás', forward_energy_total: 'Összes fogyasztás', add_ele: 'Fogyasztás-számláló',
+    temp_unit_convert: 'Mértékegység', child_lock: 'Gyerekzár', relay_status: 'Áramszünet utáni állapot',
+    light_mode: 'Jelzőfény', fault: 'Hibakód', countdown_1: 'Visszaszámláló', _upd: 'Utolsó jelentés'
+  };
+  // alapértelmezett skála és mértékegység, ha a specifikáció (devices.meta) nem elérhető
+  var CODE_DEF = {
+    va_temperature: [1, '°C'], temp_current: [1, '°C'], va_humidity: [0, '%'], humidity_value: [0, '%'],
+    battery_percentage: [0, '%'], va_battery: [0, '%'], battery_value: [0, '%'],
+    cur_power: [1, 'W'], cur_voltage: [1, 'V'], cur_current: [0, 'mA'],
+    total_forward_energy: [2, 'kWh'], forward_energy_total: [2, 'kWh'], add_ele: [3, 'kWh']
+  };
+  var BATT_STATE = { low: [12, 'alacsony'], middle: [55, 'közepes'], high: [90, 'jó'] };
+
+  function fmtNum(v, dec) {
+    var s = (dec ? v.toFixed(dec) : String(Math.round(v))).replace('.', ',');
+    var p = s.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return p.join(',');
+  }
+  function codeValue(code, v, meta) {
+    if (code === '_upd') return typeof v === 'number' ? budTime(v * 1000) + ', ' + new Date(v * 1000).toLocaleDateString('hu-HU', { timeZone: 'Europe/Budapest', month: 'short', day: 'numeric' }) : String(v);
+    if (typeof v === 'boolean') return v ? 'igen' : 'nem';
+    if (code === 'battery_state' && BATT_STATE[v]) return BATT_STATE[v][1];
+    if (typeof v === 'number') {
+      var m = meta && meta[code], def = CODE_DEF[code];
+      var sc = m && typeof m.scale === 'number' ? m.scale : def ? def[0] : 0;
+      var unit = (m && m.unit) || (def ? def[1] : '');
+      var val = v / Math.pow(10, sc);
+      return fmtNum(val, sc > 0 ? Math.min(sc, 2) : 0) + (unit ? ' ' + unit : '');
+    }
+    if (v == null) return '-';
+    return typeof v === 'object' ? JSON.stringify(v) : String(v);
+  }
+  function batteryOf(st) {
+    var codes = ['battery_percentage', 'va_battery', 'battery_value'];
+    for (var i = 0; i < codes.length; i++) if (typeof st[codes[i]] === 'number') return { pct: Math.max(0, Math.min(100, Math.round(st[codes[i]]))), label: null };
+    if (BATT_STATE[st.battery_state]) return { pct: BATT_STATE[st.battery_state][0], label: BATT_STATE[st.battery_state][1] };
+    return null;
+  }
+  function humidityOf(st, meta) {
+    var codes = ['va_humidity', 'humidity_value', 'humidity'];
+    for (var i = 0; i < codes.length; i++) {
+      var v = st[codes[i]];
+      if (typeof v !== 'number') continue;
+      var sc = metaScale(meta, codes[i]);
+      return sc != null ? v / Math.pow(10, sc) : v;
+    }
+    return null;
+  }
+  function ago(ms) {
+    var m = Math.max(0, Math.round(ms / 60000));
+    if (m < 1) return 'most';
+    if (m < 60) return m + ' perce';
+    var h = Math.floor(m / 60);
+    if (h < 48) return h + ' órája';
+    return Math.floor(h / 24) + ' napja';
+  }
+  function hoursAgoText(ms) {
+    var m = Math.round(ms / 60000);
+    return m < 60 ? m + ' perce' : Math.floor(m / 60) + ' órája';
+  }
+
+  // Demó eszközállapot (belépés nélkül): valószerű értékek, egy merülő elemmel és egy régóta
+  // hallgató, nyitottnak látszó ablakkal, hogy a figyelmeztetések látszódjanak.
+  function demoDevices(now) {
+    var s = function (min) { return Math.round((now - min * 60000) / 1000); };
+    var row = function (min, online, st) { st._upd = s(min); return { ts: new Date(now - Math.min(min, 60) * 60000).toISOString(), online: online, status: st, meta: null }; };
+    return {
+      '1': row(34, true, { va_temperature: 236, va_humidity: 41, battery_percentage: 80 }),
+      '2': row(52, true, { va_temperature: 205, va_humidity: 44, battery_percentage: 14 }),
+      '3': row(18, true, { va_temperature: 384, va_humidity: 25, battery_percentage: 66 }),
+      '4': row(95, true, { va_temperature: 223, va_humidity: 63, battery_percentage: 58 }),
+      '5': row(41, true, { doorcontact_state: false, battery_percentage: 100 }),
+      '6': row(300, true, { doorcontact_state: false, battery_percentage: 92 }),
+      '7': row(130, true, { doorcontact_state: false, battery_percentage: 88 }),
+      '8': row(31 * 60, true, { doorcontact_state: true, battery_percentage: 9 }),
+      '9': row(260, true, { doorcontact_state: false, battery_percentage: 77 }),
+      '10': row(260, true, { doorcontact_state: false, battery_percentage: 75 }),
+      'P': row(4, true, { switch_1: true, switch_2: true, switch_3: false }),
+      'X5': row(3, true, { switch: true, cur_power: 19870, cur_voltage: 2296 }),
+      'X7': row(6, true, { switch: true, cur_power: 0, cur_voltage: 2301 }),
+      'X8': row(2, true, { switch: true, cur_power: 0, cur_voltage: 2299 }),
+      'X9': row(5, true, { switch: true, cur_power: 6420, cur_voltage: 2294 }),
+      'G': row(1, true, {})
+    };
+  }
+
   // ---- az alkalmazás ---------------------------------------------------------------------
 
   class G3App extends window.G3Scene {
@@ -244,7 +368,8 @@
         drawer: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
         user: null, role: null, layouts: [], current: null,
         savedKey: '{}', savedAt: null, live: null, toasts: [],
-        liveSky: true, now: Date.now()
+        liveSky: true, now: Date.now(),
+        devOpen: false, devFilter: 'all', devOpenId: null
       };
     }
 
@@ -351,7 +476,119 @@
       v.reset = function () { self.resetLayout(); };
       this.applySky(v);
       v.ui = this.uiVals(demo);
+      v.dev = this.devVals(v);
+      var dv = v.dev;
+      v.ui.devCount = String(dv.total);
+      v.ui.devWarn = dv.warnCount > 0;
+      v.ui.devWarnCls = 'wdot ' + (dv.red ? 'red' : 'orange');
+      v.ui.devAria = 'Eszközök: ' + dv.online + '/' + dv.total + ' online' + (dv.warnCount ? ', ' + dv.warnCount + ' figyelmeztetés' : '');
       return v;
+    }
+
+    // ---- Eszközök panel ------------------------------------------------------------------
+
+    devVals(v) {
+      var self = this, st = this.state, now = st.now || Date.now(), live = st.live;
+      var demo = !live, src = live || demoDevices(now);
+      var pinXY = {};
+      v.pins.forEach(function (m) { pinXY[m.id] = [m.x, m.y]; });
+      var gw = src.G;
+      var all = PIN_IDS.map(function (id, order) {
+        var info = DEVINFO[id], cat = CAT[info.cat];
+        var d = src[dbPink(id)], stt = (d && d.status) || {}, meta = d && d.meta;
+        var ir = info.kind === 'ir';
+        var has = !!d || (ir && !!gw);
+        var online = ir ? (gw ? gw.online !== false : null) : d ? d.online !== false : null;
+        var upd = ir ? null : typeof stt._upd === 'number' ? stt._upd * 1000 : (d && d.ts ? Date.parse(d.ts) : null);
+        var age = upd != null && isFinite(upd) ? now - upd : null;
+        var batt = batteryOf(stt);
+        var value = 'nincs adat', valCls = 'muted', open = null;
+        if (has) {
+          if (info.kind === 'thermo') {
+            var t = liveTemp(stt, meta), h = humidityOf(stt, meta);
+            value = t == null ? '-' : fmtNum(t, 1) + ' °C' + (h == null ? '' : ' \u00b7 ' + fmtNum(h, 0) + ' %');
+            valCls = info.cat === 'temp' && id === '3' ? 'hot' : '';
+          } else if (info.kind === 'contact') {
+            open = liveOpen(stt);
+            value = open == null ? '-' : open ? 'NYITVA' : 'Zárva';
+            valCls = open ? 'bad' : 'good';
+          } else if (info.kind === 'switch3') {
+            var n = liveStage(stt);
+            value = n == null ? '-' : n + '/3 fokozat';
+            valCls = n ? 'warm' : '';
+          } else if (info.kind === 'breaker') {
+            var w = livePower(stt, meta);
+            value = stt.switch === false ? 'Kikapcsolva' : w == null ? '-' : fmtNum(w, 0) + ' W';
+            valCls = w != null && w >= 50 ? 'warm' : '';
+          } else if (info.kind === 'gateway') {
+            value = online === false ? 'Offline' : 'Online'; valCls = online === false ? 'bad' : 'good';
+          } else if (ir) {
+            value = 'IR vezérelt'; valCls = '';
+          }
+        }
+        var badges = [], warn = false, red = false;
+        if (!has) badges.push({ t: 'Nincs adat', c: 'grey' });
+        if (has && online === false) { badges.push({ t: 'Nem elérhető', c: 'red' }); warn = red = true; }
+        if (batt && batt.pct < 10) { badges.push({ t: 'Elem lemerült', c: 'red' }); warn = red = true; }
+        else if (batt && batt.pct < 20) { badges.push({ t: 'Elem merül', c: 'orange' }); warn = true; }
+        var lim = STALE_MIN[info.kind];
+        var stale = has && lim != null && age != null && age > lim * 60000;
+        if (stale) { badges.push({ t: 'Régóta hallgat', c: 'orange' }); warn = true; }
+        if (!warn && has && !ir && age != null && age < 10 * 60000 && online !== false) badges.push({ t: 'Friss', c: 'green' });
+        var note = '';
+        if (open && (stale || online === false)) note = 'A NYITVA jelzés lehet régi: ' + hoursAgoText(age) + ' nem jelentett' + (batt && batt.pct < 20 ? ', és merül az eleme.' : '.');
+        else if (open && batt && batt.pct < 20) note = 'A NYITVA jelzés lehet hibás: merül az eleme (' + batt.pct + ' %).';
+        var details = [];
+        if (ir) {
+          details = [{ k: 'Vezérlés', v: 'infravörös, a gatewayen át', cls: '' }, { k: 'Visszajelzés', v: 'az IR eszköz nem küld állapotot', cls: '' }];
+        } else {
+          var keys = Object.keys(stt).sort(function (a, b) { var fa = FRIENDLY[a] ? 0 : 1, fb = FRIENDLY[b] ? 0 : 1; if (a === '_upd') fa = 2; if (b === '_upd') fb = 2; return fa - fb || a.localeCompare(b); });
+          details = keys.map(function (k) { return { k: FRIENDLY[k] || k, v: codeValue(k, stt[k], meta), cls: FRIENDLY[k] ? '' : 'raw' }; });
+          if (d && d.ts) details.push({ k: 'Tárolva', v: budTime(Date.parse(d.ts)), cls: '' });
+          if (!details.length) details.push({ k: 'Állapot', v: 'nincs részlet', cls: '' });
+        }
+        var expanded = st.devOpenId === id;
+        return {
+          id: id, order: order, cat: info.cat, warn: warn, red: red, online: online,
+          pinLabel: id, name: info.name, room: info.room, icon: cat.icon, tile: cat.tile,
+          value: value, valCls: 'dc-val ' + valCls,
+          hasBatt: !!batt, batt: batt ? (batt.label ? batt.label : batt.pct + ' %') : '', battW: batt ? batt.pct + '%' : '0%',
+          battCls: 'hp ' + (!batt ? '' : batt.pct < 10 ? 'red' : batt.pct < 20 ? 'orange' : 'ok'),
+          onlineCls: 'dc-dot ' + (online === false ? 'off' : online ? 'on' : 'unk'),
+          seen: ir ? 'a gatewayen át' : age != null ? 'utolsó jelzés: ' + ago(age) : 'nincs jelzés',
+          badges: badges, hasBadges: badges.length > 0, note: note,
+          expanded: expanded, expandedAttr: expanded ? 'true' : 'false',
+          details: details,
+          cls: 'dcard' + (warn ? ' warn' : '') + (red ? ' red' : '') + (expanded ? ' open' : '') + (st.sel === 'd' + id ? ' sel' : ''),
+          aria: id + ': ' + info.name + ', ' + value + (badges.length ? ', ' + badges.map(function (b) { return b.t; }).join(', ') : ''),
+          pick: function () { self.pickDevice(id, pinXY[id]); }
+        };
+      });
+      var total = all.length, onl = all.filter(function (c) { return c.online === true; }).length;
+      var warnCount = all.filter(function (c) { return c.warn; }).length;
+      var f = st.devFilter || 'all';
+      var cards = all.filter(function (c) { return f === 'all' ? true : f === 'warn' ? c.warn : c.cat === f; })
+        .sort(function (a, b) { return (b.warn - a.warn) || (b.red - a.red) || (a.order - b.order); });
+      var tabs = [['all', 'Mind', total], ['warn', 'Figyelem', warnCount]].concat(['temp', 'door', 'power', 'other'].map(function (k) {
+        return [k, CAT[k].label, all.filter(function (c) { return c.cat === k; }).length];
+      })).map(function (t) {
+        return { label: t[1], n: String(t[2]), cls: 'dp-tab' + (f === t[0] ? ' on' : '') + (t[0] === 'warn' && t[2] ? ' hot' : ''), sel: f === t[0] ? 'true' : 'false',
+          pick: function () { self.setState({ devFilter: t[0] }); } };
+      });
+      return {
+        open: !!st.devOpen, total: total, online: onl, warnCount: warnCount, red: all.some(function (c) { return c.red; }),
+        warnText: warnCount ? warnCount + ' figyelmeztetés' : 'minden rendben',
+        warnCls: 'dp-warn ' + (warnCount ? (all.some(function (c) { return c.red; }) ? 'red' : 'orange') : 'ok'),
+        xpW: Math.round(onl / total * 100) + '%',
+        srcLabel: demo ? 'DEMO' : 'ÉLŐ', srcCls: 'dp-src ' + (demo ? 'demo' : 'live'),
+        cards: cards, tabs: tabs, empty: cards.length === 0
+      };
+    }
+
+    pickDevice(id, xy) {
+      if (this.state.devOpenId === id) { this.setState({ devOpenId: null }); return; }
+      this.setState({ devOpenId: id, sel: 'd' + id });
+      if (xy) focusStage(xy[0], xy[1]);
     }
 
     // Élő módban az ég, a nap/hold, az ablakok és a lámpák a valódi budapesti időt követik;
@@ -427,7 +664,10 @@
         acctLabel: loggedIn ? (role.label === 'TULAJ' ? 'Fiók és mentés' : 'Fiók') : 'Belépés',
         drawerOpen: st.drawer,
         drawerOpenAttr: st.drawer ? 'true' : 'false',
-        toggleDrawer: function () { self.setState({ drawer: !st.drawer, saveAs: false, confirmId: null }); },
+        toggleDrawer: function () { self.setState({ drawer: !st.drawer, devOpen: false, saveAs: false, confirmId: null }); },
+        toggleDev: function () { self.setState({ devOpen: !st.devOpen, drawer: false, saveAs: false, confirmId: null }); },
+        closeDev: function () { self.setState({ devOpen: false }); },
+        devOpenAttr: st.devOpen ? 'true' : 'false',
         openDrawer: function () { self.setState({ drawer: true }); },
         closeDrawer: function () { self.setState({ drawer: false, saveAs: false, confirmId: null }); },
         noConfig: !this.sb,
@@ -745,13 +985,18 @@
   function clampView() {
     var lay = layout(), s = lay.s * view.z, W = 1440 * s, H = 900 * s, vw = window.innerWidth, vh = lay.h;
     view.tx = W <= vw ? (vw - W) / 2 : Math.min(0, Math.max(vw - W, view.tx));
-    view.ty = H <= vh ? (vh - H) / 2 : Math.min(0, Math.max(vh - H, view.ty));
+    // telefonon a nyitott Eszközök lap alá is be lehet húzni a színpadot, hogy a kiválasztott tű a lap felett legyen
+    var sheet = vw <= 700 && document.getElementById('f27-devpanel'), padB = sheet ? sheet.offsetHeight : 0;
+    view.ty = H + padB <= vh ? (vh - H) / 2 : Math.min(0, Math.max(vh - H - padB, view.ty));
   }
 
   function applyView() {
     clampView();
     var s = baseScale() * view.z;
     stageEl.style.transform = 'translate(' + Math.round(view.tx) + 'px,' + Math.round(view.ty) + 'px) scale(' + s + ')';
+    // az Eszközök panel a felső sáv alatt indul (nagyítás nélküli helyzet szerint), hogy a sáv gombjai elérhetők maradjanak
+    var lay0 = layout();
+    document.documentElement.style.setProperty('--dp-top', Math.max(12, Math.round((lay0.h - 900 * lay0.s) / 2 + 90 * lay0.s)) + 'px');
     document.body.classList.toggle('zoomed', view.z > 1.001);
     if (zoomLabel) zoomLabel.textContent = Math.round(view.z * 100) + '%';
     if (zoomOutBtn) zoomOutBtn.disabled = view.z <= ZMIN + 0.001;
@@ -769,6 +1014,22 @@
     applyView();
   }
   function zoomBy(factor, cx, cy) { zoomTo(view.z * factor, cx, cy); }
+
+  // Egy színpadpont (pl. eszköztű) a látható rész közepére, legalább 2,2x nagyítással.
+  // Asztalon az Eszközök panel a jobb oldalt takarja, telefonon az alsó részt.
+  function focusStage(x, y) {
+    if (!stageEl) return;
+    var lay = layout(), vw = window.innerWidth, vh = lay.h, phone = vw <= 700;
+    // telefonon a színpadnak magasabbnak kell lennie a képernyőnél, különben középre igazodik és a lap takarná
+    view.z = Math.min(ZMAX, Math.max(view.z, 2.2));
+    var s = lay.s * view.z;
+    var cx = phone ? vw / 2 : (vw - Math.min(380, vw * 0.92) - 24) / 2;
+    var cy = phone ? vh * 0.2 : vh / 2;
+    view.tx = cx - x * s; view.ty = cy - y * s;
+    stageEl.style.transition = 'transform .35s ease';
+    applyView();
+    setTimeout(function () { stageEl.style.transition = ''; }, 400);
+  }
   function resetView() { view.z = 1; applyView(); }
   function panBy(dx, dy) { view.tx += dx; view.ty += dy; applyView(); }
 
@@ -917,11 +1178,13 @@
     var app = new G3App({ showPath: true, showMarkers: true, snap: true });
     app.initSupabase();
     window.MiniDC.mount(document.getElementById('stage'), document.getElementById('g3-template'), app);
+    window.MiniDC.mountExtra(document.getElementById('devlayer'), document.getElementById('dev-template'), app);
     initViewControls(app);
     app.startClock();
     document.addEventListener('keydown', function (e) {
       var t = e.target;
       if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
+      if (e.key === 'Escape' && app.state.devOpen) { app.setState({ devOpen: false }); return; }
       if (editableTarget(t)) return;
       if (!(e.ctrlKey || e.metaKey)) return;
       var k = e.key.toLowerCase();

@@ -47,8 +47,21 @@ def scale_of(meta: dict | None, code: str) -> int:
 
 
 def signature(status: dict) -> dict:
-    """Az állapot "érdemi" része: a zajos és számláló kódok, és a teljesítmény nélkül."""
-    return {k: v for k, v in (status or {}).items() if k not in SIG_IGNORE and k != "cur_power"}
+    """Az állapot "érdemi" része: a zajos és számláló kódok, a teljesítmény és a saját,
+    aláhúzással kezdődő kiegészítő kulcsok (pl. _upd) nélkül."""
+    return {k: v for k, v in (status or {}).items()
+            if k not in SIG_IGNORE and k != "cur_power" and not str(k).startswith("_")}
+
+
+def device_update_time(t: dict) -> int | None:
+    """A Tuya eszközlista utolsó jelentés-ideje (epoch másodperc): update_time, vagy active_time.
+    Milliszekundumban érkező értéket másodpercre vált."""
+    for key in ("update_time", "active_time"):
+        v = (t or {}).get(key)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+            v = int(v)
+            return v // 1000 if v > 10**11 else v
+    return None
 
 
 def watts(status: dict, meta: dict | None) -> float | None:
@@ -148,6 +161,9 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
         if t is not None:
             status = {s["code"]: s.get("value") for s in t.get("status") or [] if "code" in s}
             online = t.get("online")
+            upd = device_update_time(t)
+            if upd is not None:
+                status["_upd"] = upd       # utolsó jelentés; a változásfigyelés nem nézi
         elif tid in extra_status:
             status = {s["code"]: s.get("value") for s in extra_status[tid] if "code" in s}
             online = None

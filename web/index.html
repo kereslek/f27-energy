@@ -175,10 +175,75 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .toast{max-width:500px;padding:10px 16px;border-radius:14px;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;background:#fffdf7;font:900 13.5px "Nunito",sans-serif;color:#1e2a44;text-align:center}
 .toast.ok{background:#c8f2d4}
 .toast.err{background:#ffd9cc}
+
+/* ---- Eszközök panel (a színpadon kívül, hogy telefonon is olvasható legyen) ---- */
+.btn.devbtn{align-self:center;min-height:40px;position:relative;padding:0 12px}
+.devbtn .cnt{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:999px;background:#1e2a44;color:#ffe066;font:900 12px/1 "Nunito",sans-serif}
+.devbtn .wdot{position:absolute;right:-6px;top:-6px;width:14px;height:14px;border-radius:50%;border:2.5px solid #1e2a44}
+.devbtn .wdot.red{background:#ff4f6d;animation:livepulse 1.6s ease-in-out infinite}
+.devbtn .wdot.orange{background:#ff9f1c}
+#devlayer{position:fixed;inset:0;z-index:60;pointer-events:none}
+.devpanel{pointer-events:auto;position:fixed;right:12px;top:var(--dp-top,12px);bottom:76px;width:380px;max-width:calc(100vw - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpin .22s ease-out;touch-action:pan-y}
+@keyframes dpin{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.dp-head{flex:0 0 auto;padding:14px 14px 10px;background:linear-gradient(180deg,#fff1c9,#fffdf7);border-bottom:3px solid #1e2a44}
+.dp-top{display:flex;align-items:center;gap:8px}
+.dp-title{font-family:"Fraunces",serif;font-weight:800;font-size:22px;color:#3b2a14;flex:1 1 auto}
+.dp-src{padding:3px 8px;border-radius:999px;font:900 10.5px/1.2 "Nunito",sans-serif;letter-spacing:1px;border:2px solid #1e2a44}
+.dp-src.demo{background:#1e2a44;color:#ffe066}
+.dp-src.live{background:#3fae6a;color:#ffffff}
+.dp-xp{margin-top:8px;display:flex;align-items:center;gap:10px;font-weight:900;font-size:13px}
+.dp-xp .bar{flex:1 1 auto;height:14px;border-radius:8px;border:2.5px solid #1e2a44;background:#eee3cc;overflow:hidden}
+.dp-xp .bar span{display:block;height:100%;background:repeating-linear-gradient(45deg,#3fae6a 0 8px,#52c47d 8px 16px)}
+.dp-warn{margin-top:6px;font-weight:900;font-size:12.5px}
+.dp-warn.red{color:#c8321f}.dp-warn.orange{color:#b45309}.dp-warn.ok{color:#2f7d4f}
+.dp-tabs{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:10px 12px 8px;border-bottom:2px dashed #e3cfa6;scrollbar-width:none}
+.dp-tab{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:999px;border:2px solid #1e2a44;background:#ffffff;font:900 12px "Nunito",sans-serif;color:#1e2a44}
+.dp-tab .n{font-size:11px;opacity:.7}
+.dp-tab.hot{background:#ffe1d6}
+.dp-tab.on{background:#1e2a44;color:#ffe066}
+.dp-tab.on .n{opacity:1}
+.dp-tab:focus-visible,.dcard:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.dp-list{flex:1 1 auto;overflow-y:auto;padding:10px 12px 14px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
+.dp-empty{margin:20px 0;text-align:center;font-weight:900;color:#45507a}
+.dcwrap{display:flex;flex-direction:column}
+.dcard{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:48px minmax(0,1fr);gap:4px 10px;padding:10px;border-radius:16px;border:2.5px solid #1e2a44;background:#ffffff;box-shadow:0 3px 0 #1e2a44;width:100%}
+.dcard:hover{background:#fffaf0}
+.dcard.warn{background:#fff6e0}
+.dcard.red{background:#ffefe9}
+.dcard.sel{border-color:#ff4fa3;box-shadow:0 3px 0 #ff4fa3}
+.dc-tile{grid-row:1 / span 3;width:48px;height:48px;border-radius:14px;border:2.5px solid #1e2a44;display:flex;align-items:center;justify-content:center;position:relative}
+.dc-tile .pn{position:absolute;right:-7px;bottom:-7px;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:#ff4fa3;color:#ffffff;border:2px solid #1e2a44;font:900 10.5px/16px "Nunito",sans-serif;text-align:center}
+.dc-row{display:flex;align-items:center;gap:6px;min-width:0}
+.dc-name{font-weight:900;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.dc-room{font-weight:800;font-size:11.5px;color:#6b7280;white-space:nowrap}
+.dc-dot{width:9px;height:9px;border-radius:50%;border:2px solid #1e2a44;flex:0 0 auto}
+.dc-dot.on{background:#3fae6a}.dc-dot.off{background:#ff4f6d}.dc-dot.unk{background:#c4c8d0}
+.dc-val{font-family:"Lilita One","Baloo 2","Nunito",sans-serif;font-size:20px;line-height:1.1;color:#1e2a44;white-space:nowrap}
+.dc-val.good{color:#2f7d4f}.dc-val.bad{color:#c8321f}.dc-val.hot{color:#b8461b}.dc-val.warm{color:#b45309}.dc-val.muted{color:#8a8f9c;font-size:16px}
+.dc-seen{font-weight:800;font-size:11.5px;color:#45507a;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hpw{display:inline-flex;align-items:center;gap:4px;font-weight:900;font-size:11px;white-space:nowrap}
+.hp{display:inline-block;width:38px;height:9px;border-radius:5px;border:2px solid #1e2a44;background:#eee3cc;overflow:hidden}
+.hp span{display:block;height:100%;background:#3fae6a}
+.hp.orange span{background:#ff9f1c}.hp.red span{background:#ff4f6d}
+.dc-badges{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.bdg{padding:2px 8px;border-radius:999px;border:2px solid #1e2a44;font:900 11px/1.3 "Nunito",sans-serif}
+.bdg.red{background:#ff4f6d;color:#ffffff}.bdg.orange{background:#ff9f1c;color:#1e2a44}.bdg.green{background:#c8f2d4;color:#1e5a36}.bdg.grey{background:#e5e7eb;color:#374151}
+.dc-note{grid-column:1 / -1;margin-top:4px;padding:6px 8px;border-radius:10px;background:#fff1c9;border:2px solid #e3cfa6;font-weight:800;font-size:12px;color:#9a3412}
+.dc-det{margin:-6px 6px 2px;padding:12px 10px 8px;border:2.5px solid #1e2a44;border-top:0;border-radius:0 0 14px 14px;background:#fffaf0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;font-size:12px}
+.dc-det .k{font-weight:800;color:#45507a;overflow:hidden;text-overflow:ellipsis}
+.dc-det .k.raw{font-weight:700;color:#8a8f9c}
+.dc-det .v{font-weight:900;text-align:right;white-space:nowrap}
+@media (max-width:700px){
+.devpanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;height:62vh;border-radius:22px 22px 0 0;border-bottom:0;animation:dpup .24s ease-out}
+.dp-head{padding-top:18px;position:relative}
+.dp-head::before{content:"";position:absolute;left:50%;top:6px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#c9b68f}
+}
+@keyframes dpup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
 <body>
 <div id="stage"></div>
+<div id="devlayer"></div>
 <!-- A G3 sablon: a js/minidc.js értelmezi ({{ }} értékek, sc-for, sc-if, onX események). -->
 <template id="g3-template">
 <div class="root" data-root="1" onPointerMove="{{onMove}}" onPointerUp="{{onUp}}" onPointerCancel="{{onUp}}" style="width: 1440px; height: 900px; position: relative; overflow: hidden; font-family: 'Nunito', system-ui, sans-serif; color: #1e2a44; background: #8fd3ff">
@@ -560,7 +625,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 </div>
 </sc-if>
 
-<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 16px">
+<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 12px">
 <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 20px; border-radius: 18px; background: #ff4fa3; border: 3px solid #1e2a44; box-shadow: 0 4px 0 #1e2a44; color: #ffffff">
 <span class="lil" style="font-size: 24px; line-height: 1">F27 ENERGY QUEST</span>
 <span style="font-size: 12px; font-weight: 900; letter-spacing: 1px" title="{{titleTip}}">{{titleLine}}</span>
@@ -577,7 +642,12 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <div class="chip"><span class="ck">KINT</span><span class="cv">{{L.outside}}</span></div>
 <div class="chip" style="background: #fff1c9"><span class="ck">VENDÉG ÉRKEZIK</span><span class="cv" style="color: #c8321f">{{L.timer}}</span></div>
 <div style="flex: 1 1 auto"></div>
-<sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 8px 16px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 12px; letter-spacing: 1.2px">DEMO ADATOK</div></sc-if>
+<sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 8px 16px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 12px; letter-spacing: 1.2px" title="Demó adatok: lépj be a valódi értékekhez">DEMO</div></sc-if>
+<button class="btn devbtn" type="button" onClick="{{ui.toggleDev}}" aria-expanded="{{ui.devOpenAttr}}" aria-controls="f27-devpanel" aria-label="{{ui.devAria}}" title="Eszközök állapota">
+<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6v6H5zM13 4h6v6h-6zM5 14h6v6H5zM16 14v6M13 17h6" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+Eszközök<span class="cnt">{{ui.devCount}}</span>
+<sc-if value="{{ui.devWarn}}"><span class="{{ui.devWarnCls}}" aria-hidden="true"></span></sc-if>
+</button>
 <button class="btn acct" type="button" onClick="{{ui.toggleDrawer}}" aria-expanded="{{ui.drawerOpenAttr}}" aria-controls="f27-drawer">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 {{ui.acctLabel}}
@@ -787,6 +857,44 @@ Elrendezés visszaállítása
 <sc-for list="{{ui.toasts}}" as="t"><div class="{{t.cls}}" role="status">{{t.text}}</div></sc-for>
 </div>
 </div>
+</template>
+<template id="dev-template">
+<sc-if value="{{dev.open}}">
+<aside id="f27-devpanel" class="devpanel" role="dialog" aria-label="Eszközök állapota">
+<div class="dp-head">
+<div class="dp-top">
+<span class="dp-title">Eszközcsapat</span>
+<span class="{{dev.srcCls}}">{{dev.srcLabel}}</span>
+<button class="btn ib sm" type="button" onClick="{{ui.closeDev}}" aria-label="Bezárás" title="Bezárás (Esc)">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg>
+</button>
+</div>
+<div class="dp-xp"><span class="dp-on">{{dev.online}}/{{dev.total}} online</span><span class="bar" aria-hidden="true"><span style="width: {{dev.xpW}}"></span></span></div>
+<div class="{{dev.warnCls}}">{{dev.warnText}}</div>
+</div>
+<div class="dp-tabs" role="tablist" aria-label="Szűrő">
+<sc-for list="{{dev.tabs}}" as="t"><button class="{{t.cls}}" type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}">{{t.label}} <span class="n">{{t.n}}</span></button></sc-for>
+</div>
+<div class="dp-list">
+<sc-if value="{{dev.empty}}"><p class="dp-empty">Nincs ilyen eszköz. Szép munka!</p></sc-if>
+<sc-for list="{{dev.cards}}" as="c">
+<div class="dcwrap" data-dev="{{c.id}}">
+<button class="{{c.cls}}" type="button" onClick="{{c.pick}}" aria-expanded="{{c.expandedAttr}}" aria-label="{{c.aria}}">
+<span class="dc-tile" style="background: {{c.tile}}" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="{{c.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="pn">{{c.pinLabel}}</span></span>
+<span class="dc-row"><span class="dc-name">{{c.name}}</span><span class="dc-room">{{c.room}}</span></span>
+<span class="dc-row"><span class="{{c.valCls}}">{{c.value}}</span></span>
+<span class="dc-row"><span class="{{c.onlineCls}}" aria-hidden="true"></span><span class="dc-seen">{{c.seen}}</span><sc-if value="{{c.hasBatt}}"><span class="hpw" title="Elem"><span class="{{c.battCls}}"><span style="width: {{c.battW}}"></span></span>{{c.batt}}</span></sc-if></span>
+<sc-if value="{{c.hasBadges}}"><span class="dc-badges"><sc-for list="{{c.badges}}" as="b"><span class="bdg {{b.c}}">{{b.t}}</span></sc-for></span></sc-if>
+<sc-if value="{{c.note}}"><span class="dc-note">{{c.note}}</span></sc-if>
+</button>
+<sc-if value="{{c.expanded}}">
+<div class="dc-det"><sc-for list="{{c.details}}" as="r"><span class="k {{r.cls}}">{{r.k}}</span><span class="v">{{r.v}}</span></sc-for></div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</aside>
+</sc-if>
 </template>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>

@@ -222,6 +222,7 @@
       if (!this._root) return;
       var vals = this.renderVals();
       patchKids(this._root.container, renderKids(this._root.tpl, { vars: vals, parent: null }, [], ''));
+      (this._extra || []).forEach(function (x) { patchKids(x.container, renderKids(x.tpl, { vars: vals, parent: null }, [], '')); });
       if (this.didRender) this.didRender();
     }
     renderVals() { return {}; }
@@ -234,5 +235,13 @@
     return component;
   }
 
-  global.MiniDC = { Component: Component, mount: mount };
+  // Második (csatolt) gyökér ugyanabból az állapotból: pl. a színpadon kívüli, valódi méretű panel.
+  function mountExtra(container, templateEl, component) {
+    var tpl = compileKids(templateEl.content || templateEl);
+    (component._extra = component._extra || []).push({ container: container, tpl: tpl });
+    component.renderNow();
+    return component;
+  }
+
+  global.MiniDC = { Component: Component, mount: mount, mountExtra: mountExtra };
 })(window);

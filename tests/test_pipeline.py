@@ -440,6 +440,19 @@ class TestCollect(unittest.TestCase):
         s = self.run_at(T0 + timedelta(minutes=10))
         self.assertEqual(s["written"], 1)
 
+    def test_update_time_is_stored_but_not_a_change(self):
+        d = next(x for x in self.f if x["id"] == "devid001secret")
+        d["update_time"] = 1793990000
+        self.run_at(T0)
+        row = next(r for r in self.sb.db["device_status"] if r["pink"] == "1")
+        self.assertEqual(row["status"]["_upd"], 1793990000)
+        d["update_time"] = 1793990600                                   # csak a jelentés-idő változott
+        self.assertEqual(self.run_at(T0 + timedelta(minutes=10))["written"], 0)
+        d.pop("update_time"); d["active_time"] = 1793991200000           # ms-ban is jöhet
+        self.assertEqual(C.device_update_time(d), 1793991200)
+        self.assertIsNone(C.device_update_time({"update_time": 0}))
+        self.assertEqual(C.signature({"a": 1, "_upd": 5, "cur_power": 3}), {"a": 1})
+
     def test_hourly_heartbeat(self):
         self.run_at(T0)
         self.assertEqual(self.run_at(T0 + timedelta(minutes=59))["written"], 0)
