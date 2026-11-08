@@ -74,8 +74,11 @@ create table if not exists public.devices (
   room           text,
   label          text not null,
   tuya_device_id text unique,
+  meta           jsonb,                     -- státuszkód -> {scale, unit, type} a Tuya specifikációból
   updated_at     timestamptz not null default now()
 );
+-- Korábbi telepítésen hiányozhat (lásd supabase/migrations/002_device_meta.sql).
+alter table public.devices add column if not exists meta jsonb;
 
 -- ---------------------------------------------------------------------------
 -- Eszközállapotok idősora. Az adatgyűjtő csak változáskor (vagy óránként) ír,
@@ -105,8 +108,10 @@ create table if not exists public.energy_daily (
   day   date not null,
   pink  text not null references public.devices (pink) on delete cascade,
   kwh   numeric(10, 3) not null check (kwh >= 0),
+  last_counter numeric(14, 4),              -- a fogyasztásszámláló utolsó látott állása (kWh)
   primary key (day, pink)
 );
+alter table public.energy_daily add column if not exists last_counter numeric(14, 4);
 
 -- ---------------------------------------------------------------------------
 -- Sorszintű jogosultság (RLS)

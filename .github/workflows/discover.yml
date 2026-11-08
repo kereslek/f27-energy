@@ -1,12 +1,17 @@
 name: Eszközfelderítés
 
 # Kézzel indítható: Actions fül > Eszközfelderítés > Run workflow.
-# Kiolvassa a Tuya eszközlistát, párosítja a pink számokhoz, és
-# TITKOSÍTVA commitolja a data/ mappába. A log publikus, ezért a
-# script oda csak párosítási eredményt ír, mérési értéket nem.
+# Kiolvassa a Tuya eszközlistát, párosítja a pink számokhoz, TITKOSÍTVA
+# commitolja a data/ mappába, és frissíti a Supabase public.devices táblát.
+# A log publikus, ezért a script oda csak párosítási eredményt ír.
+#
+# Havonta magától is lefut: a commit életben tartja a repót, különben a GitHub
+# 60 nap tétlenség után leállítaná az ütemezett workflow-kat (pl. az adatgyűjtőt).
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 4 1 * *"   # minden hónap 1-jén 04:17 UTC
 
 permissions:
   contents: write
@@ -35,6 +40,8 @@ jobs:
           TUYA_ENDPOINT: ${{ secrets.TUYA_ENDPOINT }}
           TUYA_UID: ${{ secrets.TUYA_UID }}
           F27_DATA_PASSWORD: ${{ secrets.F27_DATA_PASSWORD }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python -m f27.discover
 
       - name: Commit (csak titkosított fájlok)

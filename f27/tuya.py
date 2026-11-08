@@ -39,6 +39,7 @@ class TuyaClient:
         self.access_secret = access_secret
         self.endpoint = endpoint.rstrip("/")
         self._token: str | None = None
+        self.calls = 0  # API-hívások száma (a kvóta követéséhez; a tokenkérés is számít)
         self._token_expires = 0.0
 
     @classmethod
@@ -68,6 +69,7 @@ class TuyaClient:
     def _raw(self, method: str, path: str, params: dict | None = None, body: dict | None = None,
              with_token: bool = True) -> dict:
         url = self._url(path, params)
+        self.calls += 1
         data = json.dumps(body, separators=(",", ":")).encode() if body is not None else b""
         t = str(int(time.time() * 1000))
         nonce = uuid.uuid4().hex
