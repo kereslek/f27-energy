@@ -19,6 +19,84 @@
   var HISTORY_MAX = 60;
   var LIVE_REFRESH_MS = 60000;
 
+  // ---- élő napszak: a nap állása Budapest felett ------------------------------------
+  // Egyszerűsített NOAA / csillagászati almanach képlet (néhány tized fok pontosság),
+  // a helyi idő kiírása az Intl-lel, így a nyári időszámítás is helyes.
+
+  var BUD_LAT = 47.4979, BUD_LON = 19.0402, RAD = Math.PI / 180;
+
+  function sunElevation(ms) {
+    var n = ms / 86400000 + 2440587.5 - 2451545.0;
+    var L = (280.460 + 0.9856474 * n) % 360;
+    var g = ((357.528 + 0.9856003 * n) % 360) * RAD;
+    var lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * RAD;
+    var eps = (23.439 - 0.0000004 * n) * RAD;
+    var ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam)) / RAD;
+    var dec = Math.asin(Math.sin(eps) * Math.sin(lam));
+    var gmst = (18.697374558 + 24.06570982441908 * n) % 24;
+    var ha = ((gmst + BUD_LON / 15) * 15 - ra) * RAD;
+    var lat = BUD_LAT * RAD;
+    var el = Math.asin(Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(ha)) / RAD;
+    var hn = Math.atan2(Math.sin(ha), Math.cos(ha));        // óraszög -pi..pi: negatív = délelőtt
+    return { el: el, morning: hn < 0 };
+  }
+
+  var BUD_FMT = null;
+  function budTime(ms) {
+    try {
+      if (!BUD_FMT) BUD_FMT = new Intl.DateTimeFormat('hu-HU', { timeZone: 'Europe/Budapest', hour: '2-digit', minute: '2-digit', hour12: false });
+      return BUD_FMT.format(new Date(ms)).replace(/\s/g, '');
+    } catch (e) { return hhmm(new Date(ms).toISOString()); }
+  }
+
+  // Napkelte és napnyugta (felső perem a látóhatáron, -0,833 fok) a megadott időpont napján.
+  function sunTimes(ms) {
+    var day = Math.floor(ms / 86400000) * 86400000, rise = null, set = null, prev = sunElevation(day).el;
+    for (var t = day + 300000; t <= day + 86400000; t += 300000) {
+      var e = sunElevation(t).el;
+      if (prev < -0.833 && e >= -0.833 && rise == null) rise = t;
+      if (prev >= -0.833 && e < -0.833 && set == null) set = t;
+      prev = e;
+    }
+    return { rise: rise, set: set };
+  }
+
+  function hex2rgb(h) { var v = parseInt(h.slice(1), 16); return [(v >> 16) & 255, (v >> 8) & 255, v & 255]; }
+  function mixHex(a, b, t) {
+    var x = hex2rgb(a), y = hex2rgb(b);
+    return '#' + x.map(function (c, i) { var v = Math.round(c + (y[i] - c) * t); return ('0' + v.toString(16)).slice(-2); }).join('');
+  }
+  function clamp01(t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
+  function smooth(t) { t = clamp01(t); return t * t * (3 - 2 * t); }
+  var SKY_COLORS = ['sky0', 'sky1', 'sky2', 'sunC', 'city', 'cityWin', 'glass', 'tree1', 'tree2'];
+  var SKY_NUMS = ['starOp', 'cloudOp', 'glow', 'lampOp'];
+  function mixLook(a, b, t) {
+    var o = {};
+    SKY_COLORS.forEach(function (k) { o[k] = mixHex(a[k], b[k], t); });
+    SKY_NUMS.forEach(function (k) { o[k] = a[k] + (b[k] - a[k]) * t; });
+    return o;
+  }
+
+  // A nappali, az alkonyati és az éjszakai kép a meglévő szintekből jön (1-1 Ősz, 1-3 Téli este,
+  // 1-4 éjszaka). Napmagasság szerint: >= 8 fok nappal, -3 fok körül alkony, -18 fok alatt éjszaka.
+  function liveSky(LV, ms) {
+    var s = sunElevation(ms), el = s.el;
+    var day = LV[0], dusk = LV[2], night = LV[3], look;
+    if (el >= -3) look = mixLook(dusk, day, smooth((el + 3) / 11));
+    else look = mixLook(dusk, night, smooth((-3 - el) / 15));
+    // a korong: napként lemegy a látóhatárra és elhalványul, holdként fent jelenik meg
+    if (el >= -4) {
+      look.sunY = Math.round(150 + 180 * (1 - clamp01((el + 1) / 30)));
+      look.sunOp = Math.round(clamp01((el + 4) / 3) * 100) / 100;
+    } else {
+      look.sunY = 150;
+      look.sunC = night.sunC;
+      look.sunOp = Math.round(clamp01((-4 - el) / 6) * 100) / 100;
+    }
+    var phase = el >= 6 ? 'nappal' : el < -18 ? 'éjszaka' : s.morning ? 'hajnal' : 'alkonyat';
+    return { look: look, phase: phase, el: el };
+  }
+
   // ---- segédfüggvények -------------------------------------------------------------
 
   function r1(n) { return Math.round(n * 10) / 10; }
@@ -128,8 +206,16 @@
         pos: {}, sel: null, drag: null,
         drawer: false, saveAs: false, confirmId: null, busy: false,
         user: null, role: null, layouts: [], current: null,
-        savedKey: '{}', savedAt: null, live: null, toasts: []
+        savedKey: '{}', savedAt: null, live: null, toasts: [],
+        liveSky: true, now: Date.now()
       };
+    }
+
+    // Élő napszak: percenként újraszámol (a nap állása Budapest felett).
+    startClock() {
+      var self = this;
+      if (this._clock) return;
+      this._clock = setInterval(function () { self.setState({ now: Date.now() }); }, 60000);
     }
 
     // -- jelenet-kiegészítések -----------------------------------------------------------
@@ -226,8 +312,43 @@
       }
 
       v.reset = function () { self.resetLayout(); };
+      this.applySky(v);
       v.ui = this.uiVals(demo);
       return v;
+    }
+
+    // Élő módban az ég, a nap/hold, az ablakok és a lámpák a valódi budapesti időt követik;
+    // a szint-gombok előbeállítások maradnak.
+    applySky(v) {
+      var self = this, st = this.state, now = st.now || Date.now();
+      var LV = super.levels();
+      v.L = Object.assign({}, v.L);
+      if (st.liveSky) {
+        var sky = liveSky(LV, now), look = sky.look;
+        Object.keys(look).forEach(function (k) { v.L[k] = look[k]; });
+        v.L.sunHalo = Math.round(look.sunOp * 0.8 * 100) / 100;
+        v.wins.forEach(function (w) { w.fill = look.glass; });
+        var tt = sunTimes(now);
+        v.titleLine = 'ÉLŐ: ' + sky.phase + ', ' + budTime(now);
+        v.titleTip = 'A napszak a valódi budapesti időt követi.' +
+          (tt.rise ? ' Napkelte ' + budTime(tt.rise) + ', napnyugta ' + budTime(tt.set) + '.' : '');
+        v.skyPhase = sky.phase;
+      } else {
+        v.L.sunOp = 1; v.L.sunHalo = 0.8;
+        v.titleLine = 'VILÁG ' + v.L.code + ': ' + v.L.name;
+        v.titleTip = 'Előbeállított pálya. Az Élő gombbal vissza a valódi napszakhoz.';
+        v.skyPhase = '';
+      }
+      v.levels.forEach(function (l, j) {
+        if (st.liveSky) { l.cls = l.cls.replace(/\bon\b\s*/, ''); l.pressed = 'false'; }
+        l.pick = function () { self.setState({ lvl: j, liveSky: false }); };
+      });
+      v.livePill = {
+        cls: st.liveSky ? 'on' : '',
+        pressed: st.liveSky ? 'true' : 'false',
+        label: st.liveSky ? 'ÉLŐ' : 'Vissza: ÉLŐ',
+        pick: function () { self.setState({ liveSky: true, lvl: null, now: Date.now() }); }
+      };
     }
 
     // -- felület -----------------------------------------------------------------------------
@@ -737,6 +858,7 @@
     app.initSupabase();
     window.MiniDC.mount(document.getElementById('stage'), document.getElementById('g3-template'), app);
     initViewControls(app);
+    app.startClock();
     document.addEventListener('keydown', function (e) {
       var t = e.target;
       if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }

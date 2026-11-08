@@ -71,6 +71,13 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .lv.on{background:#2f6fe4;color:#ffffff}
 .lv.boss{background:#ffd9cc}
 .lv.boss.on{background:#e8432f;color:#ffffff}
+.livepill{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;border:2.5px solid #1e2a44;background:#ffffff;color:#1e2a44;font:900 11.5px/1 "Nunito",sans-serif;letter-spacing:.6px;box-shadow:0 2px 0 #1e2a44}
+.livepill:hover{background:#ffe066}
+.livepill:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.livepill .ld{width:8px;height:8px;border-radius:50%;background:#8a8f9c;border:1.5px solid #1e2a44}
+.livepill.on{background:#3fae6a;color:#ffffff}
+.livepill.on .ld{background:#ff4f6d;animation:livepulse 1.6s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.35}}
 .chip{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 16px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
 .ck{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a}
 .cv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44}
@@ -209,8 +216,8 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <circle class="tw" cx="{{s.x}}" cy="{{s.y}}" r="{{s.r}}" fill="#fff6dc" style="animation-delay: {{s.d}}"></circle>
 </sc-for>
 </g>
-<circle cx="452" cy="{{L.sunY}}" r="80" fill="url(#halo2)" opacity="0.8"></circle>
-<circle cx="452" cy="{{L.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="452" cy="{{L.sunY}}" r="80" fill="url(#halo2)" opacity="{{L.sunHalo}}"></circle>
+<circle cx="452" cy="{{L.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3" opacity="{{L.sunOp}}"></circle>
 <g class="cloud">
 <g transform="translate(400 132) scale(.8)"><ellipse cx="0" cy="0" rx="46" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="-22" cy="-12" rx="24" ry="18" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="18" cy="-16" rx="26" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><rect x="-44" y="-4" width="88" height="20" fill="#ffffff" opacity="{{L.cloudOp}}"></rect></g>
 </g>
@@ -544,7 +551,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 16px">
 <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 20px; border-radius: 18px; background: #ff4fa3; border: 3px solid #1e2a44; box-shadow: 0 4px 0 #1e2a44; color: #ffffff">
 <span class="lil" style="font-size: 24px; line-height: 1">F27 ENERGY QUEST</span>
-<span style="font-size: 12px; font-weight: 900; letter-spacing: 1px">VILÁG {{L.code}}: {{L.name}}</span>
+<span style="font-size: 12px; font-weight: 900; letter-spacing: 1px" title="{{titleTip}}">{{titleLine}}</span>
 </div>
 <div class="chip"><span class="ck">ENERGIAPONT</span><span class="cv">{{L.score}}</span></div>
 <div class="chip"><span class="ck">MEGTAKARÍTOTT Ft</span><span class="cv" style="color: #9a6a00">{{L.coins}}</span></div>
@@ -651,7 +658,7 @@ Elrendezés visszaállítása
 <div class="panel" style="position: absolute; left: 16px; top: 744px; width: 456px; height: 140px; padding: 12px 16px; background: #fff7e6; display: flex; flex-direction: column; gap: 8px">
 <div style="display: flex; justify-content: space-between; align-items: baseline">
 <span class="lil" style="font-size: 18px">Pályaválasztó</span>
-<span style="font-size: 11px; font-weight: 800; color: #45507a">időjárás + foglaltság</span>
+<button class="livepill {{livePill.cls}}" type="button" onClick="{{livePill.pick}}" aria-pressed="{{livePill.pressed}}" title="Élő napszak: az ég és a fények a valódi budapesti időt követik"><span class="ld" aria-hidden="true"></span>{{livePill.label}}</button>
 </div>
 <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
 <sc-for list="{{levels}}" as="l" hint-placeholder-count="4">

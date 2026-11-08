@@ -38,6 +38,16 @@ Az alsó sáv állapotjelzője: **Nem mentett változás** (piros pont) vagy **M
 - Újra: a másik nyíl gomb, vagy **Ctrl+Shift+Z** / **Ctrl+Y**.
 - **Elrendezés visszaállítása**: minden alaphelyzetbe; ez is visszavonható.
 
+## Élő napszak
+
+Alapból az ég, a nap és a hold, az ablakok fénye és a lámpák a **valódi budapesti időt** követik
+(a nap állása Budapest felett, nyári időszámítással is helyesen; percenként frissül).
+A cím ilyenkor például: „ÉLŐ: nappal, 10:42”; fölé állva mutatja a napkeltét és a napnyugtát.
+Napszakok: hajnal, nappal (6 fok napmagasság felett), alkonyat, éjszaka (-18 fok alatt).
+
+A Pályaválasztó gombjai (1-1 ... 1-4) előbeállított forgatókönyvek; ha valamelyiket választod,
+az élő mód kikapcsol. A panel fejlécében az **ÉLŐ** gomb visszakapcsolja.
+
 ## Nagyítás és mozgatás
 
 A jobb alsó sarokban a nagyítósáv: **−**, a nagyítás mértéke, **+**, és a **teljes nézet** gomb. 100% és 400% között.
