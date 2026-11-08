@@ -129,6 +129,17 @@ nem a lakás valódi állapota. Megjelenés: az alap (`?attekintes=1`) a
 szekciós lista a csempés műszerfal kályha-csempéjével; `?attekintes=2` csempés műszerfal,
 `?attekintes=3` fülek; a panel fejlécében is váltható.
 
+## Utolsó mozgás
+
+A felső sáv **UTOLSÓ MOZGÁS** csempéje azt mutatja, mikor mozdult utoljára valami a lakásban,
+amit csak a helyszínen lehet: a bejárati ajtó, a tároló ajtaja és a négy ablak nyitása vagy csukása
+(a kályhakapcsoló és a kismegszakítók nem számítanak, azok távolról is kapcsolhatók). Nagyban az
+eltelt idő (óra, perc), alatta melyik érzékelő és pontosan mikor. Kattintásra a térkép rámutat.
+
+A nyílászáróknál az Élő áttekintés is pontosan írja, mióta (óra, perc) és mikor (nap, időpont)
+változott az állapot. Ha az előzményben (30 nap) nincs váltás, "legalább ... óta" a legrégebbi
+ismert sor (pl. az adatgyűjtés kezdete) óta.
+
 ## Kint (időjárás)
 
 A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, 15

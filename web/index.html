@@ -272,11 +272,13 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .adv.talk .ip-bubble,.ip-bubble.talk{animation:advpop .32s ease-out}
 .ip-list{list-style:none;margin:2px 0 0;padding:0 2px 2px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:0;overscroll-behavior:contain}
 .ip-list .adv-tip{font-size:11.5px;padding:6px 8px;gap:6px}
-.ip-list .adv-tip .tx{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left}
-.ip-list .adv-tip .tx:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;border-radius:6px}
-.ip-list .adv-tip:not(.open) .tx span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ip-list .adv-tip .tx{display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left;user-select:text;-webkit-user-select:text;cursor:text}
+.ip-act{display:flex;gap:10px;margin-top:1px}
+.ip-act .lk{all:unset;cursor:pointer;font-size:10.5px;font-weight:900;color:#2f6fdb;text-decoration:underline;text-underline-offset:2px}
+.ip-act .lk:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;border-radius:4px}
+.ip-list .adv-tip:not(.open) .tx > span:not(.ip-act){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ip-list .adv-tip .tx b{font-size:12px;font-weight:900}
-.ip-list .adv-tip .tx span{font-weight:700;color:#3d3426}
+.ip-list .adv-tip .tx > span:not(.ip-act){font-weight:700;color:#3d3426}
 .ip-foot{margin:0;padding:6px 4px 0;border-top:2px dashed #e3cfa6;font-size:10px;font-weight:800;color:#8a8f9c;line-height:1.3}
 @media (max-width:700px){
 .adv-stage{display:none}
@@ -321,6 +323,14 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 @media (max-width:700px){.advpop{left:8px;right:8px;width:auto;bottom:88px}}
 
 /* ---- KINT csip: valós időjárás (Open-Meteo) ---- */
+.mvchip{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;gap:1px;max-width:230px;background:#eef6ff}
+.mvchip:hover{background:#dcecff}
+.mvchip{padding-top:4px;padding-bottom:4px}
+.mvchip .ck{line-height:1.1}
+.mvchip .cv{font-size:19px;line-height:1;color:#1e2a44}
+.mvchip .cs{line-height:1.15;font-size:10.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mvchip.fresh{background:#e7f8ec}
+.mvchip:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .wxchip{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .wxchip:hover{background:#fff1c9}
 .wxchip:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
@@ -389,7 +399,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .ov-acchip .ov-acv{font-family:inherit;font-size:9.5px}
 /* elemszint: kis elem-ikon + százalék (nyílászárók, hőmérők) */
 .ov-bat{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;font-size:9px;font-weight:900;color:#45507a;white-space:nowrap;letter-spacing:0}
-.ov-bat i{position:relative;display:inline-block;margin-right:3px;width:11px;height:6px;border:1.4px solid #45507a;border-radius:2px;box-sizing:content-box}
+.ov-bat i{position:relative;display:inline-block;flex:0 0 auto;margin-right:3px;width:11px;height:6px;border:1.4px solid #45507a;border-radius:2px;box-sizing:content-box}
 .ov-bat i::after{content:"";position:absolute;right:-3px;top:1.5px;width:1.6px;height:3px;background:#45507a;border-radius:0 1px 1px 0}
 .ov-bat i b{position:absolute;left:0;top:0;bottom:0;background:#3fae6a;border-radius:1px}
 .ov-bat.orange{color:#b45309}.ov-bat.orange i b{background:#ff9f1c}
@@ -400,7 +410,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .st.run{color:#c2410c}.st.off{color:#c8321f}.st.unknown{color:#8a8f9c}
 .ov-mini .st{font-size:9px}
 /* F1: szekciós lista */
-.ov-f1{display:flex;flex-direction:column;gap:4px;min-height:0}
+.ov-f1{display:flex;flex-direction:column;gap:4px;min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d9c39a transparent;padding-right:2px}
 .ov-sec{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;padding:5px 7px;border-radius:12px;border:2px solid #e3cfa6;background:#fffaf0}
 button.ov-sec{cursor:pointer}
 button.ov-sec:hover,.ov-pr:hover,.ov-door:hover,.ov-t:hover{background:#fff1c9}
@@ -415,6 +425,8 @@ button.ov-sec:hover,.ov-pr:hover,.ov-door:hover,.ov-t:hover{background:#fff1c9}
 .ov-door svg{width:15px;height:15px}
 .ov-door .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900}
 .ov-door .t{font-size:10.5px;color:#45507a;white-space:nowrap}
+.ov-door .l2{grid-column:2 / -1;font-size:9.5px;font-weight:800;color:#6b7280;line-height:1.15;margin-top:-1px}
+.ov-door.open .l2{color:#c8321f}
 .ov-door .nt{grid-column:2 / -1;font-size:9.5px;font-weight:900;color:#b45309}
 .ov-door.open{background:#ffe1d6}
 .ov-stove.dark{background:#1e2a44;border-color:#1e2a44;color:#fff7e6;gap:3px}
@@ -849,6 +861,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </div>
 <button class="chip wxchip" type="button" onClick="{{wx.toggle}}" title="{{wx.title}}" aria-label="{{wx.aria}}" aria-expanded="{{wx.openAttr}}" aria-controls="f27-wxcard"><span class="ck">KINT<sc-if value="{{wx.hasFc}}"><span class="wxf"> · {{wx.fc}}</span></sc-if></span><span class="cv wxv"><sc-if value="{{wx.hasIcon}}"><svg class="wxi" viewBox="0 0 24 24" aria-hidden="true"><use href="{{wx.icon}}"></use></svg></sc-if>{{wx.now}}</span></button>
 <div class="chip" style="background: #fff1c9"><span class="ck">VENDÉG ÉRKEZIK</span><span class="cv" style="color: #c8321f">{{L.timer}}</span></div>
+<button class="{{ov.motion.cls}}" type="button" onClick="{{ov.motion.pick}}" title="{{ov.motion.tip}}" aria-label="{{ov.motion.tip}}"><span class="ck">UTOLSÓ MOZGÁS</span><span class="cv">{{ov.motion.big}}</span><span class="cs">{{ov.motion.sub}}</span></button>
 <div style="flex: 1 1 auto"></div>
 <sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 6px 10px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 11.5px; letter-spacing: 1px" title="Kitalált demóadatok a kiválasztott pálya szerint. A lakás valódi értékei belépés után látszanak.">DEMÓ · kitalált adat</div></sc-if>
 <div class="tbcol">
@@ -878,7 +891,7 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </div>
 <button class="{{info.bubbleCls}}" type="button" onClick="{{info.showCur}}" aria-label="{{adv.aria}}" title="A zöld szék most ezt mondja. Kattints: mutasd a térképen.">{{adv.text}}<span class="c">{{adv.count}}</span></button>
 <ol class="ip-list">
-<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><button class="tx" type="button" onClick="{{t.toggle}}" aria-expanded="{{t.expanded}}"><b>{{t.short}}</b><span>{{t.text}}</span></button><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
+<sc-for list="{{adv.list}}" as="t"><li class="{{t.cls}}"><span class="d" aria-hidden="true"></span><div class="tx"><b>{{t.short}}</b><span>{{t.text}}</span><span class="ip-act"><button class="lk" type="button" onClick="{{t.toggle}}" aria-expanded="{{t.expanded}}">{{t.moreLabel}}</button><button class="lk" type="button" onClick="{{t.copy}}" title="A tipp szövege a vágólapra (pl. üzenetbe beillesztéshez)">Másolás</button></span></div><sc-if value="{{t.hasDev}}"><button class="btn xs" type="button" onClick="{{t.show}}" aria-label="{{t.devAria}}">Mutasd</button></sc-if></li></sc-for>
 </ol>
 <p class="ip-foot">Szabályalapú tippek az élő adatokból és az időjárásból. Ide kerülnek majd az adatgyűjtés elemzései is (pl. hőigény, üres napok).</p>
 </section>
@@ -1158,13 +1171,12 @@ Elrendezés visszaállítása
 <sc-if value="{{ov.stove.hasMismatch}}"><span class="ov-mis">{{ov.stove.mismatch}}</span></sc-if>
 </button>
 <div class="ov-sec">
-<span class="ov-h">FOGYASZTÁS MOST <b class="ov-tot">{{ov.power.total}}</b><span class="ov-ft">{{ov.power.totalFt}}</span></span>
+<span class="ov-h" title="A világítás, a hűtő és a TV nincs mérve.">FOGYASZTÁS MOST <b class="ov-tot">{{ov.power.total}}</b><span class="ov-ft">{{ov.power.totalFt}}</span></span>
 <sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}" title="{{r.tip}}"><span class="n">{{r.short}}</span><span class="{{r.tagCls}}">{{r.tag}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="w">{{r.wText}}</span></button></sc-for>
-<span class="ov-fn">A világítás, a hűtő és a TV nincs mérve.</span>
 </div>
 <div class="ov-sec">
 <span class="ov-h">NYÍLÁSZÁRÓK<sc-if value="{{ov.doors.anyOpen}}"><b class="ov-red"> · {{ov.doors.openText}}</b></sc-if></span>
-<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}" title="{{d.tip}}"><span class="{{d.icoCls}}" title="{{d.icoTitle}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><span class="{{d.bat.cls}}" title="{{d.bat.tip}}"><sc-if value="{{d.bat.has}}"><i aria-hidden="true"><b style="width: {{d.bat.w}}"></b></i>{{d.bat.txt}}</sc-if></span><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
+<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}" title="{{d.tip}}"><span class="{{d.icoCls}}" title="{{d.icoTitle}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><span class="{{d.bat.cls}}" title="{{d.bat.tip}}"><sc-if value="{{d.bat.has}}"><i aria-hidden="true"><b style="width: {{d.bat.w}}"></b></i>{{d.bat.txt}}</sc-if></span><sc-if value="{{d.hasLine2}}"><span class="l2">{{d.line2}}</span></sc-if><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
 </div>
 <div class="ov-sec">
 <span class="ov-h">HŐMÉRSÉKLETEK<button class="ov-acchip" type="button" onClick="{{ov.ac.pick}}" data-ov="11" title="{{ov.ac.tip}} (A klíma IR vezérelt, állapota a 9-es kismegszakítóból.)">Klíma: <span class="{{ov.ac.cls}}">{{ov.ac.text}}</span></button></span>
@@ -1211,7 +1223,7 @@ Elrendezés visszaállítása
 <span class="ov-fn">{{ov.power.totalFt}} · a világítás, a hűtő és a TV nincs mérve.</span>
 </sc-if>
 <sc-if value="{{ov.tabDoors}}">
-<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}" title="{{d.tip}}"><span class="{{d.icoCls}}" title="{{d.icoTitle}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><span class="{{d.bat.cls}}" title="{{d.bat.tip}}"><sc-if value="{{d.bat.has}}"><i aria-hidden="true"><b style="width: {{d.bat.w}}"></b></i>{{d.bat.txt}}</sc-if></span><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
+<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}" title="{{d.tip}}"><span class="{{d.icoCls}}" title="{{d.icoTitle}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><span class="{{d.bat.cls}}" title="{{d.bat.tip}}"><sc-if value="{{d.bat.has}}"><i aria-hidden="true"><b style="width: {{d.bat.w}}"></b></i>{{d.bat.txt}}</sc-if></span><sc-if value="{{d.hasLine2}}"><span class="l2">{{d.line2}}</span></sc-if><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
 </sc-if>
 <sc-if value="{{ov.tabClimate}}">
 <div class="ov-temps"><sc-for list="{{ov.temps}}" as="t"><button class="{{t.cls}}" type="button" onClick="{{t.pick}}" data-ov="{{t.id}}"><span class="n">{{t.name}}</span><span class="{{t.bat.cls}}" title="{{t.bat.tip}}"><sc-if value="{{t.bat.has}}"><i aria-hidden="true"><b style="width: {{t.bat.w}}"></b></i>{{t.bat.txt}}</sc-if></span><span class="v">{{t.t}}</span><sc-if value="{{t.hasH}}"><span class="h" title="Páratartalom">pára {{t.h}}</span></sc-if></button></sc-for></div>

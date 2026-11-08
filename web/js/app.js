@@ -347,6 +347,7 @@
   var ICON_WIN_SHUT = 'M4 3h16v18H4zM12 3v18M4 12h16';
   var OV_WINDOWS = { '7': 1, '8': 1, '9': 1, '10': 1 };
   var MOVE_WINDOW_MS = 48 * 3600000;
+  var DOOR_WINDOW_MS = 30 * 86400000;   // a nyílászárók utolsó váltásához 30 nap előzmény
   function ovVariantFromUrl() {
     try { var m = /[?&]attekintes=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
   }
@@ -369,6 +370,22 @@
     if (last.o !== curOpen) return fallbackMs != null ? { ms: Math.max(fallbackMs, last.ms), atLeast: false } : null;
     for (var i = pts.length - 1; i > 0; i--) if (pts[i - 1].o !== curOpen) return { ms: pts[i].ms, atLeast: false };
     return { ms: pts[0].ms, atLeast: true };
+  }
+  // pontos időtartam és időpont a nyílászárókhoz: "3 ó 12 p", "ma 09:41", "tegnap 21:10", "nov. 6. cs 08:02"
+  function durHM(ms) {
+    var m = Math.max(0, Math.floor(ms / 60000)), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    if (d >= 1) return d + ' nap ' + (h % 24) + ' ó';
+    if (h >= 1) return h + ' ó ' + (m % 60) + ' p';
+    return m + ' p';
+  }
+  var DAY_ABBR = ['v', 'h', 'k', 'sze', 'cs', 'p', 'szo'];
+  function budDayKey(ms) { return budKey(ms).slice(0, 10); }
+  function dayTime(ms, now) {
+    var k = budDayKey(ms), t = budTime(ms);
+    if (k === budDayKey(now)) return 'ma ' + t;
+    if (k === budDayKey(now - 86400000)) return 'tegnap ' + t;
+    var dt = new Date(k + 'T12:00:00Z');
+    return ['jan.', 'febr.', 'márc.', 'ápr.', 'máj.', 'jún.', 'júl.', 'aug.', 'szept.', 'okt.', 'nov.', 'dec.'][dt.getUTCMonth()] + ' ' + dt.getUTCDate() + '. ' + DAY_ABBR[dt.getUTCDay()] + ' ' + t;
   }
   function demoContactHistory(src, now) {
     var rows = [];
@@ -1023,6 +1040,10 @@
       this.sb.from('device_status').select('pink,ts,online,status').gte('ts', new Date(now - MOVE_WINDOW_MS).toISOString())
         .in('pink', ['X5', 'X7', 'X8', 'X9', 'P', '5', '6', '7', '8', '9', '10']).order('ts', { ascending: true }).limit(5000)
         .then(function (res) { self.setState({ hist: res.error ? { error: true } : { rows: res.data || [] } }); }, function () { self.setState({ hist: { error: true } }); });
+      // nyílászárók: hosszabb előzmény (csak változáskor és óránként van sor, így 30 nap is kevés)
+      this.sb.from('device_status').select('pink,ts,status').gte('ts', new Date(now - DOOR_WINDOW_MS).toISOString())
+        .in('pink', ['5', '6', '7', '8', '9', '10']).order('ts', { ascending: true }).limit(5000)
+        .then(function (res) { if (!res.error) self.setState({ histDoors: res.data || [] }); }, function () {});
     }
 
     consVals(v, dv) {
@@ -1099,7 +1120,7 @@
       var self = this, st = this.state, now = st.now || Date.now(), pins = v.pins;
       var by = {}; dv.all.forEach(function (c) { by[c.id] = c; });
       var src = st.live || demoDevices(now, v.L);
-      var rows = st.live ? (st.hist && st.hist.rows) || null : demoContactHistory(src, now);
+      var rows = st.live ? st.histDoors || (st.hist && st.hist.rows) || null : demoContactHistory(src, now);
       var pick = function (id) { return function () { self.pinFocus(id, pins); }; };
       var stage = cons.stage;
       var stove = {
@@ -1129,23 +1150,45 @@
         var c = by[d.id], x = src[d.id], open = c ? c.open : null, off = !c || !c.has || c.online === false;
         var fb = x && x.status && typeof x.status._upd === 'number' ? x.status._upd * 1000 : x && x.ts ? Date.parse(x.ts) : null;
         var mv = off ? null : lastMove(rows, d.id, open, fb);
-        // rövid szöveg, hogy elférjen az elemszint: "zárva · 3 órája", ha az előzményben nincs váltás: ">30 órája"
-        var when = mv ? (mv.atLeast ? '>' + ago(now - mv.ms) : ago(now - mv.ms)) : '';
-        var whenTip = mv ? (mv.atLeast ? 'legalább ' + spanText(now - mv.ms) + ' óta nem mozdult' : ago(now - mv.ms) + ' mozdult utoljára') : '';
-        var text, tile;
+        // pontosan: mióta (óra, perc) és mikor (nap, időpont) változott; ha az előzményben nincs váltás,
+        // akkor "legalább" a legrégebbi ismert sor óta (pl. az adatgyűjtés kezdete)
+        var dur = mv ? durHM(now - mv.ms) : '', at = mv ? dayTime(mv.ms, now) : '';
+        var stTxt = open ? 'NYITVA' : 'zárva';
+        var text, tile, line2 = '';
         if (off) { text = 'nem elérhető'; tile = 'nem elérhető'; }
-        else if (open) { text = 'NYITVA ' + when; tile = 'NYITVA ' + when; }
-        else { text = 'zárva' + (when ? ' · ' + when : ''); tile = 'zárva' + (when ? ' · ' + when : ''); }
+        else if (!mv) { text = stTxt; tile = stTxt; }
+        else {
+          text = stTxt + ' · ' + dur;
+          line2 = (mv.atLeast ? 'legalább ' : '') + at + ' óta';
+          tile = stTxt + ' · ' + (mv.atLeast ? '>' : '') + dur;
+        }
+        var whenTip = mv ? stTxt + (mv.atLeast ? ' legalább ' : ' ') + at + ' óta (' + dur + ')' + (mv.atLeast ? ', az előzményben nincs korábbi váltás' : '') : '';
         var notes = [];
         if (c && c.battPct != null && c.battPct < 20) notes.push('elem ' + c.battPct + ' %');
         if (c && c.stale) notes.push(durText(c.age) + ' nem jelentett');
         var warn = notes.length > 0 || off;
-        return { id: d.id, order: i, open: !!open, name: d.name, short: d.short, text: text, tileText: tile, tip: d.name + ': ' + text + (whenTip ? ' (' + whenTip + ')' : ''), bat: battOf(c),
+        return { id: d.id, order: i, open: !!open, name: d.name, short: d.short, text: text, tileText: tile, tip: d.name + ': ' + (whenTip || text), line2: line2, hasLine2: !!line2, bat: battOf(c), mv: off ? null : mv,
           icon: OV_WINDOWS[d.id] ? (open ? ICON_WIN_OPEN : ICON_WIN_SHUT) : (open ? ICON_DOOR_OPEN : ICON_DOOR_SHUT),
           icoCls: 'ov-ico' + (off ? ' off' : open ? ' open' : ' shut'), icoTitle: (OV_WINDOWS[d.id] ? 'Ablak' : 'Ajtó') + ': ' + (off ? 'nem elérhető' : open ? 'nyitva' : 'zárva'), note: notes.join(', '), hasNote: notes.length > 0,
           cls: 'ov-door' + (open ? ' open' : '') + (warn ? ' warn' : ''), tileCls: 'ov-tile door' + (open ? ' open' : warn ? ' warn' : ''), pick: pick(d.id) };
       }).sort(function (a, b) { return (b.open - a.open) || (a.order - b.order); });
       var openCount = doorRows.filter(function (d) { return d.open; }).length;
+      // Utolsó mozgás a lakásban: a helyszíni érzékelők (ajtók, ablakok) legutóbbi váltása.
+      // A kályhakapcsoló és a kismegszakítók nem számítanak: azok távolról is kapcsolhatók.
+      var mvLast = null, mvOldest = null;
+      doorRows.forEach(function (d) {
+        if (!d.mv) return;
+        if (!d.mv.atLeast && (!mvLast || d.mv.ms > mvLast.ms)) mvLast = { ms: d.mv.ms, name: d.name, open: d.open };
+        if (d.mv.atLeast && (!mvOldest || d.mv.ms < mvOldest.ms)) mvOldest = { ms: d.mv.ms };
+      });
+      var motion = mvLast ? {
+        big: durHM(now - mvLast.ms), sub: (mvLast.open ? 'nyitás: ' : 'csukás: ') + mvLast.name.toLowerCase() + ', ' + dayTime(mvLast.ms, now),
+        tip: 'Utolsó mozgás a lakásban: ' + mvLast.name + ' ' + (mvLast.open ? 'kinyílt' : 'becsukódott') + ' ' + dayTime(mvLast.ms, now) + ' (' + durHM(now - mvLast.ms) + ' ezelőtt). Csak a helyszíni érzékelők (ajtók, ablakok) számítanak.',
+        cls: 'chip mvchip' + (now - mvLast.ms < 30 * 60000 ? ' fresh' : ''), pick: pick(doorRows.filter(function (d) { return d.name === mvLast.name; })[0].id)
+      } : {
+        big: mvOldest ? '>' + durHM(now - mvOldest.ms) : '--', sub: mvOldest ? 'nincs mozgás ' + dayTime(mvOldest.ms, now) + ' óta' : 'nincs adat',
+        tip: 'Az ajtók és ablakok előzményében nincs váltás.', cls: 'chip mvchip', pick: function () {}
+      };
       var temps = OV_TEMPS.map(function (t) {
         var c = by[t.id], tv = c && c.online !== false ? c.temp : null, d = src[t.id];
         var h = d && d.status ? humidityOf(d.status, d.meta) : null;
@@ -1168,7 +1211,7 @@
       return {
         cls: 'f' + variant, f1: variant === 1, f2: variant === 2, f3: variant === 3,
         srcLabel: st.live ? 'ÉLŐ' : 'DEMO', srcCls: 'dp-src ' + (st.live ? 'live' : 'demo'),
-        title: st.live ? 'Élő áttekintés' : 'Áttekintés', isDemo: !st.live,
+        title: st.live ? 'Élő áttekintés' : 'Áttekintés', isDemo: !st.live, motion: motion,
         srcTip: st.live ? 'A lakás valódi, élő adatai (Supabase).' : 'Kitalált demóadat a kiválasztott pálya szerint. A lakás valódi adatai belépés után látszanak.',
         stove: stove, power: power,
         doors: { rows: doorRows, openCount: String(openCount), anyOpen: openCount > 0, openText: openCount + ' nyitva', heroCls: 'ov-h3o' + (openCount ? ' open' : '') },
@@ -1187,6 +1230,22 @@
           else { var el = document.querySelector('.ovpanel'); if (el) el.focus(); }
         }
       };
+    }
+
+    // szöveg vágólapra (az Energiaőr tippjei: továbbküldéshez); régi böngészőn kijelöléses tartalék
+    copyText(text, okMsg) {
+      var self = this;
+      var fallback = function () {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+          document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand('copy'); document.body.removeChild(ta);
+          self.toast(ok ? okMsg : 'A másolás nem sikerült: jelöld ki a szöveget, és Ctrl+C.', ok ? 'ok' : 'err');
+        } catch (e) { self.toast('A másolás nem sikerült: jelöld ki a szöveget, és Ctrl+C.', 'err'); }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { self.toast(okMsg, 'ok'); }, fallback);
+      else fallback();
     }
 
     advNext() {
@@ -1221,6 +1280,8 @@
         list: tips.map(function (t, i) {
           return { cls: 'adv-tip ' + t.tone + (i === idx ? ' cur' : '') + (st.ipOpen === i ? ' open' : ''), text: t.long, short: t.short, hasDev: !!t.dev,
             expanded: st.ipOpen === i ? 'true' : 'false', toggle: function () { self.setState({ ipOpen: st.ipOpen === i ? null : i }); },
+            moreLabel: st.ipOpen === i ? 'Kevesebb' : 'Több',
+            copy: function () { self.copyText(t.long, 'Tipp másolva: beillesztheted (Ctrl+V) üzenetbe.'); },
             devAria: 'Mutasd a térképen: ' + (t.dev && DEVINFO[t.dev] ? DEVINFO[t.dev].name : ''), show: show(t) };
         }),
         n: String(n),
