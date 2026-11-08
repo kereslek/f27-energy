@@ -255,6 +255,79 @@
   // állapotnál csak óránként ír, így a tárolt utolsó jelentés legfeljebb kb. 70 percet késhet.
   var STALE_MIN = { thermo: 6 * 60, contact: 24 * 60, breaker: 90, switch3: 90, gateway: 90 };
 
+  // ---- Időjárás: Open-Meteo (kulcs nélkül, a böngészőből; csak memóriában) ----------------------
+  var WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402' +
+    '&current=temperature_2m,apparent_temperature,weather_code,is_day,cloud_cover' +
+    '&hourly=temperature_2m,weather_code,cloud_cover,shortwave_radiation,is_day&forecast_hours=24&timezone=Europe%2FBudapest';
+  var WX_REFRESH_MS = 15 * 60000;
+  var WX_SRC = 'Időjárás: Open-Meteo';
+  // budapesti helyi idő 'ÉÉÉÉ-HH-NNTÓÓ:PP' alakban (ugyanaz, mint az API timezone=Europe/Budapest ideje)
+  var BUD_KEY = null;
+  function budKey(ms) {
+    try {
+      BUD_KEY = BUD_KEY || new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      return BUD_KEY.format(new Date(ms)).replace(' ', 'T');
+    } catch (e) { return new Date(ms).toISOString().slice(0, 16); }
+  }
+  function wxNum(v) { return typeof v === 'number' && isFinite(v) ? v : null; }
+  function parseWeather(j) {
+    if (!j || typeof j !== 'object') return null;
+    var c = j.current || {}, h = j.hourly || {};
+    var t = wxNum(c.temperature_2m);
+    if (t == null) return null;
+    var at = function (k, i) { return Array.isArray(h[k]) ? wxNum(h[k][i]) : null; };
+    var hourly = [];
+    (Array.isArray(h.time) ? h.time : []).forEach(function (tm, i) {
+      var ht = at('temperature_2m', i);
+      if (typeof tm !== 'string' || tm.length < 16 || ht == null) return;
+      hourly.push({ key: tm.slice(0, 16), hh: tm.slice(11, 16), t: ht, code: at('weather_code', i), cloud: at('cloud_cover', i), sw: at('shortwave_radiation', i), day: at('is_day', i) });
+    });
+    return { t: t, app: wxNum(c.apparent_temperature), code: wxNum(c.weather_code), day: wxNum(c.is_day), cloud: wxNum(c.cloud_cover), hourly: hourly };
+  }
+  // WMO időjáráskód + nappal/éjszaka: ikon és rövid magyar leírás
+  function wxKind(code, day) {
+    var d = day !== 0;
+    if (code == null) return ['#wx-cloud', 'ismeretlen égbolt'];
+    if (code === 0) return d ? ['#wx-sun', 'derült'] : ['#wx-moon', 'tiszta égbolt'];
+    if (code === 1) return d ? ['#wx-sun', 'többnyire derült'] : ['#wx-moon', 'többnyire tiszta'];
+    if (code === 2) return d ? ['#wx-partly', 'részben felhős'] : ['#wx-partlynight', 'részben felhős'];
+    if (code === 3) return ['#wx-cloud', 'borult'];
+    if (code === 45 || code === 48) return ['#wx-fog', 'köd'];
+    if (code >= 51 && code <= 57) return ['#wx-rain', 'szitálás'];
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return ['#wx-rain', 'eső'];
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return ['#wx-snow', 'havazás'];
+    if (code >= 95) return ['#wx-storm', 'zivatar'];
+    return ['#wx-cloud', 'felhős'];
+  }
+  function wxRound(t) { var r = Math.round(t); return String(r === 0 ? 0 : r); }
+  function wxWhen(h) {
+    var hr = parseInt(h.hh, 10);
+    return hr >= 12 && hr < 18 ? 'délután' : hr >= 6 && hr < 12 ? 'délelőtt' : h.hh + '-kor';
+  }
+  // Előrejelzés kb. 3 órára és fűtési tipp a következő órák alapján. Csak javaslat.
+  function wxForecast(w, now) {
+    if (!w || !w.hourly.length) return null;
+    var nowH = budKey(now).slice(0, 13), fut = w.hourly.filter(function (h) { return h.key.slice(0, 13) >= nowH; });
+    if (fut.length < 2) return null;
+    var tgt = budKey(now + 3 * 3600000).slice(0, 13);
+    var f3 = fut.filter(function (h) { return h.key.slice(0, 13) >= tgt; })[0] || fut[fut.length - 1];
+    var d = f3.t - w.t, arrow = d >= 1 ? '↑' : d <= -1 ? '↓' : '→';
+    var next6 = fut.slice(0, 7), next12 = fut.slice(0, 13);
+    var max6 = next6.reduce(function (a, h) { return h.t > a.t ? h : a; });
+    var min12 = next12.reduce(function (a, h) { return h.t < a.t ? h : a; });
+    var sunny = next6.filter(function (h) { return h.day === 1; });
+    var avg = function (xs, k) { var v = xs.map(function (h) { return h[k]; }).filter(function (x) { return x != null; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
+    var sw = avg(sunny, 'sw'), cl = avg(sunny, 'cloud');
+    var warm = max6.t - w.t >= 2 && sunny.length >= 2 && ((sw != null && sw >= 200) || (cl != null && cl <= 35));
+    var night = next12.some(function (h) { return h.day === 0; });
+    var cold = night && (w.t - min12.t >= 3 || min12.t < 3);
+    var hint;
+    if (warm) hint = { kind: 'warm', short: 'Jön a napocska: a kályhát le lehet venni', text: 'Jön a napocska: a kályhát most le lehet venni, ' + wxWhen(max6) + ' ' + wxRound(max6.t) + ' °C.' };
+    else if (cold) hint = { kind: 'cold', short: 'Hidegebb éjszaka jön (' + wxRound(min12.t) + ' °C ' + min12.hh + '-kor)', text: 'Hidegebb éjszaka jön (' + wxRound(min12.t) + ' °C ' + min12.hh + '-kor): a kályhát most érdemes tölteni, vagy érkezés előtt temperálj.' };
+    else hint = { kind: 'steady', short: 'Egyenletes idő', text: 'Egyenletes idő: kb. ' + wxRound(w.t) + ' °C körül marad, nincs teendő.' };
+    return { at: f3, arrow: arrow, label: f3.hh + ' → ' + wxRound(f3.t) + ' °C ' + arrow, hint: hint };
+  }
+
   // ---- Energiaőr: tanácsadó a térkép bal alsó sarkában --------------------------------------
   // Szabályalapú, élő (vagy demó) adatból; az árak a briefből: a kályha keret feletti ára
   // 60,9 Ft/kWh (1 kW kb. 61 Ft óránként), minden 1 °C kb. 6 % fűtési energia.
@@ -266,7 +339,7 @@
   var GHOST_OFF = { '5': [24, -30], '7': [22, -34], '8': [42, -16], '9': [-36, 20], '10': [-36, 20] };
   var ROOM_NAME = { '1': 'A kis szoba', '2': 'A nagy szoba', '4': 'A fürdő' };
   function advVariantFromUrl() {
-    try { var m = /[?&]energiaor=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
+    try { var m = /[?&]energiaor=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 3; } catch (e) { return 3; }
   }
   // fűtési szezon: október 15. és április 15. között (a gázkonvektor ilyenkor be van kapcsolva)
   function heatingSeason(now) {
@@ -279,7 +352,7 @@
     var h = Math.floor(m / 60);
     return h < 48 ? h + ' órája' : Math.floor(h / 24) + ' napja';
   }
-  function advTips(all, now) {
+  function advTips(all, now, fc) {
     var by = {}; all.forEach(function (c) { by[c.id] = c; });
     var tips = [];
     function add(pri, tone, dev, short, long) { tips.push({ pri: pri, tone: tone, dev: dev, short: short, long: long }); }
@@ -333,6 +406,10 @@
       add(c.red ? 70 : 48, c.red ? 'red' : 'orange', c.id, c.name + ': ' + detail, c.name + ': ' + detail + '. ' + (c.red && c.online === false ? 'Nézd meg az áramot vagy a Wi-Fit.' : /elem/.test(detail) ? 'Elemcsere a következő takarításkor.' : 'Lehet, hogy csak alszik; ha sokáig így marad, nézd meg.'));
     });
     if (ac && season && stage === 0) add(20, 'green', 'k9', 'A klíma fűt: ez a legolcsóbb meleg', 'A klíma fűt (' + fmtNum(by.k9.watt, 0) + ' W). Hőszivattyúval kb. 12 Ft egy kWh hő, a kályha keret felett kb. 60 Ft.');
+    // időjárás (csak az Élő módban, valós előrejelzésből); a kályha kapcsolása kézi, ez csak javaslat
+    var safe = ' Csak javaslat: a kályha automatikus kapcsolása még nincs bekötve (előbb kontaktor kell).';
+    if (fc && fc.hint.kind === 'warm' && stage > 0) add(74, 'green', 'P', fc.hint.short, fc.hint.text + safe);
+    else if (fc && fc.hint.kind === 'cold') add(stage > 0 ? 30 : 52, 'blue', 'P', fc.hint.short, fc.hint.text + safe);
     if (!tips.some(function (t) { return t.pri >= 45; })) add(10, 'green', null, 'Minden rendben: zárt ablakok, kályha pihen', 'Minden rendben: az ablakok zárva, a kályha pihen, a szobák kellemesek. Szép munka!');
     tips.sort(function (a, b) { return b.pri - a.pri; });
     return tips;
@@ -456,6 +533,7 @@
       this.state = {
         pos: {}, sel: null, drag: null,
         drawer: false, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
+        weather: null, wxOpen: false, wxAt: null,
         advIdx: 0, advHover: false, advOpen: false, advTalk: false, advMute: sGet(LOCAL, ADV_MUTE_KEY) === '1', advVariant: advVariantFromUrl(),
         user: null, role: null, layouts: [], current: null,
         savedKey: '{}', savedAt: null, live: null, toasts: [],
@@ -470,6 +548,8 @@
       if (this._clock) return;
       this._clock = setInterval(function () { self.setState({ now: Date.now() }); }, 60000);
       this._adv = setInterval(function () { self.advNext(); }, ADV_ROTATE_MS);
+      this.fetchWeather();
+      this._wx = setInterval(function () { self.fetchWeather(); }, WX_REFRESH_MS);
     }
 
     // -- jelenet-kiegészítések -----------------------------------------------------------
@@ -574,6 +654,7 @@
       v.ui.devWarn = dv.warnCount > 0;
       v.ui.devWarnCls = 'wdot ' + (dv.red ? 'red' : 'orange');
       v.ui.devAria = 'Eszközök: ' + dv.online + '/' + dv.total + ' online' + (dv.warnCount ? ', ' + dv.warnCount + ' figyelmeztetés' : '');
+      v.wx = this.wxVals(v);
       this.sceneVals(v, dv);
       v.adv = this.advVals(v, dv);
       return v;
@@ -699,6 +780,55 @@
       v.flameOn = !!(P && P.online !== false && P.stage > 0);
     }
 
+    fetchWeather() {
+      var self = this;
+      if (!window.fetch) { this.setState({ weather: { ok: false } }); return; }
+      var done = function (data) {
+        self.setState({ weather: data ? { ok: true, data: data, at: Date.now() } : (self.state.weather && self.state.weather.ok ? self.state.weather : { ok: false }) });
+      };
+      fetch(WX_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { done(parseWeather(j)); }, function () { done(null); });
+    }
+
+    // a KINT csip: Élő módban valós időjárás + kb. 3 órás előrejelzés, előbeállításnál a pálya értéke
+    wxVals(v) {
+      var self = this, st = this.state, now = st.now || Date.now(), w = st.weather;
+      var o = { open: false, openAttr: 'false', hasIcon: false, hasFc: false, fc: '', icon: '#wx-cloud' };
+      o.toggle = function (e) {
+        var r = e && e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
+        self.setState({ wxOpen: !st.wxOpen, wxAt: r ? [r.left, r.bottom] : null, advOpen: false });
+      };
+      o.close = function () { self.setState({ wxOpen: false }); };
+      if (!st.liveSky) {
+        o.now = v.L.outside;
+        o.title = 'Pálya-előbeállítás: kitalált kinti érték. Az Élő gombbal a valódi budapesti időjárás látszik.';
+        o.hint = o.title; o.hintCls = 'wx-hint steady'; o.desc = 'előbeállítás';
+      } else if (!w || !w.ok) {
+        o.now = '--';
+        o.title = w ? 'Időjárás most nem elérhető. ' + WX_SRC : 'Időjárás betöltése... ' + WX_SRC;
+        o.hint = w ? 'Időjárás most nem elérhető.' : 'Időjárás betöltése...'; o.hintCls = 'wx-hint steady'; o.desc = '';
+      } else {
+        var d = w.data, k = wxKind(d.code, d.day), fc = wxForecast(d, now);
+        o.hasIcon = true; o.icon = k[0]; o.desc = k[1];
+        o.now = fmtNum(d.t, 1) + ' °C';
+        o.app = d.app != null ? 'Hőérzet ' + fmtNum(d.app, 1) + ' °C' : '';
+        if (fc) { o.hasFc = true; o.fc = fc.label; o.hint = fc.hint.text; o.hintCls = 'wx-hint ' + fc.hint.kind; }
+        else { o.hint = 'Előrejelzés most nincs.'; o.hintCls = 'wx-hint steady'; }
+        o.title = 'Kint most ' + o.now + ', ' + k[1] + (o.app ? ' (' + o.app.toLowerCase() + ')' : '') + '.' +
+          (fc ? ' Várható ' + fc.at.hh + '-kor ' + wxRound(fc.at.t) + ' °C. ' + fc.hint.text : '') + ' ' + WX_SRC;
+      }
+      o.hasApp = !!o.app;
+      o.aria = 'Kint: ' + o.now + (o.hasFc ? ', várható ' + o.fc : '') + '. Részletek';
+      o.live = !!st.liveSky;
+      if (st.wxOpen) {
+        var at = st.wxAt || [16, 80], vw = window.innerWidth;
+        o.open = true; o.openAttr = 'true';
+        o.cx = Math.round(Math.max(8, Math.min(at[0], vw - 308)));
+        o.cy = Math.round(at[1] + 8);
+      }
+      return o;
+    }
+
     advNext() {
       var st = this.state;
       if (st.advHover || st.advOpen || st.advMute) return;
@@ -710,10 +840,10 @@
 
     advVals(v, dv) {
       var self = this, st = this.state, now = st.now || Date.now();
-      var tips = advTips(dv.all, now), n = tips.length, idx = (st.advIdx || 0) % n, cur = tips[idx];
+      var tips = advTips(dv.all, now, st.liveSky && st.weather && st.weather.ok ? wxForecast(st.weather.data, now) : null), n = tips.length, idx = (st.advIdx || 0) % n, cur = tips[idx];
       var pinXY = {}; v.pins.forEach(function (m) { pinXY[m.id] = [m.x, m.y]; });
       var show = function (t) { return function () { self.setState({ advOpen: false, sel: t.dev ? 'd' + t.dev : st.sel }); if (t.dev && pinXY[t.dev]) focusStage(pinXY[t.dev][0], pinXY[t.dev][1], false); }; };
-      var variant = st.advVariant === 2 || st.advVariant === 3 ? st.advVariant : 1;
+      var variant = st.advVariant === 1 || st.advVariant === 2 ? st.advVariant : 3;
       var name = 'Energiaőr';
       return {
         cls: 'adv v' + variant + (st.advTalk ? ' talk' : '') + (st.advMute ? ' muted' : '') + (st.advOpen ? ' open' : ''),
@@ -723,7 +853,7 @@
         aria: name + ' tanácsa: ' + cur.short + '. Kattints az összes tanácsért.',
         btnAria: name + ': ' + n + ' tanács. Megnyitás',
         open: !!st.advOpen, openAttr: st.advOpen ? 'true' : 'false',
-        toggle: function () { self.setState({ advOpen: !st.advOpen, devOpen: false, drawer: false }); },
+        toggle: function () { self.setState({ advOpen: !st.advOpen, devOpen: false, drawer: false, wxOpen: false }); },
         close: function () { self.setState({ advOpen: false }); },
         enter: function () { if (!st.advHover) self.setState({ advHover: true }); },
         leave: function () { if (st.advHover) self.setState({ advHover: false }); },
@@ -1343,9 +1473,13 @@
     window.MiniDC.mountExtra(document.getElementById('devlayer'), document.getElementById('dev-template'), app);
     initViewControls(app);
     app.startClock();
+    document.addEventListener('pointerdown', function (e) {
+      if (app.state.wxOpen && !(e.target.closest && e.target.closest('.wxchip, .wxcard'))) app.setState({ wxOpen: false });
+    });
     document.addEventListener('keydown', function (e) {
       var t = e.target;
       if (e.key === 'Escape' && app.state.drawer) { app.setState({ drawer: false, saveAs: false, confirmId: null }); return; }
+      if (e.key === 'Escape' && app.state.wxOpen) { app.setState({ wxOpen: false }); return; }
       if (e.key === 'Escape' && app.state.advOpen) { app.setState({ advOpen: false }); return; }
       if (e.key === 'Escape' && app.state.devOpen) { app.setState({ devOpen: false }); return; }
       if (editableTarget(t)) return;

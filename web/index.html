@@ -81,7 +81,7 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .livepill.on{background:#3fae6a;color:#ffffff}
 .livepill.on .ld{background:#ff4f6d;animation:livepulse 1.6s ease-in-out infinite}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.35}}
-.chip{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 16px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
+.chip{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 12px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
 .ck{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a}
 .cv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44}
 .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;border:3px solid #1e2a44;box-sizing:border-box}
@@ -296,6 +296,25 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .adv-var.on{background:#3fae6a;color:#ffffff}
 .adv-var:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 @media (max-width:700px){.advpop{left:8px;right:8px;width:auto;bottom:88px}}
+
+/* ---- KINT csip: valós időjárás (Open-Meteo) ---- */
+.wxchip{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.wxchip:hover{background:#fff1c9}
+.wxchip:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
+.wxchip .ck{white-space:nowrap}
+.wxchip .wxf{letter-spacing:.3px;color:#1e2a44}
+.wxv{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.wxi{width:22px;height:22px;flex:0 0 auto}
+.wxcard{pointer-events:auto;position:fixed;width:300px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px 12px 10px;border-radius:18px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 5px 0 #1e2a44,0 14px 30px rgba(14,20,40,.3);font-family:"Nunito",sans-serif;color:#1e2a44;animation:dpup .18s ease-out;z-index:3}
+.wx-h{display:flex;align-items:center;gap:8px}
+.wx-h svg{width:30px;height:30px;flex:0 0 auto}
+.wx-t{font-family:"Lilita One","Baloo 2",sans-serif;font-size:24px}
+.wx-d{flex:1 1 auto;font-weight:800;font-size:13px;color:#45507a}
+.wx-r{margin-top:4px;font-weight:800;font-size:13px}
+.wx-hint{margin:8px 0 0;padding:7px 9px;border-radius:12px;border:2px solid #1e2a44;font-weight:900;font-size:13px;line-height:1.35}
+.wx-hint.warm{background:#fff3c4}.wx-hint.cold{background:#dff1ff}.wx-hint.steady{background:#f1f3f7}
+.wx-note{margin:6px 0 0;font-size:11.5px;font-weight:700;color:#6b7280;line-height:1.35}
+.wx-src{display:inline-block;margin-top:6px;font-size:11px;font-weight:800;color:#45507a}
 </style>
 </head>
 <body>
@@ -623,13 +642,13 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 </div>
 </sc-if>
 
-<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 12px">
+<div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 64px; display: flex; align-items: stretch; gap: 10px">
 <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 20px; border-radius: 18px; background: #ff4fa3; border: 3px solid #1e2a44; box-shadow: 0 4px 0 #1e2a44; color: #ffffff">
 <span class="lil" style="font-size: 24px; line-height: 1">F27 ENERGY QUEST</span>
 <span style="font-size: 12px; font-weight: 900; letter-spacing: 1px" title="{{titleTip}}">{{titleLine}}</span>
 </div>
 <div class="chip"><span class="ck">ENERGIAPONT</span><span class="cv">{{L.score}}</span></div>
-<div class="chip"><span class="ck">MEGTAKARÍTOTT Ft</span><span class="cv" style="color: #9a6a00">{{L.coins}}</span></div>
+<div class="chip"><span class="ck">MEGTAKARÍTVA</span><span class="cv" style="color: #9a6a00">{{L.coins}}</span></div>
 <div class="chip"><span class="ck">KOMFORT (ELSŐ!)</span>
 <div style="display: flex; gap: 4px">
 <sc-for list="{{hearts}}" as="h" hint-placeholder-count="5">
@@ -637,10 +656,10 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 </sc-for>
 </div>
 </div>
-<div class="chip"><span class="ck">KINT</span><span class="cv">{{L.outside}}</span></div>
+<button class="chip wxchip" type="button" onClick="{{wx.toggle}}" title="{{wx.title}}" aria-label="{{wx.aria}}" aria-expanded="{{wx.openAttr}}" aria-controls="f27-wxcard"><span class="ck">KINT<sc-if value="{{wx.hasFc}}"><span class="wxf"> · {{wx.fc}}</span></sc-if></span><span class="cv wxv"><sc-if value="{{wx.hasIcon}}"><svg class="wxi" viewBox="0 0 24 24" aria-hidden="true"><use href="{{wx.icon}}"></use></svg></sc-if>{{wx.now}}</span></button>
 <div class="chip" style="background: #fff1c9"><span class="ck">VENDÉG ÉRKEZIK</span><span class="cv" style="color: #c8321f">{{L.timer}}</span></div>
 <div style="flex: 1 1 auto"></div>
-<sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 8px 16px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 12px; letter-spacing: 1.2px" title="Demó adatok: lépj be a valódi értékekhez">DEMO</div></sc-if>
+<sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 6px 10px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 11.5px; letter-spacing: 1px" title="Demó adatok: lépj be a valódi értékekhez">DEMO</div></sc-if>
 <button class="btn devbtn" type="button" onClick="{{ui.toggleDev}}" aria-expanded="{{ui.devOpenAttr}}" aria-controls="f27-devpanel" aria-label="{{ui.devAria}}" title="Eszközök állapota">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6v6H5zM13 4h6v6h-6zM5 14h6v6H5zM16 14v6M13 17h6" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 Eszközök<span class="cnt">{{ui.devCount}}</span>
@@ -964,8 +983,28 @@ Elrendezés visszaállítása
 </g>
 </g>
 </symbol>
+<symbol id="wx-sun" viewBox="0 0 24 24"><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#1e2a44" stroke-width="2.2" stroke-linecap="round"></path><circle cx="12" cy="12" r="5" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.2"></circle></symbol>
+<symbol id="wx-moon" viewBox="0 0 24 24"><path d="M15.5 3.2A8.8 8.8 0 1 0 20.8 15 A7 7 0 0 1 15.5 3.2Z" fill="#fff3c4" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path><circle cx="18.5" cy="5" r="1.1" fill="#1e2a44"></circle></symbol>
+<symbol id="wx-cloud" viewBox="0 0 24 24"><path d="M6.5 19h11a4.2 4.2 0 0 0 .4-8.4A6 6 0 0 0 6.4 9.4 4.8 4.8 0 0 0 6.5 19Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path></symbol>
+<symbol id="wx-partly" viewBox="0 0 24 24"><circle cx="8.5" cy="8.5" r="4.3" fill="#ffd23f" stroke="#1e2a44" stroke-width="2"></circle><path d="M8.5 1.5v1.8M1.5 8.5h1.8M3.6 3.6l1.3 1.3M13.4 3.6l-1.3 1.3" stroke="#1e2a44" stroke-width="2" stroke-linecap="round"></path><path d="M8.5 21h9.5a3.7 3.7 0 0 0 .3-7.4 5.2 5.2 0 0 0-9.9 1.1A3.2 3.2 0 0 0 8.5 21Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path></symbol>
+<symbol id="wx-partlynight" viewBox="0 0 24 24"><path d="M10.5 2.5A6.5 6.5 0 1 0 15.5 12 5.2 5.2 0 0 1 10.5 2.5Z" fill="#fff3c4" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path><path d="M8.5 21h9.5a3.7 3.7 0 0 0 .3-7.4 5.2 5.2 0 0 0-9.9 1.1A3.2 3.2 0 0 0 8.5 21Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path></symbol>
+<symbol id="wx-rain" viewBox="0 0 24 24"><path d="M6.5 15h11a4 4 0 0 0 .4-8A5.8 5.8 0 0 0 6.6 6 4.5 4.5 0 0 0 6.5 15Z" fill="#e6eef7" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path><path d="M8 18l-1 3M12.5 18l-1 3M17 18l-1 3" stroke="#2f6fe4" stroke-width="2.2" stroke-linecap="round"></path></symbol>
+<symbol id="wx-snow" viewBox="0 0 24 24"><path d="M6.5 14.5h11a4 4 0 0 0 .4-8A5.8 5.8 0 0 0 6.6 5.5 4.5 4.5 0 0 0 6.5 14.5Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path><path d="M8 17.5v4M6.3 18.5l3.4 2M6.3 20.5l3.4-2M16 17.5v4M14.3 18.5l3.4 2M14.3 20.5l3.4-2" stroke="#4fc3f7" stroke-width="1.6" stroke-linecap="round"></path></symbol>
+<symbol id="wx-fog" viewBox="0 0 24 24"><path d="M6.5 12h11a3.6 3.6 0 0 0 .3-7.2A5.3 5.3 0 0 0 6.6 4 4 4 0 0 0 6.5 12Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path><path d="M3 15.5h16M5 19h15M3 22h10" stroke="#8a8f9c" stroke-width="2.2" stroke-linecap="round"></path></symbol>
+<symbol id="wx-storm" viewBox="0 0 24 24"><path d="M6.5 14h11a4 4 0 0 0 .4-8A5.8 5.8 0 0 0 6.6 5 4.5 4.5 0 0 0 6.5 14Z" fill="#cfd6e3" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path><path d="M12.5 13l-3 5h3l-1.5 4.5 4.5-6h-3l1.5-3.5Z" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.5" stroke-linejoin="round"></path></symbol>
 </svg>
 <template id="dev-template">
+<sc-if value="{{wx.open}}">
+<div id="f27-wxcard" class="wxcard" role="dialog" aria-label="Időjárás" style="left: {{wx.cx}}px; top: {{wx.cy}}px">
+<div class="wx-h"><sc-if value="{{wx.hasIcon}}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="{{wx.icon}}"></use></svg></sc-if><span class="wx-t">{{wx.now}}</span><span class="wx-d">{{wx.desc}}</span>
+<button class="btn ib xs" type="button" onClick="{{wx.close}}" aria-label="Bezárás" title="Bezárás (Esc)"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="3" stroke-linecap="round"></path></svg></button></div>
+<sc-if value="{{wx.hasApp}}"><div class="wx-r">{{wx.app}}</div></sc-if>
+<sc-if value="{{wx.hasFc}}"><div class="wx-r">Várható: <b>{{wx.fc}}</b></div></sc-if>
+<p class="{{wx.hintCls}}">{{wx.hint}}</p>
+<sc-if value="{{wx.live}}"><p class="wx-note">Csak javaslat: a kályha automatikus kapcsolása még nincs bekötve (előbb kontaktor kell).</p></sc-if>
+<a class="wx-src" href="https://open-meteo.com/" target="_blank" rel="noopener">Időjárás: Open-Meteo</a>
+</div>
+</sc-if>
 <div class="{{adv.cls}} adv-fixed" onPointerEnter="{{adv.enter}}" onPointerLeave="{{adv.leave}}">
 <button class="adv-char" type="button" onClick="{{adv.toggle}}" aria-expanded="{{adv.openAttr}}" aria-controls="f27-advpop" aria-label="{{adv.btnAria}}" title="Energiaőr tanácsai">
 <svg viewBox="0 0 72 88" aria-hidden="true"><use href="{{adv.href}}"></use></svg>

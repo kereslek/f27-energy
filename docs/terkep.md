@@ -92,6 +92,19 @@ Az "utolsó jelzés" a Tuya saját frissítési ideje (az adatgyűjtő `_upd` ku
 hiányzik, a tárolás ideje. Belépés nélkül demó adat látszik, benne egy merülő elemmel és egy
 régóta hallgató ablakkal.
 
+## Kint (időjárás)
+
+A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, kulcs
+nélkül, a böngészőből, 15 percenként frissül, csak memóriában): ikon, mostani hőmérséklet, és kb.
+3 óra múlvai érték trenddel (pl. `12:00 → 10 °C ↑`). Rákattintva vagy fölé víve rövid fűtési
+tipp: napos, melegedő órák előtt "a kályhát most le lehet venni", hidegedő éjszaka előtt "a
+kályhát most érdemes tölteni, vagy érkezés előtt temperálj", egyébként semleges. Ezek csak
+javaslatok: a kályha automatikus kapcsolása a kontaktorok beépítéséig nincs bekötve (CLAUDE.md
+9. fejezet). A tipp az Energiaőr tanácsai közt is megjelenik.
+
+A pálya-előbeállítások (Pályaválasztó) a saját, kitalált kinti értéküket mutatják. Ha az időjárás
+nem érhető el, a csip `KINT --`. Időjárás: [Open-Meteo](https://open-meteo.com/).
+
 ## Energiaőr (tanácsadó)
 
 A térkép bal alsó sarkában, a lakáson kívül áll (telefonon a képernyő alján). A buborékban egyszerre
@@ -107,8 +120,8 @@ bejárati ajtó fűtés közben; a kályha fokozata és óránkénti ára (keret
 (ugyanazok a szabályok, mint az Eszközök panelen); és ha minden rendben, dicséret.
 
 A lakásban a huzat-szellem csak nyitott ablaknál vagy bejárati ajtónál jelenik meg (annál az
-érzékelőnél), a láng csak akkor, ha a kályha megy. Megjelenés (minta): `?energiaor=1` robot,
-`?energiaor=2` szakértő, `?energiaor=3` zöld szék; a tanácslistában is váltható.
+érzékelőnél), a láng csak akkor, ha a kályha megy. Megjelenés: alapból a zöld szék (`?energiaor=3`); minta: `?energiaor=1` robot,
+`?energiaor=2` szakértő; a tanácslistában is váltható.
 
 ## Szerepkörök
 
