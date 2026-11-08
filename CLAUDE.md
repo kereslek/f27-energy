@@ -71,8 +71,8 @@ Smart Life app, otthon neve: "Ferenc krt.". Minden eszköz Tuya ökoszisztéma.
 | W | (fizikai eszköz) | Hőtárolós cserépkályha, 3 × 1000 W | | Nagy szoba, a fürdő felőli oldalon |
 | P | Cserépkályha kapcsoló (új) | LUXION LX-WT2-301A-W hármas üveg érintőkapcsoló | Wi-Fi | Fokozatonként 1 kW (Switch 1/2/3) |
 | X | Cserépkályha kismegszakító (5.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó |
-| X | Fürdőszoba bojler (melegvíz) (7.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó |
-| X | Konyhai főzőlap és sütő (8.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó |
+| X | Fürdőszoba bojler (melegvíz) (7.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó. Ez táplálja a bojlert: a pillanatnyi teljesítményből látszik, fűt-e (1,8 kW) vagy felfűtve áll (néhány W); az appban visszamenőleg is kiolvasható. |
+| X | Konyhai főzőlap és sütő (8.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó. Ebből látszik, főznek-e és mennyit fogyaszt a főzőlap és a sütő. |
 | X | Klíma kismegszakító (9.) | Okos kismegszakító, mérős | Wi-Fi + BT | Elosztó |
 | (G) | Zigbee gateway | Tuya ZigBee 3.0 multi-mode gateway beépített IR adóval | Zigbee + Wi-Fi + BT + IR | Kis szoba sarka, a klímával szemben |
 
