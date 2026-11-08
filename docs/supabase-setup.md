@@ -90,6 +90,22 @@ Ha minden sor OK, kész vagy.
 - az adatgyűjtő a Tuya-adatokat ide írja (változáskor vagy óránként), és a mérések
   többé nem kerülnek a publikus repóba.
 
+## Frissítések (migrációk)
+
+Ha a séma bővül, a meglévő adatbázist egy kis SQL fájl frissíti a `supabase/migrations/`
+mappában. Mindegyik újrafuttatható, adatot nem töröl.
+
+**002_device_meta.sql** (az adatgyűjtőhöz kell, 2026.11.08):
+
+1. Supabase: bal oldalt **SQL Editor** > **New query**.
+2. Másold be a repóból a [`supabase/migrations/002_device_meta.sql`](../supabase/migrations/002_device_meta.sql)
+   teljes tartalmát (két `alter table` sor).
+3. **Run**. Eredmény: „Success. No rows returned”.
+4. Ellenőrzés: **Table Editor > devices**: megjelent a `meta` oszlop; **energy_daily**: a `last_counter` oszlop.
+
+Ha kimarad: a felderítés skálák nélkül tölti fel az eszközlistát, az adatgyűjtő pedig a napi
+energiát kihagyja; mindkettő kiírja a Summary-ba, hogy ezt a fájlt kell futtatni.
+
 ## Mit tud a séma (röviden)
 
 | Szerepkör | Elrendezés | Aktuális állapot | Eszközlista (Tuya ID) | Energia |
