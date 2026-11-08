@@ -317,8 +317,12 @@
     { id: '9', name: 'Nagy szoba bal ablak', short: 'Nagy sz. bal' }, { id: '10', name: 'Nagy szoba jobb ablak', short: 'Nagy sz. jobb' }
   ];
   var OV_TEMPS = [{ id: '1', name: 'Kis szoba' }, { id: '2', name: 'Nagy szoba' }, { id: '3', name: 'Kályha mögött' }, { id: '4', name: 'Fürdő' }];
-  var ICON_DOOR_OPEN = 'M4 21h16M6 21V4h9v17M15 4l4 2v15M11 13h.01';
-  var ICON_DOOR_SHUT = 'M4 21h16M6 21V4h12v17M14 13h.01';
+  // piktogramok: ajtó / ablak, nyitva / zárva (24x24, körvonal)
+  var ICON_DOOR_OPEN = 'M4 21h16M7 21V3h11v18M7 3l6 2.2V21M10.6 12.5h.01';
+  var ICON_DOOR_SHUT = 'M4 21h16M6 21V3h12v18M14.5 12h.01';
+  var ICON_WIN_OPEN = 'M4 3h8v18H4zM4 12h8M12 3l7 3v12l-7 3';
+  var ICON_WIN_SHUT = 'M4 3h16v18H4zM12 3v18M4 12h16';
+  var OV_WINDOWS = { '7': 1, '8': 1, '9': 1, '10': 1 };
   var MOVE_WINDOW_MS = 48 * 3600000;
   function ovVariantFromUrl() {
     try { var m = /[?&]attekintes=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
@@ -356,7 +360,7 @@
   }
 
   // ---- Időjárás: Open-Meteo (kulcs nélkül, a böngészőből; csak memóriában) ----------------------
-  var WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402' +
+  var WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=47.48&longitude=19.07' +
     '&current=temperature_2m,apparent_temperature,weather_code,is_day,cloud_cover' +
     '&hourly=temperature_2m,weather_code,cloud_cover,shortwave_radiation,is_day&forecast_hours=24&timezone=Europe%2FBudapest';
   var WX_REFRESH_MS = 15 * 60000;
@@ -411,7 +415,7 @@
     if (fut.length < 2) return null;
     var tgt = budKey(now + 3 * 3600000).slice(0, 13);
     var f3 = fut.filter(function (h) { return h.key.slice(0, 13) >= tgt; })[0] || fut[fut.length - 1];
-    var d = f3.t - w.t, arrow = d >= 1 ? '↑' : d <= -1 ? '↓' : '→';
+    var d = f3.t - w.t, arrow = d >= 0.5 ? '↑' : d <= -0.5 ? '↓' : '→';
     var next6 = fut.slice(0, 7), next12 = fut.slice(0, 13);
     var max6 = next6.reduce(function (a, h) { return h.t > a.t ? h : a; });
     var min12 = next12.reduce(function (a, h) { return h.t < a.t ? h : a; });
@@ -425,7 +429,7 @@
     if (warm) hint = { kind: 'warm', short: 'Jön a napocska: a kályhát le lehet venni', text: 'Jön a napocska: a kályhát most le lehet venni, ' + wxWhen(max6) + ' ' + wxRound(max6.t) + ' °C.' };
     else if (cold) hint = { kind: 'cold', short: 'Hidegebb éjszaka jön (' + wxRound(min12.t) + ' °C ' + min12.hh + '-kor)', text: 'Hidegebb éjszaka jön (' + wxRound(min12.t) + ' °C ' + min12.hh + '-kor): a kályhát most érdemes tölteni, vagy érkezés előtt temperálj.' };
     else hint = { kind: 'steady', short: 'Egyenletes idő', text: 'Egyenletes idő: kb. ' + wxRound(w.t) + ' °C körül marad, nincs teendő.' };
-    return { at: f3, arrow: arrow, label: f3.hh + ' → ' + wxRound(f3.t) + ' °C ' + arrow, hint: hint };
+    return { at: f3, arrow: arrow, label: f3.hh + ' → ' + fmtNum(f3.t, 1) + ' °C ' + arrow, hint: hint };
   }
 
   // ---- Energiaőr: tanácsadó a térkép bal alsó sarkában --------------------------------------
@@ -977,6 +981,12 @@
       var mismatch = '';
       if (stage != null && stage > 0 && k5 != null && k5 < 200) mismatch = 'A kapcsoló ' + stageSuffix(stage) + ' fokozaton, de a kályhakör nem vesz fel áramot (a B kör most nem kap áramot?)';
       else if (stage === 0 && k5 != null && k5 > 500) mismatch = 'A kapcsoló szerint a kályha ki van kapcsolva, de a kályhakör ' + fmtW(k5) + ' teljesítményt vesz fel. Nézd meg a kapcsolót.';
+      else if (stage > 0 && k5 != null && Math.abs(k5 - stage * 1000) > Math.max(300, stage * 250)) {
+        mismatch = 'Eltérés: a kapcsoló ' + stageSuffix(stage) + ' fokozaton áll (' + stage + ' kW), a kismegszakító mérése ' + fmtW(k5) +
+          ' (kb. ' + Math.max(0, Math.round(k5 / 1000)) + ' kW-nyi fokozat). Kiégett egy fűtőszál, vagy késik a kapcsoló állapota?';
+      }
+      var verdict = stage == null && k5 == null ? 'Nincs adat' : stage == null ? 'A kapcsoló nem elérhető, csak a mérés látszik' :
+        k5 == null ? 'A kismegszakító nem elérhető, nem összevethető' : mismatch ? '' : 'Egyezik: a kapcsoló és a mérés is ' + (stage === 0 ? 'KI' : stage + ' kW');
       var stageHist = rows ? sparkPath(seriesFrom(rows, 'P', null, now, 'stage'), now, 3, stage) : null;
       var stoveFt = stage ? Math.round(stage * PRICE_B) : 0;
       var steps = [1, 2, 3].map(function (n) {
@@ -993,7 +1003,7 @@
         stage: stage, stageBig: stage == null ? '?' : stage === 0 ? 'KI' : stage + ' kW',
         stageLine: stage == null ? 'A kapcsoló nem elérhető' : stage === 0 ? 'Kikapcsolva · 0 kW' : stageSuffix(stage) + ' fokozat · ' + stage + ' kW · ~' + stoveFt + ' Ft/óra',
         stageCls: 'cs-stage s' + (stage == null ? 'x' : stage),
-        steps: steps, hasMismatch: !!mismatch, mismatch: mismatch,
+        steps: steps, hasMismatch: !!mismatch, mismatch: mismatch, verdict: verdict, verdictOk: !mismatch && stage != null && k5 != null,
         hasStageHist: !!stageHist, stageHist: stageHist || '',
         histNote: histNote, hasHistNote: !!histNote,
         stoveFt: stoveFt, k5: k5, any: any
@@ -1019,7 +1029,10 @@
         line: cons.stageLine, w: cons.k5 == null ? 'kályhakör: --' : 'mért ' + fmtW(cons.k5),
         ft: stage ? '~' + cons.stoveFt + ' Ft/óra' : stage === 0 ? '0 Ft/óra' : '',
         pips: [1, 2, 3].map(function (n) { var on = stage != null && n <= stage; return { cls: 'ov-pip' + (on ? ' on' : ''), flame: on ? '#ff7a1a' : '#e3dccd' }; }),
-        hasMismatch: cons.hasMismatch, mismatch: cons.mismatch, pick: pick('P')
+        hasMismatch: cons.hasMismatch, mismatch: cons.mismatch, pick: pick('P'),
+        sw: stage == null ? 'nem elérhető' : stage === 0 ? 'KI' : stageSuffix(stage) + ' fokozat · ' + stage + ' kW',
+        br: cons.k5 == null ? 'nem elérhető' : 'mért ' + fmtW(cons.k5),
+        hasVerdict: !!cons.verdict, verdict: cons.verdict, verdictCls: 'ov-vd' + (cons.verdictOk ? ' ok' : '')
       };
       var power = { total: cons.btnText === '-- kW' ? '--' : cons.total, totalFt: cons.totalFt,
         rows: cons.circ.map(function (c) { return { id: c.id, name: c.name, short: c.short, wText: c.w == null ? '--' : fmtW(c.w), pct: c.pct, color: c.color, ft: c.ft || '', pick: pick(c.id) }; }) };
@@ -1037,7 +1050,8 @@
         if (c && c.stale) notes.push(durText(c.age) + ' nem jelentett');
         var warn = notes.length > 0 || off;
         return { id: d.id, order: i, open: !!open, name: d.name, short: d.short, text: text, tileText: tile,
-          icon: open ? ICON_DOOR_OPEN : ICON_DOOR_SHUT, note: notes.join(', '), hasNote: notes.length > 0,
+          icon: OV_WINDOWS[d.id] ? (open ? ICON_WIN_OPEN : ICON_WIN_SHUT) : (open ? ICON_DOOR_OPEN : ICON_DOOR_SHUT),
+          icoCls: 'ov-ico' + (off ? ' off' : open ? ' open' : ' shut'), icoTitle: (OV_WINDOWS[d.id] ? 'Ablak' : 'Ajtó') + ': ' + (off ? 'nem elérhető' : open ? 'nyitva' : 'zárva'), note: notes.join(', '), hasNote: notes.length > 0,
           cls: 'ov-door' + (open ? ' open' : '') + (warn ? ' warn' : ''), tileCls: 'ov-tile door' + (open ? ' open' : warn ? ' warn' : ''), pick: pick(d.id) };
       }).sort(function (a, b) { return (b.open - a.open) || (a.order - b.order); });
       var openCount = doorRows.filter(function (d) { return d.open; }).length;

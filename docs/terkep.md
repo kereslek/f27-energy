@@ -97,28 +97,37 @@ régóta hallgató ablakkal.
 A jobb oszlopban mindig látszik, görgetés nélkül (belépés nélkül a kiválasztott pálya demó
 adatával):
 
-- **Cserépkályha:** a LUXION kapcsoló fokozata (ahány kapcsoló be van kapcsolva: 1, 2 vagy 3 kW),
-  a kályhakör (5-ös kör) mért teljesítménye és óradíja (60,9 Ft/kWh, B mérő, keret felett). Ha a
-  fokozat és a mért teljesítmény nem egyezik (pl. a kapcsoló be van kapcsolva, de a kör nem vesz
-  fel áramot), figyelmeztet.
+- **Cserépkályha** (sötét csempe, lángokkal): két független forrás egymás alatt, és hogy
+  egyeznek-e.
+  - *Kapcsoló (LUXION):* ahány kapcsoló be van kapcsolva, annyi kW (1-es 1 kW, 2-es 2 kW,
+    3-as 3 kW).
+  - *Kismegszakító (5.):* a kályhakör mért teljesítménye.
+  - Ha a kettő fokozatonként 250 W-on belül van (legalább 300 W tűréssel), zöld "Egyezik".
+    Egyébként figyelmeztet: pl. a kapcsoló 2-esen áll, de a kör 1,0 kW-ot mér (kiégett
+    fűtőszál, vagy késik a kapcsoló állapota), a kapcsoló be van kapcsolva, de a kör nem vesz fel
+    áramot (a B kör nem kap áramot), vagy a kapcsoló szerint ki van kapcsolva, de a kör fogyaszt.
+  - Mellette az óradíj (60,9 Ft/kWh, B mérő, keret felett).
 - **Fogyasztás most:** a 4 mért kör (kályha, bojler, főzőlap és sütő, klíma) és az összesen. A
   világítás, a hűtő, a TV és a konnektorok nincsenek mérve. Az összesen a felső sávban is látszik.
-- **Nyílászárók:** a nyitottak elöl ("NYITVA 25 perce"), a többinél, hogy mikor mozdult
+- **Nyílászárók:** mindegyik előtt piktogram: ablak vagy ajtó, nyitva (piros, kitárt szárny) vagy
+  zárva (zöld); szürke, ha nem elérhető. A nyitottak elöl ("NYITVA 25 perce"), a többinél, hogy mikor mozdult
   utoljára. Ezt a `device_status` előzményből számolja (az utolsó 48 óra állapotváltásai); ha
   ebben nincs váltás, "legalább ... óta". Merülő elem és régóta hallgató érzékelő jelezve.
-- **Hőmérsékletek** (hideg, rendben, meleg; a kályha mögötti a kályha töltöttségét mutatja),
-  **Klíma** (IR vezérelt; a 9-es kör méréséből: fut vagy áll), és ha kell, egy figyelmeztető sor,
+- **Hőmérsékletek** (hideg, rendben, meleg; a kályha mögötti a kályha töltöttségét mutatja), a
+  fejlécben a **Klíma** állapota (IR vezérelt; a 9-es kör méréséből: fut vagy áll), és ha kell, egy figyelmeztető sor,
   ami az Eszközök panelt nyitja a Figyelem szűrővel.
 
 Bármelyik sorra kattintva a térkép rá nagyít az eszközre. Telefonon a képernyő tetején lévő
-**Élő áttekintés** gomb alsó lapként nyitja meg. Megjelenés (minta): `?attekintes=1` szekciós
-lista, `?attekintes=2` csempés műszerfal, `?attekintes=3` fülek; a panel fejlécében is váltható.
+**Élő áttekintés** gomb alsó lapként nyitja meg. Megjelenés: az alap (`?attekintes=1`) a
+szekciós lista a csempés műszerfal kályha-csempéjével; `?attekintes=2` csempés műszerfal,
+`?attekintes=3` fülek; a panel fejlécében is váltható.
 
 ## Kint (időjárás)
 
 A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, kulcs
 nélkül, a böngészőből, 15 percenként frissül, csak memóriában): ikon, mostani hőmérséklet, és kb.
-3 óra múlvai érték trenddel (pl. `12:00 → 10 °C ↑`). Rákattintva vagy fölé víve rövid fűtési
+3 óra múlvai érték trenddel (pl. `15:00 → 9,6 °C ↑`; a nyíl fél foknál nagyobb változásnál
+fordul). A hely a IX. kerület (kerületi pontossággal). Rákattintva vagy fölé víve rövid fűtési
 tipp: napos, melegedő órák előtt "a kályhát most le lehet venni", hidegedő éjszaka előtt "a
 kályhát most érdemes tölteni, vagy érkezés előtt temperálj", egyébként semleges. Ezek csak
 javaslatok: a kályha automatikus kapcsolása a kontaktorok beépítéséig nincs bekötve (CLAUDE.md
