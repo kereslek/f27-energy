@@ -182,7 +182,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .devbtn .wdot.red{background:#ff4f6d;animation:livepulse 1.6s ease-in-out infinite}
 .devbtn .wdot.orange{background:#ff9f1c}
 #devlayer{position:fixed;inset:0;z-index:60;pointer-events:none}
-.devpanel{pointer-events:auto;position:fixed;right:12px;top:var(--dp-top,12px);bottom:76px;width:380px;max-width:calc(100vw - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpin .22s ease-out;touch-action:pan-y}
+.devpanel{pointer-events:auto;position:fixed;z-index:5;right:12px;top:var(--dp-top,12px);bottom:76px;width:380px;max-width:calc(100vw - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpin .22s ease-out;touch-action:pan-y}
 @keyframes dpin{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
 .dp-head{flex:0 0 auto;padding:14px 14px 10px;background:linear-gradient(180deg,#fff1c9,#fffdf7);border-bottom:3px solid #1e2a44}
 .dp-top{display:flex;align-items:center;gap:8px}
@@ -280,7 +280,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .adv-smile{opacity:calc(1 - var(--adv-talk,0));transition:opacity .2s}
 @media (prefers-reduced-motion:reduce){.adv-bob,.adv-blink,.adv-eqb,.adv-sway,.adv-wave,.adv.talk .adv-bubble{animation:none!important}}
 /* tanácslista */
-.advpop{pointer-events:auto;position:fixed;left:max(8px,var(--adv-x,16px));bottom:var(--adv-y,120px);width:370px;max-width:calc(100vw - 16px);max-height:min(62vh,540px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:20px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpup .2s ease-out;touch-action:pan-y}
+.advpop{pointer-events:auto;position:fixed;z-index:6;left:max(8px,var(--adv-x,16px));bottom:var(--adv-y,120px);width:370px;max-width:calc(100vw - 16px);max-height:min(62vh,540px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:20px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;animation:dpup .2s ease-out;touch-action:pan-y}
 .ap-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 10px 8px 12px;background:linear-gradient(180deg,#e7f8ec,#fffdf7);border-bottom:3px solid #1e2a44}
 .ap-head svg{width:34px;height:42px;flex:0 0 auto}
 .ap-title{font-family:"Fraunces",serif;font-weight:800;font-size:19px;color:#3b2a14;flex:1 1 auto}
@@ -305,7 +305,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .wxchip .wxf{letter-spacing:.3px;color:#1e2a44}
 .wxv{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .wxi{width:22px;height:22px;flex:0 0 auto}
-.wxcard{pointer-events:auto;position:fixed;width:300px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px 12px 10px;border-radius:18px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 5px 0 #1e2a44,0 14px 30px rgba(14,20,40,.3);font-family:"Nunito",sans-serif;color:#1e2a44;animation:dpup .18s ease-out;z-index:3}
+.wxcard{pointer-events:auto;position:fixed;width:300px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px 12px 10px;border-radius:18px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 5px 0 #1e2a44,0 14px 30px rgba(14,20,40,.3);font-family:"Nunito",sans-serif;color:#1e2a44;animation:dpup .18s ease-out;z-index:7}
 .wx-h{display:flex;align-items:center;gap:8px}
 .wx-h svg{width:30px;height:30px;flex:0 0 auto}
 .wx-t{font-family:"Lilita One","Baloo 2",sans-serif;font-size:24px}
@@ -315,6 +315,130 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .wx-hint.warm{background:#fff3c4}.wx-hint.cold{background:#dff1ff}.wx-hint.steady{background:#f1f3f7}
 .wx-note{margin:6px 0 0;font-size:11.5px;font-weight:700;color:#6b7280;line-height:1.35}
 .wx-src{display:inline-block;margin-top:6px;font-size:11px;font-weight:800;color:#45507a}
+
+/* ---- Fogyasztás panel ---- */
+.tbcol{align-self:center;display:flex;flex-direction:column;gap:4px}
+.tbcol .btn{min-height:30px;height:30px;padding:0 10px;border-radius:11px;border-width:2.5px;box-shadow:0 2px 0 #1e2a44;font-size:12px;gap:6px}
+.tbcol .devbtn .cnt{min-width:20px;height:19px;font-size:11px}
+.tbcol .devbtn .wdot{right:-5px;top:-5px;width:12px;height:12px}
+.consbtn{justify-content:flex-start;background:#fff7e6}
+.consbtn .cw{font-family:"Lilita One","Baloo 2",sans-serif;font-size:15px;font-weight:400;letter-spacing:.2px}
+
+/* ---- Élő áttekintés (jobb oszlop; telefonon alsó lap) ---- */
+.ovpanel{padding:10px 10px 10px;display:flex;flex-direction:column;gap:6px;font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;box-sizing:border-box}
+.ovpanel:focus{outline:4px solid #ff4fa3;outline-offset:3px}
+.ov-head{display:flex;align-items:center;gap:6px;padding:0 2px}
+.ov-title{font-family:"Fraunces",serif;font-weight:800;font-size:17px;color:#3b2a14;flex:1 1 auto;white-space:nowrap}
+.ov-vars{display:inline-flex;gap:2px}
+.ov-vars button{all:unset;box-sizing:border-box;cursor:pointer;width:20px;height:20px;border-radius:6px;border:2px solid #1e2a44;background:#ffffff;font:900 10.5px/16px "Nunito",sans-serif;text-align:center}
+.ov-vars button.on{background:#1e2a44;color:#ffe066}
+.ov-vars button:focus-visible,.ovpanel button:focus-visible,.ovsheet button:focus-visible{outline:3px solid #ff4fa3;outline-offset:1px}
+.ov-h{font-size:9.5px;font-weight:900;letter-spacing:1px;color:#45507a;display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.ov-tot{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:15px;letter-spacing:0;color:#1e2a44}
+.ov-ft{font-size:10px;letter-spacing:0;color:#9a3412;margin-left:auto}
+.ov-red{color:#c8321f}
+.ov-sub{font-size:11px;font-weight:800;color:#45507a}
+.ov-fn{font-size:9.5px;font-weight:700;color:#8a8f9c}
+.ov-mis{display:block;padding:4px 6px;border-radius:8px;background:#ffe1d6;border:2px solid #1e2a44;font-size:10.5px;font-weight:900;line-height:1.25;color:#9a2b17;text-align:left}
+.ov-stage{font-family:"Lilita One","Baloo 2",sans-serif;font-size:26px;line-height:1;color:#c8321f;white-space:nowrap}
+.ov-stage.s0{color:#2f7d4f}.ov-stage.sx{color:#8a8f9c}
+.ov-pips{display:inline-flex;gap:3px}
+.ov-pip{width:16px;height:10px;border-radius:4px;border:2px solid #1e2a44;background:#eee3cc}
+.ov-pip.on{background:#ff7a1a}
+/* F1: szekciós lista */
+.ov-f1{display:flex;flex-direction:column;gap:5px;min-height:0}
+.ov-sec{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;padding:5px 7px;border-radius:12px;border:2px solid #e3cfa6;background:#fffaf0}
+button.ov-sec{cursor:pointer}
+button.ov-sec:hover,.ov-pr:hover,.ov-door:hover,.ov-t:hover{background:#fff1c9}
+.ov-sl{display:flex;align-items:center;gap:8px}
+.ov-sw{margin-left:auto;text-align:right;font-size:10.5px;font-weight:800;line-height:1.2;color:#45507a}
+.ov-sw b{color:#9a3412}
+.ov-pr{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:52px minmax(0,1fr) 54px;align-items:center;gap:6px;padding:1px 2px;border-radius:6px;font-size:11px;font-weight:900}
+.ov-pr .bar{height:7px;border-radius:4px;border:1.5px solid #1e2a44;background:#eee3cc;overflow:hidden}
+.ov-pr .bar span{display:block;height:100%}
+.ov-pr .w{text-align:right;font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:13px;white-space:nowrap}
+.ov-door{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;column-gap:5px;padding:1px 2px;border-radius:6px;font-size:11px;font-weight:800}
+.ov-door svg{width:15px;height:15px}
+.ov-door .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900}
+.ov-door .t{font-size:10.5px;color:#45507a;white-space:nowrap}
+.ov-door .nt{grid-column:2 / -1;font-size:9.5px;font-weight:900;color:#b45309}
+.ov-door.open{background:#ffe1d6}
+.ov-door.open .t{color:#c8321f;font-weight:900}
+.ov-temps{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.ov-t{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;column-gap:4px;padding:3px 6px;border-radius:8px;border:2px solid #1e2a44;background:#ffffff}
+.ov-t .n{grid-column:1 / -1;font-size:9.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-t .v{font-family:"Lilita One","Baloo 2",sans-serif;font-size:16px}
+.ov-t .h{font-size:10px;font-weight:800;color:#6b7280}
+.ov-t.cold{background:#dff1ff}.ov-t.warm{background:#ffe9d6}.ov-t.ok{background:#e7f8ec}.ov-t.stove{background:#ffe1d6}.ov-t.off{background:#f1f3f7}
+.ov-ac{flex-direction:row;align-items:baseline;flex-wrap:wrap;column-gap:8px}
+.ov-acv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:15px;color:#8a8f9c}
+.ov-acv.on{color:#2f7d4f}
+.ov-alert{all:unset;box-sizing:border-box;cursor:pointer;margin-top:auto;padding:5px 8px;border-radius:10px;border:2px solid #1e2a44;background:#fff6e0;font-size:11px;font-weight:900;color:#9a3412;box-shadow:0 2px 0 #1e2a44}
+.ov-alert:hover{background:#ffe9b8}
+/* F2: csempés műszerfal */
+.ov-f2{display:grid;grid-template-columns:1fr 1fr;gap:5px;align-content:start}
+.ov-tile{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:1px;padding:5px 7px;border-radius:12px;border:2px solid #1e2a44;background:#ffffff;box-shadow:0 2px 0 #1e2a44;min-width:0}
+.ov-tile:hover{background:#fff6e0}
+.ov-tile.hero{grid-column:1 / -1;background:#1e2a44;color:#fff7e6}
+.ov-tile.hero .ov-h,.ov-tile.hero .ov-sub{color:#cfd6e8}
+.ov-tile.hero .ov-stage{color:#ffd23f;margin-left:auto;font-size:28px}
+.ov-tile.hero .ov-stage.s0{color:#8ff5b8}
+.ov-flames{display:flex;align-items:center;gap:4px}
+.ov-flames svg{width:24px;height:29px}
+.ov-tile.wide{grid-column:1 / -1;cursor:default}
+.ov-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:2px}
+.ov-mini button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;border-radius:6px}
+.ov-mini .vb{width:14px;height:24px;border-radius:4px;border:1.5px solid #1e2a44;background:#eee3cc;display:flex;align-items:flex-end;overflow:hidden}
+.ov-mini .vb span{display:block;width:100%}
+.ov-mini .n{font-size:9.5px;font-weight:900}
+.ov-mini .w{font-family:"Lilita One","Baloo 2",sans-serif;font-size:11.5px;white-space:nowrap}
+.ov-tile.door{flex-direction:row;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 6px}
+.ov-tile.door svg{width:15px;height:15px;flex:0 0 auto}
+.ov-tile.door .n{font-size:10.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0;min-width:0}
+.ov-tile.door .t{flex:1 0 100%;font-size:9.5px;font-weight:800;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-tile.door.open{background:#ff5a3c;color:#ffffff}
+.ov-tile.door.open .t{color:#ffffff;font-weight:900}
+.ov-tile.door.warn{background:#fff6e0}
+.ov-tile.temp .n{font-size:9.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-tile.temp .v{font-family:"Lilita One","Baloo 2",sans-serif;font-size:17px;line-height:1}
+.ov-tile.temp .h{font-size:9.5px;font-weight:800;color:#6b7280}
+.ov-tile.temp.cold{background:#dff1ff}.ov-tile.temp.warm{background:#ffe9d6}.ov-tile.temp.ok{background:#e7f8ec}.ov-tile.temp.stove{background:#ffe1d6}
+.ov-tile.ac .n,.ov-tile.alert .n,.ov-tile.okt .n{font-size:9.5px;font-weight:900;color:#45507a}
+.ov-tile.alert{background:#fff6e0}.ov-tile.alert .t{font-size:11px;font-weight:900;color:#9a3412}
+.ov-tile.okt{cursor:default;background:#e7f8ec}.ov-tile.okt .t{font-size:11px;font-weight:900;color:#2f7d4f}
+/* F3: fülek */
+.ov-f3{display:flex;flex-direction:column;gap:6px;min-height:0;flex:1 1 auto}
+.ov-hero3{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:5px}
+.ov-hero3>*{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:12px;border:2px solid #1e2a44;background:#ffffff;box-shadow:0 2px 0 #1e2a44;min-width:0}
+.ov-h3s{cursor:pointer;background:#1e2a44!important;color:#fff7e6}
+.ov-h3s .ov-h,.ov-h3s .ov-sub{color:#cfd6e8}
+.ov-h3s .ov-stage{color:#ffd23f}.ov-h3s .ov-stage.s0{color:#8ff5b8}
+.ov-big3{font-family:"Lilita One","Baloo 2",sans-serif;font-size:22px;line-height:1.05;white-space:nowrap}
+.ov-h3o.open{background:#ff5a3c!important;color:#ffffff}
+.ov-h3o.open .ov-h,.ov-h3o.open .ov-sub{color:#ffe1d6}
+.ov-tabs{display:flex;gap:4px}
+.ov-tab{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 0;text-align:center;height:26px;border-radius:999px;border:2px solid #1e2a44;background:#ffffff;font:900 11px/22px "Nunito",sans-serif}
+.ov-tab.on{background:#1e2a44;color:#ffe066}
+.ov-tabp{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-height:0}
+.ov-pr.big{grid-template-columns:minmax(0,1fr) auto;row-gap:2px;padding:5px 7px;border-radius:10px;border:2px solid #e3cfa6;background:#fffaf0;font-size:11.5px}
+.ov-pr.big .bar{grid-column:1 / -1}
+.ov-pr.big .f{grid-column:1 / -1;font-size:10px;font-weight:900;color:#9a3412}
+.ov-pr.big .w{font-size:16px}
+.ov-f3 .ov-door{padding:4px 4px;border-bottom:1px dashed #e3cfa6}
+/* telefon: felső gomb és alsó lap */
+.ovphone{display:none}
+.ovsheet{padding:0}
+.ovsheet .ov-head{padding:14px 12px 8px;border-bottom:3px solid #1e2a44;background:linear-gradient(180deg,#fff1c9,#fffdf7)}
+.ovsheet>.ov-f1,.ovsheet>.ov-f2,.ovsheet>.ov-f3{overflow-y:auto;padding:10px 12px 16px;flex:1 1 auto}
+.ovsheet .ov-title{font-size:21px}
+.ovsheet .ov-door,.ovsheet .ov-pr{font-size:13px;padding:4px 2px}
+.ovsheet .ov-door .t{font-size:12px}
+.ovsheet .ov-h{font-size:11px}
+@media (max-width:700px){
+.ovphone{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;position:fixed;left:8px;right:8px;top:8px;min-height:44px;padding:0 14px;box-sizing:border-box;border-radius:14px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 4px 0 #1e2a44;font:900 14px "Nunito",sans-serif;color:#1e2a44;cursor:pointer}
+.ovphone .ovp-open{margin-left:auto;padding:2px 8px;border-radius:999px;background:#ff5a3c;color:#ffffff;font-size:12px}
+.ovphone:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+}
 </style>
 </head>
 <body>
@@ -660,11 +784,17 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 <div class="chip" style="background: #fff1c9"><span class="ck">VENDÉG ÉRKEZIK</span><span class="cv" style="color: #c8321f">{{L.timer}}</span></div>
 <div style="flex: 1 1 auto"></div>
 <sc-if value="{{ui.showDemo}}"><div style="align-self: center; padding: 6px 10px; border-radius: 999px; background: #1e2a44; color: #ffe066; font-weight: 900; font-size: 11.5px; letter-spacing: 1px" title="Demó adatok: lépj be a valódi értékekhez">DEMO</div></sc-if>
+<div class="tbcol">
 <button class="btn devbtn" type="button" onClick="{{ui.toggleDev}}" aria-expanded="{{ui.devOpenAttr}}" aria-controls="f27-devpanel" aria-label="{{ui.devAria}}" title="Eszközök állapota">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6v6H5zM13 4h6v6h-6zM5 14h6v6H5zM16 14v6M13 17h6" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 Eszközök<span class="cnt">{{ui.devCount}}</span>
 <sc-if value="{{ui.devWarn}}"><span class="{{ui.devWarnCls}}" aria-hidden="true"></span></sc-if>
 </button>
+<button class="btn consbtn" type="button" onClick="{{ov.btn}}" aria-label="{{cons.btnAria}}" title="Fogyasztás most a 4 mért körön (Élő áttekintés)">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path></svg>
+<span class="cw">{{cons.btnText}}</span>
+</button>
+</div>
 <button class="btn acct" type="button" onClick="{{ui.toggleDrawer}}" aria-expanded="{{ui.drawerOpenAttr}}" aria-controls="f27-drawer">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 {{ui.acctLabel}}
@@ -703,34 +833,9 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </div>
 </div>
 
-<div class="panel" style="position: absolute; left: 1144px; top: 96px; width: 280px; height: 632px; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px">
-<div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 4px">
-<span class="lil" style="font-size: 23px; color: #1e2a44">Power-upok</span>
-<span style="font-size: 11px; font-weight: 900; color: #7a5a2e">katt = felszerel</span>
-</div>
-<sc-for list="{{tools}}" as="t" hint-placeholder-count="5">
-<button class="pu {{t.cls}}" type="button" onClick="{{t.pick}}" aria-pressed="{{t.pressed}}">
-<span class="ic" style="background: {{t.color}}"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="{{t.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
-<span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
-<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
-<span style="font-weight: 900; font-size: 14px; white-space: nowrap">{{t.name}}</span>
-<span class="tag" style="background: {{t.rc}}">{{t.rarity}}</span>
-</span>
-<span style="font-size: 12px; font-weight: 800; color: #45507a; white-space: nowrap">{{t.stat}}</span>
-</span>
-</button>
-</sc-for>
-<div style="flex: 1 1 auto"></div>
-<div style="padding: 12px 16px; border-radius: 18px; background: #1e2a44; color: #fff7e6; box-shadow: 0 4px 0 #0f1628; display: flex; flex-direction: column; gap: 8px">
-<span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.2px; color: #ffe066">FELSZERELVE</span>
-<span class="lil" style="font-size: 20px; line-height: 1.05">{{eq.name}}</span>
-<span style="font-size: 12.5px; line-height: 1.4; font-weight: 700; color: #e6e9f5">{{eq.effect}}</span>
-<span style="display: flex; gap: 8px; flex-wrap: wrap">
-<span style="font-size: 11px; font-weight: 900; padding: 3px 10px; border-radius: 999px; background: {{eq.color}}; color: #1e2a44">{{eq.stat}}</span>
-<span style="font-size: 11px; font-weight: 900; padding: 3px 10px; border-radius: 999px; background: #ff4fa3; color: #ffffff">Cél: {{eq.targetLabel}}</span>
-</span>
-</div>
-</div>
+<section class="panel ovpanel {{ov.cls}}" tabindex="-1" aria-label="Élő áttekintés" style="position: absolute; left: 1144px; top: 96px; width: 280px; height: 632px">
+<ov-slot></ov-slot>
+</section>
 
 <div style="position: absolute; left: 380px; width: 748px; top: 684px; height: 44px; display: flex; align-items: center; gap: 8px">
 <div title="Húzd a bútorokat és eszközöket" style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: #1e2a44; color: #fff7e6; font-weight: 900; font-size: 13px">
@@ -993,7 +1098,93 @@ Elrendezés visszaállítása
 <symbol id="wx-fog" viewBox="0 0 24 24"><path d="M6.5 12h11a3.6 3.6 0 0 0 .3-7.2A5.3 5.3 0 0 0 6.6 4 4 4 0 0 0 6.5 12Z" fill="#ffffff" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path><path d="M3 15.5h16M5 19h15M3 22h10" stroke="#8a8f9c" stroke-width="2.2" stroke-linecap="round"></path></symbol>
 <symbol id="wx-storm" viewBox="0 0 24 24"><path d="M6.5 14h11a4 4 0 0 0 .4-8A5.8 5.8 0 0 0 6.6 5 4.5 4.5 0 0 0 6.5 14Z" fill="#cfd6e3" stroke="#1e2a44" stroke-width="2.1" stroke-linejoin="round"></path><path d="M12.5 13l-3 5h3l-1.5 4.5 4.5-6h-3l1.5-3.5Z" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.5" stroke-linejoin="round"></path></symbol>
 </svg>
+<template id="ov-template">
+<div class="ov-head">
+<span class="ov-title">Élő áttekintés</span>
+<span class="{{ov.srcCls}}">{{ov.srcLabel}}</span>
+<span class="ov-vars" role="group" aria-label="Megjelenés (minta)"><button class="{{ov.v1Cls}}" type="button" onClick="{{ov.pickV1}}" aria-pressed="{{ov.v1P}}" title="Szekciós lista">1</button><button class="{{ov.v2Cls}}" type="button" onClick="{{ov.pickV2}}" aria-pressed="{{ov.v2P}}" title="Csempés műszerfal">2</button><button class="{{ov.v3Cls}}" type="button" onClick="{{ov.pickV3}}" aria-pressed="{{ov.v3P}}" title="Fülek">3</button></span>
+<sc-if value="{{ov.inSheet}}"><button class="btn ib sm" type="button" onClick="{{ov.closeSheet}}" aria-label="Bezárás" title="Bezárás (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="#1e2a44" stroke-width="2.8" stroke-linecap="round"></path></svg></button></sc-if>
+</div>
+
+<sc-if value="{{ov.f1}}">
+<div class="ov-f1">
+<button class="ov-sec ov-stove" type="button" onClick="{{ov.stove.pick}}" data-ov="P">
+<span class="ov-h">CSERÉPKÁLYHA</span>
+<span class="ov-sl"><span class="{{ov.stove.bigCls}}">{{ov.stove.big}}</span><span class="ov-pips"><sc-for list="{{ov.stove.pips}}" as="q"><span class="{{q.cls}}"></span></sc-for></span><span class="ov-sw">{{ov.stove.w}}<br><b>{{ov.stove.ft}}</b></span></span>
+<span class="ov-sub">{{ov.stove.line}}</span>
+<sc-if value="{{ov.stove.hasMismatch}}"><span class="ov-mis">{{ov.stove.mismatch}}</span></sc-if>
+</button>
+<div class="ov-sec">
+<span class="ov-h">FOGYASZTÁS MOST <b class="ov-tot">{{ov.power.total}}</b><span class="ov-ft">{{ov.power.totalFt}}</span></span>
+<sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}"><span class="n">{{r.short}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="w">{{r.wText}}</span></button></sc-for>
+<span class="ov-fn">A világítás, a hűtő és a TV nincs mérve.</span>
+</div>
+<div class="ov-sec">
+<span class="ov-h">NYÍLÁSZÁRÓK<sc-if value="{{ov.doors.anyOpen}}"><b class="ov-red"> · {{ov.doors.openText}}</b></sc-if></span>
+<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
+</div>
+<div class="ov-sec">
+<span class="ov-h">HŐMÉRSÉKLETEK</span>
+<div class="ov-temps"><sc-for list="{{ov.temps}}" as="t"><button class="{{t.cls}}" type="button" onClick="{{t.pick}}" data-ov="{{t.id}}"><span class="n">{{t.name}}</span><span class="v">{{t.t}}</span><span class="h">{{t.h}}</span></button></sc-for></div>
+</div>
+<button class="ov-sec ov-ac" type="button" onClick="{{ov.ac.pick}}" data-ov="11"><span class="ov-h">KLÍMA</span><span class="{{ov.ac.cls}}">{{ov.ac.text}}</span><span class="ov-fn">IR vezérelt, a 9-es kör méréséből</span></button>
+<sc-if value="{{ov.alerts.has}}"><button class="ov-alert" type="button" onClick="{{ov.alerts.open}}" data-ov="alerts">{{ov.alerts.text}} <span aria-hidden="true">›</span></button></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ov.f2}}">
+<div class="ov-f2">
+<button class="ov-tile hero" type="button" onClick="{{ov.stove.pick}}" data-ov="P">
+<span class="ov-h">CSERÉPKÁLYHA</span>
+<span class="ov-flames"><sc-for list="{{ov.stove.pips}}" as="q"><svg viewBox="0 0 40 48" aria-hidden="true"><path d="M20 3c5 8 15 13 15 26a15 15 0 0 1-30 0c0-6 3-10 7-13 0 6 3 9 6 9 0-9-3-14 2-22z" fill="{{q.flame}}" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"></path></svg></sc-for><span class="{{ov.stove.bigCls}}">{{ov.stove.big}}</span></span>
+<span class="ov-sub">{{ov.stove.w}} · {{ov.stove.ft}}</span>
+<sc-if value="{{ov.stove.hasMismatch}}"><span class="ov-mis">{{ov.stove.mismatch}}</span></sc-if>
+</button>
+<div class="ov-tile wide">
+<span class="ov-h">FOGYASZTÁS MOST <b class="ov-tot">{{ov.power.total}}</b></span>
+<div class="ov-mini"><sc-for list="{{ov.power.rows}}" as="r"><button type="button" onClick="{{r.pick}}" data-ov="{{r.id}}"><span class="vb"><span style="height: {{r.pct}}; background: {{r.color}}"></span></span><span class="n">{{r.short}}</span><span class="w">{{r.wText}}</span></button></sc-for></div>
+</div>
+<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.tileCls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="n">{{d.short}}</span><span class="t">{{d.tileText}}</span></button></sc-for>
+<sc-for list="{{ov.temps}}" as="t"><button class="{{t.tileCls}}" type="button" onClick="{{t.pick}}" data-ov="{{t.id}}"><span class="n">{{t.name}}</span><span class="v">{{t.t}}</span><span class="h">{{t.h}}</span></button></sc-for>
+<button class="ov-tile ac" type="button" onClick="{{ov.ac.pick}}" data-ov="11"><span class="n">Klíma (IR)</span><span class="{{ov.ac.cls}}">{{ov.ac.text}}</span></button>
+<sc-if value="{{ov.alerts.has}}"><button class="ov-tile alert" type="button" onClick="{{ov.alerts.open}}" data-ov="alerts"><span class="n">Eszközök</span><span class="t">{{ov.alerts.short}}</span></button></sc-if>
+<sc-if value="{{ov.alerts.none}}"><div class="ov-tile okt"><span class="n">Eszközök</span><span class="t">minden rendben</span></div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ov.f3}}">
+<div class="ov-f3">
+<div class="ov-hero3">
+<button class="ov-h3s" type="button" onClick="{{ov.stove.pick}}" data-ov="P"><span class="ov-h">KÁLYHA</span><span class="{{ov.stove.bigCls}}">{{ov.stove.big}}</span><span class="ov-pips"><sc-for list="{{ov.stove.pips}}" as="q"><span class="{{q.cls}}"></span></sc-for></span><span class="ov-sub">{{ov.stove.ft}}</span></button>
+<div class="ov-h3k"><span class="ov-h">MOST</span><span class="ov-big3">{{ov.power.total}}</span><span class="ov-sub">mért körök</span></div>
+<div class="{{ov.doors.heroCls}}"><span class="ov-h">NYITVA</span><span class="ov-big3">{{ov.doors.openCount}}</span><span class="ov-sub">ablak, ajtó</span></div>
+</div>
+<sc-if value="{{ov.stove.hasMismatch}}"><span class="ov-mis">{{ov.stove.mismatch}}</span></sc-if>
+<div class="ov-tabs" role="tablist"><sc-for list="{{ov.tabs}}" as="t"><button class="{{t.cls}}" type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}">{{t.label}}</button></sc-for></div>
+<div class="ov-tabp">
+<sc-if value="{{ov.tabPower}}">
+<sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr big" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}"><span class="n">{{r.name}}</span><span class="w">{{r.wText}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="f">{{r.ft}}</span></button></sc-for>
+<span class="ov-fn">{{ov.power.totalFt}} · a világítás, a hűtő és a TV nincs mérve.</span>
+</sc-if>
+<sc-if value="{{ov.tabDoors}}">
+<sc-for list="{{ov.doors.rows}}" as="d"><button class="{{d.cls}}" type="button" onClick="{{d.pick}}" data-ov="{{d.id}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{d.icon}}" fill="none" stroke="#1e2a44" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="n">{{d.name}}</span><span class="t">{{d.text}}</span><sc-if value="{{d.hasNote}}"><span class="nt">{{d.note}}</span></sc-if></button></sc-for>
+</sc-if>
+<sc-if value="{{ov.tabClimate}}">
+<div class="ov-temps"><sc-for list="{{ov.temps}}" as="t"><button class="{{t.cls}}" type="button" onClick="{{t.pick}}" data-ov="{{t.id}}"><span class="n">{{t.name}}</span><span class="v">{{t.t}}</span><span class="h">{{t.h}}</span></button></sc-for></div>
+<button class="ov-sec ov-ac" type="button" onClick="{{ov.ac.pick}}" data-ov="11"><span class="ov-h">KLÍMA</span><span class="{{ov.ac.cls}}">{{ov.ac.text}}</span><span class="ov-fn">IR vezérelt, a 9-es kör méréséből</span></button>
+</sc-if>
+</div>
+<sc-if value="{{ov.alerts.has}}"><button class="ov-alert" type="button" onClick="{{ov.alerts.open}}" data-ov="alerts">{{ov.alerts.text}} <span aria-hidden="true">›</span></button></sc-if>
+</div>
+</sc-if>
+</template>
 <template id="dev-template">
+<button class="ovphone" type="button" onClick="{{ov.btn}}" aria-expanded="{{ov.sheetAttr}}" aria-controls="f27-ovsheet"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.2" stroke-linejoin="round"></path></svg>Élő áttekintés · {{cons.btnText}}<sc-if value="{{ov.doors.anyOpen}}"><span class="ovp-open">{{ov.doors.openCount}} nyitva</span></sc-if></button>
+<sc-if value="{{ov.sheetOpen}}">
+<aside id="f27-ovsheet" class="devpanel ovsheet {{ov.cls}}" role="dialog" aria-label="Élő áttekintés">
+<ov-slot></ov-slot>
+</aside>
+</sc-if>
 <sc-if value="{{wx.open}}">
 <div id="f27-wxcard" class="wxcard" role="dialog" aria-label="Időjárás" style="left: {{wx.cx}}px; top: {{wx.cy}}px">
 <div class="wx-h"><sc-if value="{{wx.hasIcon}}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="{{wx.icon}}"></use></svg></sc-if><span class="wx-t">{{wx.now}}</span><span class="wx-d">{{wx.desc}}</span>

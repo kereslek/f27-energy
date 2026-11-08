@@ -92,6 +92,28 @@ Az "utolsó jelzés" a Tuya saját frissítési ideje (az adatgyűjtő `_upd` ku
 hiányzik, a tárolás ideje. Belépés nélkül demó adat látszik, benne egy merülő elemmel és egy
 régóta hallgató ablakkal.
 
+## Élő áttekintés (jobb oszlop)
+
+A jobb oszlopban mindig látszik, görgetés nélkül (belépés nélkül a kiválasztott pálya demó
+adatával):
+
+- **Cserépkályha:** a LUXION kapcsoló fokozata (ahány kapcsoló be van kapcsolva: 1, 2 vagy 3 kW),
+  a kályhakör (5-ös kör) mért teljesítménye és óradíja (60,9 Ft/kWh, B mérő, keret felett). Ha a
+  fokozat és a mért teljesítmény nem egyezik (pl. a kapcsoló be van kapcsolva, de a kör nem vesz
+  fel áramot), figyelmeztet.
+- **Fogyasztás most:** a 4 mért kör (kályha, bojler, főzőlap és sütő, klíma) és az összesen. A
+  világítás, a hűtő, a TV és a konnektorok nincsenek mérve. Az összesen a felső sávban is látszik.
+- **Nyílászárók:** a nyitottak elöl ("NYITVA 25 perce"), a többinél, hogy mikor mozdult
+  utoljára. Ezt a `device_status` előzményből számolja (az utolsó 48 óra állapotváltásai); ha
+  ebben nincs váltás, "legalább ... óta". Merülő elem és régóta hallgató érzékelő jelezve.
+- **Hőmérsékletek** (hideg, rendben, meleg; a kályha mögötti a kályha töltöttségét mutatja),
+  **Klíma** (IR vezérelt; a 9-es kör méréséből: fut vagy áll), és ha kell, egy figyelmeztető sor,
+  ami az Eszközök panelt nyitja a Figyelem szűrővel.
+
+Bármelyik sorra kattintva a térkép rá nagyít az eszközre. Telefonon a képernyő tetején lévő
+**Élő áttekintés** gomb alsó lapként nyitja meg. Megjelenés (minta): `?attekintes=1` szekciós
+lista, `?attekintes=2` csempés műszerfal, `?attekintes=3` fülek; a panel fejlécében is váltható.
+
 ## Kint (időjárás)
 
 A felső sáv **KINT** csipje Élő módban a valódi budapesti időjárást mutatja (Open-Meteo, kulcs
