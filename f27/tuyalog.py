@@ -26,6 +26,7 @@ Futtatás:  python -m f27.tuyalog      (GitHub Actions: Tuya-napló próba)
 from __future__ import annotations
 
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
@@ -41,7 +42,7 @@ DATA = Path(__file__).resolve().parent.parent / "data"
 CONTACTS = ("5", "6", "7", "8", "9", "10")
 BREAKERS = ("X5", "X7", "X8", "X9")
 THERMOS = ("1", "2", "3", "4")
-COUNTER_CODES = ("total_forward_energy", "forward_energy_total", "add_ele")
+COUNTER_CODES = ("total_forward_energy", "forward_energy_total")   # halmozott állás (add_ele: növekmény)
 CONTACT_CODES = ("doorcontact_state", "contact_state")
 PAGE = 100
 
@@ -73,18 +74,30 @@ def bud_day(ms: int) -> str:
 
 # ----------------------------------------------------------------------------- Tuya
 
-def fetch_logs(tc, dev_id: str, start_ms: int, end_ms: int, max_pages: int) -> dict:
-    """Az eszköz adatpont-jelentései az időablakban, lapozva. Hibánál a Tuya hibakódja."""
+HEXID = re.compile(r"[0-9a-zA-Z]{16,}")
+
+
+def err_text(e: TuyaError) -> str:
+    """Tuya hiba a publikus logba: kód és az üzenet eleje, hosszú azonosítók kitakarva."""
+    msg = HEXID.sub("...", str(e.msg or ""))[:70]
+    return f"{e.code} ({msg})" if msg else str(e.code)
+
+
+def fetch_logs(tc, dev_id: str, start_ms: int, end_ms: int, max_pages: int, types="7", codes=None) -> dict:
+    """Az eszköz naplója az időablakban, lapozva (types: eseménytípusok, 7 = adatpont-jelentés;
+    codes: csak ezek az adatpontok). Hibánál a Tuya hibakódja és üzenete."""
     logs: list[dict] = []
     key, pages = None, 0
     while pages < max_pages:
-        params = {"type": 7, "start_time": start_ms, "end_time": end_ms, "size": PAGE, "query_type": 1}
+        params = {"type": types, "start_time": start_ms, "end_time": end_ms, "size": PAGE, "query_type": 1}
+        if codes:
+            params["codes"] = ",".join(codes)
         if key:
             params["start_row_key"] = key
         try:
             res = tc.get(f"/v1.0/devices/{dev_id}/logs", params) or {}
         except TuyaError as e:
-            return {"logs": logs, "pages": pages, "error": str(e.code), "truncated": False}
+            return {"logs": logs, "pages": pages, "error": err_text(e), "truncated": False}
         pages += 1
         logs.extend(res.get("logs") or [])
         nxt = res.get("next_row_key")
@@ -101,7 +114,7 @@ def fetch_stats(tc, dev_id: str, days: int, today: datetime) -> dict:
         types = tc.get(f"/v1.0/devices/{dev_id}/all-statistic-type") or []
         out["types"] = types
     except TuyaError as e:
-        out["errors"]["all-statistic-type"] = str(e.code)
+        out["errors"]["all-statistic-type"] = err_text(e)
         types = []
     codes = [t.get("code") for t in types if isinstance(t, dict) and t.get("code")] or ["add_ele"]
     start = (today - timedelta(days=days)).strftime("%Y%m%d")
@@ -111,7 +124,7 @@ def fetch_stats(tc, dev_id: str, days: int, today: datetime) -> dict:
             res = tc.get(f"/v1.0/devices/{dev_id}/statistics/days",
                          {"code": code, "start_day": start, "end_day": end}) or {}
         except TuyaError as e:
-            out["errors"][f"days:{code}"] = str(e.code)
+            out["errors"][f"days:{code}"] = err_text(e)
             continue
         raw = res.get("days") if isinstance(res, dict) else None
         if isinstance(raw, dict):
@@ -198,6 +211,17 @@ def daily_kwh_from_counter_log(logs: list[dict], scale: int) -> dict[str, float]
     return {k: round(v, 3) for k, v in out.items()}
 
 
+def daily_kwh_from_increments(logs: list[dict], scale: int, since_ms: int = 0) -> dict[str, float]:
+    """Napi kWh az add_ele jelentésekből: ez a kód jelentésenként a legutóbbi jelentés óta
+    hozzáadott fogyasztás (növekmény), nem halmozott állás, ezért összeadjuk (Budapest napja)."""
+    out: dict[str, float] = defaultdict(float)
+    for t, v in log_series(logs, ("add_ele",)):
+        x = _num(v)
+        if x is not None and x > 0 and t >= since_ms:
+            out[bud_day(t)] += x / (10 ** scale)
+    return {k: round(v, 3) for k, v in out.items()}
+
+
 def compare_days(a: dict, b: dict, tol_abs: float = 0.05, tol_rel: float = 0.05) -> dict:
     """Két napi kWh-sor összevetése a közös napokon: egyező / eltérő napok száma."""
     common = sorted(set(a) & set(b))
@@ -227,6 +251,26 @@ def _paged(sb, table: str, columns: str, **filters) -> list[dict]:
 
 # ----------------------------------------------------------------------------- futtatás
 
+def _ms(ts: str) -> int:
+    return int(datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp() * 1000)
+
+
+def _since(logs: list[dict], since_ms: int) -> list[dict]:
+    return [x for x in logs if x.get("event_time") is not None and int(x["event_time"]) >= since_ms]
+
+
+def _order(logs: list[dict]) -> str:
+    t = [int(x["event_time"]) for x in logs if x.get("event_time") is not None]
+    if len(t) < 2:
+        return "-"
+    return "csökkenő" if t[0] >= t[-1] else "növekvő"
+
+
+def _median(xs: list[float]) -> float | None:
+    xs = sorted(xs)
+    return xs[len(xs) // 2] if xs else None
+
+
 def run(tc, sb, now: datetime, days: int, stat_days: int, max_pages: int) -> dict:
     devs = [d for d in sb.select("devices", "pink,role,tuya_device_id,meta") if d.get("tuya_device_id")]
     start = now - timedelta(days=days)
@@ -236,38 +280,70 @@ def run(tc, sb, now: datetime, days: int, stat_days: int, max_pages: int) -> dic
     for r in rows:
         by_pink[r["pink"]].append(r)
     try:
+        latest = {str(r["pink"]): r.get("status") or {} for r in sb.select("device_latest", "pink,status")}
+    except SupabaseError:
+        latest = {}
+    try:
         ed = _paged(sb, "energy_daily", "day,pink,kwh", day=f"gte.{(now - timedelta(days=stat_days)).date().isoformat()}")
     except SupabaseError:
         ed = []
     energy_db: dict[str, dict[str, float]] = defaultdict(dict)
     for r in ed:
         energy_db[r["pink"]][str(r["day"])[:10]] = _num(r.get("kwh"))
+    today = now.astimezone(BUDAPEST).date().isoformat()
 
     result = {"generated": now.isoformat(), "days": days, "stat_days": stat_days, "devices": {}}
     for d in sorted(devs, key=lambda x: str(x["pink"])):
         pink, did, meta = str(d["pink"]), d["tuya_device_id"], d.get("meta") or {}
-        lg = fetch_logs(tc, did, start_ms, end_ms, max_pages)
+        mine = by_pink.get(pink, [])
+        since = _ms(mine[0]["ts"]) if mine else end_ms           # az adatgyűjtő első sora az ablakban
+        if pink in BREAKERS:
+            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, codes=("add_ele",) + COUNTER_CODES + ("switch",))
+            if lg["error"]:
+                lg = fetch_logs(tc, did, start_ms, end_ms, max_pages)
+        else:
+            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages)
+        all_types = None
+        if not lg["logs"] and not lg["error"]:                   # nincs adatpont-jelentés: minden eseménytípus
+            all_types = fetch_logs(tc, did, start_ms, end_ms, 5, types="1,2,3,4,5,6,7,8,9,10")
         codes = Counter(x.get("code") for x in lg["logs"])
         dev = {"role": d.get("role"), "log_count": len(lg["logs"]), "log_pages": lg["pages"],
                "log_error": lg["error"], "log_truncated": lg["truncated"], "codes": dict(codes),
-               "logs": lg["logs"], "db_rows": len(by_pink.get(pink, []))}
+               "order": _order(lg["logs"]), "logs": lg["logs"], "db_rows": len(mine), "db_since": since,
+               "log_since_db": len(_since(lg["logs"], since))}
+        if all_types is not None:
+            dev["all_types"] = {"count": len(all_types["logs"]), "error": all_types["error"],
+                                "types": dict(Counter(str(x.get("event_id") or x.get("type") or "?") for x in all_types["logs"])),
+                                "logs": all_types["logs"]}
         if pink in CONTACTS:
-            dev["opens_log"] = count_opens_log(lg["logs"])
-            dev["opens_db"] = count_opens_rows(by_pink.get(pink, []))
+            dev["opens_log_all"] = count_opens_log(lg["logs"])
+            dev["opens_log"] = count_opens_log(_since(lg["logs"], since))
+            dev["opens_db"] = count_opens_rows(mine)
         if pink == "P":
-            dev["changes_log"] = count_stage_changes_log(lg["logs"])
-            dev["changes_db"] = count_stage_changes_rows(by_pink.get(pink, []))
+            dev["changes_log"] = count_stage_changes_log(_since(lg["logs"], since))
+            dev["changes_db"] = count_stage_changes_rows(mine)
         if pink in BREAKERS:
+            st = latest.get(pink, {})
+            dev["collector_codes"] = [c for c in COUNTER_CODES + ("add_ele",) if c in st]
             code = next((c for c in COUNTER_CODES if c in codes), None)
             m = meta.get(code) if code else None
             scale = int(m["scale"]) if isinstance(m, dict) and isinstance(m.get("scale"), int) else 2
-            from_log = daily_kwh_from_counter_log(lg["logs"], scale)
+            ma = meta.get("add_ele")
+            ascale = int(ma["scale"]) if isinstance(ma, dict) and isinstance(ma.get("scale"), int) else 3
+            from_counter = daily_kwh_from_counter_log(lg["logs"], scale)
+            from_inc = daily_kwh_from_increments(lg["logs"], ascale)
+            mine_days = energy_db.get(pink, {})
+            first_day = min(mine_days) if mine_days else None
+            full = {k: v for k, v in mine_days.items() if first_day and first_day < k < today}   # csak teljes napok
             stats = fetch_stats(tc, did, stat_days, now.astimezone(BUDAPEST))
             tstat = next(iter(stats["days"].values()), {}) if stats["days"] else {}
-            dev.update({"counter_code": code, "kwh_log": from_log, "stats": stats, "kwh_db": energy_db.get(pink, {}),
-                        "cmp_stat_db": compare_days(tstat, energy_db.get(pink, {})),
-                        "cmp_log_db": compare_days(from_log, energy_db.get(pink, {})),
-                        "cmp_stat_log": compare_days(tstat, from_log)})
+            ratios = [from_inc[k] / v for k, v in full.items() if k in from_inc and v]
+            dev.update({"counter_code": code, "add_ele_scale": ascale, "kwh_counter_log": from_counter,
+                        "kwh_add_ele": from_inc, "stats": stats, "kwh_db": mine_days, "full_days": sorted(full),
+                        "cmp_stat_db": compare_days(tstat, full),
+                        "cmp_inc_db": compare_days(from_inc, full),
+                        "cmp_counter_db": compare_days(from_counter, full),
+                        "ratio_inc_db": _median(ratios)})
         result["devices"][pink] = dev
     return result
 
@@ -275,24 +351,31 @@ def run(tc, sb, now: datetime, days: int, stat_days: int, max_pages: int) -> dic
 def summary_lines(res: dict) -> list[str]:
     """Publikus összefoglaló: csak darabszámok, kódnevek, hibakódok és egyezési arányok."""
     L = [f"## Tuya-napló próba ({res['days']} nap napló, {res['stat_days']} nap statisztika)", "",
-         "| Pink | Naplóbejegyzés | Oldal | Hiba | Kódok (darab) | Adatgyűjtő sorai | Egyeztetés |",
-         "|---|---|---|---|---|---|---|"]
+         "Az egyeztetés az adatgyűjtő első sorától számít (ami előtte van, csak a naplóban létezik).", "",
+         "| Pink | Naplóbejegyzés (ebből a közös időszakban) | Oldal | Sorrend | Hiba | Kódok (darab) | Adatgyűjtő sorai | Egyeztetés |",
+         "|---|---|---|---|---|---|---|---|"]
     for pink, d in res["devices"].items():
         codes = ", ".join(f"{k} {v}" for k, v in sorted(d["codes"].items(), key=lambda kv: -kv[1])[:6]) or "-"
         rec = "-"
         if "opens_log" in d:
-            rec = f"nyitás: naplóban {d['opens_log']}, nálunk {d['opens_db']}"
+            rec = f"nyitás a közös időszakban: naplóban {d['opens_log']}, nálunk {d['opens_db']} (7 nap alatt a naplóban: {d['opens_log_all']})"
         elif "changes_log" in d:
             rec = f"fokozatváltás: naplóban {d['changes_log']}, nálunk {d['changes_db']}"
-        elif "cmp_log_db" in d:
+        elif "cmp_inc_db" in d:
             s = d["stats"]
-            st = ("statisztika: " + (", ".join(f"{k} {len(v)} nap" for k, v in s["days"].items()) or "nincs")
+            st = ("Tuya-statisztika: " + (", ".join(f"{k} {len(v)} nap" for k, v in s["days"].items()) or "nincs")
                   + ("; hiba: " + ", ".join(f"{k}={v}" for k, v in s["errors"].items()) if s["errors"] else ""))
-            c1, c2 = d["cmp_stat_db"], d["cmp_log_db"]
-            rec = (f"{st}; napi kWh Tuya-stat vs nálunk: {c1['same']}/{c1['common']} nap egyezik; "
-                   f"napló-számláló vs nálunk: {c2['same']}/{c2['common']} nap egyezik")
-        L.append(f"| {pink} | {d['log_count']}{' (csonkolva)' if d['log_truncated'] else ''} | {d['log_pages']} | "
-                 f"{d['log_error'] or '-'} | {codes} | {d['db_rows']} | {rec} |")
+            c = d["cmp_inc_db"]
+            r = d["ratio_inc_db"]
+            rec = (f"adatgyűjtő számlálója: {', '.join(d['collector_codes']) or 'nincs'}; teljes napok: {len(d['full_days'])}; "
+                   f"napi kWh (add_ele összeg, skála {d['add_ele_scale']}) vs nálunk: {c['same']}/{c['common']} nap egyezik"
+                   + (f", arány medián {r:.2f}" if r is not None else "") + f"; {st}")
+        extra = ""
+        if "all_types" in d:
+            a = d["all_types"]
+            extra = f"; minden eseménytípus: {a['count']}" + (f" (hiba {a['error']})" if a["error"] else "")
+        L.append(f"| {pink} | {d['log_count']} ({d['log_since_db']}){' csonkolva' if d['log_truncated'] else ''} | {d['log_pages']} | "
+                 f"{d['order']} | {d['log_error'] or '-'} | {codes}{extra} | {d['db_rows']} | {rec} |")
     return L
 
 
