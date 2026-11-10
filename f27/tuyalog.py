@@ -303,10 +303,8 @@ def run(tc, sb, now: datetime, days: int, stat_days: int, max_pages: int) -> dic
         pink, did, meta = str(d["pink"]), d["tuya_device_id"], d.get("meta") or {}
         mine = by_pink.get(pink, [])
         since = _ms(mine[0]["ts"]) if mine else end_ms           # az adatgyűjtő első sora az ablakban
-        if pink in BREAKERS:
-            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, codes=("add_ele",) + COUNTER_CODES + ("switch",), pause=PAUSE)
-        else:
-            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, pause=PAUSE)
+        # a codes szűrőt a /logs végpont nem fogadja el ("Parameter error"), ezért a teljes naplót kérjük
+        lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, pause=PAUSE)
         all_types = None
         if not lg["logs"] and not lg["error"]:                   # nincs adatpont-jelentés: minden eseménytípus
             all_types = fetch_logs(tc, did, start_ms, end_ms, 5, types="1,2,3,4,5,6,7,8,9,10", pause=PAUSE)
