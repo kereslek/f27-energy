@@ -28,6 +28,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -45,6 +46,9 @@ THERMOS = ("1", "2", "3", "4")
 COUNTER_CODES = ("total_forward_energy", "forward_energy_total")   # halmozott állás (add_ele: növekmény)
 CONTACT_CODES = ("doorcontact_state", "contact_state")
 PAGE = 100
+PAUSE = float(os.environ.get("TUYALOG_PAUSE", "0.5") or 0.5)   # lapok között (mp)
+EVENT_TYPES = {"1": "online", "2": "offline", "3": "aktiválás", "4": "reset", "5": "parancs", "6": "firmware",
+               "7": "adatpont", "8": "jelzés", "9": "újraindulás", "10": "időzítő"}
 
 
 def _truthy(v) -> bool | None:
@@ -83,7 +87,7 @@ def err_text(e: TuyaError) -> str:
     return f"{e.code} ({msg})" if msg else str(e.code)
 
 
-def fetch_logs(tc, dev_id: str, start_ms: int, end_ms: int, max_pages: int, types="7", codes=None) -> dict:
+def fetch_logs(tc, dev_id: str, start_ms: int, end_ms: int, max_pages: int, types="7", codes=None, pause: float = 0.0) -> dict:
     """Az eszköz naplója az időablakban, lapozva (types: eseménytípusok, 7 = adatpont-jelentés;
     codes: csak ezek az adatpontok). Hibánál a Tuya hibakódja és üzenete."""
     logs: list[dict] = []
@@ -100,6 +104,8 @@ def fetch_logs(tc, dev_id: str, start_ms: int, end_ms: int, max_pages: int, type
             return {"logs": logs, "pages": pages, "error": err_text(e), "truncated": False}
         pages += 1
         logs.extend(res.get("logs") or [])
+        if pause:
+            time.sleep(pause)                                  # a Tuya: "The log query is too frequent"
         nxt = res.get("next_row_key")
         if not res.get("has_next") or not nxt or nxt == key:
             return {"logs": logs, "pages": pages, "error": None, "truncated": False}
@@ -298,14 +304,12 @@ def run(tc, sb, now: datetime, days: int, stat_days: int, max_pages: int) -> dic
         mine = by_pink.get(pink, [])
         since = _ms(mine[0]["ts"]) if mine else end_ms           # az adatgyűjtő első sora az ablakban
         if pink in BREAKERS:
-            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, codes=("add_ele",) + COUNTER_CODES + ("switch",))
-            if lg["error"]:
-                lg = fetch_logs(tc, did, start_ms, end_ms, max_pages)
+            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, codes=("add_ele",) + COUNTER_CODES + ("switch",), pause=PAUSE)
         else:
-            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages)
+            lg = fetch_logs(tc, did, start_ms, end_ms, max_pages, pause=PAUSE)
         all_types = None
         if not lg["logs"] and not lg["error"]:                   # nincs adatpont-jelentés: minden eseménytípus
-            all_types = fetch_logs(tc, did, start_ms, end_ms, 5, types="1,2,3,4,5,6,7,8,9,10")
+            all_types = fetch_logs(tc, did, start_ms, end_ms, 5, types="1,2,3,4,5,6,7,8,9,10", pause=PAUSE)
         codes = Counter(x.get("code") for x in lg["logs"])
         dev = {"role": d.get("role"), "log_count": len(lg["logs"]), "log_pages": lg["pages"],
                "log_error": lg["error"], "log_truncated": lg["truncated"], "codes": dict(codes),
@@ -373,7 +377,8 @@ def summary_lines(res: dict) -> list[str]:
         extra = ""
         if "all_types" in d:
             a = d["all_types"]
-            extra = f"; minden eseménytípus: {a['count']}" + (f" (hiba {a['error']})" if a["error"] else "")
+            tp = ", ".join(f"{EVENT_TYPES.get(k, k)} {v}" for k, v in sorted(a["types"].items(), key=lambda kv: -kv[1]))
+            extra = f"; minden eseménytípus: {a['count']} ({tp})" + (f" (hiba {a['error']})" if a["error"] else "")
         L.append(f"| {pink} | {d['log_count']} ({d['log_since_db']}){' csonkolva' if d['log_truncated'] else ''} | {d['log_pages']} | "
                  f"{d['order']} | {d['log_error'] or '-'} | {codes}{extra} | {d['db_rows']} | {rec} |")
     return L

@@ -7,6 +7,8 @@ Futtatás a repó gyökeréből:  python -m unittest discover -s tests -v
 
 from __future__ import annotations
 
+import os
+os.environ.setdefault("TUYALOG_PAUSE", "0")
 import unittest
 from datetime import datetime, timezone
 
