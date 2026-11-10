@@ -296,7 +296,37 @@
     try { var m = /[?&]fogyasztas=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
   }
   function fmtW(w) { return w == null ? '--' : w >= 1000 ? fmtNum(w / 1000, w >= 9950 ? 0 : 1) + ' kW' : fmtNum(w, 0) + ' W'; }
+  // Lapozott lekérdezés: make() minden lapra új lekérdezést ad, mi tesszük rá a range-et. A Supabase
+  // alapból legfeljebb 1000 sort ad egy kérésre; legfeljebb 20 lap (20 000 sor).
+  function fetchPaged(make, size, maxPages) {
+    size = size || 1000; maxPages = maxPages || 20;
+    var out = [];
+    function page(i) {
+      return make().range(i * size, i * size + size - 1).then(function (res) {
+        if (res.error) return { error: res.error, data: out };
+        var d = res.data || [];
+        out = out.concat(d);
+        if (d.length < size || i + 1 >= maxPages) return { data: out };
+        return page(i + 1);
+      });
+    }
+    return page(0);
+  }
   function stageSuffix(n) { return n === 3 ? '3-as' : n + '-es'; }
+  // A kályha most: a mérés (5-ös kör, W) a döntő, a kapcsoló (LUXION fokozat) csak a beállítás.
+  // drawing: most vesz fel áramot (fűt/tölt); idleOn: a kapcsoló BE, de nem vesz fel áramot;
+  // kw: a most felvett teljesítmény (mérés híján a fokozat); lit: hány lángot mutassunk.
+  function stoveNowOf(stage, w) {
+    var measured = w != null;
+    var drawing = measured ? w > 300 : !!(stage > 0);
+    var idleOn = !!(stage > 0) && measured && w < 200;
+    var kw = measured ? Math.max(0, w) / 1000 : (stage || 0);
+    var lit = measured ? (drawing ? Math.max(1, Math.min(3, Math.round(w / 1000))) : 0) : stage;
+    var big = !measured ? (stage == null ? '?' : stage === 0 ? 'KI' : stage + ' kW') : drawing ? fmtNum(Math.round(w / 100) / 10, 1) + ' kW' : stage === 0 ? 'KI' : '0 kW';
+    var line = !measured ? (stage === 0 ? 'Kikapcsolva · 0 kW' : stageSuffix(stage) + ' fokozat · ' + stage + ' kW (mérés nincs)') :
+      drawing ? 'Most fűt: ' + fmtW(w) : idleOn ? 'BE, de most nem fűt (feltöltött?)' : 'Kikapcsolva · 0 W';
+    return { measured: measured, drawing: drawing, idleOn: idleOn, kw: kw, lit: lit, big: big, line: line };
+  }
   // a device_status sorokból körönként lépcsős idősor (W) az utolsó 6 órára
   function seriesFrom(rows, pink, meta, now, kind) {
     var pts = [];
@@ -730,11 +760,17 @@
       else if (heating) add(92, 'red', id, who + ' ' + durText(c.age) + ' nyitva, és fűtünk!', who + ' ' + durText(c.age) + ' nyitva, közben ' + heatWhy + '. A huzat viszi a meleget: csukd be, vagy szólj a vendégnek. Szellőztetni 5-10 perc bőven elég.');
       else add(25, 'blue', id, who + ' ' + durText(c.age) + ' nyitva', who + ' ' + durText(c.age) + ' nyitva. Fűtés most nincs, így ez nem drága.');
     });
-    // kályha: keret feletti ár
-    if (stage > 0) {
-      var ft = Math.round(stage * STOVE_FT_KWH);
-      add(stage >= 2 ? 80 : 68, stage >= 2 ? 'red' : 'orange', 'P', 'Kályha ' + stage + '/3 fokozaton: kb. ' + ft + ' Ft óránként',
-        'A cserépkályha ' + stage + ' kW-on megy. Keret felett 60,9 Ft/kWh, vagyis kb. ' + ft + ' Ft óránként (egy éjszaka 10 órája kb. ' + fmtNum(ft * 10, 0) + ' Ft). Ugyanez a hő gázból vagy klímából negyed-fél áron jön.');
+    // kályha: keret feletti ár; a mért teljesítmény (5-ös kör) a döntő, nem a kapcsoló állása
+    var w5 = by.k5 ? (by.k5.swOff ? 0 : by.k5.watt != null ? by.k5.watt : null) : null, sn = stoveNowOf(stage, w5);
+    if (sn.drawing) {
+      var ft = Math.round(sn.kw * STOVE_FT_KWH), kwT = sn.measured ? fmtW(w5) : stage + ' kW';
+      add(sn.kw >= 1.5 ? 80 : 68, sn.kw >= 1.5 ? 'red' : 'orange', 'P', 'A kályha most fűt (' + kwT + '): kb. ' + ft + ' Ft óránként',
+        'A cserépkályha most ' + kwT + ' teljesítményt vesz fel' + (stage > 0 ? ' (a kapcsoló ' + stage + '/3 fokozaton)' : '') + '. Keret felett 60,9 Ft/kWh, vagyis kb. ' + ft + ' Ft óránként (egy éjszaka 10 órája kb. ' + fmtNum(ft * 10, 0) + ' Ft). Ugyanez a hő gázból vagy klímából negyed-fél áron jön.');
+    } else if (sn.idleOn) {
+      var t3 = by['3'] && by['3'].online !== false ? by['3'].temp : null;
+      add(20, 'blue', 'P', 'A kályha be van kapcsolva, de most nem fűt',
+        'A kapcsoló ' + stage + '/3 fokozaton áll, de az 5-ös kör mérése szerint a kályha most nem vesz fel áramot (' + fmtW(w5) + '), így most nem is fogyaszt.' +
+        (t3 != null ? ' A kályha mögötti hőmérő ' + fmtNum(t3, 1) + ' °C' + (t3 >= 30 ? ': valószínűleg feltöltött, és a beépített szabályzója lekapcsolt; ha lehűl, magától újra tölt.' : ': ha nem melegszik, nézd meg, kap-e áramot a B kör.') : ' Valószínűleg feltöltött, és a beépített szabályzója lekapcsolt; ha lehűl, magától újra tölt.'));
     }
     // szobahőmérséklet
     ['1', '2'].forEach(function (id) {
@@ -1312,7 +1348,7 @@
     // a jelenet díszei a valós (vagy demó) állapotot követik: huzat-szellem csak nyitott
     // ablaknál/ajtónál, a Túlfűtő láng csak ha a kályha megy
     sceneVals(v, dv) {
-      var by = {}; dv.all.forEach(function (c) { by[c.id] = c; });
+      var st = this.state, by = {}; dv.all.forEach(function (c) { by[c.id] = c; });
       v.ghosts = [];
       v.pins.forEach(function (m) {
         var c = by[m.id];
@@ -1321,9 +1357,10 @@
         v.ghosts.push({ tr: 'translate(' + Math.round(m.ax + o[0]) + ' ' + Math.round(m.ay + o[1]) + ')', id: m.id, label: v.ghosts.length === 0,
           wind: 'M' + (-o[0]) + ',' + (-o[1]) + ' Q' + Math.round(-o[0] / 2 - 6) + ',' + Math.round(-o[1] / 2 - 10) + ' -12,6' });
       });
-      var P = by.P;
-      v.flameOn = !!(P && P.online !== false && P.stage > 0);
-      v.flameLabel = v.flameOn ? 'Kályha fűt · ' + P.stage + ' kW' : '';
+      var P = by.P, src0 = st.live || demoDevices(st.now || Date.now(), v.L), cs5 = circuitState(src0, 'k5');
+      var sm = stoveNowOf(P && P.online !== false ? P.stage : null, cs5.w);
+      v.flameOn = sm.drawing;
+      v.flameLabel = v.flameOn ? 'Kályha fűt · ' + (sm.measured ? fmtW(cs5.w) : sm.kw + ' kW') : '';
     }
 
     // Belépve (listán szereplő szerepkörrel) a Supabase-ből olvas (az adatgyűjtő óránként tölti);
@@ -1395,13 +1432,18 @@
       var self = this, st = this.state, now = Date.now();
       if (!this.sb || !st.user || !st.role) return;
       this.setState({ histAt: now });
-      this.sb.from('device_status').select('pink,ts,online,status').gte('ts', new Date(now - MOVE_WINDOW_MS).toISOString())
-        .in('pink', ['X5', 'X7', 'X8', 'X9', 'P', '5', '6', '7', '8', '9', '10']).order('ts', { ascending: true }).limit(5000)
-        .then(function (res) { self.setState({ hist: res.error ? { error: true } : { rows: res.data || [] } }); }, function () { self.setState({ hist: { error: true } }); });
+      // A Supabase egy kérésre legfeljebb 1000 sort ad (max_rows): lapozva kérjük le, különben a
+      // legfrissebb sorok lemaradnának (pl. az utolsó ajtónyitás vagy a kályha utolsó órái).
+      var sb = this.sb;
+      fetchPaged(function () {
+        return sb.from('device_status').select('pink,ts,online,status').gte('ts', new Date(now - MOVE_WINDOW_MS).toISOString())
+          .in('pink', ['X5', 'X7', 'X8', 'X9', 'P', '5', '6', '7', '8', '9', '10']).order('ts', { ascending: true });
+      }).then(function (res) { self.setState({ hist: res.error ? { error: true } : { rows: res.data } }); }, function () { self.setState({ hist: { error: true } }); });
       // nyílászárók: hosszabb előzmény (csak változáskor és óránként van sor, így 30 nap is kevés)
-      this.sb.from('device_status').select('pink,ts,status').gte('ts', new Date(now - DOOR_WINDOW_MS).toISOString())
-        .in('pink', ['5', '6', '7', '8', '9', '10']).order('ts', { ascending: true }).limit(5000)
-        .then(function (res) { if (!res.error) self.setState({ histDoors: res.data || [] }); }, function () {});
+      fetchPaged(function () {
+        return sb.from('device_status').select('pink,ts,status').gte('ts', new Date(now - DOOR_WINDOW_MS).toISOString())
+          .in('pink', ['5', '6', '7', '8', '9', '10']).order('ts', { ascending: true });
+      }).then(function (res) { if (!res.error) self.setState({ histDoors: res.data }); }, function () {});
     }
 
     // Foglalások a Supabase-ből (csak tulaj és takarító; az adatgyűjtő óránként tölti az Airbnb naptárból).
@@ -1852,20 +1894,26 @@
       circ.forEach(function (c) { c.share = total > 0 && c.w ? Math.max(0.5, c.w / total * 100) : 0; c.shareW = c.share + '%'; c.hasShare = c.share > 0; });
       var P = src.P, pOff = !P || P.online === false, stage = pOff ? null : liveStage(P.status || {});
       var k5 = circ[0].w;
+      // A kályha VALÓDI állapota a mért teljesítmény (5-ös kör); a kapcsoló csak a beállítás. Hőtárolós
+      // kályhánál a kapcsoló lehet BE úgy, hogy a kályha épp nem vesz fel áramot (feltöltött, a beépített
+      // szabályzója lekapcsolt): ez nem hiba, és ilyenkor nem is fogyaszt.
+      var sNow = stoveNowOf(stage, k5);
       var mismatch = '';
-      if (stage != null && stage > 0 && k5 != null && k5 < 200) mismatch = 'A kapcsoló ' + stageSuffix(stage) + ' fokozaton, de a kályhakör nem vesz fel áramot (a B kör most nem kap áramot?)';
+      if (sNow.idleOn) mismatch = '';
       else if (stage === 0 && k5 != null && k5 > 500) mismatch = 'A kapcsoló szerint a kályha ki van kapcsolva, de a kályhakör ' + fmtW(k5) + ' teljesítményt vesz fel. Nézd meg a kapcsolót.';
       else if (stage > 0 && k5 != null && Math.abs(k5 - stage * 1000) > Math.max(300, stage * 250)) {
         mismatch = 'Eltérés: a kapcsoló ' + stageSuffix(stage) + ' fokozaton áll (' + stage + ' kW), a kismegszakító mérése ' + fmtW(k5) +
           ' (kb. ' + Math.max(0, Math.round(k5 / 1000)) + ' kW-nyi fokozat). Kiégett egy fűtőszál, vagy késik a kapcsoló állapota?';
       }
       var verdict = stage == null && k5 == null ? 'Nincs adat' : stage == null ? 'A kapcsoló nem elérhető, csak a mérés látszik' :
-        k5 == null ? 'A kismegszakító nem elérhető, nem összevethető' : mismatch ? '' : 'Egyezik: a kapcsoló és a mérés is ' + (stage === 0 ? 'KI' : stage + ' kW');
+        k5 == null ? 'A kismegszakító nem elérhető, nem összevethető' : mismatch ? '' :
+        sNow.idleOn ? 'Most NEM fűt: a kapcsoló BE (' + stage + ' kW), de a kályha nem vesz fel áramot. Valószínűleg feltöltött, és a beépített szabályzója lekapcsolt; most nem fogyaszt.' :
+        'Egyezik: a kapcsoló és a mérés is ' + (stage === 0 ? 'KI' : stage + ' kW');
       var stageHist = rows ? sparkPath(seriesFrom(rows, 'P', null, now, 'stage'), now, 3, stage) : null;
-      var stoveFt = stage ? Math.round(stage * PRICE_B) : 0;
+      var stoveFt = Math.round(sNow.kw * PRICE_B), lit = sNow.lit;
       var steps = [1, 2, 3].map(function (n) {
-        return { n: String(n), label: n + ' kW', cls: 'cs-step' + (stage != null && n <= stage ? ' lit' : '') + (stage === n ? ' cur' : ''),
-          flame: stage != null && n <= stage ? '#ff7a1a' : '#e3dccd', flameIn: stage != null && n <= stage ? '#ffd23f' : '#f3efe6' };
+        return { n: String(n), label: n + ' kW', cls: 'cs-step' + (lit != null && n <= lit ? ' lit' : '') + (lit === n ? ' cur' : ''),
+          flame: lit != null && n <= lit ? '#ff7a1a' : '#e3dccd', flameIn: lit != null && n <= lit ? '#ffd23f' : '#f3efe6' };
       });
       var lo = totalB * PRICE_B / 1000 + totalA * PRICE_A1_IN / 1000, hi = totalB * PRICE_B / 1000 + totalA * PRICE_A1_OUT / 1000;
       return {
@@ -1874,9 +1922,9 @@
         srcLabel: st.live ? 'ÉLŐ' : 'DEMO', srcCls: 'dp-src ' + (st.live ? 'live' : 'demo'),
         total: fmtW(total), totalFt: any ? (Math.round(lo) === Math.round(hi) ? 'kb. ' + fmtNum(lo, 0) : fmtNum(lo, 0) + '-' + fmtNum(hi, 0)) + ' Ft/óra' : '',
         circ: circ,
-        stage: stage, stageBig: stage == null ? '?' : stage === 0 ? 'KI' : stage + ' kW',
-        stageLine: stage == null ? 'A kapcsoló nem elérhető' : stage === 0 ? 'Kikapcsolva · 0 kW' : stageSuffix(stage) + ' fokozat · ' + stage + ' kW · ~' + stoveFt + ' Ft/óra',
-        stageCls: 'cs-stage s' + (stage == null ? 'x' : stage),
+        stage: stage, sNow: sNow, stageBig: sNow.big,
+        stageLine: stage == null && k5 == null ? 'A kapcsoló nem elérhető' : sNow.line + (sNow.drawing ? ' · ~' + stoveFt + ' Ft/óra' : ''),
+        stageCls: 'cs-stage s' + (lit == null ? 'x' : lit),
         steps: steps, hasMismatch: !!mismatch, mismatch: mismatch, verdict: verdict, verdictOk: !mismatch && stage != null && k5 != null,
         hasStageHist: !!stageHist, stageHist: stageHist || '',
         histNote: histNote, hasHistNote: !!histNote,
@@ -1901,10 +1949,10 @@
       var stove = {
         big: cons.stageBig, bigCls: cons.stageCls.replace('cs-stage', 'ov-stage'),
         line: cons.stageLine, w: cons.k5 == null ? 'kályhakör: --' : 'mért ' + fmtW(cons.k5),
-        ft: stage ? '~' + cons.stoveFt + ' Ft/óra' : stage === 0 ? '0 Ft/óra' : '',
-        pips: [1, 2, 3].map(function (n) { var on = stage != null && n <= stage; return { cls: 'ov-pip' + (on ? ' on' : ''), flame: on ? '#ff7a1a' : '#e3dccd' }; }),
+        ft: cons.sNow.drawing ? '~' + cons.stoveFt + ' Ft/óra' : cons.sNow.lit === 0 ? 'most 0 Ft/óra' : '',
+        pips: [1, 2, 3].map(function (n) { var on = cons.sNow.lit != null && n <= cons.sNow.lit; return { cls: 'ov-pip' + (on ? ' on' : ''), flame: on ? '#ff7a1a' : '#e3dccd' }; }),
         hasMismatch: cons.hasMismatch, mismatch: cons.mismatch, pick: pick('P'),
-        sw: stage == null ? 'nem elérhető' : stage === 0 ? 'KI' : stageSuffix(stage) + ' fokozat · ' + stage + ' kW',
+        sw: stage == null ? 'nem elérhető' : stage === 0 ? 'KI' : 'BE, ' + stageSuffix(stage) + ' fokozat (' + stage + ' kW)',
         br: cons.k5 == null ? 'nem elérhető' : 'mért ' + fmtW(cons.k5),
         hasVerdict: !!cons.verdict, verdict: cons.verdict, verdictCls: 'ov-vd' + (cons.verdictOk ? ' ok' : '')
       };
@@ -1958,11 +2006,11 @@
       });
       var motion = mvLast ? {
         big: durHM(now - mvLast.ms), sub: (mvLast.open ? 'nyitás: ' : 'csukás: ') + mvLast.name.toLowerCase() + ', ' + dayTime(mvLast.ms, now),
-        tip: 'Utolsó mozgás a lakásban: ' + mvLast.name + ' ' + (mvLast.open ? 'kinyílt' : 'becsukódott') + ' ' + dayTime(mvLast.ms, now) + ' (' + durHM(now - mvLast.ms) + ' ezelőtt). Csak a helyszíni érzékelők (ajtók, ablakok) számítanak.',
+        tip: 'Utolsó mozgás a lakásban: ' + mvLast.name + ' ' + (mvLast.open ? 'kinyílt' : 'becsukódott') + ' ' + dayTime(mvLast.ms, now) + ' (' + durHM(now - mvLast.ms) + ' ezelőtt). Csak a helyszíni érzékelők (ajtók, ablakok) számítanak. Az adatgyűjtő 10 percenként olvassa az állapotot: egy 10 percen belül kinyitott és becsukott ajtó (pl. egy gyors be- vagy kilépés) nem látszik.',
         cls: 'chip mvchip' + (now - mvLast.ms < 30 * 60000 ? ' fresh' : ''), pick: pick(doorRows.filter(function (d) { return d.name === mvLast.name; })[0].id)
       } : {
         big: mvOldest ? '>' + durHM(now - mvOldest.ms) : '--', sub: mvOldest ? 'nincs mozgás ' + dayTime(mvOldest.ms, now) + ' óta' : 'nincs adat',
-        tip: 'Az ajtók és ablakok előzményében nincs váltás.', cls: 'chip mvchip', pick: function () {}
+        tip: 'Az ajtók és ablakok előzményében nincs rögzített váltás. Az adatgyűjtő 10 percenként olvassa az állapotot: egy 10 percen belül kinyitott és becsukott ajtó nem látszik.', cls: 'chip mvchip', pick: function () {}
       };
       var temps = OV_TEMPS.map(function (t) {
         var c = by[t.id], tv = c && c.online !== false ? c.temp : null, d = src[t.id];
