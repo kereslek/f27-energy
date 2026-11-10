@@ -1,0 +1,61 @@
+name: Tuya-napló próba
+
+# Kézzel indítható: Actions > Tuya-napló próba > Run workflow.
+# Csak olvas: minden párosított eszköz Tuya-naplója (az utolsó 7 nap minden jelentése:
+# nyitás, csukás, kapcsolás, számlálóállás) és a kismegszakítók Tuya napi fogyasztási
+# statisztikája, összevetve az adatgyűjtő Supabase-adataival (f27/tuyalog.py).
+# A log publikus: csak darabszámok és egyezési arányok. A teljes eredmény TITKOSÍTVA
+# kerül a data/tuyalog.json.enc fájlba.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Napló: hány nap visszamenőleg (a Tuya ingyenes naplója kb. 7 napot őriz)"
+        default: "7"
+      stat_days:
+        description: "Napi fogyasztási statisztika: hány nap visszamenőleg"
+        default: "60"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-write
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Függőségek
+        run: pip install -r requirements.txt
+      - name: Napló és statisztika lekérése, egyeztetés
+        env:
+          TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
+          TUYA_ACCESS_SECRET: ${{ secrets.TUYA_ACCESS_SECRET }}
+          TUYA_ENDPOINT: ${{ secrets.TUYA_ENDPOINT }}
+          TUYA_UID: ${{ secrets.TUYA_UID }}
+          F27_DATA_PASSWORD: ${{ secrets.F27_DATA_PASSWORD }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          TUYALOG_DAYS: ${{ inputs.days }}
+          TUYALOG_STAT_DAYS: ${{ inputs.stat_days }}
+        run: python -m f27.tuyalog
+      - name: Commit (csak titkosított fájl)
+        run: |
+          git config user.name "f27-bot"
+          git config user.email "f27-bot@users.noreply.github.com"
+          git add data/tuyalog.json.enc
+          if git diff --cached --quiet; then
+            echo "Nincs változás."
+          else
+            git commit -m "data: Tuya-napló próba $(date -u +%Y-%m-%dT%H:%MZ)"
+            git pull --rebase -q
+            git push
+          fi
