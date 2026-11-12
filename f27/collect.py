@@ -45,8 +45,11 @@ from .weather import collect_weather
 BUDAPEST = ZoneInfo("Europe/Budapest")
 HEARTBEAT = timedelta(minutes=60)
 POWER_DELTA_W = 25
-ENERGY_CODES = ("total_forward_energy", "forward_energy_total", "add_ele")
-DEFAULT_SCALE = {"total_forward_energy": 2, "forward_energy_total": 2, "add_ele": 3, "cur_power": 1}
+# Halmozott (kumulatív) fogyasztásszámlálók. Az add_ele NEM ilyen: a Tuya-napló szerint jelentésenkénti
+# növekmény, ezért a napi energia ezeknél a Tuya-naplóból jön (history_rows), nem a számláló különbségéből.
+ENERGY_CODES = ("total_forward_energy", "forward_energy_total")
+DEFAULT_SCALE = {"total_forward_energy": 2, "forward_energy_total": 2, "add_ele": 3, "cur_power": 1,
+                 "va_temperature": 1, "temp_current": 1, "va_humidity": 0, "humidity_value": 0}
 # Ezek változása önmagában nem ok új sorra (zaj, vagy a napi energia kezeli).
 SIG_IGNORE = {"cur_voltage", "cur_current", "phase_a", "phase_b", "phase_c",
               "total_forward_energy", "forward_energy_total", "add_ele", "reverse_energy_total"}
@@ -179,7 +182,8 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
     cache = {} if cache is None else cache
     stats = {"devices": 0, "received": 0, "written": 0, "unchanged": 0, "energy": 0,
              "energy_skipped": 0, "anomalies": 0, "errors": 0, "tuya_calls": 0, "notes": [],
-             "power_fixed": 0, "log_events": 0, "log_calls": 0, "log_errors": 0}
+             "power_fixed": 0, "log_events": 0, "log_calls": 0, "log_errors": 0,
+             "hist_rows": 0, "hist_hours": 0, "hist_days": 0, "hist_calls": 0, "hist_errors": 0, "pruned": 0}
 
     try:
         devs = sb.select("devices", "pink,role,tuya_device_id,meta")
@@ -239,8 +243,17 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
     sb.insert("device_status", sorted(rows, key=lambda r: r["ts"]))
     stats["written"] = len(rows)
 
-    # Napi energia a kismegszakítókhoz.
-    breakers = [d for d in devs if d.get("role") == "breaker" and "_status" in d]
+    # Előzmények a Tuya-naplóból (kismegszakítók, hőmérők): nyers sorok, órás és napi összesítő.
+    calls1 = client.calls
+    try:
+        history_rows(client, sb, devs, now, cache, stats)
+    except (TuyaError, SupabaseError):
+        stats["hist_errors"] += 1
+    stats["hist_calls"] = client.calls - calls1
+
+    # Napi energia a kismegszakítókhoz (csak halmozott számlálónál; az add_ele-s köröket fent a napló adja).
+    log_energy = (cache.get("hist") or {}).get("log_energy") or {}
+    breakers = [d for d in devs if d.get("role") == "breaker" and "_status" in d and d["pink"] not in log_energy]
     today = now.astimezone(BUDAPEST).date().isoformat()
     if breakers:
         pinks = ",".join(sorted(d["pink"] for d in breakers))
@@ -271,6 +284,7 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
 CONTACT_CODES = ("doorcontact_state", "contact_state")
 LOG_BACKFILL = timedelta(days=7)      # első alkalommal ennyit töltünk vissza (a Tuya ingyenes naplója kb. ennyi)
 LOG_MAX_PAGES = 5
+LOG_PAUSE = 0.4                       # mp a napló-lapok között (a Tuya a sűrű lekérdezést elutasítja)
 
 
 def _bool(v):
@@ -311,7 +325,7 @@ def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, s
     for d in need:
         pink, st = d["pink"], d["_status"]
         upto = max(lc.get(pink, {}).get("upto", 0), hwm.get(pink, 0), floor_ms)
-        res = fetch_logs(client, d["tuya_device_id"], upto + 1, now_ms, LOG_MAX_PAGES, pause=0.3)
+        res = fetch_logs(client, d["tuya_device_id"], upto + 1, now_ms, LOG_MAX_PAGES, pause=LOG_PAUSE)
         if res["error"]:
             stats["log_errors"] += 1
             if res["error"].startswith("40000309"):      # túl sűrű lekérdezés: ebben a körben elég
@@ -332,6 +346,168 @@ def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, s
     return out
 
 
+HIST_CODES = {"breaker": ("add_ele", "cur_power", "switch"),
+              "thermo": ("va_temperature", "temp_current", "va_humidity", "humidity_value")}
+HIST_BACKFILL = timedelta(days=7)          # első alkalommal ennyit (a Tuya ingyenes naplója kb. ennyit őriz)
+HIST_WINDOW_MS = 24 * 3600 * 1000          # kezdő ablak; eszközönként alkalmazkodik (sűrűnél fele, ritkánál dupla)
+HIST_WINDOW_MIN, HIST_WINDOW_MAX = 30 * 60 * 1000, 7 * 24 * 3600 * 1000
+HIST_PAGE_BUDGET = 40                      # lapok egy körben; ami kimarad, a következő kör pótolja
+HIST_PAGES_PER_CALL = 10                   # egy ablak legfeljebb ennyi lap (1000 bejegyzés); több: felezés
+RAW_KEEP = timedelta(days=90)              # a nyers sorok (device_status, tuya_log) ennyi ideig maradnak
+
+
+def _num(v):
+    if isinstance(v, bool):
+        return 1.0 if v else 0.0
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        s = str(v).strip().lower()
+        return 1.0 if s == "true" else 0.0 if s == "false" else None
+
+
+def _hour(ms: int) -> datetime:
+    t = datetime.fromtimestamp(ms / 1000, timezone.utc)
+    return t.replace(minute=0, second=0, microsecond=0)
+
+
+def _paged(sb, table: str, columns: str, **filters) -> list[dict]:
+    out: list[dict] = []
+    for page in range(100):
+        rows = sb.select(table, columns, limit="1000", offset=str(page * 1000), **filters)
+        out.extend(rows)
+        if len(rows) < 1000:
+            return out
+    return out
+
+
+def hourly_metrics(pink: str, role: str, rows: list[dict], meta: dict | None) -> dict:
+    """Egy óra összesítője a tuya_log soraiból. Kismegszakító: kWh (az add_ele növekmények
+    összege) és csúcsteljesítmény; hőmérő: hőmérséklet átlag/min/max, páratartalom átlag."""
+    out = {"n": len(rows)}
+    if role == "breaker":
+        inc = [_num(r["value"]) for r in rows if r["code"] == "add_ele"]
+        pw = [_num(r["value"]) for r in rows if r["code"] == "cur_power"]
+        out["kwh"] = round(sum(x for x in inc if x and x > 0) / 10 ** scale_of(meta, "add_ele"), 4)
+        pw = [x for x in pw if x is not None]
+        out["w_max"] = round(max(pw) / 10 ** scale_of(meta, "cur_power"), 1) if pw else None
+    else:
+        t = [_num(r["value"]) / 10 ** scale_of(meta, r["code"]) for r in rows
+             if r["code"] in ("va_temperature", "temp_current") and _num(r["value"]) is not None]
+        h = [_num(r["value"]) / 10 ** scale_of(meta, r["code"]) for r in rows
+             if r["code"] in ("va_humidity", "humidity_value") and _num(r["value"]) is not None]
+        if t:
+            out.update(temp_avg=round(sum(t) / len(t), 2), temp_min=round(min(t), 2), temp_max=round(max(t), 2))
+        if h:
+            out["hum_avg"] = round(sum(h) / len(h), 2)
+    return out
+
+
+def history_rows(client, sb, devs: list[dict], now: datetime, cache: dict, stats: dict) -> None:
+    """A kismegszakítók és hőmérők Tuya-naplója a tuya_log táblába, abból órás (metrics_hourly) és
+    napi (energy_daily, source = 'log') összesítő, és a 90 napnál régebbi nyers sorok törlése.
+
+    Egy futás első körében fut, és addig ismétlődik, amíg a lemaradás (pl. az első 7 napos
+    visszatöltés) el nem fogy. Időablakonként halad előre (6 óra, sűrű körnél kisebb), így a Tuya
+    csökkenő sorrendű lapozása mellett sem marad rés. Ha a 007-es migráció még nincs lefuttatva,
+    csendben kimarad (megjegyzéssel a Summary-ban)."""
+    hc = cache.setdefault("hist", {})
+    if hc.get("done") and not hc.get("pending"):
+        return
+    targets = [d for d in devs if d.get("role") in HIST_CODES and "_status" in d]
+    if not targets:
+        return
+    try:
+        sb.select("tuya_log", "pink", limit="1")
+    except SupabaseError as e:
+        if e.code in ("PGRST205", "42P01", "PGRST204", "42703"):
+            stats["notes"].append("Előzmények kihagyva: futtasd a supabase/migrations/007_history.sql-t.")
+            hc["done"] = True
+            return
+        raise
+    if not hc.get("done"):                          # futásonként egyszer: a régi nyers sorok törlése
+        cut = (now - RAW_KEEP).isoformat()
+        sb.delete("tuya_log", ts=f"lt.{cut}")
+        sb.delete("device_status", ts=f"lt.{cut}", **{"status->>_src": "is.null"})
+    hc["done"], hc["pending"] = True, False
+    upto = hc.setdefault("upto", {})
+    now_ms = int(now.timestamp() * 1000)
+    # az első visszatöltés budapesti éjféltől indul, hogy az első nap is teljes legyen
+    first = (now - HIST_BACKFILL).astimezone(BUDAPEST)
+    floor_ms = int(datetime.combine(first.date() + timedelta(days=1), datetime.min.time(), BUDAPEST).timestamp() * 1000)
+    budget = HIST_PAGE_BUDGET
+    for d in targets:
+        if budget < HIST_PAGES_PER_CALL:
+            hc["pending"] = True
+            break
+        pink, role, meta = d["pink"], d["role"], d.get("meta") or {}
+        if pink not in upto:
+            last = sb.select("tuya_log", "ts", pink=f"eq.{pink}", order="ts.desc", limit="1")
+            upto[pink] = max(int(parse_ts(last[0]["ts"]).timestamp() * 1000) if last else 0, floor_ms - 1)
+        codes = HIST_CODES[role]
+        wins = hc.setdefault("win", {})
+        start, win, new = upto[pink] + 1, wins.get(pink, HIST_WINDOW_MS), []
+        while start < now_ms:
+            if budget < HIST_PAGES_PER_CALL:             # a keret elfogyott: a következő kör folytatja
+                hc["pending"] = True
+                break
+            end = min(start + win, now_ms)
+            res = fetch_logs(client, d["tuya_device_id"], start, end, HIST_PAGES_PER_CALL, pause=LOG_PAUSE)
+            budget -= res["pages"]
+            if res["error"]:
+                stats["hist_errors"] += 1
+                if res["error"].startswith("40000309"):  # túl sűrű: most elég, a következő kör folytatja
+                    budget = 0
+                break
+            if res["truncated"]:                         # túl sűrű ablak: kisebb ablakkal újra
+                if win > HIST_WINDOW_MIN:
+                    win = max(HIST_WINDOW_MIN, win // 2)
+                    continue
+                hc["pending"] = True
+                break
+            if res["pages"] <= 2 and end < now_ms:       # ritka: a következő ablak lehet nagyobb
+                win = min(HIST_WINDOW_MAX, win * 2)
+            for e in res["logs"]:
+                if e.get("code") in codes and e.get("event_time") is not None:
+                    new.append({"pink": pink, "ts": datetime.fromtimestamp(int(e["event_time"]) / 1000, timezone.utc).isoformat(),
+                                "code": e["code"], "value": _num(e.get("value"))})
+            upto[pink], start = end, end + 1
+        wins[pink] = win
+        if start < now_ms:
+            hc["pending"] = True
+        if not new:
+            continue
+        sb.upsert("tuya_log", new, on_conflict="pink,ts,code")
+        stats["hist_rows"] += len(new)
+        # az érintett órák újraszámolása a tárolt sorokból (egy óra több körből is jöhet)
+        hours = sorted({_hour(int(parse_ts(r["ts"]).timestamp() * 1000)) for r in new})
+        rows = _paged(sb, "tuya_log", "ts,code,value", pink=f"eq.{pink}",
+                      ts=f"gte.{hours[0].isoformat()}", order="ts.asc")
+        lim = hours[-1] + timedelta(hours=1)
+        by_hour: dict[datetime, list[dict]] = {}
+        for r in rows:
+            t = parse_ts(r["ts"])
+            if t < lim:
+                by_hour.setdefault(t.replace(minute=0, second=0, microsecond=0), []).append(r)
+        mrows = [dict({"pink": pink, "hour": h.isoformat()}, **hourly_metrics(pink, role, by_hour.get(h, []), meta))
+                 for h in hours]
+        sb.upsert("metrics_hourly", mrows, on_conflict="pink,hour")
+        stats["hist_hours"] += len(mrows)
+        if role != "breaker":
+            continue
+        # napi energia: a budapesti nap óráinak összege
+        days = sorted({h.astimezone(BUDAPEST).date() for h in hours})
+        d0 = datetime.combine(days[0], datetime.min.time(), BUDAPEST).astimezone(timezone.utc)
+        hm = _paged(sb, "metrics_hourly", "hour,kwh", pink=f"eq.{pink}", hour=f"gte.{d0.isoformat()}")
+        erows = []
+        for day in days:
+            tot = sum(float(r["kwh"] or 0) for r in hm if parse_ts(r["hour"]).astimezone(BUDAPEST).date() == day)
+            erows.append({"day": day.isoformat(), "pink": pink, "kwh": round(tot, 3), "source": "log"})
+        sb.upsert("energy_daily", erows, on_conflict="day,pink")
+        stats["hist_days"] += len(erows)
+        hc.setdefault("log_energy", {})[pink] = True    # ennél a körnél a régi számlálós ág ne írjon
+
+
 def report(stats: dict) -> str:
     lines = [
         "| Mérőszám | Érték |", "|---|---|",
@@ -348,6 +524,8 @@ def report(stats: dict) -> str:
         f"| Ajtó/ablak esemény a Tuya-naplóból | {stats.get('log_events', 0)} |",
         f"| Napló-lekérés (Tuya-hívás) | {stats.get('log_calls', 0)} |",
         f"| Napló-hiba | {stats.get('log_errors', 0)} |",
+        f"| Előzmény: új naplósor / óra / nap (kismegszakító, hőmérő) | {stats.get('hist_rows', 0)} / {stats.get('hist_hours', 0)} / {stats.get('hist_days', 0)} |",
+        f"| Előzmény: Tuya-hívás / hiba | {stats.get('hist_calls', 0)} / {stats.get('hist_errors', 0)} |",
     ]
     if stats["notes"]:
         lines += [""] + [f"- {n}" for n in stats["notes"]]

@@ -145,11 +145,36 @@ def tuya_server(devices):
     return s
 
 
-def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
+def _filt(rows, q, cols):
+    """Egyszerű PostgREST-szűrés a fake-hez: eq., gte., lt., in.(), is.null, order, offset, limit."""
+    for c in cols:
+        v = q.get(c, "")
+        if v.startswith("eq."):
+            rows = [r for r in rows if str(r.get(c)) == v[3:]]
+        elif v.startswith("gte."):
+            rows = [r for r in rows if str(r.get(c)) >= v[4:]]
+        elif v.startswith("lt."):
+            rows = [r for r in rows if str(r.get(c)) < v[3:]]
+        elif v.startswith("in.("):
+            rows = [r for r in rows if str(r.get(c)) in v[4:-1].split(",")]
+    o = q.get("order", "")
+    if o:
+        col, _, d = o.partition(".")
+        rows = sorted(rows, key=lambda r: str(r.get(col)), reverse=d == "desc")
+    off = int(q.get("offset", 0))
+    rows = rows[off:]
+    if "limit" in q:
+        rows = rows[: int(q["limit"])]
+    return rows
+
+
+def supa_server(secret="sb_secret_TEST", missing=(), no_tables=(), history=False):
     """Memóriában tartott PostgREST-utánzat. missing: hiányzó oszlopok (pl. 'meta'),
     no_tables: hiányzó táblák (pl. 'weather_hourly')."""
     db = {"devices": {}, "device_status": [], "energy_daily": {}, "weather_hourly": {}, "bookings": {},
           "alert_settings": {}, "alert_state": {}, "alert_log": []}
+    if history:                                  # a 007-es migráció táblái
+        db.update(tuya_log={}, metrics_hourly={}, energy_app_history=[])
     log = {"bad_auth": 0, "requests": []}
 
     def latest():
@@ -221,6 +246,8 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                 rows = list(db["device_status"])
                 if q.get("status->>_src", "").startswith("eq."):
                     rows = [r for r in rows if (r.get("status") or {}).get("_src") == q["status->>_src"][3:]]
+                if q.get("pink", "").startswith("eq."):
+                    rows = [r for r in rows if r["pink"] == q["pink"][3:]]
                 if q.get("ts", "").startswith("gte."):
                     rows = [r for r in rows if r["ts"] >= q["ts"][4:]]
                 if q.get("order") == "ts.desc":
@@ -249,6 +276,11 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                     rows = rows[: int(q["limit"])]
             elif table == "weather_daily" and "weather_daily" in db:
                 rows = [r for r in db["weather_daily"] if r["day"] == q.get("day", "eq.")[3:]]
+            elif table in ("tuya_log", "metrics_hourly", "energy_app_history") and table in db:
+                src = db[table].values() if isinstance(db[table], dict) else db[table]
+                rows = _filt(list(src), q, ("pink", "ts", "hour", "period", "period_start"))
+            elif table == "energy_daily" and ("gte." in q.get("day", "") or "offset" in q):
+                rows = _filt(list(db["energy_daily"].values()), q, ("day", "pink"))
             elif table == "energy_daily":
                 rows = list(db["energy_daily"].values())
                 if q.get("day", "").startswith("eq."):
@@ -304,7 +336,15 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
             elif table == "energy_daily":
                 assert q.get("on_conflict") == "day,pink"
                 for r in rows:
-                    db["energy_daily"][(r["day"], r["pink"])] = r
+                    db["energy_daily"][(r["day"], r["pink"])] = dict(db["energy_daily"].get((r["day"], r["pink"]), {}), **r)
+            elif table == "tuya_log" and "tuya_log" in db:
+                assert q.get("on_conflict") == "pink,ts,code"
+                for r in rows:
+                    db["tuya_log"][(r["pink"], r["ts"], r["code"])] = r
+            elif table == "metrics_hourly" and "metrics_hourly" in db:
+                assert q.get("on_conflict") == "pink,hour"
+                for r in rows:
+                    db["metrics_hourly"][(r["pink"], r["hour"])] = dict(r)
             self.send_response(201)
             self.end_headers()
 
@@ -317,6 +357,19 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
             log["requests"].append((table, "DELETE"))
             if table in no_tables:
                 return self._json(404, {"code": "PGRST205"})
+            if table == "tuya_log" and "tuya_log" in db:
+                assert q.get("ts", "").startswith("lt.")
+                for k, r in list(db["tuya_log"].items()):
+                    if r["ts"] < q["ts"][3:]:
+                        del db["tuya_log"][k]
+                self.send_response(204)
+                return self.end_headers()
+            if table == "device_status":
+                assert q.get("ts", "").startswith("lt.") and q.get("status->>_src") == "is.null"
+                db["device_status"] = [r for r in db["device_status"]
+                                       if not (r["ts"] < q["ts"][3:] and not (r.get("status") or {}).get("_src"))]
+                self.send_response(204)
+                return self.end_headers()
             assert table == "bookings" and q, "csak szűrős törlés"
             for rid, r in list(db["bookings"].items()):
                 ok = True
@@ -745,6 +798,94 @@ class TestContactLogs(unittest.TestCase):
         text = C.report(s)
         self.assertIn("| Ajtó/ablak esemény a Tuya-naplóból | 2 |", text)
         for secret in ("devid005", "09:30", "09:31", (T0 - timedelta(minutes=30)).isoformat()[:16]):
+            self.assertNotIn(secret, text)
+
+
+class TestHistory(unittest.TestCase):
+    """Kismegszakítók és hőmérők a Tuya-naplóból: nyers sorok (tuya_log), órás összesítő
+    (metrics_hourly), napi energia (energy_daily, source = 'log'), 90 napos megőrzés."""
+    X5, T1 = "devid013secret", "devid001secret"
+
+    def setUp(self):
+        self.f = fleet()
+        self.tuya = tuya_server(self.f)
+        self.sb = supa_server(history=True)
+        res = D.match_devices(self.f, CFG["devices"], CFG["role_categories"])
+        specs = {d["id"]: {"status": SPEC.get(d["category"], [])} for d in res.mapping.values()}
+        D.push_devices(SupabaseRest(self.sb.url, self.sb.secret), CFG["devices"], res, specs)
+        self.budget, C.HIST_PAGE_BUDGET = C.HIST_PAGE_BUDGET, 500
+        self.pause, C.LOG_PAUSE = C.LOG_PAUSE, 0
+
+    def tearDown(self):
+        C.HIST_PAGE_BUDGET, C.LOG_PAUSE = self.budget, self.pause
+        self.tuya.close()
+        self.sb.close()
+
+    def ev(self, code, value, when):
+        return {"code": code, "value": str(value), "event_time": int(when.timestamp() * 1000)}
+
+    def run_at(self, when, cache=None):
+        return C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret),
+                         now=when, cache={} if cache is None else cache)
+
+    def test_hourly_and_daily_from_log(self):
+        h = datetime(2026, 11, 7, 10, 0, tzinfo=timezone.utc)            # 11:00 Budapest, nov. 7.
+        self.tuya.state["logs"][self.X5] = [
+            self.ev("add_ele", 500, h + timedelta(minutes=15)), self.ev("add_ele", 550, h + timedelta(minutes=45)),
+            self.ev("cur_power", 9950, h + timedelta(minutes=20)), self.ev("cur_voltage", 2301, h + timedelta(minutes=20)),
+            self.ev("add_ele", 300, datetime(2026, 11, 8, 8, 30, tzinfo=timezone.utc)),
+            self.ev("add_ele", 999, datetime(2026, 10, 25, 8, 0, tzinfo=timezone.utc)),   # a 7 napos ablakon kívül
+        ]
+        self.tuya.state["logs"][self.T1] = [
+            self.ev("va_temperature", 214, h + timedelta(minutes=5)), self.ev("va_temperature", 220, h + timedelta(minutes=35)),
+            self.ev("va_humidity", 41, h + timedelta(minutes=35))]
+        s = self.run_at(T0)
+        db = self.sb.db
+        self.assertEqual({k[2] for k in db["tuya_log"] if k[0] == "X5"}, {"add_ele", "cur_power"})   # feszültség nem kell
+        m = db["metrics_hourly"][("X5", h.isoformat())]
+        self.assertEqual((m["kwh"], m["w_max"], m["n"]), (1.05, 995.0, 3))
+        t = db["metrics_hourly"][("1", h.isoformat())]
+        self.assertEqual((t["temp_avg"], t["temp_min"], t["temp_max"], t["hum_avg"]), (21.7, 21.4, 22.0, 41.0))
+        self.assertEqual(db["energy_daily"][("2026-11-07", "X5")]["kwh"], 1.05)
+        self.assertEqual(db["energy_daily"][("2026-11-07", "X5")]["source"], "log")
+        self.assertEqual(db["energy_daily"][("2026-11-08", "X5")]["kwh"], 0.3)       # a számlálós ág nem írta felül
+        self.assertNotIn(("2026-10-25", "X5"), db["energy_daily"])
+        self.assertEqual((s["hist_rows"], s["hist_errors"]), (7, 0))
+        # új futás: csak az utolsó naplósor utániakat kéri, nincs duplikálás
+        n = len(db["tuya_log"])
+        self.tuya.state["logs"][self.X5].append(self.ev("add_ele", 200, T0 + timedelta(minutes=5)))
+        s = self.run_at(T0 + timedelta(minutes=10))
+        self.assertEqual((s["hist_rows"], len(db["tuya_log"])), (1, n + 1))
+        self.assertEqual(db["energy_daily"][("2026-11-08", "X5")]["kwh"], 0.5)
+
+    def test_dense_window_is_split(self):
+        base = datetime(2026, 11, 7, 0, 0, tzinfo=timezone.utc)
+        self.tuya.state["logs"][self.X5] = [self.ev("cur_power", 9950 + i % 3, base + timedelta(minutes=i)) for i in range(1500)]
+        s = self.run_at(T0)
+        self.assertEqual(sum(1 for k in self.sb.db["tuya_log"] if k[0] == "X5"), 1500)   # felezve, rés nélkül
+        self.assertEqual(s["hist_errors"], 0)
+
+    def test_prune_keeps_door_events(self):
+        old = (T0 - timedelta(days=100)).isoformat()
+        self.sb.db["tuya_log"][("X5", old, "add_ele")] = {"pink": "X5", "ts": old, "code": "add_ele", "value": 1}
+        self.sb.db["device_status"] += [{"pink": "X5", "ts": old, "online": True, "status": {"switch": True}},
+                                        {"pink": "5", "ts": old, "online": True, "status": {"doorcontact_state": True, "_src": "log"}}]
+        s = self.run_at(T0)
+        self.assertNotIn(("X5", old, "add_ele"), self.sb.db["tuya_log"])
+        olds = [r for r in self.sb.db["device_status"] if r["ts"] == old]
+        self.assertEqual([r["pink"] for r in olds], ["5"])                            # az ajtóesemény marad
+
+    def test_missing_migration_is_a_note(self):
+        self.sb.db.pop("tuya_log")
+        s = self.run_at(T0)
+        self.assertIn("007_history.sql", "\n".join(s["notes"]))
+        self.assertEqual(s["written"], 17)
+
+    def test_report_counts_only(self):
+        self.tuya.state["logs"][self.X5] = [self.ev("add_ele", 1234, T0 - timedelta(hours=2))]
+        text = C.report(self.run_at(T0))
+        self.assertIn("| Előzmény: új naplósor / óra / nap (kismegszakító, hőmérő) | 1 / 1 / 1 |", text)
+        for secret in ("1234", "1,234", "devid013", "08:00"):
             self.assertNotIn(secret, text)
 
 

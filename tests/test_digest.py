@@ -184,7 +184,84 @@ class TestDigest(unittest.TestCase):
         self.sender = lambda msg, environ: A.send_email(msg, environ, smtp=mod)
         self.run_at(AT(20, 0))
         self.assertEqual(sent[0]["Subject"], "F27 napi összefoglaló, nov. 8. vasárnap")
-        self.assertIn("TEENDŐK", sent[0].get_content())
+        self.assertIn("TEENDŐK", sent[0].get_body(("plain",)).get_content())
+        html_part = sent[0].get_body(("html",)).get_content()
+        self.assertIn("monospace", html_part)                     # fix szélesség: a táblázat nem csúszik szét
+        self.assertIn("F27://energy-node", html_part)
+
+
+class TestDigestStats(unittest.TestCase):
+    """Az esti levél statisztikája: ASCII-táblázat, ugyanaddig az óráig számolt összevetés,
+    órás oszlopsor, hőmérők, ajtónyitások, előző hónap az app előzményéből, ASCII-kép, HTML."""
+
+    def setUp(self):
+        self.sb = supa_server(history=True)
+        for p in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "P", "X5", "X7", "X8", "X9", "G"):
+            self.sb.db["devices"][p] = {"pink": p, "meta": None}
+        self.mails, self.boom = [], None
+        mh = self.sb.db["metrics_hourly"]
+        # 8 nap kályha: óránként 1,05 kWh, ma 20:00-ig (Budapest), tegnap ugyanígy, de ma 0-5 óra között 0
+        for k in range(0, 9):
+            day0 = datetime(2026, 11, 8, 0, 0, tzinfo=timezone.utc) - timedelta(days=k, hours=1)   # budapesti éjfél
+            for hh in range(24):
+                t = day0 + timedelta(hours=hh)
+                if t >= AT(20, 0):
+                    break
+                kwh = 0.0 if (k == 0 and hh < 6) else 1.05
+                mh[("X5", t.isoformat())] = {"pink": "X5", "hour": t.isoformat(), "kwh": kwh, "w_max": 1000.0}
+                mh[("X7", t.isoformat())] = {"pink": "X7", "hour": t.isoformat(), "kwh": 0.1, "w_max": 1800.0}
+                if k <= 1:
+                    mh[("2", t.isoformat())] = {"pink": "2", "hour": t.isoformat(), "temp_avg": 21.0 + k, "temp_min": 20.5 + k,
+                                                "temp_max": 21.5 + k, "hum_avg": 45}
+        self.sb.db["energy_app_history"].append({"pink": "X5", "period": "month", "period_start": "2026-10-01T00:00:00+02:00",
+                                                 "kwh": 310.0, "exact": False})
+        self.door = [{"pink": "5", "ts": AT(h, 0).isoformat(), "online": True, "status": {"doorcontact_state": o, "_src": "log"}}
+                     for h, o in ((9, True), (10, False), (15, True), (16, False))]
+
+    tearDown = TestDigest.tearDown
+    sender = TestDigest.sender
+
+    def run_at(self, now, environ=None, **o):
+        self.sb.db["device_status"] = devices(now, **o) + self.door
+        n = len(self.mails)
+        r = DG.run_digest(SupabaseRest(self.sb.url, self.sb.secret), now=now,
+                          environ=ENV if environ is None else environ, sender=self.sender)
+        r["new"] = self.mails[n:]
+        return r
+
+    def test_stats_table_and_comparisons(self):
+        r = self.run_at(AT(20, 0))
+        body = r["new"][0]["email_body"]
+        lines = body.splitlines()
+        self.assertTrue(lines[0].startswith("  #####"))                                     # blokkbetűs F27 ENERGY
+        self.assertIn("  >> 01000110 00110010 00110111", body)
+        row = next(l for l in lines if l.startswith("| Kályha "))
+        cells = [c.strip() for c in row.strip("|").split("|")]
+        # ma 0-20 óra: 6 óra 0 + 14 óra 1,05 = 14,7; tegnap ugyaneddig 20 x 1,05 = 21,0; DoD -30 %
+        self.assertEqual(cells[:6], ["Kályha", "14,7", "21,0", "-30 %", "21,0", "-30 %"])
+        self.assertEqual(cells[7], "25,2")                                                  # tegnap egész nap
+        self.assertTrue(any(l.startswith("| ÖSSZESEN ") for l in lines))
+        spark = next(l for l in lines if l.startswith("  Kályha     |"))
+        self.assertEqual(spark[14:20], "      ")                                              # 0-5 óra: 0 kWh
+        self.assertEqual(spark[20:34], "@" * 14)
+        self.assertIn("| Nagy szoba ", body)
+        nagy = [c.strip() for c in next(l for l in lines if l.startswith("| Nagy szoba ")).strip("|").split("|")]
+        self.assertEqual(nagy[1:6], ["20,5", "21,0", "21,5", "22,0", "-1,0"])
+        self.assertIn("- Bejárati ajtó: ma 2 nyitás", body)
+        self.assertIn("  Kályha: most napi", body)                                            # előző hónap (app)
+        self.assertIn("- Hónap eddig kb.", body)
+        self.assertNotIn("\u2014", body)
+        self.assertNotIn("\u2013", body)
+        html_part = r["new"][0]["email_html"]
+        self.assertIn("monospace", html_part)
+        self.assertIn("#39ff14", html_part)
+        with open(__import__("os").environ.get("F27_DIGEST_PREVIEW", "/dev/null"), "w", encoding="utf-8") as f:
+            f.write(body)
+
+    def test_without_migration_note(self):
+        self.sb.db.pop("metrics_hourly")
+        body = self.run_at(AT(20, 0))["new"][0]["email_body"]
+        self.assertIn("nincs adat (metrics_hourly: futtasd a supabase/migrations/007_history.sql-t)", body)
 
 
 if __name__ == "__main__":

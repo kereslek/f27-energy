@@ -12,7 +12,11 @@ Tartalom (csak a levélben, név és cím nélkül):
   3. Holnap: érkezés és távozás a foglalási naptárból (bookings), csak dátum és idő.
   4. Mai fogyasztás: a 4 mért kör kWh-ja (energy_daily) becsült forinttal, és a mai átlagos
      külső hőmérséklet (weather_daily), ha van.
-  5. Az érzékelők mostani értéke és a térkép linkje.
+  5. Statisztika (f27.report_stats): ASCII-táblázat körönként (ma eddig, tegnap és 7/30 napos átlag
+     ugyanaddig az óráig, DoD, hónap eddig, Ft), havi előrejelzés, órás oszlopsor, hőmérők,
+     hőfokhíd és kályha-hatékonyság, bejárati ajtó nyitásai, előző hónap az app előzményéből.
+  6. Az érzékelők mostani értéke és a térkép linkje. A levél tetején ASCII-kép; a levél HTML
+     változata fix szélességű "terminál" betűvel megy, hogy a táblázat ne csússzon szét.
 
 A publikus logba csak ennyi kerül: "Napi összefoglaló: elküldve" / "nem kellett" / "hiba (Osztály)".
 """
@@ -25,6 +29,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, battery_of, context_lines,
                      email_ready, fmt_num, last_report, merge_config, parse_ts, send_email, snapshot,
                      stage_of, watts_of)
+from .report_stats import banner, build_stats, to_html
 from .supa import SupabaseError, SupabaseRest
 
 MONTHS = ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec.")
@@ -184,13 +189,18 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     if wx and wx[0].get("t_avg") is not None:
         out.append(f"- Kint ma átlagosan {fmt_num(float(wx[0]['t_avg']), 1)} °C")
 
+    # 4b. Statisztika: ASCII-táblázat, órás oszlopsor, összevetések (f27.report_stats)
+    stats, extra = build_stats(sb, now, _safe)
+    out += [""] + stats
+
     # 5. Érzékelők most + link
     out += ["", "ÉRZÉKELŐK MOST"] + [f"- {x}" for x in context_lines(snap, now)]
     out += ["", f"Térkép: {MAP_URL}", "",
             f"Ezt az F27 adatgyűjtő küldte {loc.strftime('%H:%M')}-kor (csak jelez, semmit nem kapcsol). "
             "Naponta legfeljebb egy ilyen levél jön; az azonnali riasztások pushon (ntfy) mennek. "
             "Beállítás: a térkép Riasztások panelje."]
-    return {"subject": f"F27 napi összefoglaló, {day_label(today)}", "email_body": "\n".join(out) + "\n"}
+    text = "\n".join(banner(now, extra) + [""] + out) + "\n"
+    return {"subject": f"F27 napi összefoglaló, {day_label(today)}", "email_body": text, "email_html": to_html(text)}
 
 
 def run_digest(sb: SupabaseRest, now: datetime | None = None, environ=None, sender=None) -> dict:

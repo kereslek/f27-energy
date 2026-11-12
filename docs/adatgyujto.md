@@ -25,6 +25,19 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
   folytatja, így nincs duplikálás. A Summary-ban csak darabszám: "Ajtó/ablak esemény a
   Tuya-naplóból", "Napló-lekérés", "Napló-hiba". Ha a Tuya túl sűrűnek találja a lekérdezést, az
   adott kör kihagyja a többit, a pillanatkép ettől még beíródik.
+- **Előzmények a Tuya-naplóból (kismegszakítók, hőmérők; `007_history.sql`):** futásonként egyszer
+  (és amíg a lemaradás tart, körönként) a 4 kismegszakító és a 4 hőmérő naplója a `tuya_log` táblába
+  (fogyasztás-növekmény `add_ele`, teljesítmény, hőmérséklet, páratartalom), abból órás összesítő a
+  `metrics_hourly`-be (kWh, csúcsteljesítmény, hőmérséklet átlag/min/max, pára), és napi energia az
+  `energy_daily`-be (`source = 'log'`). **Az `add_ele` jelentésenkénti növekmény, nem halmozott
+  számláló:** a napi kWh ezek összege (a Smart Life app is így számol). Az első alkalommal az elmúlt
+  7 napot tölti vissza budapesti éjféltől; eszközönként alkalmazkodó időablakkal halad (sűrű körnél
+  felez, ritkánál dupláz), így nincs rés. Megőrzés: a nyers sorok (`tuya_log`, `device_status`
+  pillanatképek) 90 napig maradnak, az ajtó/ablak események és az órás/napi összesítő örökre.
+  Ha a migráció még nincs lefuttatva, ez a lépés kimarad, a Summary jelzi.
+- **App-előzmény (`energy_app_history`):** a Smart Life app Electricity füléről kiolvasott múltbeli
+  napi/havi/éves értékek. Mérési adat: a betöltő SQL-t a tulaj futtatja az SQL Editorban, a publikus
+  repóba nem kerül.
 - **`weather_hourly`:** óránként egyszer (ha a legutóbbi lekérés 55 percnél régebbi) az Open-Meteo
   órás adatai a IX. kerületre (kerületi pontossággal): hőmérséklet, hőérzet, páratartalom, harmatpont,
   csapadék, felhőzet, szél, széllökés, napsugárzás (W/m²), időjáráskód. Egy lekérés az elmúlt 2 nap
@@ -68,11 +81,11 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
   `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `ALERT_EMAIL_TO`. Summary: "Napi összefoglaló: elküldve"
   / "nem kellett" / "hiba (...)". Táblát a `supabase/migrations/006_alerts.sql` hozza létre;
   amíg nincs lefuttatva, mindkét lépés kimarad. Beállítás: [`docs/riasztasok.md`](riasztasok.md).
-- **`energy_daily`:** a négy okos kismegszakító (X5 kályha, X7 bojler, X8 főzőlap, X9 klíma) napi kWh-ja, budapesti idő szerinti napokra bontva, a kismegszakító saját fogyasztásszámlálójából. Az első megfigyelés napján 0-ról indul.
+- **`energy_daily` (régi számlálós ág):** csak halmozott számlálót (`total_forward_energy`) jelentő kismegszakítónál; a mieink `add_ele`-t jelentenek, náluk a fenti napló-ág írja. A négy okos kismegszakító (X5 kályha, X7 bojler, X8 főzőlap, X9 klíma) napi kWh-ja, budapesti idő szerinti napokra bontva, a kismegszakító saját fogyasztásszámlálójából. Az első megfigyelés napján 0-ról indul.
 
 ## Tuya API-kvóta
 
-Egy futás szokásosan **2 Tuya API-hívás** (token + eszközlista, ami az állapotot és az online jelzőt is hozza). Napi 144 futással ez kb. **290 hívás/nap, kb. 8 700/hónap**. Ha egy párosított eszköz hiányzik a listából, +1 hívás jön. Az ajtó- és ablaknapló óránként legfeljebb 6 hívás (a futás első köre), utána csak tényleges jelentéskor 1-1: kb. **+3 000-5 000 hívás/hónap**.
+Egy futás szokásosan **2 Tuya API-hívás** (token + eszközlista, ami az állapotot és az online jelzőt is hozza). Napi 144 futással ez kb. **290 hívás/nap, kb. 8 700/hónap**. Ha egy párosított eszköz hiányzik a listából, +1 hívás jön. Az ajtó- és ablaknapló óránként legfeljebb 6 hívás (a futás első köre), utána csak tényleges jelentéskor 1-1: kb. **+3 000-5 000 hívás/hónap**. A kismegszakítók és hőmérők naplója futásonként kb. 8 hívás: kb. **+6 000 hívás/hónap** (az első, 7 napos visszatöltés néhány száz hívás, több körre elosztva).
 
 A havi keret a Tuya konzolban látszik: **platform.tuya.com > Cloud > Cloud Services > IoT Core**. Ha a próbaidő lejár, az adatgyűjtő piros lesz („subscription expired” jellegű hibával): ilyenkor ugyanott **Extend Trial Period**.
 

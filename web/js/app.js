@@ -697,6 +697,22 @@
   }
 
   // Energiaőr-tippek a foglaltságból. Mind csak javaslat: automatikus kapcsolás nincs.
+  // A bojler üresjárati fogyasztása a mérésből (energy_daily, Tuya-napló): az elmúlt 14 nap
+  // legcsendesebb teljes napja. Lekapcsolva a kihűlt vizet vissza kell fűteni, ezért a valódi
+  // megtakarítás ennek kb. 40-60 %-a. Mérés híján óvatos becslés.
+  var ENERGY_STATS = { boilerIdle: null, days: 0 };
+  function boilerSavingText(n) {
+    var idle = ENERGY_STATS.boilerIdle, k = Math.max(1, n || 1);
+    if (idle != null) {
+      var lo = Math.round(idle * 0.4 * PRICE_B / 10) * 10, hi = Math.round(idle * 0.6 * PRICE_B / 10) * 10;
+      return 'A mérés szerint a bojler üresjáratban, vízhasználat nélkül is kb. ' + fmtNum(idle, 1) + ' kWh-t fogyaszt naponta (a tartály hőveszteségét pótolja; az elmúlt ' +
+        ENERGY_STATS.days + ' nap legcsendesebb napja). Lekapcsolva a kihűlt vizet vissza kell fűteni, így a valódi megtakarítás kb. ' + lo + '-' + hi + ' Ft naponta' +
+        (k > 1 ? ' (' + k + ' napra kb. ' + fmtNum(lo * k, 0) + '-' + fmtNum(hi * k, 0) + ' Ft)' : '') + '.';
+    }
+    return 'A tartály hővesztesége miatt a bojler vízhasználat nélkül is fogyaszt; a pontos napi értéket néhány nap mérés után itt mutatjuk (becslés: kb. 50-100 Ft naponta' +
+      (k > 1 ? ', ' + k + ' napra kb. ' + 50 * k + '-' + 100 * k + ' Ft' : '') + ').';
+  }
+
   function bkTips(m, by, stage, season, add) {
     var now = m.now, today = m.today;
     var safe = ' Csak javaslat: automatikus kapcsolás nincs (a kályhához előbb kontaktor kell).';
@@ -729,8 +745,7 @@
       if (!(boilerOff && !g.from)) {
         add(soon ? 30 : 18, 'blue', 'k7', n ? 'Üres ' + (n > 1 ? 'napok' : 'nap') + ': ' + list : 'Most üres a lakás: bojler LE?',
           'A naptár szerint ' + (n ? list + ' üres a lakás' : 'most nincs vendég') + '. Kapcsold le a bojlert (7-es kör) ' + fromT + ', és kapcsold vissza ' + backT + '. ' +
-          'Őszintén: ez kevés pénz. A 120 literes tartály kb. 1,5 kWh-t veszít naponta, és a kihűlt vizet újra fel kell fűteni, így a valódi megtakarítás nagyjából 20-50 Ft naponta' +
-          (n > 1 ? ' (' + n + ' napra kb. ' + 20 * n + '-' + 50 * n + ' Ft)' : '') + '. A nagy tétel a kályha: üres napokon ne menjen. Csak javaslat.');
+          boilerSavingText(n) + ' A nagy tétel a kályha: üres napokon ne menjen. Csak javaslat.');
       }
       if (season && n && !(empty && stage > 0)) {
         add(soon ? 34 : 22, 'orange', 'P', 'Üres napokon a kályha ne menjen 0-24', '1 kW egész nap kb. 25 kWh, keret felett kb. 1 500 Ft naponta. ' + (n > 1 ? n + ' üres napon ez kb. ' + fmtNum(1500 * n, 0) + ' Ft' : 'Egy üres napon ez kb. 1 500 Ft') + ', ha elég a 15 °C-os temperálás (gáz vagy klíma). Érkezés napján ' + STAY.heatStart + '-tól felfűtés.' + safe);
@@ -1439,6 +1454,16 @@
         return sb.from('device_status').select('pink,ts,online,status').gte('ts', new Date(now - MOVE_WINDOW_MS).toISOString())
           .in('pink', ['X5', 'X7', 'X8', 'X9', 'P', '5', '6', '7', '8', '9', '10']).order('ts', { ascending: true });
       }).then(function (res) { self.setState({ hist: res.error ? { error: true } : { rows: res.data } }); }, function () { self.setState({ hist: { error: true } }); });
+      // a bojler üresjárata a mérésből (csak a tulaj látja az energy_daily-t; a takarítónál üres)
+      sb.from('energy_daily').select('day,kwh,source').eq('pink', 'X7').eq('source', 'log')
+        .gte('day', new Date(now - 15 * 86400000).toISOString().slice(0, 10)).order('day', { ascending: true }).limit(40)
+        .then(function (res) {
+          if (res.error || !res.data) return;
+          var today = budDayKey(Date.now());
+          var full = res.data.filter(function (r) { return r.day < today && r.kwh != null; }).map(function (r) { return Number(r.kwh); });
+          full = full.slice(1);                       // az első nap lehet részleges
+          if (full.length >= 3) { ENERGY_STATS.boilerIdle = Math.min.apply(null, full); ENERGY_STATS.days = full.length; self.setState({ energyAt: Date.now() }); }
+        }, function () {});
       // nyílászárók: hosszabb előzmény (csak változáskor és óránként van sor, így 30 nap is kevés)
       fetchPaged(function () {
         return sb.from('device_status').select('pink,ts,status').gte('ts', new Date(now - DOOR_WINDOW_MS).toISOString())

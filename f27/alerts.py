@@ -512,6 +512,8 @@ def send_email(msg: dict, environ, smtp=None) -> None:
     m["To"] = ", ".join(to)
     m["Date"] = formatdate(localtime=False)
     m.set_content(msg["email_body"])
+    if msg.get("email_html"):
+        m.add_alternative(msg["email_html"], subtype="html")
     ctx = ssl.create_default_context()
     if port == 465:
         server = smtp.SMTP_SSL(host, port, timeout=20, context=ctx)
