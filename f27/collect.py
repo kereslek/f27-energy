@@ -36,7 +36,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from .supa import SupabaseError, SupabaseRest
-from .tuya import TuyaClient, TuyaError
+from .tuya import TuyaClient, TuyaError, fetch_logs
 from .alerts import run_alerts
 from .bookings import collect_bookings
 from .digest import run_digest
@@ -179,7 +179,7 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
     cache = {} if cache is None else cache
     stats = {"devices": 0, "received": 0, "written": 0, "unchanged": 0, "energy": 0,
              "energy_skipped": 0, "anomalies": 0, "errors": 0, "tuya_calls": 0, "notes": [],
-             "power_fixed": 0}
+             "power_fixed": 0, "log_events": 0, "log_calls": 0, "log_errors": 0}
 
     try:
         devs = sb.select("devices", "pink,role,tuya_device_id,meta")
@@ -228,7 +228,15 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
         else:
             stats["unchanged"] += 1
         d["_status"] = status
-    sb.insert("device_status", rows)
+    # Nyitásérzékelők: a pontos nyitások és csukások a Tuya eseménynaplójából (a 10 perces
+    # pillanatkép a rövid be- és kilépéseket nem látja). Hibája nem állítja meg a kört.
+    calls0 = client.calls
+    try:
+        rows += contact_log_rows(client, sb, devs, now, cache, stats)
+    except (TuyaError, SupabaseError):
+        stats["log_errors"] += 1
+    stats["log_calls"] = client.calls - calls0
+    sb.insert("device_status", sorted(rows, key=lambda r: r["ts"]))
     stats["written"] = len(rows)
 
     # Napi energia a kismegszakítókhoz.
@@ -260,6 +268,70 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
     return stats
 
 
+CONTACT_CODES = ("doorcontact_state", "contact_state")
+LOG_BACKFILL = timedelta(days=7)      # első alkalommal ennyit töltünk vissza (a Tuya ingyenes naplója kb. ennyi)
+LOG_MAX_PAGES = 5
+
+
+def _bool(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str) and v.strip().lower() in ("true", "false"):
+        return v.strip().lower() == "true"
+    if isinstance(v, (int, float)):
+        return v != 0
+    return None
+
+
+def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, stats: dict) -> list[dict]:
+    """device_status sorok a nyitásérzékelők Tuya-naplójából, a nyitás/csukás pontos idejével.
+
+    Mikor kérdez: egy futás első körében minden érzékelőt (felzárkózás), utána csak azt, amelyik
+    a Tuya eszközlistája szerint jelentett az előző kör óta (_upd nőtt). Honnan: az utolsó már
+    beírt naplósor után (a Supabase-ben status._src = "log"), vagy ha még nincs ilyen, az elmúlt
+    LOG_BACKFILL időből. A sor állapota a mostani pillanatkép, az érintett kóddal felülírva,
+    _src = "log" és _upd = az esemény ideje; a változásfigyelés az aláhúzásos kulcsokat nem nézi."""
+    # csak ha a Tuya ad jelentésidőt (update_time): ebből tudjuk, jelentett-e azóta
+    contacts = [d for d in devs if "_status" in d and d["_status"].get("_upd")
+                and any(c in d["_status"] for c in CONTACT_CODES)]
+    if not contacts:
+        return []
+    lc = cache.setdefault("contact_logs", {})          # pink -> {"seen": utolsó látott _upd, "upto": ms}
+    need = [d for d in contacts if d["pink"] not in lc
+            or (d["_status"].get("_upd") or 0) > lc[d["pink"]].get("seen", 0)]
+    if not need:
+        return []
+    floor_ms = int((now - LOG_BACKFILL).timestamp() * 1000)
+    hwm: dict[str, int] = {}
+    for r in sb.select("device_status", "pink,ts", **{"status->>_src": "eq.log"},
+                       ts=f"gte.{(now - LOG_BACKFILL).isoformat()}", order="ts.desc", limit="500"):
+        hwm.setdefault(r["pink"], int(parse_ts(r["ts"]).timestamp() * 1000))
+    now_ms = int(now.timestamp() * 1000)
+    out: list[dict] = []
+    for d in need:
+        pink, st = d["pink"], d["_status"]
+        upto = max(lc.get(pink, {}).get("upto", 0), hwm.get(pink, 0), floor_ms)
+        res = fetch_logs(client, d["tuya_device_id"], upto + 1, now_ms, LOG_MAX_PAGES, pause=0.3)
+        if res["error"]:
+            stats["log_errors"] += 1
+            if res["error"].startswith("40000309"):      # túl sűrű lekérdezés: ebben a körben elég
+                break
+            continue
+        base = {k: v for k, v in st.items() if not str(k).startswith("_")}
+        last = upto
+        for e in sorted(res["logs"], key=lambda x: int(x.get("event_time") or 0)):
+            t, code, v = int(e.get("event_time") or 0), e.get("code"), _bool(e.get("value"))
+            if code not in CONTACT_CODES or v is None or t <= upto or t > now_ms:
+                continue
+            row_st = dict(base, **{code: v, "_upd": t // 1000, "_src": "log"})
+            out.append({"pink": pink, "online": True, "status": row_st,
+                        "ts": datetime.fromtimestamp(t / 1000, timezone.utc).isoformat()})
+            last = max(last, t)
+        lc[pink] = {"seen": st.get("_upd") or 0, "upto": last}
+    stats["log_events"] += len(out)
+    return out
+
+
 def report(stats: dict) -> str:
     lines = [
         "| Mérőszám | Érték |", "|---|---|",
@@ -273,6 +345,9 @@ def report(stats: dict) -> str:
         f"| Hiányzó eszköz (hiba) | {stats['errors']} |",
         f"| Tuya API-hívás ebben a futásban | {stats['tuya_calls']} |",
         f"| Felhőben ragadt teljesítmény javítva a számlálóból | {stats.get('power_fixed', 0)} |",
+        f"| Ajtó/ablak esemény a Tuya-naplóból | {stats.get('log_events', 0)} |",
+        f"| Napló-lekérés (Tuya-hívás) | {stats.get('log_calls', 0)} |",
+        f"| Napló-hiba | {stats.get('log_errors', 0)} |",
     ]
     if stats["notes"]:
         lines += [""] + [f"- {n}" for n in stats["notes"]]

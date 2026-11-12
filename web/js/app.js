@@ -928,7 +928,7 @@
   // ---- Riasztások: szabályok (ugyanaz, mint az adatgyűjtő f27/alerts.py-ja) ---------------------
   // A beállítás az alert_settings (id = 1) config mezője. A térkép az előnézetet (demó, vagy ha
   // hiányzik a 006-os migráció) ugyanezekkel a szabályokkal a böngészőben számolja, tartósság nélkül.
-  var DRAWER_AUTO_MS = 15000;
+  var DRAWER_AUTO_MS = 10000;   // a tulaj kérése: 10 mp
   var AL_DEFAULT = {
     temps: { '1': { on: true, lo: 19, hi: 24 }, '2': { on: true, lo: 19, hi: 22 }, '3': { on: true, lo: 20, hi: 38 }, '4': { on: false, lo: 19, hi: 25 } },
     minDuration: { minutes: 10 }, openHeat: { on: true, minutes: 10 }, acMaxOpen: { on: true, watts: 900 },
@@ -2006,11 +2006,11 @@
       });
       var motion = mvLast ? {
         big: durHM(now - mvLast.ms), sub: (mvLast.open ? 'nyitás: ' : 'csukás: ') + mvLast.name.toLowerCase() + ', ' + dayTime(mvLast.ms, now),
-        tip: 'Utolsó mozgás a lakásban: ' + mvLast.name + ' ' + (mvLast.open ? 'kinyílt' : 'becsukódott') + ' ' + dayTime(mvLast.ms, now) + ' (' + durHM(now - mvLast.ms) + ' ezelőtt). Csak a helyszíni érzékelők (ajtók, ablakok) számítanak. Az adatgyűjtő 10 percenként olvassa az állapotot: egy 10 percen belül kinyitott és becsukott ajtó (pl. egy gyors be- vagy kilépés) nem látszik.',
+        tip: 'Utolsó mozgás a lakásban: ' + mvLast.name + ' ' + (mvLast.open ? 'kinyílt' : 'becsukódott') + ' ' + dayTime(mvLast.ms, now) + ' (' + durHM(now - mvLast.ms) + ' ezelőtt). Csak a helyszíni érzékelők (ajtók, ablakok) számítanak. Az ajtók és ablakok nyitását a Tuya eseménynaplójából olvassuk, a pontos időponttal (a gyors be- és kilépés is látszik); a lakásban kb. 10 percen belül frissül.',
         cls: 'chip mvchip' + (now - mvLast.ms < 30 * 60000 ? ' fresh' : ''), pick: pick(doorRows.filter(function (d) { return d.name === mvLast.name; })[0].id)
       } : {
         big: mvOldest ? '>' + durHM(now - mvOldest.ms) : '--', sub: mvOldest ? 'nincs mozgás ' + dayTime(mvOldest.ms, now) + ' óta' : 'nincs adat',
-        tip: 'Az ajtók és ablakok előzményében nincs rögzített váltás. Az adatgyűjtő 10 percenként olvassa az állapotot: egy 10 percen belül kinyitott és becsukott ajtó nem látszik.', cls: 'chip mvchip', pick: function () {}
+        tip: 'Az ajtók és ablakok előzményében nincs rögzített váltás. Az ajtók és ablakok nyitását a Tuya eseménynaplójából olvassuk (az elmúlt 7 napot visszatöltve).', cls: 'chip mvchip', pick: function () {}
       };
       var temps = OV_TEMPS.map(function (t) {
         var c = by[t.id], tv = c && c.online !== false ? c.temp : null, d = src[t.id];
@@ -2463,7 +2463,7 @@
       if (focused) { restore(); requestAnimationFrame(function () { requestAnimationFrame(restore); }); }
     }
 
-    // Belépés után a Fiók és mentés kártya 15 mp múlva elhalványul és bezárul, hogy alatta
+    // Belépés után a Fiók és mentés kártya 10 mp múlva elhalványul és bezárul, hogy alatta
     // látsszon az Élő áttekintés; ha közben használják (kattintás, gépelés, görgetés), nyitva marad.
     drawerAutoClose() {
       var self = this;

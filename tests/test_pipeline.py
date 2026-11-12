@@ -90,7 +90,7 @@ class _Server:
 
 
 def tuya_server(devices):
-    state = {"devices": devices, "calls": 0, "unsigned": 0}
+    state = {"devices": devices, "calls": 0, "unsigned": 0, "logs": {}, "log_calls": 0, "log_fail": None}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -119,6 +119,21 @@ def tuya_server(devices):
                 did = u.path.split("/")[4]
                 cat = next(d["category"] for d in state["devices"] if d["id"] == did)
                 return self._send({"category": cat, "status": SPEC.get(cat, []), "functions": []})
+            if u.path.startswith("/v1.0/devices/") and u.path.endswith("/logs"):
+                state["log_calls"] += 1
+                if state.get("log_fail"):
+                    body = json.dumps({"success": False, "code": state["log_fail"][0], "msg": state["log_fail"][1]}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    return self.wfile.write(body)
+                did = u.path.split("/")[3]
+                a, b = int(q["start_time"][0]), int(q["end_time"][0])
+                evs = sorted((e for e in state["logs"].get(did, []) if a <= e["event_time"] <= b),
+                             key=lambda e: -e["event_time"])                 # a Tuya csökkenő sorrendben ad
+                i = int(q.get("start_row_key", ["0"])[0])
+                chunk, nxt = evs[i:i + 100], i + 100
+                return self._send({"logs": chunk, "has_next": nxt < len(evs), "next_row_key": str(nxt) if nxt < len(evs) else None})
             if u.path == "/v1.0/iot-03/devices/status":
                 ids = q["device_ids"][0].split(",")
                 return self._send([{"id": d["id"], "status": d["status"]} for d in state["devices"] if d["id"] in ids])
@@ -202,6 +217,16 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=()):
                     rows = rows[: int(q["limit"])]
             elif table == "device_latest":
                 rows = latest()
+            elif table == "device_status":
+                rows = list(db["device_status"])
+                if q.get("status->>_src", "").startswith("eq."):
+                    rows = [r for r in rows if (r.get("status") or {}).get("_src") == q["status->>_src"][3:]]
+                if q.get("ts", "").startswith("gte."):
+                    rows = [r for r in rows if r["ts"] >= q["ts"][4:]]
+                if q.get("order") == "ts.desc":
+                    rows.sort(key=lambda r: r["ts"], reverse=True)
+                if "limit" in q:
+                    rows = rows[: int(q["limit"])]
             elif table == "alert_settings":
                 rows = list(db["alert_settings"].values())
                 if q.get("id", "").startswith("eq."):
@@ -640,6 +665,87 @@ def meteo(now, hours=96, start_back=48):
                        "precipitation": [0.0] * hours, "cloud_cover": [55] * hours, "wind_speed_10m": [12.34] * hours,
                        "wind_gusts_10m": [30.0] * hours, "shortwave_radiation": [210.0] * hours,
                        "weather_code": [3] * hours, "is_day": [1, 0] * (hours // 2)}}
+
+
+class TestContactLogs(unittest.TestCase):
+    """Ajtók, ablakok: a pontos nyitások és csukások a Tuya-naplóból (a 10 perces pillanatkép
+    a rövid be- és kilépést nem látja)."""
+    DOOR = "devid005secret"
+    tearDown = TestCollect.tearDown
+
+    def setUp(self):
+        TestCollect.setUp(self)
+        for i in range(5, 11):                                   # a 6 nyitásérzékelő jelentésideje
+            self.set_upd(f"devid{i:03d}secret", T0 - timedelta(hours=3))
+
+    def ms(self, when):
+        return int(when.timestamp() * 1000)
+
+    def ev(self, when, value):
+        return {"code": "doorcontact_state", "value": "true" if value else "false", "event_time": self.ms(when)}
+
+    def set_upd(self, did, when):
+        next(x for x in self.f if x["id"] == did)["update_time"] = int(when.timestamp())
+
+    def log_rows(self, pink="5"):
+        return sorted((r for r in self.sb.db["device_status"] if r["pink"] == pink and r["status"].get("_src") == "log"),
+                      key=lambda r: r["ts"])
+
+    def test_backfill_exact_times_then_only_new_events(self):
+        # két rövid be- és kilépés; a pillanatképek (10 percenként) mindkettőt zárva látják
+        self.tuya.state["logs"][self.DOOR] = [
+            self.ev(T0 - timedelta(hours=26), True), self.ev(T0 - timedelta(hours=26) + timedelta(seconds=40), False),
+            self.ev(T0 - timedelta(minutes=30), True), self.ev(T0 - timedelta(minutes=29), False),
+            {"code": "battery_percentage", "value": 90, "event_time": self.ms(T0 - timedelta(minutes=20))},
+            self.ev(T0 - timedelta(days=9), True),                          # a visszatöltési ablakon kívül
+        ]
+        self.set_upd(self.DOOR, T0 - timedelta(minutes=20))
+        cache = {}
+        s = C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret), now=T0, cache=cache)
+        rows = self.log_rows()
+        self.assertEqual([(r["ts"], r["status"]["doorcontact_state"]) for r in rows], [
+            ((T0 - timedelta(hours=26)).isoformat(), True),
+            ((T0 - timedelta(hours=26) + timedelta(seconds=40)).isoformat(), False),
+            ((T0 - timedelta(minutes=30)).isoformat(), True),
+            ((T0 - timedelta(minutes=29)).isoformat(), False)])
+        self.assertEqual(rows[2]["status"]["_upd"], int((T0 - timedelta(minutes=30)).timestamp()))
+        self.assertEqual(s["log_events"], 4)
+        self.assertEqual(s["tuya_calls"], 2)                                # a pillanatkép költsége változatlan
+        self.assertEqual(self.tuya.state["log_calls"], 6)                   # a futás első köre: mind a 6 érzékelő
+        # a legfrissebb állapot a pillanatkép marad (most zárva), a naplósorok régebbiek
+        latest = [r for r in self.sb.db["device_status"] if r["pink"] == "5"]
+        self.assertFalse(max(latest, key=lambda r: r["ts"])["status"]["doorcontact_state"])
+        # következő kör, nincs új jelentés (_upd nem nőtt): nincs napló-lekérés
+        s = C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret),
+                      now=T0 + timedelta(minutes=10), cache=cache)
+        self.assertEqual((s["log_calls"], s["log_events"]), (0, 0))
+        # új be- és kilépés 3 perc alatt: csak ez a kettő kerül be
+        self.tuya.state["logs"][self.DOOR] += [self.ev(T0 + timedelta(minutes=12), True), self.ev(T0 + timedelta(minutes=15), False)]
+        self.set_upd(self.DOOR, T0 + timedelta(minutes=15))
+        s = C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret),
+                      now=T0 + timedelta(minutes=20), cache=cache)
+        self.assertEqual((s["log_calls"], s["log_events"]), (1, 2))
+        self.assertEqual(len(self.log_rows()), 6)
+        # új GitHub-futás (üres gyorsítótár): mind a 6-ot megkérdezi, de semmi nem duplázódik
+        s = C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret),
+                      now=T0 + timedelta(minutes=30), cache={})
+        self.assertEqual((s["log_calls"], s["log_events"]), (6, 0))
+        self.assertEqual(len(self.log_rows()), 6)
+
+    def test_rate_limit_stops_log_fetch_but_not_the_round(self):
+        self.tuya.state["log_fail"] = (40000309, "The log query is too frequent, please try again later!")
+        s = C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret), now=T0, cache={})
+        self.assertEqual(s["written"], 17)                                  # a pillanatképek beírva
+        self.assertEqual((s["log_errors"], s["log_events"]), (1, 0))
+        self.assertEqual(self.tuya.state["log_calls"], 1)                   # az első hiba után abbahagyja
+
+    def test_public_report_has_only_counts(self):
+        self.tuya.state["logs"][self.DOOR] = [self.ev(T0 - timedelta(minutes=30), True), self.ev(T0 - timedelta(minutes=29), False)]
+        s = C.collect(TuyaClient("id", "sec", self.tuya.url), SupabaseRest(self.sb.url, self.sb.secret), now=T0, cache={})
+        text = C.report(s)
+        self.assertIn("| Ajtó/ablak esemény a Tuya-naplóból | 2 |", text)
+        for secret in ("devid005", "09:30", "09:31", (T0 - timedelta(minutes=30)).isoformat()[:16]):
+            self.assertNotIn(secret, text)
 
 
 class TestStalePower(unittest.TestCase):

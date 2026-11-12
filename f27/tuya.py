@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -143,3 +144,41 @@ class TuyaClient:
             for item in res or []:
                 out[item["id"]] = item.get("status", [])
         return out
+
+
+# ----------------------------------------------------------------------------- eszköznapló
+
+LOG_PAGE = 100          # a Tuya napló-végpontja legfeljebb 100 bejegyzést ad egy oldalon
+HEXID = re.compile(r"[0-9a-zA-Z]{16,}")
+
+
+def err_text(e: TuyaError) -> str:
+    """Tuya hiba a publikus logba: kód és az üzenet eleje, hosszú azonosítók kitakarva."""
+    msg = HEXID.sub("...", str(e.msg or ""))[:70]
+    return f"{e.code} ({msg})" if msg else str(e.code)
+
+
+def fetch_logs(tc, dev_id: str, start_ms: int, end_ms: int, max_pages: int, types="7", codes=None, pause: float = 0.0) -> dict:
+    """Az eszköz naplója az időablakban, lapozva (types: eseménytípusok, 7 = adatpont-jelentés;
+    codes: csak ezek az adatpontok). Hibánál a Tuya hibakódja és üzenete."""
+    logs: list[dict] = []
+    key, pages = None, 0
+    while pages < max_pages:
+        params = {"type": types, "start_time": start_ms, "end_time": end_ms, "size": LOG_PAGE, "query_type": 1}
+        if codes:
+            params["codes"] = ",".join(codes)
+        if key:
+            params["start_row_key"] = key
+        try:
+            res = tc.get(f"/v1.0/devices/{dev_id}/logs", params) or {}
+        except TuyaError as e:
+            return {"logs": logs, "pages": pages, "error": err_text(e), "truncated": False}
+        pages += 1
+        logs.extend(res.get("logs") or [])
+        if pause:
+            time.sleep(pause)                                  # a Tuya: "The log query is too frequent"
+        nxt = res.get("next_row_key")
+        if not res.get("has_next") or not nxt or nxt == key:
+            return {"logs": logs, "pages": pages, "error": None, "truncated": False}
+        key = nxt
+    return {"logs": logs, "pages": pages, "error": None, "truncated": True}

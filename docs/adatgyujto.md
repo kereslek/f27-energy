@@ -15,6 +15,16 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
 ## Mit ír az adatgyűjtő
 
 - **`device_status`:** új sor csak akkor, ha az eszköz állapota érdemben változott (pl. nyílt egy ablak, kapcsolt a kályha, 25 W-nál többet változott egy kör teljesítménye, offline lett egy eszköz), vagy ha a legutóbbi sor 60 percnél régebbi (óránkénti életjel). A feszültség, áram és a fogyasztásmérő-számláló apró változása nem ok új sorra. Így az adatbázis évente kb. 100-150 MB-tal nő, bőven az ingyenes 500 MB alatt.
+- **Ajtók, ablakok a Tuya-naplóból:** a 10 perces pillanatkép egy rövid be- vagy kilépést nem lát
+  (a próba szerint a bejárati ajtó 15 nyitásából 0-t). Ezért a 6 nyitásérzékelőnél az adatgyűjtő a
+  Tuya eseménynaplóját is olvassa (`/v1.0/devices/{id}/logs`), és minden nyitást és csukást a
+  pontos időpontjával `device_status` sorként ír be (`status._src = "log"`, `_upd` = az esemény
+  ideje). Mikor kérdez: egy futás első körében mind a 6 érzékelőt, utána csak azt, amelyik a Tuya
+  eszközlistája szerint jelentett az előző kör óta. Az első alkalommal az elmúlt 7 napot tölti
+  vissza (a Tuya ingyenes naplója kb. ennyit őriz), utána mindig az utolsó beírt naplósortól
+  folytatja, így nincs duplikálás. A Summary-ban csak darabszám: "Ajtó/ablak esemény a
+  Tuya-naplóból", "Napló-lekérés", "Napló-hiba". Ha a Tuya túl sűrűnek találja a lekérdezést, az
+  adott kör kihagyja a többit, a pillanatkép ettől még beíródik.
 - **`weather_hourly`:** óránként egyszer (ha a legutóbbi lekérés 55 percnél régebbi) az Open-Meteo
   órás adatai a IX. kerületre (kerületi pontossággal): hőmérséklet, hőérzet, páratartalom, harmatpont,
   csapadék, felhőzet, szél, széllökés, napsugárzás (W/m²), időjáráskód. Egy lekérés az elmúlt 2 nap
@@ -62,7 +72,7 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
 
 ## Tuya API-kvóta
 
-Egy futás szokásosan **2 Tuya API-hívás** (token + eszközlista, ami az állapotot és az online jelzőt is hozza). Napi 144 futással ez kb. **290 hívás/nap, kb. 8 700/hónap**. Ha egy párosított eszköz hiányzik a listából, +1 hívás jön.
+Egy futás szokásosan **2 Tuya API-hívás** (token + eszközlista, ami az állapotot és az online jelzőt is hozza). Napi 144 futással ez kb. **290 hívás/nap, kb. 8 700/hónap**. Ha egy párosított eszköz hiányzik a listából, +1 hívás jön. Az ajtó- és ablaknapló óránként legfeljebb 6 hívás (a futás első köre), utána csak tényleges jelentéskor 1-1: kb. **+3 000-5 000 hívás/hónap**.
 
 A havi keret a Tuya konzolban látszik: **platform.tuya.com > Cloud > Cloud Services > IoT Core**. Ha a próbaidő lejár, az adatgyűjtő piros lesz („subscription expired” jellegű hibával): ilyenkor ugyanott **Extend Trial Period**.
 
