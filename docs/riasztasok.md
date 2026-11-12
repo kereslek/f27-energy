@@ -53,8 +53,14 @@ vasárnap`. Részei:
    Ft/kWh), és a mai átlagos külső hőmérséklet.
 5. Az érzékelők mostani értéke és a térkép linkje.
 
-**Statisztika a levélben** (`f27/report_stats.py`, a 007-es migráció után): a levél tetején ASCII-kép
-("F27 ENERGY" blokkbetűkkel és "terminál" sorokkal), alatta ASCII-táblázat körönként: ma eddig,
+**Statisztika a levélben** (`f27/report_stats.py`, a 007-es migráció után), telefonra tervezve
+(minden doboz legfeljebb 44 karakter széles): felül és alul kattintható dashboard-gomb, warez/NFO
+stílusú fejléc (blokkbetűs F27, release-doboz a nap fő számaival és a foglaltsággal), körönként
+egy doboz (ma eddig, tegnap és 7/30 napos átlag ugyanaddig az óráig, DoD, tegnap egész nap,
+hónap, Ft, órás oszlopsor, üzemórák, csúcs), összesítő (havi előrejelzés, B kör kedvezményes
+kerete), ötlet-doboz (a kályha hője klímából mennyiért), hőmérők, kint + holnapi várható
+kályhaköltség az előrejelzésből, ajtónyitások és az adatok frissessége, az előző hónap az app
+előzményéből, jelmagyarázat. A korábbi leírás: ma eddig,
 tegnap és 7/30 napos átlag **ugyanaddig az óráig** (így a nap a naphoz, DoD, nem csal), tegnap egész
 nap, hónap eddig, Ft; jelmagyarázat-táblázat; havi előrejelzés; órás oszlopsor (0-23 óra,
 `' .:-=+*#%@'`); hőmérők (ma min/átlag/max, tegnaphoz képest, pára); kint és fűtési hőfokhíd, a

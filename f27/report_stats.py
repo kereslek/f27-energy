@@ -1,8 +1,11 @@
-"""Az esti e-mail statisztikai része: ASCII-táblázat, órás oszlopsor, összevetések, ASCII-kép.
+"""Az esti e-mail statisztikai része: warez/NFO-stílusú fejléc, keskeny ASCII-dobozok, összevetések.
+
+Telefonra tervezve: minden doboz legfeljebb W = 44 karakter széles (iPhone-on a Gmail fix
+szélességű betűvel kb. ennyit mutat tördelés nélkül), a szöveges sorok a HTML-ben tördelődnek.
 
 Forrás: metrics_hourly (órás összesítő a Tuya-naplóból), device_status (ajtóesemények),
-weather_daily, energy_app_history (a Smart Life app előzménye). Ha valamelyik hiányzik, az adott
-sor "nincs adat"; a levél ettől még kimegy.
+weather_daily és weather_hourly (előrejelzés), bookings, energy_app_history (a Smart Life app
+előzménye). Ami hiányzik, az "nincs adat"; a levél ettől még kimegy.
 
 Összevetési elv: a mai nap még nem ért véget, ezért a tegnapot és az átlagot UGYANADDIG az óráig
 számoljuk (pl. 20:00-ig), így a "DoD" (nap a naphoz) és a "vs átl." nem csal.
@@ -15,36 +18,22 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 BUDAPEST = ZoneInfo("Europe/Budapest")
-# kör, rövid név, Ft/kWh alsó és felső (B keret felett 60,9; A1 36,2-70,1), a táblázatban a közép
-CIRCUITS = (("X5", "Kályha", 60.9, 60.9), ("X7", "Bojler", 60.9, 60.9),
-            ("X8", "Konyha", 36.2, 70.1), ("X9", "Klíma", 36.2, 70.1))
+W = 44                                        # a dobozok külső szélessége (karakter)
+# kör, név, Ft/kWh alsó és felső (B keret felett 60,9; A1 36,2-70,1), mérő
+CIRCUITS = (("X5", "KÁLYHA", 60.9, 60.9, "B"), ("X7", "BOJLER", 60.9, 60.9, "B"),
+            ("X8", "KONYHA", 36.2, 70.1, "A1"), ("X9", "KLÍMA", 36.2, 70.1, "A1"))
 THERMOS = (("1", "Kis szoba"), ("2", "Nagy szoba"), ("3", "Kályha mögött"), ("4", "Fürdő"))
-LEVELS = " .:-=+*#%@"                         # órás oszlopsor, 10 fokozat, tisztán ASCII
+LEVELS = " .:-=+*#%@"                         # órás oszlopsor, 10 fokozat
+B_QUOTA_DAY = 2523 / 365                      # kedvezményes keret mérőnként (kWh/nap, a számlák szerint)
+COP = 3.0                                     # klíma hőszivattyú, fűtés (becslés)
 
-LEGEND = [
-    ["Ma kWh", "ma éjféltől eddig felvett energia (a Tuya-napló add_ele összege)"],
-    ["Tegnap*", "tegnap éjféltől ugyanennyi ideig (pl. 20:00-ig)"],
-    ["DoD", "nap a naphoz: ma a Tegnap* értékhez képest, %"],
-    ["7n átl*", "az elmúlt 7 nap átlaga, mindegyik nap ugyaneddig az óráig"],
-    ["vs 7n", "ma a 7 napos átlaghoz képest, %"],
-    ["30n átl*", "30 napos átlag ugyaneddig (zárójelben: ennyi napnyi adat van)"],
-    ["Tegnap", "tegnap egész nap"],
-    ["Hónap", "a hónap eleje óta"],
-    ["Ma Ft", "becsült költség: B kör 60,9; A1 a 36,2-70,1 Ft/kWh sáv közepe"],
-    ["Órás sor", "' .:-=+*#%@' = 0-tól a nap legnagyobb órájáig, üres = még nem volt"],
+LOGO = [
+    "  ▄█████▄ ▄█████▄ ▄██████▄",
+    "  ██      ▀▀   ██ ▀▀   ▄█▀",
+    "  █████▌    ▄██▀     ▄█▀  ",
+    "  ██     ▄██▀       ██▌   ",
+    "  ██     ███████▌   ██    ",
 ]
-
-GLYPHS = {
-    "F": ["#####", "#    ", "#### ", "#    ", "#    "],
-    "2": [" ### ", "#   #", "   # ", "  #  ", "#####"],
-    "7": ["#####", "   # ", "  #  ", " #   ", "#    "],
-    "E": ["#####", "#    ", "#### ", "#    ", "#####"],
-    "N": ["#   #", "##  #", "# # #", "#  ##", "#   #"],
-    "R": ["#### ", "#   #", "#### ", "#  # ", "#   #"],
-    "G": [" ####", "#    ", "# ###", "#   #", " ### "],
-    "Y": ["#   #", " # # ", "  #  ", "  #  ", "  #  "],
-    " ": ["  ", "  ", "  ", "  ", "  "],
-}
 
 
 def _f(v: float | None, dec: int = 1) -> str:
@@ -62,22 +51,46 @@ def _pct(a: float | None, b: float | None) -> str:
     return ("+" if p >= 0 else "") + f"{p:.0f} %"
 
 
-def banner(now: datetime, extra: str) -> list[str]:
-    """Hacker-stílusú fejléc: blokkbetűs F27 ENERGY, alatta "terminál" sorok."""
-    word = "F27 ENERGY"
-    rows = ["  " + " ".join(GLYPHS[c][i] for c in word) for i in range(5)]
+def box(title: str, lines: list[str]) -> list[str]:
+    """Keskeny keret: ┌─[ CÍM ]───┐ ... └───┘, a sorok W-4 karakterre vágva/kitöltve."""
+    inner = W - 4
+    top = "┌─[ " + title + " ]"
+    top += "─" * max(0, W - 1 - len(top)) + "┐"
+    out = [top]
+    for ln in lines:
+        while len(ln) > inner:                     # túl hosszú: tördelés szóhatáron
+            cut = ln.rfind(" ", 0, inner + 1)
+            cut = cut if cut > 8 else inner
+            out.append("│ " + ln[:cut].ljust(inner) + " │")
+            ln = "  " + ln[cut:].lstrip()
+        out.append("│ " + ln.ljust(inner) + " │")
+    out.append("└" + "─" * (W - 2) + "┘")
+    return out
+
+
+def banner(now: datetime, kwh: float | None, ft: float | None, guest: str) -> list[str]:
+    """Warez/NFO-stílusú fejléc: blokkbetűs F27, árnyékolt sáv, release-doboz, greetz."""
     loc = now.astimezone(BUDAPEST)
-    bits = " ".join(format(ord(c), "08b") for c in "F27")
-    return rows + [
-        "",
-        f"  >> F27://energy-node  [ONLINE]  napi jelentes  {loc:%Y.%m.%d %H:%M}",
-        f"  >> {bits}  ::  {extra}",
-        "  " + "=" * 74,
+    rel = f"f27.napi.jelentes.{loc:%Y.%m.%d}"
+    lines = [
+        " ▄" + "▄" * (W - 3),
+        *LOGO,
+        " ░▒▓█ E N E R G Y  ·  C R E W █▓▒░",
+        " ▀" + "▀" * (W - 3),
+        " ╔" + "═" * (W - 4) + "╗",
     ]
+    for k, v in (("ReLEASE", rel), ("TiME", f"{loc:%H:%M}  NODE F27://bp-ix"),
+                 ("STATUS", "[ONLiNE]  csak olvas"),
+                 ("ENERGiA", f"{_f(kwh)} kWh ma  ~{_ft(ft)} Ft"), ("LAKÁS", guest)):
+        lines.append(" ║ " + (k.ljust(8) + v)[:W - 6].ljust(W - 6) + " ║")
+    lines += [" ╚" + "═" * (W - 4) + "╝",
+              "  >> 01000110 00110010 00110111 << F27",
+              "  greetz: zöld szék · gramofon · LUXiON"]
+    return lines
 
 
 def spark(values: list[float | None], top: float | None = None) -> str:
-    """24 karakteres órás oszlopsor (0-23 óra) a LEVELS fokozataival; hiányzó óra: szóköz."""
+    """24 karakteres órás oszlopsor (0-23 óra); hiányzó óra: szóköz."""
     vals = [v for v in values if v is not None]
     top = top or (max(vals) if vals else 0)
     out = []
@@ -87,17 +100,6 @@ def spark(values: list[float | None], top: float | None = None) -> str:
         else:
             out.append(LEVELS[min(len(LEVELS) - 1, max(1 if v > 0 else 0, round(v / top * (len(LEVELS) - 1))))])
     return "".join(out)
-
-
-def table(head: list[str], rows: list[list[str]], right: set[int]) -> list[str]:
-    """Egyszerű ASCII-táblázat +---+ kerettel."""
-    w = [max(len(str(r[i])) for r in [head] + rows) for i in range(len(head))]
-    line = "+" + "+".join("-" * (x + 2) for x in w) + "+"
-
-    def fmt(r):
-        return "|" + "|".join(" " + (str(c).rjust(w[i]) if i in right else str(c).ljust(w[i])) + " "
-                              for i, c in enumerate(r)) + "|"
-    return [line, fmt(head), line] + [fmt(r) for r in rows] + [line]
 
 
 def _hourly(sb, since: datetime, pinks: list[str]) -> dict:
@@ -138,84 +140,109 @@ def _door_opens(sb, since: datetime) -> dict[date, int]:
     return out
 
 
-def build_stats(sb, now: datetime, safe) -> tuple[list[str], str]:
-    """Visszaad: (a STATISZTIKA rész sorai, a fejléc "terminál" sorába kerülő rövid szöveg)."""
+def _guest(sb, today: date, safe) -> str:
+    bk = safe(lambda: sb.select("bookings", "kind,start_date,end_date", end_date=f"gte.{today.isoformat()}",
+                                order="start_date.asc", limit="20"), None)
+    if bk is None:
+        return "nincs foglalási adat"
+    k = today.isoformat()
+    if any(b["start_date"] <= k < b["end_date"] for b in bk):
+        return "vendég bent"
+    nxt = [b for b in bk if b["start_date"] > k]
+    return "üres" + (f", érkezés {nxt[0]['start_date'][5:].replace('-', '.')}." if nxt else "")
+
+
+def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
+    """Visszaad: (a statisztikai rész sorai, a fejléchez: {'kwh', 'ft', 'guest'})."""
     loc = now.astimezone(BUDAPEST)
     today = loc.date()
     t0 = _day_start(today)
     cut = now - t0                                      # ennyi telt el ma
-    since = _day_start(today - timedelta(days=31))
-    pinks = [c[0] for c in CIRCUITS] + [t[0] for t in THERMOS]
-    hourly = safe(lambda: _hourly(sb, since, pinks), None)
-    out = ["STATISZTIKA (a Tuya-naplóból, a tegnap és az átlag a mai időpontig számolva)"]
-    if hourly is None:
-        return out + ["- nincs adat (metrics_hourly: futtasd a supabase/migrations/007_history.sql-t)"], "stats: n/a"
-
-    # 1. Körök: ma eddig, tegnap ugyaneddig, DoD, 7 és 30 napos átlag ugyaneddig, tegnap egész nap, hónap eddig
-    rows, tot_today, tot_ft, mtd_ft, stove_now = [], 0.0, 0.0, 0.0, None
     month0 = _day_start(today.replace(day=1))
-    for pink, name, lo, hi in CIRCUITS:
+    guest = _guest(sb, today, safe)
+    head = {"kwh": None, "ft": None, "guest": guest}
+    pinks = [c[0] for c in CIRCUITS] + [t[0] for t in THERMOS]
+    hourly = safe(lambda: _hourly(sb, _day_start(today - timedelta(days=31)), pinks), None)
+    if hourly is None:
+        return box("STATISZTIKA", ["nincs adat (metrics_hourly: futtasd a supabase/migrations/007_history.sql-t)"]), head
+
+    def same(s, k):                                     # k napja, ugyaneddig az óráig
+        a = _day_start(today - timedelta(days=k))
+        return _sum_kwh(s, a, a + cut)
+
+    out: list[str] = []
+    tot_kwh = tot_ft = mtd_ft = 0.0
+    mtd = {}
+    for pink, name, lo, hi, meter in CIRCUITS:
         s = hourly.get(pink, {})
         price = (lo + hi) / 2
         td = _sum_kwh(s, t0, now)
-        y0 = _day_start(today - timedelta(days=1))
-        yd_same = _sum_kwh(s, y0, y0 + cut)
-        yd_full = _sum_kwh(s, y0, t0)
-        same7 = [v for v in (_sum_kwh(s, _day_start(today - timedelta(days=k)), _day_start(today - timedelta(days=k)) + cut)
-                             for k in range(1, 8)) if v is not None]
-        same30 = [v for v in (_sum_kwh(s, _day_start(today - timedelta(days=k)), _day_start(today - timedelta(days=k)) + cut)
-                              for k in range(1, 31)) if v is not None]
-        a7 = sum(same7) / len(same7) if same7 else None
-        a30 = sum(same30) / len(same30) if same30 else None
-        mtd = _sum_kwh(s, month0, now)
+        yd = same(s, 1)
+        s7 = [v for v in (same(s, k) for k in range(1, 8)) if v is not None]
+        s30 = [v for v in (same(s, k) for k in range(1, 31)) if v is not None]
+        a7 = sum(s7) / len(s7) if s7 else None
+        a30 = sum(s30) / len(s30) if s30 else None
+        yfull = _sum_kwh(s, _day_start(today - timedelta(days=1)), t0)
+        m = _sum_kwh(s, month0, now)
+        mtd[pink] = m
         if td is not None:
-            tot_today += td
+            tot_kwh += td
             tot_ft += td * price
-        if mtd is not None:
-            mtd_ft += mtd * price
-        rows.append([name, _f(td), _f(yd_same), _pct(td, yd_same), _f(a7), _pct(td, a7),
-                     _f(a30) + (f" ({len(same30)}n)" if same30 and len(same30) < 30 else ""),
-                     _f(yd_full), _f(mtd), _ft(None if td is None else td * price)])
-        if pink == "X5":
-            last = [r for h, r in s.items() if h >= now - timedelta(hours=2) and r.get("kwh") is not None]
-            stove_now = last[-1]["kwh"] if last else None
-    rows.append(["ÖSSZESEN", _f(tot_today), "", "", "", "", "", "", "", _ft(tot_ft)])
-    out += table(["Kör", "Ma kWh", "Tegnap*", "DoD", "7n átl*", "vs 7n", "30n átl*", "Tegnap", "Hónap", "Ma Ft"],
-                 rows, right=set(range(1, 10)))
-    out += [""] + table(["Jel", "Mit jelent"], LEGEND, right=set())
+        if m is not None:
+            mtd_ft += m * price
+        hours = [(_sum_kwh(s, t0 + timedelta(hours=i), t0 + timedelta(hours=i + 1)) if t0 + timedelta(hours=i) < now else None)
+                 for i in range(24)]
+        run_h = sum(1 for v in hours if v is not None and v >= 0.3)
+        peak = max([r.get("w_max") or 0 for h, r in s.items() if h >= t0] or [0])
+        lines = [
+            f"ma eddig  {_f(td).rjust(6)} kWh   ~{_ft(None if td is None else td * price)} Ft",
+            f"tegnap*   {_f(yd).rjust(6)} kWh   DoD {_pct(td, yd)}",
+            f"7n átl*   {_f(a7).rjust(6)} kWh   vs  {_pct(td, a7)}",
+            f"30n átl*  {_f(a30).rjust(6)} kWh   ({len(s30)} nap)",
+            f"tegnap    {_f(yfull).rjust(6)} kWh   egész nap",
+            f"hónap     {_f(m).rjust(6)} kWh   ~{_ft(None if m is None else m * price)} Ft",
+            f"0h|{spark(hours)}|23h",
+            f"   {run_h} óra >0,3 kWh · csúcs {_f(float(peak) / 1000 if peak else None, 2)} kW",
+        ]
+        out += box(f"{name} · {meter}", lines)
+    head.update(kwh=round(tot_kwh, 2), ft=tot_ft)
 
-    # 2. Havi előrejelzés
+    # Összesítő és havi előrejelzés
     days_in_month = ((today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day
     full7 = []
     for k in range(1, 8):
         a = _day_start(today - timedelta(days=k))
-        ft = 0.0
-        ok = False
-        for pink, _n, lo, hi in CIRCUITS:
-            v = _sum_kwh(hourly.get(pink, {}), a, a + timedelta(days=1))
-            if v is not None:
-                ft += v * (lo + hi) / 2
-                ok = True
-        if ok:
-            full7.append(ft)
+        vals = [(_sum_kwh(hourly.get(p, {}), a, a + timedelta(days=1)), (lo + hi) / 2) for p, _n, lo, hi, _m in CIRCUITS]
+        if any(v is not None for v, _p in vals):
+            full7.append(sum((v or 0) * p for v, p in vals))
+    summ = [f"ma eddig  {_f(tot_kwh).rjust(6)} kWh   ~{_ft(tot_ft)} Ft",
+            f"hónap     ~{_ft(mtd_ft)} Ft eddig"]
     if full7:
         per_day = sum(full7) / len(full7)
         left = days_in_month - today.day + (1 - cut.total_seconds() / 86400)
-        out.append(f"- Hónap eddig kb. {_ft(mtd_ft)} Ft; a 7 napos átlaggal ({_ft(per_day)} Ft/nap) a hónap vége "
-                   f"kb. {_ft(mtd_ft + per_day * left)} Ft (a négy mért körön).")
+        summ += [f"7n átlag  ~{_ft(per_day)} Ft/nap",
+                 f"hó vége   ~{_ft(mtd_ft + per_day * left)} Ft (várható)"]
+    # B kör kedvezményes kerete (kályha + bojler egy mérőn)
+    b_mtd = (mtd.get("X5") or 0) + (mtd.get("X7") or 0)
+    quota = B_QUOTA_DAY * days_in_month
+    summ.append(f"B-keret   {_f(b_mtd, 0)} / {_f(quota, 0)} kWh ({_pct(b_mtd, quota) if b_mtd else '--'})")
+    if b_mtd > quota:
+        summ.append("          elfogyott: a többi 60,9 Ft/kWh")
+    out += box("ÖSSZESEN · 4 MÉRT KÖR", summ)
 
-    # 3. Órás oszlopsor (0-23 óra)
-    out += ["", "ÓRÁNKÉNT MA (0-23 óra; minél sűrűbb a jel, annál több kWh)",
-            "             0     6     12    18   23"]
-    for pink, name, _lo, _hi in CIRCUITS:
-        s = hourly.get(pink, {})
-        vals = [(_sum_kwh(s, t0 + timedelta(hours=i), t0 + timedelta(hours=i + 1)) if t0 + timedelta(hours=i) < now else None)
-                for i in range(24)]
-        peak = max([v for v in vals if v is not None] or [0])
-        out.append(f"  {name:<10} |{spark(vals)}|  csúcs {_f(peak, 2)} kWh/óra")
+    # Ötlet: a kályha hője klímából (ha ma a kályha fűtött)
+    st_td = _sum_kwh(hourly.get("X5", {}), t0, now)
+    if st_td and st_td >= 3:
+        ac_lo, ac_hi = st_td / COP * 36.2, st_td / COP * 70.1
+        out += box("TiPP · KLÍMA vs KÁLYHA", [
+            f"kályha ma  {_f(st_td)} kWh = ~{_ft(st_td * 60.9)} Ft",
+            f"klímából   {_ft(ac_lo)}-{_ft(ac_hi)} Ft (COP~3)",
+            f"=> ~{_ft(st_td * 60.9 - ac_hi)}-{_ft(st_td * 60.9 - ac_lo)} Ft/nap megtakarítás",
+            "a nagy szobába a két szoba közti",
+            "ajtón át jut a meleg. Csak javaslat."])
 
-    # 4. Hőmérők: ma (min / átlag / max) és tegnap átlag
-    trows = []
+    # Hőmérők
+    tl = ["szoba         min|átl |max   vs tegn"]
     for pink, name in THERMOS:
         s = hourly.get(pink, {})
         td = [r for h, r in s.items() if h >= t0 and r.get("temp_avg") is not None]
@@ -223,26 +250,22 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], str]:
         avg = lambda xs: sum(float(r["temp_avg"]) for r in xs) / len(xs) if xs else None
         tmin = min((float(r["temp_min"]) for r in td if r.get("temp_min") is not None), default=None)
         tmax = max((float(r["temp_max"]) for r in td if r.get("temp_max") is not None), default=None)
-        hum = [float(r["hum_avg"]) for r in td if r.get("hum_avg") is not None]
         a, b = avg(td), avg(yd)
-        diff = None if a is None or b is None else a - b
-        trows.append([name, _f(tmin), _f(a), _f(tmax), _f(b), ("+" if (diff or 0) >= 0 else "") + _f(diff) if diff is not None else "--",
-                      _f(sum(hum) / len(hum), 0) + " %" if hum else "--"])
-    out += [""] + table(["Hőmérő (°C)", "Ma min", "Ma átl", "Ma max", "Tegnap átl", "Változás", "Pára"],
-                        trows, right=set(range(1, 7)))
+        diff = "--" if a is None or b is None else ("+" if a - b >= 0 else "") + _f(a - b)
+        tl.append(f"{name[:13].ljust(13)} {_f(tmin)}|{_f(a)}|{_f(tmax)}  {diff}")
+    out += box("HŐMÉRŐK °C · MA", tl)
 
-    # 5. Kint, hőfokhíd, kályha-hatékonyság
+    # Kint, hőfokhíd, kályha-hatékonyság, holnapi várható
+    wl = []
     wx = safe(lambda: sb.select("weather_daily", "day,t_avg,hdd",
                                 day=f"gte.{(today - timedelta(days=7)).isoformat()}", order="day.asc"), None)
+    effs = []
     if wx:
         wd = {str(r["day"])[:10]: r for r in wx}
         w_t, w_y = wd.get(today.isoformat()), wd.get((today - timedelta(days=1)).isoformat())
         if w_t and w_t.get("t_avg") is not None:
-            line = f"- Kint ma átlag {_f(float(w_t['t_avg']))} °C"
-            if w_y and w_y.get("t_avg") is not None:
-                line += f" (tegnap {_f(float(w_y['t_avg']))} °C)"
-            out += ["", line + f", fűtési hőfokhíd ma {_f(float(w_t.get('hdd') or 0))} °C-nap."]
-        effs = []
+            wl.append(f"kint ma   {_f(float(w_t['t_avg']))} °C  (tegnap {_f(float(w_y['t_avg'])) if w_y and w_y.get('t_avg') is not None else '--'})")
+            wl.append(f"hőfokhíd  {_f(float(w_t.get('hdd') or 0))} °C-nap")
         for k in range(1, 8):
             d = today - timedelta(days=k)
             r = wd.get(d.isoformat())
@@ -250,44 +273,81 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], str]:
             if r and v is not None and float(r.get("hdd") or 0) >= 1:
                 effs.append(v / float(r["hdd"]))
         if effs:
-            out.append(f"- Kályha hőigénye az elmúlt napokban: átlag {_f(sum(effs) / len(effs), 2)} kWh fokonként "
-                       f"(minél kisebb, annál jobb; {len(effs)} nap).")
+            wl.append(f"kályha    {_f(sum(effs) / len(effs), 2)} kWh/fok ({len(effs)} nap)")
+    fc = safe(lambda: sb.select("weather_hourly", "ts,temp",
+                                ts=f"gte.{_day_start(today + timedelta(days=1)).isoformat()}", order="ts.asc", limit="48"), None)
+    if fc:
+        tom = [float(r["temp"]) for r in fc if r.get("temp") is not None
+               and datetime.fromisoformat(str(r["ts"]).replace("Z", "+00:00")) < _day_start(today + timedelta(days=2))]
+        if len(tom) >= 12:
+            t_avg = sum(tom) / len(tom)
+            hdd = 18 - t_avg if t_avg <= 15 else 0.0
+            line = f"holnap    ~{_f(t_avg)} °C ({len(tom)} óra előrejelzés)"
+            wl.append(line)
+            if effs and hdd > 0:
+                k = sum(effs) / len(effs) * hdd
+                wl.append(f"          kályha várhatóan ~{_f(k, 0)} kWh, ~{_ft(k * 60.9)} Ft")
+    if wl:
+        out += box("KiNT · iDŐJÁRÁS", wl)
 
-    # 6. Bejárati ajtó
+    # Bejárati ajtó, adatfrissesség
+    ol = []
     opens = safe(lambda: _door_opens(sb, _day_start(today - timedelta(days=7))), None)
     if opens is not None:
         past = [opens.get(today - timedelta(days=k), 0) for k in range(1, 8)]
-        out.append(f"- Bejárati ajtó: ma {opens.get(today, 0)} nyitás, tegnap {past[0]}, 7 napos átlag "
-                   f"{_f(sum(past) / 7)} (a Tuya eseménynaplójából).")
+        ol.append(f"bejárati ajtó: ma {opens.get(today, 0)}, tegnap {past[0]}, átl {_f(sum(past) / 7)}")
+    last = safe(lambda: sb.select("device_status", "ts", order="ts.desc", limit="1"), None)
+    if last:
+        lt = datetime.fromisoformat(str(last[0]["ts"]).replace("Z", "+00:00"))
+        age = int((now - lt).total_seconds() // 60)
+        ol.append(f"utolsó adat: {lt.astimezone(BUDAPEST):%H:%M} ({age} perce)" + ("  !! régi" if age > 90 else ""))
+    if ol:
+        out += box("MOZGÁS · ADAT", ol)
 
-    # 7. A Smart Life app előzménye: előző hónap napi átlaga a mostanihoz képest
+    # A Smart Life app előzménye: előző hónap napi átlaga a mostanihoz képest
     app = safe(lambda: sb.select("energy_app_history", "pink,period,period_start,kwh,exact",
                                  period="eq.month", order="period_start.asc"), None)
     if app:
         prev_m = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
-        lines = []
-        for pink, name, _lo, _hi in CIRCUITS:
+        al = []
+        for pink, name, _lo, _hi, _m in CIRCUITS:
             pm = [r for r in app if r["pink"] == pink and str(r["period_start"])[:7] == prev_m.isoformat()[:7]]
-            mtd = _sum_kwh(hourly.get(pink, {}), month0, now)
-            if pm and mtd is not None:
+            m = mtd.get(pink)
+            if pm and m is not None:
                 ndays = (today.replace(day=1) - prev_m).days
                 elapsed = (now - month0).total_seconds() / 86400
-                cur_avg, prev_avg = mtd / max(elapsed, 0.04), float(pm[0]["kwh"]) / ndays
-                lines.append(f"  {name}: most napi {_f(cur_avg)} kWh, előző hónap napi {_f(prev_avg)} kWh ({_pct(cur_avg, prev_avg)})")
-        if lines:
-            out += ["", "ELŐZŐ HÓNAP (Smart Life app)"] + lines
+                cur_avg, prev_avg = m / max(elapsed, 0.04), float(pm[0]["kwh"]) / ndays
+                al.append(f"{name.capitalize().ljust(6)} {_f(cur_avg).rjust(5)} vs {_f(prev_avg).rjust(5)}  {_pct(cur_avg, prev_avg)}")
+        if al:
+            out += box("MOST vs ELŐZŐ HÓ · kWh/nap", al)
 
-    extra = f"kwh.today = {_f(tot_today)}  ::  cost.today = ~{_ft(tot_ft)} Ft"
-    if stove_now is not None:
-        extra += f"  ::  stove.last_h = {_f(float(stove_now), 2)} kWh"
-    return out, extra
+    out += box("JELMAGYARÁZAT", LEGEND)
+    return out, head
 
 
-def to_html(text: str) -> str:
-    """A szöveges levél "terminál" HTML-ben: fix szélességű betű, zöld a feketén, hogy az
-    ASCII-táblázat és a kép a Gmailben se csússzon szét."""
-    return ('<!doctype html><html><body style="margin:0;background:#0b0f0b">'
-            '<div style="background:#0b0f0b;padding:16px">'
-            '<pre style="margin:0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:12px;'
-            'line-height:1.35;color:#39ff14;background:#0b0f0b;white-space:pre">'
-            + html.escape(text) + "</pre></div></body></html>")
+LEGEND = [
+    "*    ugyanaddig az óráig, mint most",
+    "DoD  nap a naphoz: ma vs tegnap*",
+    "vs   ma vs 7 napos átlag*",
+    "0h|..|23h  órás sor ' .:-=+*#%@'",
+    "     a nap csúcsáig; üres = még hátra",
+    "B,A1 mérő; B-keret: havi kedv. kWh",
+    "Ft   B 60,9; A1 36,2-70,1 közepe",
+    "kWh/fok  kályha kWh fűtési fokonként",
+]
+
+
+def to_html(text: str, url: str) -> str:
+    """A szöveges levél "terminál" HTML-ben: fix szélességű betű, zöld a feketén; a hosszú
+    szöveges sorok tördelődnek (pre-wrap), a dobozok W karakteresek, így telefonon sem esnek szét.
+    Felül és alul kattintható gomb a dashboardra."""
+    btn = ('<a href="' + html.escape(url) + '" style="display:inline-block;margin:6px 0;padding:10px 16px;'
+           'border:2px solid #39ff14;border-radius:6px;color:#0b0f0b;background:#39ff14;text-decoration:none;'
+           'font-family:Menlo,Consolas,\'Courier New\',monospace;font-weight:bold;font-size:14px">'
+           '&gt;&gt; DASHBOARD MEGNYITÁSA &lt;&lt;</a>')
+    return ('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
+            '<body style="margin:0;background:#0b0f0b"><div style="background:#0b0f0b;padding:10px 8px">'
+            + btn +
+            '<pre style="margin:6px 0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:11.5px;'
+            'line-height:1.3;color:#39ff14;background:#0b0f0b;white-space:pre-wrap;word-break:break-word">'
+            + html.escape(text) + "</pre>" + btn + "</div></body></html>")

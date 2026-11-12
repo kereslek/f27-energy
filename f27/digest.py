@@ -190,8 +190,8 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
         out.append(f"- Kint ma átlagosan {fmt_num(float(wx[0]['t_avg']), 1)} °C")
 
     # 4b. Statisztika: ASCII-táblázat, órás oszlopsor, összevetések (f27.report_stats)
-    stats, extra = build_stats(sb, now, _safe)
-    out += [""] + stats
+    stats, head = build_stats(sb, now, _safe)
+    out += ["", "STATISZTIKA (a Tuya-naplóból)"] + stats
 
     # 5. Érzékelők most + link
     out += ["", "ÉRZÉKELŐK MOST"] + [f"- {x}" for x in context_lines(snap, now)]
@@ -199,8 +199,10 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             f"Ezt az F27 adatgyűjtő küldte {loc.strftime('%H:%M')}-kor (csak jelez, semmit nem kapcsol). "
             "Naponta legfeljebb egy ilyen levél jön; az azonnali riasztások pushon (ntfy) mennek. "
             "Beállítás: a térkép Riasztások panelje."]
-    text = "\n".join(banner(now, extra) + [""] + out) + "\n"
-    return {"subject": f"F27 napi összefoglaló, {day_label(today)}", "email_body": text, "email_html": to_html(text)}
+    top = banner(now, head["kwh"], head["ft"], head["guest"]) + ["", f">> DASHBOARD: {MAP_URL}", ""]
+    text = "\n".join(top + out) + "\n"
+    return {"subject": f"F27 napi összefoglaló, {day_label(today)}", "email_body": text,
+            "email_html": to_html(text, MAP_URL)}
 
 
 def run_digest(sb: SupabaseRest, now: datetime | None = None, environ=None, sender=None) -> dict:

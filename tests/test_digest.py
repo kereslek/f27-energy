@@ -187,7 +187,7 @@ class TestDigest(unittest.TestCase):
         self.assertIn("TEENDŐK", sent[0].get_body(("plain",)).get_content())
         html_part = sent[0].get_body(("html",)).get_content()
         self.assertIn("monospace", html_part)                     # fix szélesség: a táblázat nem csúszik szét
-        self.assertIn("F27://energy-node", html_part)
+        self.assertIn("F27://bp-ix", html_part)
 
 
 class TestDigestStats(unittest.TestCase):
@@ -229,31 +229,36 @@ class TestDigestStats(unittest.TestCase):
         r["new"] = self.mails[n:]
         return r
 
-    def test_stats_table_and_comparisons(self):
+    def test_stats_boxes_fit_a_phone(self):
         r = self.run_at(AT(20, 0))
         body = r["new"][0]["email_body"]
         lines = body.splitlines()
-        self.assertTrue(lines[0].startswith("  #####"))                                     # blokkbetűs F27 ENERGY
-        self.assertIn("  >> 01000110 00110010 00110111", body)
-        row = next(l for l in lines if l.startswith("| Kályha "))
-        cells = [c.strip() for c in row.strip("|").split("|")]
+        self.assertTrue(lines[0].startswith(" ▄▄▄▄"))                                     # warez/NFO fejléc
+        self.assertIn("ReLEASE f27.napi.jelentes.2026.11.08", body)
+        self.assertIn(">> DASHBOARD: https://kereslek.github.io/f27-energy/", body)
+        # telefon: minden doboz- és logósor legfeljebb 44 karakter
+        art = [l for l in lines if l[:2].strip()[:1] in set("▄▀░╔║╚┌│└") or l.startswith("  ▄") or l.startswith("  █")]
+        self.assertTrue(art and max(len(l) for l in art) <= 44, max(art, key=len))
         # ma 0-20 óra: 6 óra 0 + 14 óra 1,05 = 14,7; tegnap ugyaneddig 20 x 1,05 = 21,0; DoD -30 %
-        self.assertEqual(cells[:6], ["Kályha", "14,7", "21,0", "-30 %", "21,0", "-30 %"])
-        self.assertEqual(cells[7], "25,2")                                                  # tegnap egész nap
-        self.assertTrue(any(l.startswith("| ÖSSZESEN ") for l in lines))
-        spark = next(l for l in lines if l.startswith("  Kályha     |"))
-        self.assertEqual(spark[14:20], "      ")                                              # 0-5 óra: 0 kWh
-        self.assertEqual(spark[20:34], "@" * 14)
-        self.assertIn("| Nagy szoba ", body)
-        nagy = [c.strip() for c in next(l for l in lines if l.startswith("| Nagy szoba ")).strip("|").split("|")]
-        self.assertEqual(nagy[1:6], ["20,5", "21,0", "21,5", "22,0", "-1,0"])
-        self.assertIn("- Bejárati ajtó: ma 2 nyitás", body)
-        self.assertIn("  Kályha: most napi", body)                                            # előző hónap (app)
-        self.assertIn("- Hónap eddig kb.", body)
+        self.assertIn("│ ma eddig    14,7 kWh   ~895 Ft", body)
+        self.assertIn("│ tegnap*     21,0 kWh   DoD -30 %", body)
+        self.assertIn("│ 7n átl*     21,0 kWh   vs  -30 %", body)
+        self.assertIn("│ tegnap      25,2 kWh   egész nap", body)
+        self.assertIn("│ 0h|      @@@@@@@@@@@@@@    |23h", body)                      # 0-5 óra: 0 kWh
+        self.assertIn("14 óra >0,3 kWh", body)
+        self.assertIn("│ Nagy szoba    20,5|21,0|21,5  -1,0", body)
+        self.assertIn("bejárati ajtó: ma 2, tegnap 0", body)
+        self.assertIn("│ Kályha  24,4 vs  10,0  +144 %", body)                          # előző hónap (app)
+        self.assertIn("TiPP · KLÍMA vs KÁLYHA", body)
+        self.assertIn("│ B-keret ", body)
+        self.assertIn("JELMAGYARÁZAT", body)
+        boxed = [l for l in lines if l.startswith("│ ")]
+        self.assertFalse([l for l in boxed if l.startswith("│   ") and not l.startswith("│    ")], "nincs tördelt sor a dobozokban")
         self.assertNotIn("\u2014", body)
         self.assertNotIn("\u2013", body)
         html_part = r["new"][0]["email_html"]
-        self.assertIn("monospace", html_part)
+        self.assertEqual(html_part.count('href="https://kereslek.github.io/f27-energy/"'), 2)   # gomb felül és alul
+        self.assertIn("pre-wrap", html_part)
         self.assertIn("#39ff14", html_part)
         with open(__import__("os").environ.get("F27_DIGEST_PREVIEW", "/dev/null"), "w", encoding="utf-8") as f:
             f.write(body)
@@ -261,7 +266,8 @@ class TestDigestStats(unittest.TestCase):
     def test_without_migration_note(self):
         self.sb.db.pop("metrics_hourly")
         body = self.run_at(AT(20, 0))["new"][0]["email_body"]
-        self.assertIn("nincs adat (metrics_hourly: futtasd a supabase/migrations/007_history.sql-t)", body)
+        self.assertIn("nincs adat (metrics_hourly:", body)
+        self.assertIn("007_history.sql", body)
 
 
 if __name__ == "__main__":
