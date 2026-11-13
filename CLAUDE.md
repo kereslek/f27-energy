@@ -274,6 +274,14 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 - **Élő térkép:** GitHub Pages, `web/index.html` (a G3 játékos térkép): a Supabase-ből olvas (bejelentkezés, mentett elrendezések, `device_latest`), RLS védi. A `config.js`-t a Pages build generálja a GitHub Variables-ból (csak publishable kulcs; a build leáll, ha secret kulcsot kap). Használat: `docs/terkep.md`.
 - **Egyszerű alaprajz:** `web/alaprajz.html`, a böngészőben fejti vissza a repó titkosított `data/latest.json.enc`-ét. Demo mód kitalált adattal.
 
+## 16. ÁLLANDÓ EMLÉKEZTETŐ: további okos eszközök (a tulaj kérése, 2026.11.13)
+
+**Minden munkamenet, és minden ebből a projektből származó eszköz (térkép, esti e-mail, riasztások, scriptek, jövőbeli toolok) időnként emlékeztesse a tulajt:** nézze át, van-e a lakásban (vagy beszerezhető) további okos eszköz, amit érdemes bekötni és elemezni. Ha a tulaj elfelejtené, ez a memó tartja életben. Új munkamenet elején röviden említsd meg, ha régen volt szó róla.
+
+- **Már most ismert:** a 2026.11.08-i Eszközfelderítés szerint az F27 otthonban **6 párosítatlan eszköz** van a Tuya-fiókban (név és típus a titkosított `data/latest.json.enc`-ben; a jelszóügy rendezése után ki kell bontani és végignézni, mi az: tartalék IR-távirányító, robotporszívó, konnektor stb.).
+- **Ellenőrizendő a tulajjal:** robotporszívó (a takarítás idejét és a vendég távozását is jelezheti), okos konnektor a hűtőre, mosógépre, TV-re, mosogatóra; teljes lakásos mérőbilincs (Tuya clamp) az A1 és a B mérőre (a mért 4 körön kívüli fogyasztás is látszana); gázmérő-leolvasó (impulzus vagy kamera; a gáz most nincs mérve); szén-monoxid- és füstérzékelő (a gázkonvektor miatt biztonsági tétel); vízszivárgás-érzékelő (mosógép, bojler); jelenlét- vagy mozgásérzékelő (foglaltság); okos kulcsszéf vagy zár (érkezés); a 3 tartalék RightSitu IR-távirányító; a fürdő fűtőpanel köre (okos kismegszakító vagy konnektor).
+- **Hol emlékeztet a rendszer:** az esti e-mail vasárnaponként egy "OKOS ESZKÖZÖK" dobozzal; a munkamenetek ezzel a fejezettel. Új eszköz bekötése: Smart Life appban az "Ferenc krt." otthonba, utána Eszközfelderítés workflow, `config/devices.json` bővítése.
+
 ## 15. Állapot
 
 - 2026.11.01: repó váz kész: Tuya kliens, felderítő workflow, titkosítás, Pages térkép (sematikus alaprajz, demo adat). Következő: a tulaj végigmegy a `docs/tuya-setup.md`-n, lefuttatja az Eszközfelderítés workflow-t, utána a párosítás ellenőrzése és a pink számok véglegesítése.

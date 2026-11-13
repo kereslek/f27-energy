@@ -341,8 +341,28 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
     if yoy:
         out += box("YoY · TAVALY UGYANEKKOR", yoy)
 
+    # Állandó emlékeztető (a tulaj kérése, CLAUDE.md 16.): vasárnaponként a további okos eszközökről
+    if loc.weekday() == 6:
+        out += box("OKOS ESZKÖZÖK · EMLÉKEZTETŐ", GADGETS)
+
     out += box("JELMAGYARÁZAT", LEGEND)
     return out, head
+
+
+GADGETS = [
+    "van még bekötendő kütyü? (heti memó)",
+    "- 6 párosítatlan eszköz az F27 otthon-",
+    "ban (Tuya, 11.08): mi ez? nézzük át!",
+    "- robotporszívó: takarítás, távozás",
+    "- konnektor: hűtő, mosógép, TV",
+    "- mérőbilincs az A1 és B mérőre",
+    "- gázmérő-leolvasó (a gáz nincs mérve)",
+    "- CO- és füstérzékelő (gázkonvektor!)",
+    "- vízszivárgás: mosógép, bojler",
+    "- jelenlét, okos kulcsszéf, fürdőpanel",
+    "bekötés: Smart Life, Ferenc krt. otthon",
+    "utána Actions > Eszközfelderítés",
+]
 
 
 def hdd(t: float) -> float:

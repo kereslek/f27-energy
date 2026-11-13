@@ -307,6 +307,16 @@ class TestDigestStats(unittest.TestCase):
         with open(__import__("os").environ.get("F27_DIGEST_PREVIEW", "/dev/null"), "w", encoding="utf-8") as f:
             f.write(body)
 
+    def test_weekly_gadget_reminder_on_sunday_only(self):
+        body = self.run_at(AT(20, 0))["new"][0]["email_body"]              # nov. 8. vasárnap
+        self.assertIn("OKOS ESZKÖZÖK · EMLÉKEZTETŐ", body)
+        self.assertIn("robotporszívó", body)
+        art = [l for l in body.splitlines() if l[:1] in "┌│└"]
+        self.assertLessEqual(max(len(l) for l in art), 44)
+        self.sb.db["alert_log"].clear()
+        body = self.run_at(AT(20, 0, d=9))["new"][0]["email_body"]         # hétfő
+        self.assertNotIn("OKOS ESZKÖZÖK", body)
+
     def test_archive_outage_does_not_block_the_mail(self):
         def boom(a, b):
             raise OSError("hálózat")
