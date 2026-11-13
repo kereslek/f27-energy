@@ -13,6 +13,8 @@ from datetime import datetime, timedelta, timezone
 
 from f27 import alerts as A
 from f27 import digest as DG
+from f27 import report_stats as RS
+from f27 import weather as WE
 from f27.supa import SupabaseRest
 from tests.test_alerts import ENV, SECRETS, devices
 from tests.test_pipeline import supa_server
@@ -21,7 +23,25 @@ from tests.test_pipeline import supa_server
 AT = lambda h, m=0, d=8: datetime(2026, 11, d, h - 1, m, tzinfo=timezone.utc) if h >= 1 else datetime(2026, 11, d - 1, 23, m, tzinfo=timezone.utc)
 
 
+def fake_archive(start, end):
+    """Open-Meteo archív helyett: tavaly minden nap 5,0 °C (a tesztek nem mennek ki a hálózatra)."""
+    d, out = datetime.fromisoformat(start).date(), {}
+    while d <= datetime.fromisoformat(end).date():
+        out[d.isoformat()] = 5.0
+        d += timedelta(days=1)
+    return out
+
+
 class TestDigest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._arch = WE.archive_daily
+        WE.archive_daily = fake_archive
+
+    @classmethod
+    def tearDownClass(cls):
+        WE.archive_daily = cls._arch
+
     def setUp(self):
         self.sb = supa_server()
         for p in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "P", "X5", "X7", "X8", "X9", "G"):
@@ -51,7 +71,7 @@ class TestDigest(unittest.TestCase):
         r = self.run_at(AT(20, 0))
         self.assertEqual(len(r["new"]), 1)
         self.assertEqual(r["note"], "Napi összefoglaló: elküldve.")
-        self.assertEqual(r["new"][0]["subject"], "F27 napi összefoglaló, nov. 8. vasárnap")
+        self.assertEqual(r["new"][0]["subject"], "▓▒░ F27·NRG ░▒▓ 11.08 V » napi jelentés")
         log = self.sb.db["alert_log"][-1]
         self.assertEqual((log["kind"], log["rule_key"], log["channels"]), ("digest", "digest:2026-11-08", "email"))
         for m in (10, 20, 50):
@@ -64,7 +84,7 @@ class TestDigest(unittest.TestCase):
         self.sb.db["alert_log"].clear()
         r = self.run_at(AT(0, 5, d=9))                                # éjfél után: már a 9-e, még nincs 20:00
         self.assertEqual(r["new"], [])
-        self.assertEqual(self.run_at(AT(20, 0, d=9))["new"][0]["subject"], "F27 napi összefoglaló, nov. 9. hétfő")
+        self.assertEqual(self.run_at(AT(20, 0, d=9))["new"][0]["subject"], "▓▒░ F27·NRG ░▒▓ 11.09 H » napi jelentés")
 
     def test_time_setting_and_off(self):
         self.sb.db["alert_settings"][1] = {"id": 1, "config": {"digest": {"on": True, "time": "18:00"}}}
@@ -183,7 +203,7 @@ class TestDigest(unittest.TestCase):
         mod = type("M", (), {"SMTP": S, "SMTP_SSL": S})
         self.sender = lambda msg, environ: A.send_email(msg, environ, smtp=mod)
         self.run_at(AT(20, 0))
-        self.assertEqual(sent[0]["Subject"], "F27 napi összefoglaló, nov. 8. vasárnap")
+        self.assertEqual(sent[0]["Subject"], "▓▒░ F27·NRG ░▒▓ 11.08 V » napi jelentés")
         self.assertIn("TEENDŐK", sent[0].get_body(("plain",)).get_content())
         html_part = sent[0].get_body(("html",)).get_content()
         self.assertIn("monospace", html_part)                     # fix szélesség: a táblázat nem csúszik szét
@@ -215,9 +235,12 @@ class TestDigestStats(unittest.TestCase):
                                                 "temp_max": 21.5 + k, "hum_avg": 45}
         self.sb.db["energy_app_history"].append({"pink": "X5", "period": "month", "period_start": "2026-10-01T00:00:00+02:00",
                                                  "kwh": 310.0, "exact": False})
+        self.sb.db["weather_daily"] = [{"day": f"2026-11-0{d}", "t_avg": 8.0, "hdd": 10.0} for d in range(1, 9)]
         self.door = [{"pink": "5", "ts": AT(h, 0).isoformat(), "online": True, "status": {"doorcontact_state": o, "_src": "log"}}
                      for h, o in ((9, True), (10, False), (15, True), (16, False))]
 
+    setUpClass = TestDigest.setUpClass
+    tearDownClass = TestDigest.tearDownClass
     tearDown = TestDigest.tearDown
     sender = TestDigest.sender
 
@@ -247,11 +270,24 @@ class TestDigestStats(unittest.TestCase):
         self.assertIn("│ 0h|      @@@@@@@@@@@@@@    |23h", body)                      # 0-5 óra: 0 kWh
         self.assertIn("14 óra >0,3 kWh", body)
         self.assertIn("│ Nagy szoba    20,5|21,0|21,5  -1,0", body)
+        self.assertIn("│ Fürdő           --|  --|  --    --", body)                    # hiányzó adatnál sem csúszik el
         self.assertIn("bejárati ajtó: ma 2, tegnap 0", body)
         self.assertIn("│ Kályha  24,4 vs  10,0  +144 %", body)                          # előző hónap (app)
         self.assertIn("TiPP · KLÍMA vs KÁLYHA", body)
         self.assertIn("│ B-keret ", body)
         self.assertIn("JELMAGYARÁZAT", body)
+        # YoY: nov. 1-7. mért B (kályha 25,2 + bojler 2,4 = 27,6 kWh/nap) vs tavaly a 2025.09.10-2026.01.13
+        # mérőállások átlaga (1815 kWh / 125 nap = 14,5); kint 8,0 vs 5,0 °C (hőfokhíd 10 vs 13)
+        self.assertIn("YoY · TAVALY UGYANEKKOR", body)
+        self.assertIn("│ napok     11.01-11.07 (7 nap)", body)
+        self.assertIn("│ B idén     27,6 kWh/nap (mért)", body)
+        self.assertIn("│ B tavaly   14,5 kWh/nap*", body)
+        self.assertIn("│ YoY       +90 %  (kályha + bojler)", body)
+        self.assertIn("│ kint      8,0 vs 5,0 °C (idén/tavaly)", body)
+        self.assertIn("│ kWh/fok   2,76 vs 1,12  +147 %", body)
+        self.assertIn("│ * mérőállás 2025.09.10-01.13 átlag", body)
+        # tárgysor: ma 0-20 óra kályha 14,7 + bojler 2,0; tegnap ugyaneddig 21,0 + 2,0
+        self.assertEqual(r["new"][0]["subject"], "▓▒░ F27·NRG ░▒▓ 11.08 V » 16,7 kWh » ~1 017 Ft » ▼27% DoD")
         boxed = [l for l in lines if l.startswith("│ ")]
         self.assertFalse([l for l in boxed if l.startswith("│   ") and not l.startswith("│    ")], "nincs tördelt sor a dobozokban")
         self.assertNotIn("\u2014", body)
@@ -262,6 +298,25 @@ class TestDigestStats(unittest.TestCase):
         self.assertIn("#39ff14", html_part)
         with open(__import__("os").environ.get("F27_DIGEST_PREVIEW", "/dev/null"), "w", encoding="utf-8") as f:
             f.write(body)
+
+    def test_archive_outage_does_not_block_the_mail(self):
+        def boom(a, b):
+            raise OSError("hálózat")
+        WE.archive_daily = boom
+        try:
+            body = self.run_at(AT(20, 0))["new"][0]["email_body"]
+        finally:
+            WE.archive_daily = fake_archive
+        self.assertNotIn("YoY · TAVALY", body)
+        self.assertIn("JELMAGYARÁZAT", body)
+
+    def test_meter_rate_picks_tightest_valid_bracket(self):
+        m = [{"date": "2025-02-15", "B": 100}, {"date": "2025-09-10", "B": 300}, {"date": "2025-10-01", "A1": 5, "B": None},
+             {"date": "2026-01-13", "B": 550}]
+        from datetime import date
+        r = RS.meter_rate(m, "B", date(2025, 11, 1), date(2025, 11, 7))
+        self.assertEqual((round(r[0], 3), r[1].isoformat(), r[2].isoformat()), (2.0, "2025-09-10", "2026-01-13"))
+        self.assertIsNone(RS.meter_rate(m, "B", date(2026, 11, 1), date(2026, 11, 7)))
 
     def test_without_migration_note(self):
         self.sb.db.pop("metrics_hourly")

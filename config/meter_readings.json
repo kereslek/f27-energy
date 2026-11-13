@@ -1,0 +1,15 @@
+{
+  "_comment": "Valós villanyóra-állások (számlák, diktálások, leolvasások; a CLAUDE.md 5. fejezete szerint). A hibás 2024.10.09-i és 2025.01.11-i A1 diktálás kimarad (null). B = vezérelt mérő: cserépkályha + bojler. A becsült (Becs) számlaállások nem kerülnek ide. Az esti e-mail YoY (tavaly ugyanekkor) összevetése használja.",
+  "readings": [
+    {"date": "2023-12-13", "A1": 46953, "B": 51378},
+    {"date": "2024-01-08", "A1": 47120, "B": 52183},
+    {"date": "2024-10-09", "A1": null, "B": 55142},
+    {"date": "2025-01-11", "A1": null, "B": 56935},
+    {"date": "2025-02-15", "A1": 49689, "B": 58216},
+    {"date": "2025-07-08", "A1": 51507, "B": 60297},
+    {"date": "2025-09-10", "A1": 52099, "B": 60479},
+    {"date": "2026-01-13", "A1": 52929, "B": 62294},
+    {"date": "2026-05-20", "A1": 53622, "B": 64476},
+    {"date": "2026-09-13", "A1": 54831, "B": 64955}
+  ]
+}

@@ -14,7 +14,9 @@ számoljuk (pl. 20:00-ig), így a "DoD" (nap a naphoz) és a "vs átl." nem csal
 from __future__ import annotations
 
 import html
+import json
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 BUDAPEST = ZoneInfo("Europe/Budapest")
@@ -26,6 +28,8 @@ THERMOS = (("1", "Kis szoba"), ("2", "Nagy szoba"), ("3", "Kályha mögött"), (
 LEVELS = " .:-=+*#%@"                         # órás oszlopsor, 10 fokozat
 B_QUOTA_DAY = 2523 / 365                      # kedvezményes keret mérőnként (kWh/nap, a számlák szerint)
 COP = 3.0                                     # klíma hőszivattyú, fűtés (becslés)
+DAYS = ("H", "K", "Sze", "Cs", "P", "Szo", "V")
+METERS = Path(__file__).resolve().parent.parent / "config" / "meter_readings.json"
 
 LOGO = [
     "  ▄█████▄ ▄█████▄ ▄██████▄",
@@ -152,7 +156,7 @@ def _guest(sb, today: date, safe) -> str:
     return "üres" + (f", érkezés {nxt[0]['start_date'][5:].replace('-', '.')}." if nxt else "")
 
 
-def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
+def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]:
     """Visszaad: (a statisztikai rész sorai, a fejléchez: {'kwh', 'ft', 'guest'})."""
     loc = now.astimezone(BUDAPEST)
     today = loc.date()
@@ -172,6 +176,7 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
 
     out: list[str] = []
     tot_kwh = tot_ft = mtd_ft = 0.0
+    tot_y, any_y = 0.0, False
     mtd = {}
     for pink, name, lo, hi, meter in CIRCUITS:
         s = hourly.get(pink, {})
@@ -188,6 +193,9 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
         if td is not None:
             tot_kwh += td
             tot_ft += td * price
+        if yd is not None:
+            tot_y += yd
+            any_y = True
         if m is not None:
             mtd_ft += m * price
         hours = [(_sum_kwh(s, t0 + timedelta(hours=i), t0 + timedelta(hours=i + 1)) if t0 + timedelta(hours=i) < now else None)
@@ -205,7 +213,7 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
             f"   {run_h} óra >0,3 kWh · csúcs {_f(float(peak) / 1000 if peak else None, 2)} kW",
         ]
         out += box(f"{name} · {meter}", lines)
-    head.update(kwh=round(tot_kwh, 2), ft=tot_ft)
+    head.update(kwh=round(tot_kwh, 2), ft=tot_ft, kwh_y=round(tot_y, 2) if any_y else None)
 
     # Összesítő és havi előrejelzés
     days_in_month = ((today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day
@@ -242,7 +250,7 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
             "ajtón át jut a meleg. Csak javaslat."])
 
     # Hőmérők
-    tl = ["szoba         min|átl |max   vs tegn"]
+    tl = ["szoba          min| átl| max  vs tg"]
     for pink, name in THERMOS:
         s = hourly.get(pink, {})
         td = [r for h, r in s.items() if h >= t0 and r.get("temp_avg") is not None]
@@ -252,7 +260,7 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
         tmax = max((float(r["temp_max"]) for r in td if r.get("temp_max") is not None), default=None)
         a, b = avg(td), avg(yd)
         diff = "--" if a is None or b is None else ("+" if a - b >= 0 else "") + _f(a - b)
-        tl.append(f"{name[:13].ljust(13)} {_f(tmin)}|{_f(a)}|{_f(tmax)}  {diff}")
+        tl.append(f"{name[:13].ljust(13)} {_f(tmin).rjust(4)}|{_f(a).rjust(4)}|{_f(tmax).rjust(4)}  {diff.rjust(4)}")
     out += box("HŐMÉRŐK °C · MA", tl)
 
     # Kint, hőfokhíd, kályha-hatékonyság, holnapi várható
@@ -321,8 +329,111 @@ def build_stats(sb, now: datetime, safe) -> tuple[list[str], dict]:
         if al:
             out += box("MOST vs ELŐZŐ HÓ · kWh/nap", al)
 
+    # Év az évhez: tavaly ugyanekkor (B mérő a mérőállásokból, kint az Open-Meteo archívumból)
+    if archive is None:
+        from .weather import archive_daily as archive
+    wnow = safe(lambda: {str(r["day"])[:10]: float(r["t_avg"]) for r in sb.select(
+        "weather_daily", "day,t_avg", day=f"gte.{today.replace(day=1).isoformat()}") if r.get("t_avg") is not None}, {})
+    try:                                                # az archívum kiesése (hálózat) ne akassza meg a levelet
+        yoy = yoy_lines(hourly, today, archive, wnow)
+    except Exception:
+        yoy = None
+    if yoy:
+        out += box("YoY · TAVALY UGYANEKKOR", yoy)
+
     out += box("JELMAGYARÁZAT", LEGEND)
     return out, head
+
+
+def hdd(t: float) -> float:
+    """Fűtési hőfokhíd (Eurostat, mint a weather_daily nézetben): 18 - Tközép, ha Tközép <= 15 °C."""
+    return 18 - t if t <= 15 else 0.0
+
+
+def load_meters(path: Path = METERS) -> list[dict]:
+    return json.loads(path.read_text(encoding="utf-8"))["readings"]
+
+
+def meter_rate(readings: list[dict], key: str, d0: date, d1: date):
+    """A [d0, d1] napokat lefedő legszűkebb két valós mérőállás közti napi átlag: (kWh/nap, kezdet, vég)."""
+    rs = sorted((date.fromisoformat(r["date"]), r[key]) for r in readings if r.get(key) is not None)
+    best = None
+    for i, (a, va) in enumerate(rs):
+        if a > d0:
+            break
+        for b, vb in rs[i + 1:]:
+            if b >= d1:
+                if best is None or (b - a) < (best[2] - best[1]):
+                    best = ((vb - va) / (b - a).days, a, b)
+                break
+    return best
+
+
+def yoy_lines(hourly: dict, today: date, archive, wnow: dict, meters: list[dict] | None = None) -> list[str] | None:
+    """Tavaly ugyanezekben a napokban vs idén. Idén: a hónap teljes, mért napjai (kályha + bojler = a
+    B mérő); tavaly: a B mérő valós állásai közti napi átlag. A kinti hőmérséklet mindkét évre az
+    Open-Meteo archívumból (tavaly) és a weather_daily nézetből (idén), így látszik, mennyi a
+    különbségből az időjárás. archive(start, end) -> {'YYYY-MM-DD': °C}."""
+    meters = meters if meters is not None else load_meters()
+    days = []
+    d = today.replace(day=1)
+    while d < today:                                      # csak lezárt napok
+        a = _day_start(d)
+        b5 = hourly.get("X5", {})
+        n = sum(1 for h in b5 if a <= h < a + timedelta(days=1))
+        if n >= 20:
+            v5 = _sum_kwh(b5, a, a + timedelta(days=1)) or 0
+            v7 = _sum_kwh(hourly.get("X7", {}), a, a + timedelta(days=1)) or 0
+            days.append((d, v5 + v7))
+        d += timedelta(days=1)
+    if not days:
+        return None
+    ly = [x.replace(year=x.year - 1) for x, _v in days]
+    rate = meter_rate(meters, "B", ly[0], ly[-1])
+    if not rate:
+        return None
+    b_ly, m0, m1 = rate
+    temps = archive(min(m0, ly[0]).isoformat(), max(m1 - timedelta(days=1), ly[-1]).isoformat())
+    b_now = sum(v for _d, v in days) / len(days)
+    span = f"{days[0][0]:%m.%d}-{days[-1][0]:%m.%d}"
+    lines = [f"napok     {span} ({len(days)} nap)",
+             f"B idén    {_f(b_now).rjust(5)} kWh/nap (mért)",
+             f"B tavaly  {_f(b_ly).rjust(5)} kWh/nap*",
+             f"YoY       {_pct(b_now, b_ly)}  (kályha + bojler)"]
+    t_now = [wnow[x.isoformat()] for x, _v in days if x.isoformat() in wnow]
+    t_ly = [temps[x.isoformat()] for x in ly if x.isoformat() in temps]
+    if t_now and t_ly:
+        an, al = sum(t_now) / len(t_now), sum(t_ly) / len(t_ly)
+        lines.append(f"kint      {_f(an)} vs {_f(al)} °C (idén/tavaly)")
+        hn = sum(hdd(t) for t in t_now) / len(t_now)
+        # tavaly: a mérőállás-időszak átlagos hőfokhídja (a B átlag is arra az időszakra szól)
+        per = [temps[(m0 + timedelta(days=k)).isoformat()] for k in range((m1 - m0).days)
+               if (m0 + timedelta(days=k)).isoformat() in temps]
+        hl = sum(hdd(t) for t in per) / len(per) if per else None
+        if hn >= 1 and hl and hl >= 1:
+            kn, kl = b_now / hn, b_ly / hl
+            lines.append(f"kWh/fok   {_f(kn, 2)} vs {_f(kl, 2)}  {_pct(kn, kl)}")
+            lines.append("          (időjárással kiigazítva)")
+    lines.append(f"* mérőállás {m0:%Y.%m.%d}-{m1:%m.%d} átlag")
+    return lines
+
+
+def subject_line(now: datetime, head: dict) -> str:
+    """Rövid, warez-hangulatú tárgysor (iPhone-on kb. 60 karakter fér ki):
+    ▓▒░ F27·NRG ░▒▓ 11.13 P » 26,4 kWh » ~1 620 Ft » ▼8% DoD"""
+    loc = now.astimezone(BUDAPEST)
+    parts = [f"▓▒░ F27·NRG ░▒▓ {loc:%m.%d} {DAYS[loc.weekday()]}"]
+    kwh, ky = head.get("kwh"), head.get("kwh_y")
+    if kwh:
+        parts.append(f"{_f(kwh)} kWh")
+        if head.get("ft"):
+            parts.append(f"~{_ft(head['ft'])} Ft")
+        if ky and ky >= 0.05:
+            p = (kwh - ky) / ky * 100
+            parts.append(("▲" if p >= 0 else "▼") + f"{abs(p):.0f}% DoD")
+    else:
+        parts.append("napi jelentés")
+    return " » ".join(parts)
 
 
 LEGEND = [
@@ -334,6 +445,8 @@ LEGEND = [
     "B,A1 mérő; B-keret: havi kedv. kWh",
     "Ft   B 60,9; A1 36,2-70,1 közepe",
     "kWh/fok  kályha kWh fűtési fokonként",
+    "YoY  év az évhez: tavaly ugyanezek a",
+    "     napok; tavaly = B mérőállás-átlag",
 ]
 
 
@@ -346,8 +459,8 @@ def to_html(text: str, url: str) -> str:
            'font-family:Menlo,Consolas,\'Courier New\',monospace;font-weight:bold;font-size:14px">'
            '&gt;&gt; DASHBOARD MEGNYITÁSA &lt;&lt;</a>')
     return ('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
-            '<body style="margin:0;background:#0b0f0b"><div style="background:#0b0f0b;padding:10px 8px">'
+            '<body style="margin:0;background:#0b0f0b;-webkit-text-size-adjust:100%;text-size-adjust:100%"><div style="background:#0b0f0b;padding:10px 8px">'
             + btn +
-            '<pre style="margin:6px 0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:11.5px;'
+            '<pre style="margin:6px 0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:13px;'
             'line-height:1.3;color:#39ff14;background:#0b0f0b;white-space:pre-wrap;word-break:break-word">'
             + html.escape(text) + "</pre>" + btn + "</div></body></html>")

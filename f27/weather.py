@@ -53,6 +53,25 @@ def fetch(timeout: float = 20) -> dict:
         return json.loads(r.read().decode())
 
 
+ARCHIVE = "https://archive-api.open-meteo.com/v1/archive"
+
+
+def archive_daily(start: str, end: str, fetcher=None, timeout: float = 20) -> dict[str, float]:
+    """Múltbeli napi középhőmérséklet (Open-Meteo archív, Budapest napjai): {'YYYY-MM-DD': °C}.
+    Az esti e-mail YoY összevetéséhez (tavaly ugyanekkor milyen hideg volt)."""
+    q = {"latitude": LAT, "longitude": LON, "start_date": start, "end_date": end,
+         "daily": "temperature_2m_mean", "timezone": "Europe/Budapest"}
+    u = ARCHIVE + "?" + urllib.parse.urlencode(q)
+    if fetcher:
+        j = fetcher(u)
+    else:
+        req = urllib.request.Request(u, headers={"Accept": "application/json", "User-Agent": "f27-energy-collector"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            j = json.loads(r.read().decode())
+    d = j.get("daily") or {}
+    return {t: float(v) for t, v in zip(d.get("time") or [], d.get("temperature_2m_mean") or []) if v is not None}
+
+
 def _num(v):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 

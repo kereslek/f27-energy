@@ -275,7 +275,7 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=(), history=False
                 if "limit" in q:
                     rows = rows[: int(q["limit"])]
             elif table == "weather_daily" and "weather_daily" in db:
-                rows = [r for r in db["weather_daily"] if r["day"] == q.get("day", "eq.")[3:]]
+                rows = _filt(list(db["weather_daily"]), q, ("day",))
             elif table in ("tuya_log", "metrics_hourly", "energy_app_history") and table in db:
                 src = db[table].values() if isinstance(db[table], dict) else db[table]
                 rows = _filt(list(src), q, ("pink", "ts", "hour", "period", "period_start"))

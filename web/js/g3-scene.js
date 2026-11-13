@@ -44,6 +44,9 @@ class G3Scene extends MiniDC.Component {
       return s;
     }
 
+    // Belmagasság: 3,75 m (a tulaj, a fotók szerint magas ablakokkal). A falak eddig 74 egység
+    // magasak voltak (kb. 1,8 m), a kályha (106) fölébük nőtt; a bútorok léptékéhez (kb. 30/m) igazítva.
+    var WH = 112;
     var stars = [], seed = 7, i;
     function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
     for (i = 0; i < 46; i++) stars.push({ x: r1(rnd() * 1440), y: r1(90 + rnd() * 250), r: r1(0.8 + rnd() * 1.6), d: r1(rnd() * 3) + 's' });
@@ -122,35 +125,40 @@ class G3Scene extends MiniDC.Component {
       floors.push({ p: quad(r[0], r[1], r[2], r[3], 0), fill: r[4], lc: r[5], lines: lines });
     });
     var rugs = [
-      { p: quad(394, 86, 458, 140, 0.4), p2: quad(398, 90, 454, 136, 0.6), fill: '#ece5d2', edge: '#8fb4c9' },
+      // nagy, krémszínű, halvány mintás szőnyeg a nagy szobában: a sarokkanapétól az ágy felé, a dohányzóasztal alatt
+      { p: quad(356, 84, 446, 160, 0.4), p2: quad(361, 89, 441, 155, 0.6), fill: '#efe8d6', edge: '#b9ad92' },
+      { p: quad(372, 100, 430, 144, 0.5), p2: quad(377, 105, 425, 139, 0.7), fill: '#e6dcc4', edge: '#c9bfa6' },
       { p: quad(264, 522, 290, 576, 0.4), p2: quad(267, 525, 287, 573, 0.6), fill: '#b8c0c7', edge: '#eef1f3' }
     ];
 
     var WB = ['#6a4c38', '#f6e7c8', '#ead3a6'];
     var subway = '', zz, yb, rw = 0;
-    for (zz = 28; zz < 74; zz += 4, rw++) {
+    for (zz = 28; zz < WH; zz += 4, rw++) {
       subway += seg(P(257.8, 330, zz), P(257.8, 452, zz));
-      for (yb = 330 + (rw % 2) * 4; yb < 452; yb += 8) subway += seg(P(257.8, yb, zz), P(257.8, yb, Math.min(zz + 4, 74)));
+      for (yb = 330 + (rw % 2) * 4; yb < 452; yb += 8) subway += seg(P(257.8, yb, zz), P(257.8, yb, Math.min(zz + 4, WH)));
     }
     var ktile = '';
     for (zz = 22; zz <= 46; zz += 6) ktile += seg(P(182.8, 457.5, zz), P(182.8, 592, zz));
     for (yb = 462; yb < 592; yb += 12) ktile += seg(P(182.8, yb, 22), P(182.8, yb, 46));
     var damask = '';
-    for (var dz = 30, dr = 0; dz < 72; dz += 9, dr++) for (var dy = 156 + (dr % 2) * 7; dy < 278; dy += 14) {
+    for (var dz = 30, dr = 0; dz < WH - 2; dz += 9, dr++) for (var dy = 156 + (dr % 2) * 7; dy < 278; dy += 14) {
       var c0 = P(282.8, dy, dz), c1 = P(282.8, dy + 3, dz + 3.2), c2 = P(282.8, dy + 6, dz), c3 = P(282.8, dy + 3, dz - 3.2);
       damask += 'M' + r1(c0[0]) + ',' + r1(c0[1]) + 'Q' + r1(c1[0] - 2) + ',' + r1(c1[1] - 1) + ' ' + r1(c2[0]) + ',' + r1(c2[1]) + 'Q' + r1(c3[0] + 2) + ',' + r1(c3[1] + 1) + ' ' + r1(c0[0]) + ',' + r1(c0[1]);
     }
     var back = [
-      box(277.5, 45.5, 5, 285, 0, 74, WB, { lines: seg(P(282.8, 46, 24), P(282.8, 330, 24)) + damask, lc: '#d9bd8a' }),
-      box(277.5, 45.5, 200, 5, 0, 74, WB, { lines: seg(P(282, 50.8, 24), P(477, 50.8, 24)), lc: '#d9bd8a' }),
-      box(252.5, 325.5, 27.5, 5, 0, 74, WB),
-      box(252.5, 325.5, 5, 126.8, 0, 74, ['#6a4c38', '#ffffff', '#f2f4f5'], { lines: subway, lc: '#cfd6da' }),
-      box(177.5, 452.5, 77.5, 5, 0, 74, WB),
-      box(177.5, 452.5, 5, 142, 0, 74, WB, { lines: ktile, lc: '#d9c39a' })
+      box(277.5, 45.5, 5, 285, 0, WH, WB, { lines: seg(P(282.8, 46, 24), P(282.8, 330, 24)) + damask, lc: '#d9bd8a' }),
+      box(277.5, 45.5, 200, 5, 0, WH, WB, { lines: seg(P(282, 50.8, 24), P(477, 50.8, 24)), lc: '#d9bd8a' }),
+      box(252.5, 325.5, 27.5, 5, 0, WH, WB),
+      box(252.5, 325.5, 5, 126.8, 0, WH, ['#6a4c38', '#ffffff', '#f2f4f5'], { lines: subway, lc: '#cfd6da' }),
+      box(177.5, 452.5, 77.5, 5, 0, WH, WB),
+      box(177.5, 452.5, 5, 142, 0, WH, WB, { lines: ktile, lc: '#d9c39a' })
     ];
     var winsBase = [[305, 350], [405, 460]].map(function (w) {
       var m = (w[0] + w[1]) / 2, yf = 50.9;
-      return { glass: faceY(yf, w[0], w[1], 22, 66), frame: seg(P(m, yf, 22), P(m, yf, 66)) + seg(P(w[0], yf, 46), P(w[1], yf, 46)), shine: seg(P(w[0] + 5, yf, 30), P(w[0] + 14, yf, 58)) };
+      // magas, kétszárnyú fa ablak felülvilágítóval: párkány kb. 0,9 m, teteje kb. 3,3 m
+      return { glass: faceY(yf, w[0], w[1], 26, 100),
+        frame: seg(P(m, yf, 26), P(m, yf, 100)) + seg(P(w[0], yf, 76), P(w[1], yf, 76)) + seg(P(w[0], yf, 73.5), P(w[1], yf, 73.5)),
+        shine: seg(P(w[0] + 5, yf, 34), P(w[0] + 14, yf, 66)) + seg(P(w[0] + 5, yf, 82), P(w[0] + 10, yf, 94)) };
     });
 
     var WI = ['#6a4c38', '#f6e7c8', '#e3cb9c'];
@@ -180,8 +188,8 @@ class G3Scene extends MiniDC.Component {
     // a fürdő északi fala (a nagy szoba / kályha felé) feltűnően vastag: a fürdő belseje rövidebb
     var THICK = ['#6a4c38', '#ffffff', '#f2f4f5'];
     var thickSub = '';
-    for (var tz = 28; tz < 74; tz += 4) thickSub += seg(P(260, 337.7, tz), P(280, 337.7, tz));
-    W.push(box(257.5, 330.5, 22.5, 7, 0, 74, THICK, { lines: thickSub, lc: '#cfd6da' }));
+    for (var tz = 28; tz < WH; tz += 4) thickSub += seg(P(260, 337.7, tz), P(280, 337.7, tz));
+    W.push(box(257.5, 330.5, 22.5, 7, 0, WH, THICK, { lines: thickSub, lc: '#cfd6da' }));
     W.push(box(280, 330.5, 8, 7, 0, 20, WI));
     W.push(box(318, 330.5, 15, 7, 0, 20, WI));
     W.push(box(288, 330.5, 30, 7, 0, 0.6, ['#c8b79a', '#a8946f', '#977f5c']));
@@ -236,37 +244,71 @@ class G3Scene extends MiniDC.Component {
     // NAGY SZOBA
     piece('curt', 'Zsályazöld lenfüggönyök', false);
     [[305, 350], [405, 460]].forEach(function (w) {
-      add(w[0] - 8, 48.2, w[1] - w[0] + 16, 1.6, 70, 1.6, BLACK);
-      add(w[0] - 8, 50, 6, 3, 1, 69, SAGEC, { bias: 1, lines: seg(P(w[0] - 5, 53.2, 3), P(w[0] - 5, 53.2, 68)), lc: '#6f8a69' });
-      add(w[1] + 2, 50, 6, 3, 1, 69, SAGEC, { bias: 1, lines: seg(P(w[1] + 5, 53.2, 3), P(w[1] + 5, 53.2, 68)), lc: '#6f8a69' });
+      add(w[0] - 8, 48.2, w[1] - w[0] + 16, 1.6, 104, 1.6, BLACK);
+      add(w[0] - 8, 50, 6, 3, 1, 103, SAGEC, { bias: 1, lines: seg(P(w[0] - 5, 53.2, 3), P(w[0] - 5, 53.2, 102)), lc: '#6f8a69' });
+      add(w[1] + 2, 50, 6, 3, 1, 103, SAGEC, { bias: 1, lines: seg(P(w[1] + 5, 53.2, 3), P(w[1] + 5, 53.2, 102)), lc: '#6f8a69' });
     });
 
-    piece('rock', 'Thonet hintaszék');
-    add(288, 61, 20, 2, 0, 3, BENT);
-    add(288, 77, 20, 2, 0, 3, BENT);
-    add(291, 63, 14, 14, 7, 3, CANE, { bias: 1, lines: grid(291, 63, 14, 14, 7, 3, 3, 3, 1), lc: '#9a7643' });
-    add(288.5, 63, 3, 14, 7, 28, BENT, { bias: 2, f1: faceX(291.6, 64.5, 75.5, 12, 33), f1c: '#d9b277' });
-    add(289.5, 64.5, 3.5, 11, 16, 20, THROW, { bias: 3 });
-    add(291, 61.5, 14, 2, 15, 2, BENT, { bias: 4 });
-    add(291, 77, 14, 2, 15, 2, BENT, { bias: 4 });
+    // Thonet hintaszék (a fotók szerint): nem a sarokban, hanem a bal (9-es) ablak elé húzva, a szoba
+    // felé fordítva. Hajlított fa: ívelt talpak, csigavonalas karfa, hátrahajló támla, nádfonat, krém párna.
+    piece('rock', 'Thonet hintaszék, a bal ablak előtt');
+    (function () {
+      var cx = 318, cy = 76, fa = 1.05, fx = Math.cos(fa), fy = Math.sin(fa), NONE = ['none', 'none', 'none'];
+      function W(u, v, z) { return [cx + u * fx - v * fy, cy + u * fy + v * fx, z]; }
+      function Pw(u, v, z) { var w = W(u, v, z); return P(w[0], w[1], w[2]); }
+      // ívelt fa szalag a (u, z) síkban, t vastagsággal
+      function ribbon(pts, v, t) {
+        var A = [], B = [];
+        pts.forEach(function (q, k) {
+          var a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)];
+          var du = b[0] - a[0], dz = b[1] - a[1], l = Math.sqrt(du * du + dz * dz) || 1, nu = -dz / l * t / 2, nz = du / l * t / 2;
+          A.push(Pw(q[0] + nu, v, q[1] + nz)); B.unshift(Pw(q[0] - nu, v, q[1] - nz));
+        });
+        return pth(A.concat(B));
+      }
+      function part(u, v, d, ex) { var w = W(u, v, 0); add(w[0] - 0.5, w[1] - 0.5, 1, 1, 0, 0.1, NONE, Object.assign({ sw: 0, lc: '#1e2a44' }, ex, { bias: d })); }
+      var runner = [], k;
+      for (k = 0; k <= 12; k++) { var uu = -14 + k * 27 / 12; runner.push([uu, 0.016 * uu * uu + 1]); }
+      var front = [[8.5, 1.6], [8, 7], [7.2, 12.5], [7.5, 17], [5.5, 21.5], [1, 22.5], [-4, 22], [-7.5, 20.5]];
+      var back = [[-6, 1.4], [-7, 7], [-8.4, 13], [-9.6, 22], [-10.8, 31], [-11.4, 38], [-10, 41.5], [-8, 40.5]];
+      var curl = [[5.5, 21.5], [8, 20.5], [8.4, 18], [6.8, 17.5]];
+      [-7.5, 7.5].forEach(function (v, j) {
+        var d = (v < 0 ? -1 : 1) * 4;
+        var sh = ribbon(runner, v, 2.8) + ribbon(back, v, 3) + ribbon(front, v, 2.5) + ribbon(curl, v, 2);
+        part(0, v, d, { f1: sh, f1c: '#5a3a24', lines: sh });
+      });
+      var bp = pth([Pw(-8.4, -6.3, 14), Pw(-8.4, 6.3, 14), Pw(-11, 6.3, 36), Pw(-11, -6.3, 36)]);
+      var cane = '';
+      for (k = 1; k < 6; k++) { var vv = -6.3 + k * 12.6 / 6; cane += seg(Pw(-8.4, vv, 14), Pw(-11, vv, 36)); }
+      for (k = 1; k < 5; k++) { var tt = k / 5; cane += seg(Pw(-8.4 - 2.6 * tt, -6.3, 14 + 22 * tt), Pw(-8.4 - 2.6 * tt, 6.3, 14 + 22 * tt)); }
+      part(-9.5, 0, -2, { f1: bp, f1c: '#e2bf85', lines: bp + cane, lc: '#9a7643' });
+      var tr2 = pth([Pw(-11.6, -7.5, 36.5), Pw(-11.6, 7.5, 36.5), Pw(-11.2, 7.5, 39), Pw(-11.2, -7.5, 39)]);
+      part(-11, 0, -1, { f1: tr2, f1c: '#5a3a24', lines: tr2 });
+      var seat = pth([Pw(-8, -6.5, 12), Pw(7.5, -6.5, 13), Pw(7.5, 6.5, 13), Pw(-8, 6.5, 12)]);
+      var sgrid = '';
+      for (k = 1; k < 4; k++) { var su = -8 + k * 15.5 / 4; sgrid += seg(Pw(su, -6.5, 12 + k / 4), Pw(su, 6.5, 12 + k / 4)); }
+      part(0, 0, 0, { f1: seat, f1c: '#e2bf85', lines: seat + sgrid, lc: '#9a7643' });
+      var cush = pth([Pw(-6.5, -5, 13.4), Pw(5, -5, 14.2), Pw(5, 5, 14.2), Pw(-6.5, 5, 13.4)]) + pth([Pw(-8.8, -5, 16), Pw(-8.8, 5, 16), Pw(-10.4, 5, 31), Pw(-10.4, -5, 31)]);
+      part(0.2, 0, 1, { f1: cush, f1c: '#f4efe4', lines: cush, lc: '#cbc2ae' });
+    })();
 
     piece('side', 'Fehér drótkosár-asztalka');
     add(283, 84, 10, 10, 0, 12, WHITE, { lines: grid(283, 84, 10, 10, 0, 12, 3, 3, 3), lc: '#aeb4bb' });
 
-    piece('flamp', 'Állólámpa szürke ernyővel');
-    add(297, 51, 3, 3, 0, 52, BLACK);
-    add(292, 47.5, 12, 9, 48, 12, GSHADE, { bias: 2 });
+    piece('flamp', 'Állólámpa szürke ernyővel, az ÉNy-i sarokban');
+    add(284, 53, 3, 3, 0, 52, BLACK);
+    add(281, 49.5, 10, 10, 48, 12, GSHADE, { bias: 2 });
 
-    piece('shelves', 'Könyvespolcok és macramé futóborostyán');
-    add(280, 96, 7, 32, 46, 1.6, WHITE);
-    add(280, 96, 7, 32, 57, 1.6, WHITE, { bias: 1 });
-    for (var bk = 0; bk < 8; bk++) add(281, 98 + bk * 3.3, 5, 2.6, 47.6, 6 + (bk % 3), BOOKS[bk % 5], { bias: 2 });
-    add(281, 117, 5.5, 8, 58.6, 2.4, BOOKS[1], { bias: 3 });
-    add(281, 117, 5.5, 8, 61, 2.4, BOOKS[2], { bias: 4 });
-    [99, 103, 107].forEach(function (py) { add(282, py, 2, 2, 58.6, 6, SAGE, { bias: 3 }); });
-    [101, 122].forEach(function (py) {
-      add(281, py, 4, 4, 30, 4, ['#e8e8e8', '#cfcfcf', '#bdbdbd'], { bias: 5, lines: seg(P(283, py + 2, 34), P(283, py + 2, 46)), lc: '#efe6d2' });
-      add(280.5, py - 1, 6, 6, 21, 9, IVY, { bias: 4 });
+    piece('shelves', 'Fali polcok könyvekkel és macramé futóborostyán, a sarok és a bal ablak között');
+    add(289, 50.6, 14, 6, 46, 1.6, WHITE);
+    add(289, 50.6, 14, 6, 57, 1.6, WHITE, { bias: 1 });
+    for (var bk = 0; bk < 4; bk++) add(290 + bk * 3.1, 51.2, 2.6, 4.6, 47.6, 6 + (bk % 3), BOOKS[bk % 5], { bias: 2 });
+    add(296, 51.2, 6, 4.6, 58.6, 2.4, BOOKS[1], { bias: 3 });
+    add(296, 51.2, 6, 4.6, 61, 2.4, BOOKS[2], { bias: 4 });
+    [290, 293].forEach(function (px) { add(px, 52, 2, 2, 58.6, 6, SAGE, { bias: 3 }); });
+    [288, 302].forEach(function (px) {
+      add(px - 1, 51, 4, 4, 30, 4, ['#e8e8e8', '#cfcfcf', '#bdbdbd'], { bias: 5, lines: seg(P(px + 1, 53, 34), P(px + 1, 53, 46)), lc: '#efe6d2' });
+      add(px - 2, 50.5, 6, 6, 21, 9, IVY, { bias: 4 });
     });
 
     piece('stand', 'Virágállvány békeliliommal és zöld üvegballonnal');
@@ -384,15 +426,16 @@ class G3Scene extends MiniDC.Component {
       else if (side === 'n') add(x, y - 2, 10, 2, 12, 15, WHITE, { bias: 2, lines: seg(P(x + 3, y + 0.1, 13), P(x + 3, y + 0.1, 26)) + seg(P(x + 7, y + 0.1, 13), P(x + 7, y + 0.1, 26)), lc: '#b9bec5' });
       else add(x, y + 10, 10, 2, 12, 15, WHITE, { bias: 2, lines: seg(P(x + 3, y + 12.1, 13), P(x + 3, y + 12.1, 26)) + seg(P(x + 7, y + 12.1, 13), P(x + 7, y + 12.1, 26)), lc: '#b9bec5' });
     }
-    piece('dining', 'Étkezőasztal a zöld falhoz tolva: 4 szék, 5. hely is elfér');
-    wchair(410, 474, 'w');
-    wchair(410, 498, 'w');
-    wchair(444, 452, 'n');
-    legs4(428, 468, 42, 48, 15, WHITE, 2.5);
-    add(426, 466, 46, 52, 15, 4, CLOTH, { bias: 4, lines: seg(P(434, 518.2, 15), P(434, 518.2, 19)) + seg(P(450, 518.2, 15), P(450, 518.2, 19)), lc: '#cbbf9f' });
-    [[430, 470], [452, 470], [430, 500], [452, 500]].forEach(function (m) { add(m[0], m[1], 14, 12, 19, 0.6, MAT, { bias: 5 }); });
-    [[445, 486], [456, 495], [435, 494], [462, 514]].forEach(function (l) { add(l[0], l[1], 4, 3, 19, 0.6, ['#9ccc4a', '#7fb03a', '#6a9632'], { bias: 5 }); });
-    wchair(444, 520, 's');
+    piece('dining', 'Étkezőasztal a zöld falhoz tolva, mélyen benyúlik a szobába: 5 szék');
+    wchair(388, 486, 'w');
+    wchair(414, 456, 'n');
+    wchair(442, 456, 'n');
+    legs4(406, 472, 64, 38, 15, WHITE, 2.5);
+    add(404, 470, 68, 42, 15, 4, CLOTH, { bias: 4, lines: seg(P(412, 512.2, 15), P(412, 512.2, 19)) + seg(P(436, 512.2, 15), P(436, 512.2, 19)) + seg(P(460, 512.2, 15), P(460, 512.2, 19)), lc: '#cbbf9f' });
+    [[409, 472], [437, 472], [409, 498], [437, 498], [405.5, 485]].forEach(function (m, j) { add(m[0], m[1], j === 4 ? 10 : 14, 12, 19, 0.6, MAT, { bias: 5 }); });
+    [[426, 487], [448, 494], [462, 478], [420, 504], [458, 506]].forEach(function (l) { add(l[0], l[1], 4, 3, 19, 0.6, ['#9ccc4a', '#7fb03a', '#6a9632'], { bias: 5 }); });
+    wchair(414, 514, 's');
+    wchair(442, 514, 's');
 
     piece('kdoor', 'Kis szoba ajtaja, befelé nyílik (a bejárattal szemben)', false);
     var swing = [];
@@ -402,7 +445,7 @@ class G3Scene extends MiniDC.Component {
     add(359, 584.6, 3, 1.5, 22, 2, STEEL, { bias: 1 });
 
     piece('ac', 'Gree klíma beltéri egység (11)');
-    add(336, 472, 8, 44, 54, 12, WHITE, { bias: 30, lines: seg(P(344.3, 475, 57), P(344.3, 513, 57)), lc: '#9aa3ab', f1: faceX(344.4, 508, 511, 61, 63), f1c: '#5fd6a0', f1f: 'url(#glowF2)' });
+    add(336, 472, 8, 44, 86, 12, WHITE, { bias: 30, lines: seg(P(344.3, 475, 89), P(344.3, 513, 89)), lc: '#9aa3ab', f1: faceX(344.4, 508, 511, 93, 95), f1c: '#5fd6a0', f1f: 'url(#glowF2)' });
 
     piece('gas', 'Gázkonvektor (Lampart Gála 50): krém doboz, fekete rács és kémlelőablak');
     add(384, 580, 40, 9, 0, 18, ['#fbf6e8', '#e8dfc8', '#d8ceb4']);
@@ -445,11 +488,11 @@ class G3Scene extends MiniDC.Component {
     add(327, 410, 3.5, 5, 22, 18, ['#a9c7d9', '#86abcb', '#7397b8'], { bias: 5 });
     add(327, 416, 3.5, 5, 24, 16, ['#c7ced3', '#aab3b9', '#97a1a8'], { bias: 5 });
     piece('heater', 'Fürdő fali fűtőtest, magasan');
-    add(257.6, 414, 3, 26, 56, 8, WHITE, { bias: 30, lines: seg(P(260.7, 417, 58), P(260.7, 437, 58)), lc: '#9aa3ab' });
+    add(257.6, 414, 3, 26, 74, 8, WHITE, { bias: 30, lines: seg(P(260.7, 417, 76), P(260.7, 437, 76)), lc: '#9aa3ab' });
     piece('boiler', 'Bojler az álmennyezet fölött (Hajdu ZV120, fekvő henger)');
     // Fekvő henger az x tengely mentén: a palást a két véglap konvex burka, a látható (x1) véglap külön.
     (function () {
-      var x0 = 258, x1 = 300, cy = 376, cz = 64, r = 8, N = 28, E0 = [], E1 = [], k;
+      var x0 = 258, x1 = 300, cy = 376, cz = 96, r = 8, N = 28, E0 = [], E1 = [], k;
       for (k = 0; k < N; k++) { var t = k / N * Math.PI * 2, yy = cy + r * Math.cos(t), zz = cz + r * Math.sin(t); E0.push(P(x0, yy, zz)); E1.push(P(x1, yy, zz)); }
       var pts2 = E0.concat(E1).slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
       function cr(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
@@ -493,8 +536,6 @@ class G3Scene extends MiniDC.Component {
     add(296, 506.5, 4, 1, 15, 3, ['#ffffff', '#f1f3f5', '#e4e6ea'], { bias: 2 });
     piece('shelf', 'Polc (privát tároló)');
     add(292, 459, 38, 11, 0, 34, WALNUT, { lines: seg(P(292, 470.2, 11), P(330, 470.2, 11)) + seg(P(292, 470.2, 22), P(330, 470.2, 22)), lc: '#3a2414' });
-    piece('rack', 'Fogas');
-    add(262, 512, 5, 5, 0, 46, WALNUT);
     piece('panelbox', 'Mérő- és elosztószekrény (k5, k7, k8, k9): magas fehér beépített szekrény a bejárati ajtó mellett');
     var CABW = ['#fbfbfa', '#e3e5e7', '#d2d5d9'];
     add(321, 582.5, 10, 7, 0, 1.2, CABW);
@@ -560,18 +601,18 @@ class G3Scene extends MiniDC.Component {
     add(182, 458, 20, 21, 0, 22, WHITE, { f1: faceX(202.1, 461, 476, 4, 14), f1c: '#2b2b2b' });
     add(183, 459, 18, 19, 22, 0.8, BLACK, { bias: 1 });
     piece('fridge', 'Beko inox hűtő-fagyasztó az északi fal mentén, a tűzhely mellett');
-    add(214, 458, 27, 21, 0, 54, STEEL, { lines: seg(P(216, 479.2, 15), P(239, 479.2, 15)) + seg(P(236, 479.2, 20), P(236, 479.2, 34)) + seg(P(236, 479.2, 6), P(236, 479.2, 12)), lc: '#5c636e' });
+    add(220, 458, 21, 21, 0, 54, STEEL, { lines: seg(P(222, 479.2, 15), P(239, 479.2, 15)) + seg(P(236, 479.2, 20), P(236, 479.2, 34)) + seg(P(236, 479.2, 6), P(236, 479.2, 12)), lc: '#5c636e' });
     piece('urnbox', 'Nyitott wenge doboz: kék-fehér porcelán urnák, befőttesüvegek, növény', false);
-    add(213.5, 458, 32, 35, 56, 2, DKWOOD);
-    add(213.5, 458, 32, 2, 58, 16, DKWOOD, { bias: 1 });
-    add(243.5, 458, 2, 35, 58, 16, DKWOOD, { bias: 2 });
-    add(215.5, 460, 28, 31, 64, 1.6, WHITE, { bias: 3 });
+    add(218, 458, 27, 30, 56, 2, DKWOOD);
+    add(218, 458, 27, 2, 58, 16, DKWOOD, { bias: 1 });
+    add(243, 458, 2, 30, 58, 16, DKWOOD, { bias: 2 });
+    add(219.5, 460, 23.5, 27, 64, 1.6, WHITE, { bias: 3 });
     var BLUEW = ['#f4f7fb', '#3d6fb6', '#2f5a99'];
-    [[219, 467], [227, 475]].forEach(function (u) { add(u[0], u[1], 6, 6, 58, 6, BLUEW, { bias: 4, lines: seg(P(u[0], u[1] + 6.2, 60.5), P(u[0] + 6, u[1] + 6.2, 60.5)), lc: '#2f5a99' }); add(u[0] + 1.5, u[1] + 1.5, 3, 3, 64, 1.4, BLUEW, { bias: 5 }); });
+    [[221, 466], [229, 474]].forEach(function (u) { add(u[0], u[1], 6, 6, 58, 6, BLUEW, { bias: 4, lines: seg(P(u[0], u[1] + 6.2, 60.5), P(u[0] + 6, u[1] + 6.2, 60.5)), lc: '#2f5a99' }); add(u[0] + 1.5, u[1] + 1.5, 3, 3, 64, 1.4, BLUEW, { bias: 5 }); });
     add(235, 463, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
-    add(235, 483, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
-    add(220, 483, 5, 5, 58, 4, ['#f4f1ea', '#dcd6ca', '#cbc4b6'], { bias: 4 });
-    add(219.5, 482.5, 6, 6, 62, 5, IVY, { bias: 5 });
+    add(237, 481, 4, 4, 58, 5, ['#e6f2f0', '#bcd8d3', '#a7c7c1'], { bias: 4 });
+    add(221, 480, 5, 5, 58, 4, ['#f4f1ea', '#dcd6ca', '#cbc4b6'], { bias: 4 });
+    add(220.5, 479.5, 6, 6, 62, 5, IVY, { bias: 5 });
     piece('uppers', 'Fehér kazettás felső szekrények, mikró, LED-szalag', false);
     add(180.5, 488, 11, 100, 46, 18, CAB, { lines: seg(P(191.6, 512, 46), P(191.6, 512, 64)) + seg(P(191.6, 538, 46), P(191.6, 538, 64)) + seg(P(191.6, 563, 46), P(191.6, 563, 64)), lc: '#c9c3b5' });
     add(180.5, 458, 13, 22, 40, 24, CAB, { lines: seg(P(193.6, 458.5, 52), P(193.6, 479.5, 52)), lc: '#c9c3b5',
@@ -588,12 +629,12 @@ class G3Scene extends MiniDC.Component {
     });
     [516, 521, 526, 531].forEach(function (u) { add(180.2, u, 1.2, 1.4, 22.5, 7, BLACK, { bias: 1 }); });
     piece('pendant', 'Fehér függőlámpa', false);
-    add(214, 516, 9, 9, 58, 5, WHITE, { lines: seg(P(218.5, 520.5, 63), P(218.5, 520.5, 74)), lc: '#1e2a44' });
+    add(214, 516, 9, 9, 58, 5, WHITE, { lines: seg(P(218.5, 520.5, 63), P(218.5, 520.5, WH)), lc: '#1e2a44' });
     piece('stool', 'Fekete fellépő az ajtó mellett');
     add(238, 562, 10, 10, 0, 14, BLACK, { lines: seg(P(238, 572.2, 7), P(248, 572.2, 7)), lc: '#5a524c' });
     piece('curt7', 'Világoskék függöny és fehér fátyolfüggöny (konyhaablak)', false);
-    add(192, 585, 5, 3, 1, 52, BLUEC);
-    add(197, 586.5, 4, 1.5, 4, 46, ['#ffffff', '#f2f4f6', '#e6e9ec'], { bias: 1 });
+    add(192, 585, 5, 3, 1, 96, BLUEC);
+    add(197, 586.5, 4, 1.5, 4, 90, ['#ffffff', '#f2f4f6', '#e6e9ec'], { bias: 1 });
 
     pieces.forEach(function (p) {
       p.boxes.sort(function (a, b) { return a.key - b.key; });
@@ -610,15 +651,15 @@ class G3Scene extends MiniDC.Component {
       shine: seg(P(472, 362, 40), P(472, 380, 53)) + seg(P(472, 392, 40), P(472, 404, 48)),
       shelf: [box(468.5, 372, 4, 50, 29, 1.6, WHITE), box(469, 384, 3, 3, 30.6, 4, GOLD), box(469, 396, 3, 3, 30.6, 4, GOLD), box(469, 410, 3, 4, 30.6, 3, ['#f4f1ea', '#dcd6ca', '#cbc4b6'])]
     };
-    var ghost = box(472.5, 330, 5, 262, 12, 62, ['#cfe0c8', '#a9c1a0', '#9fbb96']);
+    var ghost = box(472.5, 330, 5, 262, 12, WH - 12, ['#cfe0c8', '#a9c1a0', '#9fbb96']);
     // kis szoba ablaka belülről: fekete reluxa, mintás fehér fátyolfüggöny, zsályazöld sötétítő
     var slats = '';
-    for (var sz = 20; sz < 50; sz += 1.6) slats += seg(P(384, 588.6, sz), P(421, 588.6, sz));
+    for (var sz = 40; sz < 98; sz += 1.6) slats += seg(P(384, 588.6, sz), P(421, 588.6, sz));
     var lace = '';
-    for (var lz = 22; lz < 48; lz += 6) for (var lx = 386; lx < 420; lx += 7) lace += 'M' + r1(P(lx, 587.4, lz)[0]) + ',' + r1(P(lx, 587.4, lz)[1]) + 'm-1.6,0a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0';
+    for (var lz = 24; lz < 96; lz += 6) for (var lx = 386; lx < 420; lx += 7) lace += 'M' + r1(P(lx, 587.4, lz)[0]) + ',' + r1(P(lx, 587.4, lz)[1]) + 'm-1.6,0a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0';
     var blind = {
-      slats: slats, lace: lace, sheer: faceY(587.3, 383, 422, 14, 52),
-      curt: [box(376, 584, 6, 3.5, 2, 58, SAGEC), box(422, 584, 6, 3.5, 2, 58, SAGEC), box(374, 586, 56, 1.4, 60, 1.4, BLACK)]
+      slats: slats, lace: lace, sheer: faceY(587.3, 383, 422, 22, 98),
+      curt: [box(376, 584, 6, 3.5, 2, 100, SAGEC), box(422, 584, 6, 3.5, 2, 100, SAGEC), box(374, 586, 56, 1.4, 102, 1.4, BLACK)]
     };
     var win7 = quad(198, 589.5, 238, 594.5, 12.4);
     var win8 = pts([P(380, 594, 12), P(425, 594, 12), P(425, 606, 46), P(380, 606, 46)]);
@@ -636,7 +677,7 @@ class G3Scene extends MiniDC.Component {
       back: back, winsBase: winsBase, walls: W, pieces: pieces, front: front, win7: win7, win8: win8, win8frame: win8frame,
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
-        stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), boss: tr(341, 303, 154), ch1: tr(377, 190, 70), ch2: tr(404, 470, 70),
+        stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), boss: tr(341, 303, 154), ch1: tr(377, 190, 96), ch2: tr(404, 470, 96),
         ghosts: tr(414, 552, 34), compass: tr(640, 470, 0), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };
@@ -779,9 +820,9 @@ class G3Scene extends MiniDC.Component {
       { id: '6', name: 'Privát tároló ajtaja', p: [312, 505, 12], o: [-6, 34], val: 'zárva' },
       { id: '7', name: 'Konyha ablak', p: [218, 594, 30], o: [-30, 26], val: 'zárva' },
       { id: '8', name: 'Kis szoba ablak', p: [404, 594, 48], o: [-6, 40], val: L.open8 ? 'NYITVA!' : 'zárva', show: L.open8, kind: L.open8 ? 'bad' : '', alert: L.open8 },
-      { id: '9', name: 'Nagy szoba bal ablak', p: [327, 50, 70], o: [0, -30], val: 'zárva' },
-      { id: '10', name: 'Nagy szoba jobb ablak', p: [432, 50, 70], o: [0, -30], val: 'zárva' },
-      { id: '11', name: 'Klíma (Gree, IR)', p: [340, 494, 66], o: [52, 4], val: 'fűt 23 °C' },
+      { id: '9', name: 'Nagy szoba bal ablak', p: [327, 50, 100], o: [0, -30], val: 'zárva' },
+      { id: '10', name: 'Nagy szoba jobb ablak', p: [432, 50, 100], o: [0, -30], val: 'zárva' },
+      { id: '11', name: 'Klíma (Gree, IR)', p: [340, 494, 98], o: [52, 4], val: 'fűt 23 °C' },
       { id: 'P', name: 'Kályhakapcsoló (LUXION), a nagy szoba felől a fürdőajtó mellett', p: [319, 324, 54], o: [8, -36], val: L.stage },
       { id: 'k5', name: 'Kör 5: cserépkályha', p: [326, 586, 40], o: [-150, 126], val: L.k5, sm: true },
       { id: 'k7', name: 'Kör 7: bojler', p: [326, 586, 40], o: [-120, 126], val: L.k7, sm: true },

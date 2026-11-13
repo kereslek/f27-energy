@@ -29,7 +29,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, battery_of, context_lines,
                      email_ready, fmt_num, last_report, merge_config, parse_ts, send_email, snapshot,
                      stage_of, watts_of)
-from .report_stats import banner, build_stats, to_html
+from .report_stats import banner, build_stats, subject_line, to_html
 from .supa import SupabaseError, SupabaseRest
 
 MONTHS = ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec.")
@@ -201,7 +201,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             "Beállítás: a térkép Riasztások panelje."]
     top = banner(now, head["kwh"], head["ft"], head["guest"]) + ["", f">> DASHBOARD: {MAP_URL}", ""]
     text = "\n".join(top + out) + "\n"
-    return {"subject": f"F27 napi összefoglaló, {day_label(today)}", "email_body": text,
+    return {"subject": subject_line(now, head), "email_body": text,
             "email_html": to_html(text, MAP_URL)}
 
 
