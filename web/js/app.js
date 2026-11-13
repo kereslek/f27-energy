@@ -319,7 +319,7 @@
   function stoveNowOf(stage, w) {
     var measured = w != null;
     var drawing = measured ? w > 300 : !!(stage > 0);
-    var idleOn = !!(stage > 0) && measured && w < 200;
+    var idleOn = !!(stage > 0) && measured && !drawing;
     var kw = measured ? Math.max(0, w) / 1000 : (stage || 0);
     var lit = measured ? (drawing ? Math.max(1, Math.min(3, Math.round(w / 1000))) : 0) : stage;
     var big = !measured ? (stage == null ? '?' : stage === 0 ? 'KI' : stage + ' kW') : drawing ? fmtNum(Math.round(w / 100) / 10, 1) + ' kW' : stage === 0 ? 'KI' : '0 kW';
@@ -713,7 +713,8 @@
       (k > 1 ? ', ' + k + ' napra kb. ' + 50 * k + '-' + 100 * k + ' Ft' : '') + ').';
   }
 
-  function bkTips(m, by, stage, season, add) {
+  function bkTips(m, by, stage, season, add, sn) {
+    sn = sn || stoveNowOf(stage, null);
     var now = m.now, today = m.today;
     var safe = ' Csak javaslat: automatikus kapcsolás nincs (a kályhához előbb kontaktor kell).';
     var boilerOff = !!(by.k7 && by.k7.swOff);
@@ -728,11 +729,14 @@
     }
     // üres a lakás, de megy a kályha: ez a nagy tétel
     var empty = !m.cur && !(ta && now >= heatMs);
+    // a mérés dönt: fűt-e most; ha nem, de a kapcsoló BE (feltöltött), az is lekapcsolható, csak kisebb hangsúllyal
     if (empty && stage > 0) {
       var kwh = Math.round(stage * 24 / 5) * 5, dayFt = Math.round(stage * 24 * STOVE_FT_KWH / 100) * 100;
+      var nowTxt = sn.drawing ? (sn.measured ? 'most fűt (' + fmtW(sn.kw * 1000) + ')' : stage + ' kW-on megy (mérés nincs)')
+        : 'be van kapcsolva (' + stage + ' kW); most épp nem fűt, mert feltöltött, de ahogy hűl, újratölt';
       var nx = m.next, until = nx ? budMs(nx.s, STAY.heatStart) - now : null, left = '';
       if (until != null && until > 2 * 3600000) left = ' A felfűtés kezdetéig (' + dayWord(nx.s, today) + ' ' + STAY.heatStart + ') ez kb. ' + fmtNum(Math.round(stage * until / 3600000 * STOVE_FT_KWH / 100) * 100, 0) + ' Ft.';
-      add(90, 'red', 'P', 'Üres a lakás, de megy a kályha (' + stage + ' kW)', 'Most nincs vendég' + (nx ? ' (a következő érkezés ' + dayWord(nx.s, today) + ' ' + STAY.checkin + ')' : '') + ', a kályha mégis ' + stage + ' kW-on megy. ' + stage + ' kW egész nap kb. ' + kwh + ' kWh, keret felett (60,9 Ft/kWh) kb. ' + fmtNum(dayFt, 0) + ' Ft naponta.' + left + ' Üres napokon elég a temperálás gázzal vagy klímával (a nagy szoba ne hűljön 15 °C alá), a felfűtés érkezés napján ' + STAY.heatStart + '-kor kezdődhet.' + safe);
+      add(sn.drawing ? 90 : 78, sn.drawing ? 'red' : 'orange', 'P', sn.drawing ? 'Üres a lakás, de fűt a kályha' + (sn.measured ? ' (' + fmtW(sn.kw * 1000) + ')' : ' (' + stage + ' kW)') : 'Üres a lakás, de be van kapcsolva a kályha', 'Most nincs vendég' + (nx ? ' (a következő érkezés ' + dayWord(nx.s, today) + ' ' + STAY.checkin + ')' : '') + ', a kályha mégis ' + nowTxt + '. ' + stage + ' kW egész nap kb. ' + kwh + ' kWh, keret felett (60,9 Ft/kWh) kb. ' + fmtNum(dayFt, 0) + ' Ft naponta.' + left + ' Üres napokon elég a temperálás gázzal vagy klímával (a nagy szoba ne hűljön 15 °C alá), a felfűtés érkezés napján ' + STAY.heatStart + '-kor kezdődhet.' + safe);
     }
     // üres napok előre: bojler LE (kis tétel), kályha ne menjen (nagy tétel)
     var g = m.gap;
@@ -762,21 +766,22 @@
     var tips = [];
     function add(pri, tone, dev, short, long) { tips.push({ pri: pri, tone: tone, dev: dev, short: short, long: long }); }
     var P = by.P, stage = P && P.online !== false ? P.stage || 0 : 0;
+    // a kályhánál a mérés dönt (5-ös kör), a kapcsoló csak mérés híján (stoveNowOf)
+    var w5 = by.k5 ? (by.k5.swOff ? 0 : by.k5.watt != null ? by.k5.watt : null) : null, sn = stoveNowOf(stage, w5);
     var ac = by.k9 && by.k9.watt != null && by.k9.watt > 100;
     var season = heatingSeason(now);
-    var heating = stage > 0 || ac || season;
-    var heatWhy = stage > 0 ? 'a kályha megy' : ac ? 'a klíma fűt' : 'fűtési szezon van, a gáz is megy';
+    var heating = sn.drawing || ac || season;
+    var heatWhy = sn.drawing ? 'a kályha fűt' : ac ? (season ? 'a klíma fűt' : 'a klíma megy (nyáron hűt)') : 'fűtési szezon van, a gáz is megy';
     // nyitott ablak, ajtó fűtés közben
     Object.keys(DRAFT_NAME).forEach(function (id) {
       var c = by[id];
       if (!c || !c.open || c.online === false || c.age == null || c.age < 10 * 60000) return;
       var who = DRAFT_NAME[id];
       if (c.stale) add(62, 'orange', id, who + ' NYITVA jelez, de ' + durText(c.age) + ' hallgat', who + ' NYITVA jelzést mutat, de az érzékelő ' + durText(c.age) + ' nem jelentett' + (c.battPct != null && c.battPct < 20 ? ', és merül az eleme (' + c.battPct + ' %)' : '') + '. Nézd meg a helyszínen, vagy kérd meg a takarítót.');
-      else if (heating) add(92, 'red', id, who + ' ' + durText(c.age) + ' nyitva, és fűtünk!', who + ' ' + durText(c.age) + ' nyitva, közben ' + heatWhy + '. A huzat viszi a meleget: csukd be, vagy szólj a vendégnek. Szellőztetni 5-10 perc bőven elég.');
+      else if (heating) add(92, 'red', id, who + ' ' + durText(c.age) + ' nyitva, és ' + (sn.drawing || season ? 'fűtünk!' : 'megy a klíma!'), who + ' ' + durText(c.age) + ' nyitva, közben ' + heatWhy + '. ' + (sn.drawing || season ? 'A huzat viszi a meleget' : 'A klíma a kinti meleget hűti') + ': csukd be, vagy szólj a vendégnek. Szellőztetni 5-10 perc bőven elég.');
       else add(25, 'blue', id, who + ' ' + durText(c.age) + ' nyitva', who + ' ' + durText(c.age) + ' nyitva. Fűtés most nincs, így ez nem drága.');
     });
     // kályha: keret feletti ár; a mért teljesítmény (5-ös kör) a döntő, nem a kapcsoló állása
-    var w5 = by.k5 ? (by.k5.swOff ? 0 : by.k5.watt != null ? by.k5.watt : null) : null, sn = stoveNowOf(stage, w5);
     if (sn.drawing) {
       var ft = Math.round(sn.kw * STOVE_FT_KWH), kwT = sn.measured ? fmtW(w5) : stage + ' kW';
       add(sn.kw >= 1.5 ? 80 : 68, sn.kw >= 1.5 ? 'red' : 'orange', 'P', 'A kályha most fűt (' + kwT + '): kb. ' + ft + ' Ft óránként',
@@ -818,16 +823,16 @@
     });
     // a klíma tápja (9-es kismegszakító) lekapcsolva: a legolcsóbb hőforrás ki van zárva
     if (by.k9 && by.k9.swOff) {
-      if (season && stage > 0) add(66, 'orange', 'k9', 'A klíma nem kap áramot, közben a kályha megy', 'A 9-es (klíma) kismegszakító le van kapcsolva, így a klíma nem tud menni, közben a kályha ' + stage + ' kW-on fűt. A klíma hőszivattyúval kb. 12-23 Ft egy kWh hő, a kályha keret felett kb. 60 Ft: minden kályháról klímára terelt kWh kb. 37 Ft megtakarítás. Ha szándékos (pl. a vendég ne kapcsolgassa), rendben.');
+      if (season && (sn.drawing || sn.idleOn)) add(66, 'orange', 'k9', 'A klíma nem kap áramot, közben a kályha megy', 'A 9-es (klíma) kismegszakító le van kapcsolva, így a klíma nem tud menni, közben ' + (sn.drawing ? 'a kályha fűt (' + (sn.measured ? fmtW(w5) : stage + ' kW') + ')' : 'a kályha be van kapcsolva (most épp feltöltött, nem fűt)') + '. A klíma hőszivattyúval kb. 12-23 Ft egy kWh hő, a kályha keret felett kb. 60 Ft: minden kályháról klímára terelt kWh kb. 37 Ft megtakarítás. Ha szándékos (pl. a vendég ne kapcsolgassa), rendben.');
       else add(season ? 28 : 15, 'blue', 'k9', 'A klíma kismegszakítója le van kapcsolva', 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma most nem kap áramot. Távolról a Smart Life appban kapcsolható vissza.');
     }
     if (by.k7 && by.k7.swOff) add(26, 'blue', 'k7', 'A bojler kismegszakítója le van kapcsolva', 'A 7-es (bojler) kismegszakító le van kapcsolva: a bojler nem fűt utána, a melegvíz fogy. Üres lakásban ez megtakarítás; vendég érkezése előtt kb. 3 órával kapcsold vissza a Smart Life appban.');
-    if (ac && season && stage === 0) add(20, 'green', 'k9', 'A klíma fűt: ez a legolcsóbb meleg', 'A klíma fűt (' + fmtNum(by.k9.watt, 0) + ' W). Hőszivattyúval kb. 12 Ft egy kWh hő, a kályha keret felett kb. 60 Ft.');
+    if (ac && season && !sn.drawing) add(20, 'green', 'k9', 'A klíma fűt: ez a legolcsóbb meleg', 'A klíma fűt (' + fmtNum(by.k9.watt, 0) + ' W). Hőszivattyúval kb. 12 Ft egy kWh hő, a kályha keret felett kb. 60 Ft.');
     // időjárás (csak az Élő módban, valós előrejelzésből); a kályha kapcsolása kézi, ez csak javaslat
     var safe = ' Csak javaslat: a kályha automatikus kapcsolása még nincs bekötve (előbb kontaktor kell).';
     if (fc && fc.hint.kind === 'warm' && stage > 0) add(74, 'green', 'P', fc.hint.short, fc.hint.text + safe);
     else if (fc && fc.hint.kind === 'cold') add(stage > 0 ? 30 : 52, 'blue', 'P', fc.hint.short, fc.hint.text + safe);
-    if (bk) bkTips(bk, by, stage, season, add);
+    if (bk) bkTips(bk, by, stage, season, add, sn);
     if (!tips.some(function (t) { return t.pri >= 45; })) add(10, 'green', null, 'Minden rendben: zárt ablakok, kályha pihen', 'Minden rendben: az ablakok zárva, a kályha pihen, a szobák kellemesek. Szép munka!');
     tips.sort(function (a, b) { return b.pri - a.pri; });
     return tips;
@@ -894,6 +899,13 @@
       return sc != null ? v / Math.pow(10, sc) : v;
     }
     return null;
+  }
+  // a device_latest legfrissebb sora: { stale, last, ago }; nincs élő adat: stale = false
+  var STALE_DATA_MS = 90 * 60000;
+  function dataFreshness(live, now) {
+    var last = 0;
+    Object.keys(live || {}).forEach(function (k) { var t = Date.parse((live[k] || {}).ts); if (isFinite(t) && t > last) last = t; });
+    return { stale: last > 0 && now - last > STALE_DATA_MS, last: last, ago: last ? ago(now - last) : '' };
   }
   function ago(ms) {
     var m = Math.max(0, Math.round(ms / 60000));
@@ -981,7 +993,7 @@
     c.resolvedMsg = alBool(s.resolvedMsg, c.resolvedMsg);
     c.quietExceptStoveC = alNum(s.quietExceptStoveC, 20, 80, c.quietExceptStoveC);
     var q = alObj(s.quiet);
-    c.quiet.on = alBool(q.on, c.quiet.on);
+    c.quiet.on = false;                 // nincs csendes időszak (a tulaj kérése); a régi mentés se némítson
     ['from', 'to'].forEach(function (k) { if (typeof q[k] === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(q[k])) c.quiet[k] = q[k]; });
     var ch = alObj(s.channels);
     Object.keys(c.channels).forEach(function (k) { c.channels[k] = alBool(ch[k], c.channels[k]); });
@@ -1039,8 +1051,7 @@
     });
     var P = src.P, stage = P && P.online !== false ? liveStage(P.status || {}) : null;
     var w5 = alWatts(src, 'X5'), w9 = alWatts(src, 'X9'), heat = [];
-    if (stage > 0) heat.push('a kályha ' + stage + ' kW-on');
-    else if (w5 != null && w5 > 300) heat.push('a kályha fűt (' + fmtW(w5) + ')');
+    if (w5 != null ? w5 > 300 : stage > 0) heat.push(w5 != null ? 'a kályha fűt (' + fmtW(w5) + ')' : 'a kályhakapcsoló ' + stage + '/3 fokozaton (a kör most nem mér)');
     if (w9 != null && w9 > 100) heat.push('a klíma megy (' + fmtW(w9) + ')');
     if (c.openHeat.on && heat.length) {
       Object.keys(AL_OPEN).forEach(function (p) {
@@ -1323,7 +1334,8 @@
           kind: info.kind, has: has, age: age, stale: stale, open: open, battPct: batt ? batt.pct : null, badgeList: badges,
           temp: has && info.kind === 'thermo' ? liveTemp(stt, meta) : null,
           stage: has && info.kind === 'switch3' ? liveStage(stt) : null,
-          watt: has && info.kind === 'breaker' && stt.switch !== false ? livePower(stt, meta) : null,
+          // offline kör: a tárolt utolsó érték nem mérés (a tippek, a kályha-állapot ne higgyenek neki)
+          watt: has && info.kind === 'breaker' && online !== false && stt.switch !== false ? livePower(stt, meta) : null,
           swOff: has && info.kind === 'breaker' && online !== false && stt.switch === false,
           pinLabel: id, name: info.name, room: info.room, icon: cat.icon, tile: cat.tile,
           value: value, valCls: 'dc-val ' + valCls,
@@ -2270,6 +2282,13 @@
         v.titleLine = 'VILÁG ' + v.L.code + ': ' + v.L.name;
         v.titleTip = 'Előbeállított pálya. Az Élő gombbal vissza a valódi napszakhoz.';
         v.skyPhase = '';
+      }
+      // élő adat frissessége: az adatgyűjtő óránként legalább egy életjelet ír; ha 90 percnél régebbi a
+      // legfrissebb sor is, a fejléc szól (különben a térkép régi állapotot mutatna élőként)
+      var fr = dataFreshness(st.user ? st.live : null, now);
+      if (fr.stale) {
+        v.titleLine = '⚠ ADAT ' + fr.ago.toUpperCase() + ' NEM FRISSÜLT';
+        v.titleTip = 'A legfrissebb mérés ' + budTime(fr.last) + '-kor jött (' + fr.ago + '). Az adatgyűjtő (GitHub Actions, Adatgyűjtés) valószínűleg áll: a térkép a régi állapotot mutatja.';
       }
       v.levels.forEach(function (l, j) {
         if (st.liveSky) { l.cls = l.cls.replace(/\bon\b\s*/, ''); l.pressed = 'false'; }

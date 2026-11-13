@@ -130,7 +130,9 @@ def merge_config(stored) -> dict:
     cfg["resolvedMsg"] = _bool(s.get("resolvedMsg"), cfg["resolvedMsg"])
     cfg["quietExceptStoveC"] = _num(s.get("quietExceptStoveC"), 20, 80, cfg["quietExceptStoveC"])
     q = s.get("quiet") if isinstance(s.get("quiet"), dict) else {}
-    cfg["quiet"]["on"] = _bool(q.get("on"), cfg["quiet"]["on"])
+    # A tulaj kérése: nincs csendes időszak. Egy régen elmentett "on: true" se némítson el riasztást
+    # (a felületen már nincs kapcsolója, így kikapcsolni sem lehetne).
+    cfg["quiet"]["on"] = False
     for k in ("from", "to"):
         if isinstance(q.get(k), str) and HM.match(q[k]):
             cfg["quiet"][k] = q[k]
@@ -280,20 +282,31 @@ def contact_open(snap: dict, pink: str, now: datetime, skip_dead: bool) -> bool 
     return open_of(d["status"])
 
 
-def heat_sources(snap: dict) -> tuple[list[str], bool, bool] | None:
-    """(leírások, kályha megy, klíma megy); None, ha egyik forrásról sincs adat."""
-    known, descs, stove, ac = False, [], False, False
-    p, x5, x9 = snap.get("P"), snap.get("X5"), snap.get("X9")
+def stove_state(snap: dict) -> dict:
+    """A kályha állapota, a MÉRÉS dönt (az 5-ös kör teljesítménye), nem a LUXION kapcsoló:
+    ha a kapcsoló BE, de a kályha nem vesz fel áramot, akkor feltöltött és a beépített szabályzója
+    lekapcsolt, most nem fűt és nem fogyaszt. A kapcsoló csak akkor dönt, ha a kör nem mér
+    (offline). Visszaad: {stage, w, measured, heating, idle_on}."""
+    p, x5 = snap.get("P"), snap.get("X5")
     stage = stage_of(p["status"]) if p and p.get("online") is not False else None
-    w5 = watts_of(x5["status"], x5.get("meta")) if x5 and x5.get("online") is not False else None
+    w = watts_of(x5["status"], x5.get("meta")) if x5 and x5.get("online") is not False else None
+    measured = w is not None
+    heating = w > STOVE_ON_W if measured else (stage or 0) > 0
+    return {"stage": stage, "w": w, "measured": measured, "heating": heating,
+            "idle_on": measured and not heating and (stage or 0) > 0}
+
+
+def heat_sources(snap: dict) -> tuple[list[str], bool, bool] | None:
+    """(leírások, kályha fűt, klíma megy); None, ha egyik forrásról sincs adat."""
+    descs, stove, ac = [], False, False
+    x9 = snap.get("X9")
+    ss = stove_state(snap)
     w9 = watts_of(x9["status"], x9.get("meta")) if x9 and x9.get("online") is not False else None
-    known = stage is not None or w5 is not None or w9 is not None
-    if (stage or 0) > 0:
+    known = ss["stage"] is not None or ss["measured"] or w9 is not None
+    if ss["heating"]:
         stove = True
-        descs.append(f"a kályha {stage} kW-on")
-    elif w5 is not None and w5 > STOVE_ON_W:
-        stove = True
-        descs.append(f"a kályha fűt ({fmt_w(w5)})")
+        descs.append(f"a kályha fűt ({fmt_w(ss['w'])})" if ss["measured"]
+                     else f"a kályhakapcsoló {ss['stage']}/3 fokozaton (a kör most nem mér)")
     if w9 is not None and w9 > AC_ON_W:
         ac = True
         descs.append(f"a klíma megy ({fmt_w(w9)})")
@@ -309,6 +322,9 @@ def context_lines(snap: dict, now: datetime) -> list[str]:
     p = snap.get("P")
     st = stage_of(p["status"]) if p and p.get("online") is not False else None
     out.append(f"Kályhakapcsoló: {st}/3 fokozat" if st is not None else "Kályhakapcsoló: nincs adat")
+    ss = stove_state(snap)
+    if ss["measured"]:
+        out.append("Kályha most: " + ("fűt" if ss["heating"] else "BE, de nem fűt (feltöltött)" if ss["idle_on"] else "nem fűt"))
     for pink, name in (("X5", "Kályha kör"), ("X9", "Klíma kör")):
         d = snap.get(pink)
         w = watts_of(d["status"], d.get("meta")) if d and d.get("online") is not False else None

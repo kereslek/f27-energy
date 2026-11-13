@@ -149,7 +149,8 @@ class TestDigest(unittest.TestCase):
                      "- Kint ma átlagosan 6,1 °C", "- Kályhakapcsoló: 1/3 fokozat"):
             self.assertIn(line, body.splitlines())
         self.assertNotIn("tegnapi", body)
-        self.assertNotIn("A kályha megy, pedig", body)               # holnap érkezik vendég
+        self.assertNotIn("lekapcsolható (csak javaslat).\n- A kályha", body)
+        self.assertNotIn("pedig ma éjjel nincs vendég", body)        # holnap érkezik vendég
         # zárt, régóta hallgató nyílászáró: nem hír (a tulaj kérése); nyitva + régóta hallgat: igen
         db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]
         r = self.run_at(AT(20, 5, d=1), **{"5": {"age_min": 57 * 60}, "6": {"age_min": 57 * 60}, "9": {"age_min": 57 * 60},
@@ -160,9 +161,16 @@ class TestDigest(unittest.TestCase):
         # ugyanez üres lakással: kályha-javaslat, bojler-javaslat
         db["bookings"].clear()
         db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]
+        # a mérés dönt: a kapcsoló BE, de 0 W (feltöltött) -> "most nem fűt", mégis lekapcsolható
         r = self.run_at(AT(20, 10, d=8), **{"P": {"switch_1": True}})
         body = r["new"][0]["email_body"]
-        self.assertIn("- A kályha megy, pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).", body.splitlines())
+        self.assertIn("- A kályha most nem fűt (feltöltött), de a kapcsolója BE: ha lehűl, magától újra tölt. "
+                      "Ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).", body.splitlines())
+        self.assertIn("- Kályha most: BE, de nem fűt (feltöltött)", body.splitlines())
+        db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]
+        r = self.run_at(AT(20, 15, d=8), **{"P": {"switch_1": True}, "X5": {"cur_power": 9950}})
+        body = r["new"][0]["email_body"]
+        self.assertIn("- A kályha most fűt (995 W), pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).", body.splitlines())
         self.assertIn("- Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).", body.splitlines())
         self.assertIn("- Se érkezés, se távozás.", body.splitlines())
 

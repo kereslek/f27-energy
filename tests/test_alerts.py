@@ -164,23 +164,40 @@ class TestRules(Base):
         self.assertEqual(self.run_at(T0 + timedelta(minutes=20))["new"], [])
 
     def test_unsent_alert_has_no_resolved_message(self):
-        self.settings(quiet={"on": True, "from": "12:00", "to": "14:00"})
+        self.failing = {"email", "push"}                               # a riasztás nem ment ki
         hot = {"2": {"va_temperature": 240}}
         self.run_at(T0, **hot)
-        self.run_at(T0 + timedelta(minutes=10), **hot)                # csendes óra: visszatartva
+        self.run_at(T0 + timedelta(minutes=10), **hot)
+        self.failing = set()
         r = self.run_at(T0 + timedelta(minutes=20))
-        self.assertEqual(r["new"], [])
-        self.assertEqual([x["kind"] for x in self.log()], ["fired"])
+        self.assertFalse([m for c, m in r["new"] if "megszűnt" in str(m)])
 
     def test_open_heat_window_and_stove(self):
         o = {"8": {"doorcontact_state": True}, "P": {"switch_1": True}, "X5": {"cur_power": 9950}}
         self.run_at(T0, **o)
         r = self.run_at(T0 + timedelta(minutes=14), **o)
         self.assertEqual(self.texts(r)[0].splitlines()[0],
-                         "F27: ablak nyitva fűtés közben: Kis szoba ablak 14 perce, közben a kályha 1 kW-on.")
+                         "F27: ablak nyitva fűtés közben: Kis szoba ablak 14 perce, közben a kályha fűt (995 W).")
         self.assertEqual([m for c, m in r["new"] if c == "push"][0]["title"], "F27: ablak nyitva fűtés közben")
         r = self.run_at(T0 + timedelta(minutes=24), **dict(o, **{"8": {"doorcontact_state": False}}))
         self.assertEqual(self.texts(r)[0].splitlines()[0], "F27: megszűnt: Kis szoba ablak becsukva.")
+
+    def test_open_heat_stove_decided_by_measurement(self):
+        # a kapcsoló BE, de a kályha 0 W-ot vesz fel (feltöltött): nem fűt, nincs riasztás
+        o = {"8": {"doorcontact_state": True}, "P": {"switch_1": True, "switch_2": True}, "X5": {"cur_power": 0}}
+        self.run_at(T0, **o)
+        self.assertEqual(self.run_at(T0 + timedelta(minutes=20), **o)["new"], [])
+        self.assertFalse((self.sb.db["alert_state"].get("open_heat:8") or {}).get("active"))
+        # a kapcsoló KI, de a kör mégis 1 kW-ot mér: fűt, riaszt
+        o2 = {"8": {"doorcontact_state": True}, "X5": {"cur_power": 10000}}
+        self.run_at(T0 + timedelta(minutes=30), **o2)
+        r = self.run_at(T0 + timedelta(minutes=45), **o2)
+        self.assertIn("közben a kályha fűt (1,0 kW)", self.texts(r)[0])
+        # a kör nem elérhető: a kapcsoló dönt, és a szöveg ezt meg is mondja
+        o3 = {"9": {"doorcontact_state": True}, "P": {"switch_1": True}, "X5": {"online": False}}
+        self.run_at(T0 + timedelta(minutes=60), **o3)
+        r = self.run_at(T0 + timedelta(minutes=75), **o3)
+        self.assertIn("a kályhakapcsoló 1/3 fokozaton (a kör most nem mér)", self.texts(r)[-1])
 
     def test_open_heat_door_and_ac_only(self):
         o = {"5": {"doorcontact_state": True}, "X9": {"cur_power": 5000}}
@@ -220,13 +237,13 @@ class TestRules(Base):
         self.assertEqual(self.run_at(T0 + timedelta(minutes=110), **o)["new"], [])
 
     def test_skip_dead_contacts(self):
-        o = {"8": {"doorcontact_state": True, "battery_percentage": 9}, "P": {"switch_1": True}}
+        o = {"8": {"doorcontact_state": True, "battery_percentage": 9}, "P": {"switch_1": True}, "X5": {"cur_power": 10000}}
         self.run_at(T0, **o)
         self.assertEqual(self.run_at(T0 + timedelta(minutes=10), **o)["new"], [])
-        stale = {"8": {"doorcontact_state": True, "age_min": 25 * 60}, "P": {"switch_1": True}}
+        stale = {"8": {"doorcontact_state": True, "age_min": 25 * 60}, "P": {"switch_1": True}, "X5": {"cur_power": 10000}}
         self.run_at(T0 + timedelta(minutes=20), **stale)
         self.assertEqual(self.run_at(T0 + timedelta(minutes=30), **stale)["new"], [])
-        off = {"8": {"doorcontact_state": True, "online": False}, "P": {"switch_1": True}}
+        off = {"8": {"doorcontact_state": True, "online": False}, "P": {"switch_1": True}, "X5": {"cur_power": 10000}}
         self.run_at(T0 + timedelta(minutes=40), **off)
         self.assertEqual(self.run_at(T0 + timedelta(minutes=50), **off)["new"], [])
         # kikapcsolva a kihagyás: a merülő érzékelő is számít
@@ -300,51 +317,15 @@ class TestRules(Base):
 class TestQuiet(Base):
     NIGHT = datetime(2026, 11, 8, 22, 30, tzinfo=timezone.utc)      # 23:30 Budapest
 
-    def setUp(self):
-        super().setUp()
-        # a csendes órák alapból ki vannak kapcsolva (a tulaj kérése); a funkció itt kifejezetten bekapcsolva
+    def test_stored_quiet_hours_are_ignored(self):
+        # a tulaj kérése: nincs csendes időszak; egy régen elmentett "on: true" sem némít el semmit
         self.settings(quiet={"on": True, "from": "23:00", "to": "07:00"})
-
-    def test_quiet_off_by_default_night_alert_goes_out(self):
-        self.settings(quiet={"on": False})
         hot = {"2": {"va_temperature": 240}}
         self.run_at(self.NIGHT, **hot)
         r = self.run_at(self.NIGHT + timedelta(minutes=10), **hot)
         self.assertTrue(self.texts(r)[0].startswith("F27 riasztás: Nagy szoba 24,0 °C"))
+        self.assertFalse(A.in_quiet(A.merge_config({"quiet": {"on": True, "from": "00:00", "to": "23:59"}}), self.NIGHT))
 
-    def test_quiet_hours_hold_then_send_in_the_morning(self):
-        hot = {"2": {"va_temperature": 240}}
-        self.run_at(self.NIGHT, **hot)
-        r = self.run_at(self.NIGHT + timedelta(minutes=10), **hot)
-        self.assertEqual(r["new"], [])
-        self.assertEqual(self.log()[-1]["channels"], "visszatartva: csendes órák")
-        self.assertTrue(self.sb.db["alert_state"]["temp_hi:2"]["active"])
-        self.assertEqual(self.run_at(self.NIGHT + timedelta(hours=7), **hot)["new"], [])       # 06:30
-        r = self.run_at(self.NIGHT + timedelta(hours=7, minutes=30), **hot)                     # 07:00
-        self.assertTrue(self.texts(r)[0].startswith("F27 riasztás: Nagy szoba 24,0 °C (határ 22 °C)."))
-
-    def test_stove_exception(self):
-        o = {"3": {"va_temperature": 415}}
-        self.run_at(self.NIGHT, **o)
-        r = self.run_at(self.NIGHT + timedelta(minutes=10), **o)
-        self.assertTrue(self.texts(r)[0].startswith("F27 riasztás: Kályha mögött 41,5 °C"))
-        r = self.run_at(self.NIGHT + timedelta(minutes=20), **{"3": {"va_temperature": 300}})
-        self.assertTrue(self.texts(r)[0].startswith("F27: megszűnt: Kályha mögött 30,0 °C"))
-        # 39 °C a határ (38) felett, de a kivétel (40) alatt: éjjel vár
-        o = {"3": {"va_temperature": 390}}
-        self.sb.db["alert_state"].clear()
-        self.run_at(self.NIGHT + timedelta(minutes=30), **o)
-        self.assertEqual(self.run_at(self.NIGHT + timedelta(minutes=40), **o)["new"], [])
-
-    def test_quiet_off_and_window(self):
-        cfg = A.merge_config({"quiet": {"on": True, "from": "22:00", "to": "06:30"}})
-        self.assertTrue(A.in_quiet(cfg, datetime(2026, 11, 8, 21, 0, tzinfo=timezone.utc)))          # 22:00
-        self.assertFalse(A.in_quiet(cfg, datetime(2026, 11, 9, 5, 30, tzinfo=timezone.utc)))         # 06:30
-        self.assertTrue(A.in_quiet(cfg, datetime(2026, 7, 9, 4, 0, tzinfo=timezone.utc)))           # 06:00 nyári idő
-        cfg["quiet"]["on"] = False
-        self.assertFalse(A.in_quiet(cfg, datetime(2026, 11, 8, 23, 0, tzinfo=timezone.utc)))
-        day = A.merge_config({"quiet": {"on": True, "from": "09:00", "to": "17:00"}})
-        self.assertTrue(A.in_quiet(day, T0))
 
 
 class TestTestAndChannels(Base):

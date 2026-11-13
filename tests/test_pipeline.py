@@ -692,6 +692,25 @@ class TestCollect(unittest.TestCase):
         self.assertIn("Foglalások: 2 foglalás", out)
         self.assertEqual(len(self.sb.db["bookings"]), 4)
 
+    def test_main_network_error_does_not_skip_the_round(self):
+        self.addCleanup(setattr, WX, "fetch", WX.fetch)
+        WX.fetch = lambda timeout=20: meteo(datetime.now(timezone.utc))
+        self.addCleanup(setattr, BK, "fetch", BK.fetch)
+        BK.fetch = lambda url, timeout=20: ical(datetime.now(timezone.utc).date())
+        self.addCleanup(setattr, C, "collect", C.collect)
+        def boom(*a, **k):
+            raise TimeoutError("a Tuya nem válaszolt: titkos-device-id")
+        C.collect = boom
+        with env(TUYA_ACCESS_ID="id", TUYA_ACCESS_SECRET="sec", TUYA_ENDPOINT=self.tuya.url, TUYA_UID=None,
+                 SUPABASE_URL=self.sb.url, SUPABASE_SECRET_KEY=self.sb.secret, GITHUB_STEP_SUMMARY=None,
+                 AIRBNB_ICAL_URL=ICAL_URL, BOOKING_ICAL_URL=None):
+            rc, out = run_main(C.main)
+        self.assertEqual(rc, 1)
+        self.assertIn("nem sikerült (TimeoutError)", out)
+        self.assertNotIn("titkos-device-id", out)          # a hibaüzenet szövege nem kerül a publikus logba
+        self.assertIn("Foglalások: 2 foglalás", out)
+        self.assertIn("Időjárás:", out)
+
     def test_main_without_supabase(self):
         with env(SUPABASE_URL=None, SUPABASE_SECRET_KEY=None):
             rc, out = run_main(C.main)
@@ -1095,6 +1114,14 @@ class TestBookings(unittest.TestCase):
         self.run_at(T0 + timedelta(minutes=56))
         self.assertEqual(self.calls, 2)
         self.assertEqual(len(self.sb.db["bookings"]), 4)       # ugyanaz az id: felülírás, nem duplikálás
+
+    def test_empty_calendar_keeps_future_bookings(self):
+        self.run_at(T0)
+        self.text = "BEGIN:VCALENDAR\r\nPRODID:x\r\nEND:VCALENDAR\r\n"          # érvényes, de üres válasz
+        r = self.run_at(T0 + timedelta(hours=2))
+        self.assertEqual((r["deleted"], len(self.sb.db["bookings"])), (0, 4))
+        self.assertIn("üresen jött", r["note"])
+        assert_booking_public(self, r["note"])
 
     def test_cancellation_deletes_only_future_of_that_source(self):
         self.run_at(T0)

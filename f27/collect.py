@@ -568,11 +568,20 @@ def main() -> int:
     except SupabaseError as e:
         print(f"::error::{e}")
         rc = 1
-    wx = collect_weather(sb)
+    except Exception as e:              # hálózat (időtúllépés, DNS): a kör többi lépése ettől még fusson
+        print(f"::error::Az eszközállapot lekérése most nem sikerült ({type(e).__name__}); a következő kör újra próbálja.")
+        rc = 1
+    try:
+        wx = collect_weather(sb)
+    except Exception as e:
+        wx = {"error": True, "note": f"Időjárás: hiba ({type(e).__name__}), a következő óra újra próbálja."}
     if wx["error"]:
         print(f"::warning::{wx['note']}")
     text = (text + "\n\n" if text else "") + wx["note"]
-    bk = collect_bookings(sb)
+    try:
+        bk = collect_bookings(sb)
+    except Exception as e:
+        bk = {"error": True, "note": f"Foglalások: hiba ({type(e).__name__}), a következő óra újra próbálja."}
     if bk["error"]:
         print(f"::warning::{bk['note']}")
     text += "\n\n" + bk["note"]

@@ -192,6 +192,11 @@ def collect_bookings(sb: SupabaseRest, now: datetime | None = None, fetcher=None
             keep = {r["id"] for r in rows}
             old = sb.select("bookings", "id", source=f"eq.{src}", end_date=f"gte.{today}")
             gone = sorted(r["id"] for r in old if r["id"] not in keep)
+            if not rows and gone:
+                # üres (de érvényes) naptár, miközben nálunk vannak jövőbeli foglalások: szinte biztosan a
+                # szolgáltató hibája, nem az összes foglalás lemondása. Nem törlünk; a következő óra újra próbálja.
+                problems.append(f"a {src} naptár üresen jött ({len(gone)} jövőbeli foglalás maradt), a következő futás újra próbálja")
+                gone = []
             for i in range(0, len(gone), 50):
                 sb.delete("bookings", source=f"eq.{src}", id=f"in.({','.join(gone[i:i + 50])})")
         except SupabaseError as e:

@@ -28,7 +28,7 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, battery_of, context_lines,
                      email_ready, fmt_num, last_report, merge_config, parse_ts, send_email, snapshot,
-                     stage_of, watts_of)
+                     fmt_w, stove_state)
 from .report_stats import banner, build_stats, subject_line, to_html
 from .supa import SupabaseError, SupabaseRest
 
@@ -139,12 +139,15 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             k = d.isoformat()
             return any(b["start_date"] <= k < b["end_date"] for b in books)
         arrive_tomorrow = [b for b in books if b["start_date"] == tomorrow.isoformat()]
-        p, x5, x7 = snap.get("P"), snap.get("X5"), snap.get("X7")
-        stage = stage_of(p["status"]) if p and p.get("online") is not False else None
-        w5 = watts_of(x5["status"], x5.get("meta")) if x5 and x5.get("online") is not False else None
-        stove_on = (stage or 0) > 0 or (w5 or 0) > 300
-        if stove_on and not covers(today) and not arrive_tomorrow:
-            todo.append("A kályha megy, pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
+        x7 = snap.get("X7")
+        ss = stove_state(snap)                      # a mérés dönt, nem a kapcsoló
+        if not covers(today) and not arrive_tomorrow:
+            if ss["heating"]:
+                now_txt = f"most fűt ({fmt_w(ss['w'])})" if ss["measured"] else f"a kapcsoló {ss['stage']}/3 fokozaton (mérés nincs)"
+                todo.append(f"A kályha {now_txt}, pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
+            elif ss["idle_on"]:
+                todo.append("A kályha most nem fűt (feltöltött), de a kapcsolója BE: ha lehűl, magától újra tölt. "
+                            "Ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
         if arrive_tomorrow and x7 and x7.get("online") is not False and x7["status"].get("switch") is False:
             todo.append(f"Holnap érkezik vendég, de a bojler (7-es kör) le van kapcsolva: legkésőbb holnap {HEAT_START}-kor kapcsold vissza.")
         if (not covers(today) and not arrive_tomorrow and x7 and x7.get("online") is not False
