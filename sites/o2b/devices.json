@@ -4,7 +4,9 @@
     "thermo": ["wsdcg"],
     "plug": ["cz", "pc"],
     "ac_ir": ["infrared_ac", "kt", "qt"],
-    "pir": ["pir"]
+    "pir": ["pir"],
+    "breaker": ["dlq", "zndb"],
+    "ir_hub": ["wnykq"]
   },
   "devices": [
     {"pink": "T1", "role": "thermo", "room": "nappali",     "label": "Hőmérő, nappali",      "match": ["hőmérő - nappali"],     "exact": "Hőmérő - nappali"},
@@ -19,13 +21,18 @@
     {"pink": "K3", "role": "ac_ir",  "room": "kagylo",      "label": "Klíma, kagyló szoba (tetőn lévő multi-split)", "match": ["klíma - kagyló"], "exact": "Klíma - Kagyló"},
     {"pink": "K4", "role": "ac_ir",  "room": "gyerek",      "label": "Klíma, gyerekszoba (tetőn lévő multi-split)", "match": ["klíma - gyermeki szoba", "klíma - gyerekszoba"]},
     {"pink": "C1", "role": "plug",   "room": "furdo_fent",  "label": "Emeleti bojler (meleg víz)", "match": ["emeleti bojler"],  "exact": "Emeleti bojler (meleg víz)"},
-    {"pink": "C2", "role": "plug",   "room": "nappali",     "label": "Dupla állólámpa",      "match": ["dupla állólámpa"]},
+    {"pink": "C2", "role": "plug",   "room": "nappali",     "label": "Dupla állólámpa",      "match": ["dupla állólámpa"], "exact": "Dupla állólámpa (új)"},
     {"pink": "C3", "role": "plug",   "room": "nappali",     "label": "TV led",               "match": ["tv led"],              "exact": "TV led"},
     {"pink": "C4", "role": "plug",   "room": "etkezo",      "label": "Lépcső, fények",       "match": ["lépcső - fények"],     "exact": "Lépcső - fények"},
-    {"pink": "C5", "role": "plug",   "room": "etkezo",      "label": "Tükör, étkező (két asztali lámpa)", "match": ["tükör - étkező"]},
+    {"pink": "C5", "role": "plug",   "room": "etkezo",      "label": "Tükör, étkező (két asztali lámpa)", "match": ["tükör - étkező"], "exact": "Tükör - étkező (új)"},
     {"pink": "C6", "role": "plug",   "room": "etkezo",      "label": "Karácsonyfa",          "match": ["karácsonyfa"],         "exact": "Karácsonyfa"},
     {"pink": "C7", "role": "plug",   "room": "nappali",     "label": "Szarvas",              "match": ["szarvas"],             "exact": "Szarvas"},
     {"pink": "C8", "role": "plug",   "room": "erkely",      "label": "Karácsonyi fények (erkély)", "match": ["karácsonyi fények"], "exact": "Karácsonyi fények - konnektor"},
+    {"pink": "X1", "role": "breaker", "room": "furdo_fent",  "label": "Emeleti fürdő köre (mérős kismegszakító)", "match": ["emelet - fürdőszoba"], "exact": "Emelet - Fürdőszoba"},
+    {"pink": "IR1", "role": "ir_hub", "room": "nappali",    "label": "IR-távirányító, nappali",     "match": ["smart ir - nappali"],   "exact": "Smart IR - Nappali"},
+    {"pink": "IR2", "role": "ir_hub", "room": "halo",       "label": "IR-távirányító, hálószoba",   "match": ["smart ir - hálószoba"], "exact": "Smart IR - Hálószoba"},
+    {"pink": "IR3", "role": "ir_hub", "room": "kagylo",     "label": "IR-távirányító, kagyló szoba", "match": ["smart ir - kagyló"],   "exact": "Smart IR - Kagyló"},
+    {"pink": "IR4", "role": "ir_hub", "room": "gyerek",     "label": "IR-távirányító, gyerekszoba", "match": ["smart ir - gyermeki szoba", "smart ir - gyerekszoba"]},
     {"pink": "M1", "role": "pir",    "room": "?",           "label": "Mozgásérzékelő",       "match": ["infrared detector", "mozgás"]}
   ],
   "fixed": [
