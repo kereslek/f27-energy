@@ -140,7 +140,7 @@ class TestDigest(unittest.TestCase):
                                       "4": {"online": False}, "1": {"age_min": 8 * 60},
                                       "P": {"switch_1": True}, "X5": {"cur_power": 9950}, "X7": {"switch": False}})
         body = r["new"][0]["email_body"]
-        order = [body.index(h) for h in ("Ma történt\n~~~", "Teendők\n~~~", "Holnap (nov. 9. hétfő)", "Mai fogyasztás", "ÉRZÉKELŐK MOST", "Térkép: " + A.MAP_URL)]
+        order = [body.index(h) for h in ("Ma történt\n~~~", "Teendők\n~~~", "Holnap (nov. 9. hétfő)", "ÉRZÉKELŐK MOST", "Térkép: " + A.MAP_URL)]
         self.assertEqual(order, sorted(order))
         for line in ("- 14:02 Riasztás: F27 riasztás: Kályha mögött 39,2 °C (határ 38 °C).",
                      "- 14:32 Megszűnt: F27: megszűnt: Kályha mögött 36,0 °C (határ 38 °C).",
@@ -150,10 +150,10 @@ class TestDigest(unittest.TestCase):
                      "- Régóta hallgat (8 órája): Hőmérő, kis szoba",
                      "- Holnap érkezik vendég, de a bojler (7-es kör) le van kapcsolva: legkésőbb holnap 12:00-kor kapcsold vissza.",
                      "- Érkezés 15:00 (Airbnb-foglalás), felfűtés 12:00-tól",
-                     "- Kályha (5-ös kör): 12,3 kWh, kb. 749 Ft", "- Bojler (7-es kör): nincs adat",
-                     "- Klíma (9-es kör): 2,0 kWh, kb. 72-140 Ft", "- Összesen: kb. 821-889 Ft",
-                     "- Kint ma átlagosan 6,1 °C", "- Kályhakapcsoló: 1/3 fokozat"):
+                     "- Kályhakapcsoló: 1/3 fokozat"):
             self.assertIn(line, _norm(body))
+        self.assertNotIn("Mai fogyasztás", body)                       # duplikáció volt, a Statisztika mutatja
+        self.assertTrue(r["new"][0]["subject"].startswith("⚠ RIASZTÁS · ▓▒░ F27·NRG"), r["new"][0]["subject"])
         self.assertNotIn("tegnapi", body)
         self.assertNotIn("lekapcsolható (csak javaslat).\n- A kályha", body)
         self.assertNotIn("pedig ma éjjel nincs vendég", body)        # holnap érkezik vendég

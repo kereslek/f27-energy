@@ -503,7 +503,7 @@ def yoy_lines(hourly: dict, today: date, archive, wnow: dict, meters: list[dict]
     return lines
 
 
-def subject_line(now: datetime, head: dict) -> str:
+def subject_line(now: datetime, head: dict, alerts: int = 0) -> str:
     """Rövid, warez-hangulatú tárgysor (iPhone-on kb. 60 karakter fér ki):
     ▓▒░ F27·NRG ░▒▓ 11.13 P » 26,4 kWh » ~1 620 Ft » ▼8% DoD"""
     loc = now.astimezone(BUDAPEST)
@@ -518,7 +518,8 @@ def subject_line(now: datetime, head: dict) -> str:
             parts.append(("▲" if p >= 0 else "▼") + f"{abs(p):.0f}% DoD")
     else:
         parts.append("napi jelentés")
-    return " » ".join(parts)
+    # aktív riasztás: már a postafiókban látsszon (a tulaj kérése, 2026.11.14)
+    return ("⚠ " + (f"{alerts} riasztás · " if alerts > 1 else "RIASZTÁS · ") if alerts else "") + " » ".join(parts)
 
 
 LEGEND = [

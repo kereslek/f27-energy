@@ -10,8 +10,7 @@ Tartalom (csak a levélben, név és cím nélkül):
   2. Teendők: aktív riasztások, nyitott ablakok/ajtó, merülő elemek (< 20 %), nem elérhető vagy
      régóta hallgató érzékelők, üres lakásban menő kályha, holnapi érkezés előtt lekapcsolt bojler.
   3. Holnap: érkezés és távozás a foglalási naptárból (bookings), csak dátum és idő.
-  4. Mai fogyasztás: a 4 mért kör kWh-ja (energy_daily) becsült forinttal, és a mai átlagos
-     külső hőmérséklet (weather_daily), ha van.
+  4. (A "Mai fogyasztás" külön rész 2026.11.14-én megszűnt: a Statisztika dobozai mutatják.)
   5. Statisztika (f27.report_stats): ASCII-táblázat körönként (ma eddig, tegnap és 7/30 napos átlag
      ugyanaddig az óráig, DoD, hónap eddig, Ft), havi előrejelzés, órás oszlopsor, hőmérők,
      hőfokhíd és kályha-hatékonyság, bejárati ajtó nyitásai, előző hónap az app előzményéből.
@@ -48,9 +47,6 @@ BATTERY_SENSORS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
 # csak a NYITVA jelzés mellé írjuk oda, ha régi lehet.
 STALE = {"1": 6, "2": 6, "3": 6, "4": 6}   # óra
 CONTACT_STALE_H = 24
-# kör, név, Ft/kWh (alsó, felső): B kör keret felett 60,9; A1 kereten belül 36,2, felett 70,1 (brief, 2026)
-CIRCUITS = (("X5", "Kályha (5-ös kör)", 60.9, 60.9), ("X7", "Bojler (7-es kör)", 60.9, 60.9),
-            ("X8", "Konyha (8-as kör)", 36.2, 70.1), ("X9", "Klíma (9-es kör)", 36.2, 70.1))
 KIND = {"fired": "Riasztás", "resolved": "Megszűnt", "test": "Próba"}
 
 
@@ -62,11 +58,6 @@ def due(cfg: dict, now: datetime) -> bool:
     loc = now.astimezone(BUDAPEST)
     t = cfg["digest"]["time"]
     return loc.hour * 60 + loc.minute >= int(t[:2]) * 60 + int(t[3:])
-
-
-def _ft(v: float) -> str:
-    s = f"{int(round(v)):,}".replace(",", " ")
-    return s
 
 
 def _safe(fn, default):
@@ -101,9 +92,9 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     # 2. Teendők
     todo: list[str] = []
     state = _safe(lambda: sb.select("alert_state", "rule_key,active,last_text"), [])
-    for r in state:
-        if r.get("active"):
-            todo.append(f"Aktív riasztás: {r.get('last_text') or r.get('rule_key')}")
+    active = [r for r in state if r.get("active")]
+    for r in active:
+        todo.append(f"Aktív riasztás: {r.get('last_text') or r.get('rule_key')}")
     devs = _safe(lambda: sb.select("devices", "pink,meta"), None)
     if devs is None:
         devs = _safe(lambda: sb.select("devices", "pink"), [])
@@ -170,28 +161,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
                                                         if nxt else ""))
         out += lines
 
-    # 4. Mai fogyasztás
-    out += [""] + notes("Mai fogyasztás (eddig)")
-    energy = _safe(lambda: sb.select("energy_daily", "pink,kwh", day=f"eq.{today.isoformat()}"), None)
-    if energy is None:
-        out.append("- nincs adat (energy_daily)")
-    else:
-        kwh = {r["pink"]: float(r["kwh"]) for r in energy if r.get("kwh") is not None}
-        lo_sum = hi_sum = 0.0
-        for pink, name, lo, hi in CIRCUITS:
-            if pink not in kwh:
-                out.append(f"- {name}: nincs adat")
-                continue
-            k = kwh[pink]
-            lo_sum, hi_sum = lo_sum + k * lo, hi_sum + k * hi
-            ft = f"kb. {_ft(k * lo)} Ft" if lo == hi else f"kb. {_ft(k * lo)}-{_ft(k * hi)} Ft"
-            out.append(f"- {name}: {fmt_num(k, 1)} kWh, {ft}")
-        if kwh:
-            out.append(f"- Összesen: kb. {_ft(lo_sum)}" + (f"-{_ft(hi_sum)}" if round(hi_sum) != round(lo_sum) else "") + " Ft")
-    wx = _safe(lambda: sb.select("weather_daily", "t_avg", day=f"eq.{today.isoformat()}"), [])
-    if wx and wx[0].get("t_avg") is not None:
-        out.append(f"- Kint ma átlagosan {fmt_num(float(wx[0]['t_avg']), 1)} °C")
-
+    # 4. Mai fogyasztás: a STATISZTIKA dobozai mutatják (a tulaj kérése, 2026.11.14: a külön rész duplikáció volt)
     # 4b. Statisztika: ASCII-táblázat, órás oszlopsor, összevetések (f27.report_stats)
     stats, head = build_stats(sb, now, _safe)
     out += [""] + stripe("STATISZTIKA") + ["(a Tuya-naplóból)"] + stats
@@ -204,7 +174,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             "Beállítás: a térkép Riasztások panelje."]
     top = banner(now, head["kwh"], head["ft"], head["guest"], head.get("kwh_y")) + ["", f">> DASHBOARD: {MAP_URL}", ""]
     text = "\n".join(top + out) + "\n"
-    return {"subject": subject_line(now, head), "email_body": text,
+    return {"subject": subject_line(now, head, len(active)), "email_body": text,
             "email_html": to_html(text, MAP_URL)}
 
 
