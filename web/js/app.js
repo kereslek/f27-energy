@@ -714,7 +714,7 @@
     if (ta) {
       var res = ta.kind === 'reservation';
       var who = res ? 'vendég érkezik (' + BK_SRC[ta.source] + ', ' + dayDiff(ta.s, ta.e) + ' éjszaka)' : 'vendég érkezik (Booking)';
-      var plan = 'Felfűtési terv: ' + STAY.heatStart + '-tól klíma fűtésre, 22 °C a kis szobában, a két szoba közti ajtó nyitva, a gázkonvektor közepes fokozaton. A kályha csak kiegészítő (nagy hidegben 1 fokozat). Kérd meg a takarítót, hogy 14:00-kor nézze meg: ablakok zárva, 21-22 °C.';
+      var plan = 'Felfűtési terv: ' + STAY.heatStart + '-tól a gázkonvektor (az alapfűtés) közepes fokozaton, a két szoba közti ajtó nyitva, a kályha csak nagy hidegben 1 fokozaton. Kérd meg a takarítót, hogy 14:00-kor nézze meg: ablakok zárva, 21-22 °C.';
       if (boilerOff) add(86, 'red', 'k7', 'Ma vendég jön, de a bojler le van kapcsolva', 'Ma ' + STAY.checkin + '-kor ' + who + ', a bojler (7-es kör) viszont le van kapcsolva. Kapcsold vissza legkésőbb ' + STAY.heatStart + '-kor a Smart Life appban, hogy ' + STAY.checkin + '-ra meleg legyen a víz. ' + plan + ' Csak javaslat.');
       else add(now >= heatMs ? 72 : 64, 'blue', '11', res ? 'Ma ' + STAY.checkin + '-kor vendég érkezik (' + BK_SRC[ta.source] + ')' : 'Ma ' + STAY.checkin + '-kor vendég érkezik (Booking)', 'Ma ' + STAY.checkin + '-kor ' + who + '. ' + plan + ' Csak javaslat.');
     }
@@ -812,13 +812,10 @@
       }).join(', ');
       add(c.red ? 70 : 48, c.red ? 'red' : 'orange', c.id, c.name + ': ' + detail, c.name + ': ' + detail + '. ' + (c.red && c.online === false ? 'Nézd meg az áramot vagy a Wi-Fit.' : /elem/.test(detail) ? 'Elemcsere a következő takarításkor.' : 'Lehet, hogy csak alszik; ha sokáig így marad, nézd meg.'));
     });
-    // a klíma tápja (9-es kismegszakító) lekapcsolva: a legolcsóbb hőforrás ki van zárva
-    if (by.k9 && by.k9.swOff) {
-      if (season && (sn.drawing || sn.idleOn)) add(66, 'orange', 'k9', 'A klíma nem kap áramot, közben a kályha megy', 'A 9-es (klíma) kismegszakító le van kapcsolva, így a klíma nem tud menni, közben ' + (sn.drawing ? 'a kályha fűt (' + (sn.measured ? fmtW(w5) : stage + ' kW') + ')' : 'a kályha be van kapcsolva (most épp feltöltött, nem fűt)') + '. A klíma hőszivattyúval kb. 12-23 Ft egy kWh hő, a kályha keret felett kb. 60 Ft: minden kályháról klímára terelt kWh kb. 37 Ft megtakarítás. Ha szándékos (pl. a vendég ne kapcsolgassa), rendben.');
-      else add(season ? 28 : 15, 'blue', 'k9', 'A klíma kismegszakítója le van kapcsolva', 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma most nem kap áramot. Távolról a Smart Life appban kapcsolható vissza.');
-    }
+    // a klíma tápja (9-es kismegszakító) lekapcsolva: télen szándékos (a tulaj döntése, 2026.11.14:
+    // az alapfűtés a gázkonvektor, télen nem fűtünk klímával), csak nyáron szólunk róla
+    if (by.k9 && by.k9.swOff && !season) add(15, 'blue', 'k9', 'A klíma kismegszakítója le van kapcsolva', 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma most nem kap áramot (hűteni sem tud). Távolról a Smart Life appban kapcsolható vissza.');
     if (by.k7 && by.k7.swOff) add(26, 'blue', 'k7', 'A bojler kismegszakítója le van kapcsolva', 'A 7-es (bojler) kismegszakító le van kapcsolva: a bojler nem fűt utána, a melegvíz fogy. Üres lakásban ez megtakarítás; vendég érkezése előtt kb. 3 órával kapcsold vissza a Smart Life appban.');
-    if (ac && season && !sn.drawing) add(20, 'green', 'k9', 'A klíma fűt: ez a legolcsóbb meleg', 'A klíma fűt (' + fmtNum(by.k9.watt, 0) + ' W). Hőszivattyúval kb. 12 Ft egy kWh hő, a kályha keret felett kb. 60 Ft.');
     // időjárás (csak az Élő módban, valós előrejelzésből); a kályha kapcsolása kézi, ez csak javaslat
     var safe = ' Csak javaslat: a kályha automatikus kapcsolása még nincs bekötve (előbb kontaktor kell).';
     if (fc && fc.hint.kind === 'warm' && stage > 0) add(74, 'green', 'P', fc.hint.short, fc.hint.text + safe);
@@ -3119,6 +3116,10 @@
     window.MiniDC.mount(document.getElementById('stage'), document.getElementById('g3-template'), app);
     window.MiniDC.mountExtra(document.getElementById('devlayer'), document.getElementById('dev-template'), app);
     initViewControls(app);
+    try {                                          // ?kor=k5 (az esti e-mail körök-táblázatából): a kör kártyája
+      var km = /[?&]kor=(k5|k7|k8|k9)\b/.exec(window.location.search);
+      if (km) app.setState({ devOpen: true, devFilter: 'all', devOpenId: km[1], sel: 'd' + km[1] });
+    } catch (e) { /* hibás cím: marad az alapnézet */ }
     app.startClock();
     document.addEventListener('pointerdown', function (e) {
       if (app.state.wxOpen && !(e.target.closest && e.target.closest('.wxchip, .wxcard'))) app.setState({ wxOpen: false });

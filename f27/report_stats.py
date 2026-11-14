@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -25,9 +26,7 @@ W = 44                                        # a dobozok külső szélessége (
 CIRCUITS = (("X5", "KÁLYHA", 60.9, 60.9, "B"), ("X7", "BOJLER", 60.9, 60.9, "B"),
             ("X8", "KONYHA", 36.2, 70.1, "A1"), ("X9", "KLÍMA", 36.2, 70.1, "A1"))
 THERMOS = (("1", "Kis szoba"), ("2", "Nagy szoba"), ("3", "Kályha mögött"), ("4", "Fürdő"))
-LEVELS = " .:-=+*#%@"                         # órás oszlopsor, 10 fokozat
 B_QUOTA_DAY = 2523 / 365                      # kedvezményes keret mérőnként (kWh/nap, a számlák szerint)
-COP = 3.0                                     # klíma hőszivattyú, fűtés (becslés)
 DAYS = ("H", "K", "Sze", "Cs", "P", "Szo", "V")
 METERS = Path(__file__).resolve().parent.parent / "config" / "meter_readings.json"
 
@@ -158,19 +157,6 @@ def footer() -> list[str]:
     return out
 
 
-def spark(values: list[float | None], top: float | None = None) -> str:
-    """24 karakteres órás oszlopsor (0-23 óra); hiányzó óra: szóköz."""
-    vals = [v for v in values if v is not None]
-    top = top or (max(vals) if vals else 0)
-    out = []
-    for v in values:
-        if v is None or top <= 0:
-            out.append(" ")
-        else:
-            out.append(LEVELS[min(len(LEVELS) - 1, max(1 if v > 0 else 0, round(v / top * (len(LEVELS) - 1))))])
-    return "".join(out)
-
-
 def _hourly(sb, since: datetime, pinks: list[str]) -> dict:
     out: dict[str, dict[datetime, dict]] = {}
     for page in range(20):
@@ -243,15 +229,12 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
     tot_kwh = tot_ft = mtd_ft = 0.0
     tot_y, any_y = 0.0, False
     mtd = {}
+    trows = [f"{'kör':<9}{'ma kWh':>6} {'DoD':>6} {'hónap Ft':>10}  "]
     for pink, name, lo, hi, meter in CIRCUITS:
         s = hourly.get(pink, {})
         price = (lo + hi) / 2
         td = _sum_kwh(s, t0, now)
         yd = same(s, 1)
-        s7 = [v for v in (same(s, k) for k in range(1, 8)) if v is not None]
-        s30 = [v for v in (same(s, k) for k in range(1, 31)) if v is not None]
-        a7 = sum(s7) / len(s7) if s7 else None
-        a30 = sum(s30) / len(s30) if s30 else None
         yfull = _sum_kwh(s, _day_start(today - timedelta(days=1)), t0)
         m = _sum_kwh(s, month0, now)
         mtd[pink] = m
@@ -263,22 +246,15 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
             any_y = True
         if m is not None:
             mtd_ft += m * price
-        hours = [(_sum_kwh(s, t0 + timedelta(hours=i), t0 + timedelta(hours=i + 1)) if t0 + timedelta(hours=i) < now else None)
-                 for i in range(24)]
-        run_h = sum(1 for v in hours if v is not None and v >= 0.3)
-        peak = max([r.get("w_max") or 0 for h, r in s.items() if h >= t0] or [0])
-        lines = [
-            kv("ma eddig", f"{_f(td).rjust(5)} kWh  ~{_ft(None if td is None else td * price)} Ft", 10),
-            kv("tegnap*", f"{_f(yd).rjust(5)} kWh  DoD {_pct(td, yd)}", 10),
-            kv("7n átl*", f"{_f(a7).rjust(5)} kWh  vs {_pct(td, a7)}", 10),
-            kv("30n átl*", f"{_f(a30).rjust(5)} kWh  ({len(s30)} nap)", 10),
-            kv("tegnap", f"{_f(yfull).rjust(5)} kWh  egész nap", 10),
-            kv("hónap", f"{_f(m).rjust(5)} kWh  ~{_ft(None if m is None else m * price)} Ft", 10),
-            f"0h|{spark(hours)}|23h",
-            f"   {run_h} óra >0,3 kWh · csúcs {_f(float(peak) / 1000 if peak else None, 2)} kW",
-        ]
-        out += box(f"{name} · {meter}", lines)
+        if pink == "X5":
+            head["stove_y"] = yfull                     # a TL;DR "Ára" sorához: a kályha tegnapi egész napja
+        mft = None if m is None else m * price
+        trows.append(f"{name.lower():<9}{_f(td):>6} {_pct(td, yd).replace(' ', ''):>6} {('~' + _ft(mft)) if mft is not None else '--':>10} ›")
+
     head.update(kwh=round(tot_kwh, 2), ft=tot_ft, kwh_y=round(tot_y, 2) if any_y else None)
+    trows.append(f"{'ÖSSZESEN':<9}{_f(tot_kwh):>6} {(_pct(tot_kwh, tot_y) if any_y else '--').replace(' ', ''):>6} {'~' + _ft(mtd_ft):>10}  ")
+    out += box("KÖRÖK · MA", trows)
+    out += ["› a körre koppintva: részletek a dashboardon"]
 
     # Összesítő és havi előrejelzés
     days_in_month = ((today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day
@@ -302,17 +278,6 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
     if b_mtd > quota:
         summ.append("          elfogyott: a többi 60,9 Ft/kWh")
     out += box("ÖSSZESEN · 4 MÉRT KÖR", summ)
-
-    # Ötlet: a kályha hője klímából (ha ma a kályha fűtött)
-    st_td = _sum_kwh(hourly.get("X5", {}), t0, now)
-    if st_td and st_td >= 3:
-        ac_lo, ac_hi = st_td / COP * 36.2, st_td / COP * 70.1
-        out += box("TiPP · KLÍMA vs KÁLYHA", [
-            f"kályha ma  {_f(st_td)} kWh = ~{_ft(st_td * 60.9)} Ft",
-            f"klímából   {_ft(ac_lo)}-{_ft(ac_hi)} Ft (COP~3)",
-            f"=> ~{_ft(st_td * 60.9 - ac_hi)}-{_ft(st_td * 60.9 - ac_lo)} Ft/nap megtakarítás",
-            "a nagy szobába a két szoba közti",
-            "ajtón át jut a meleg. Csak javaslat."])
 
     # Hőmérők
     tl = ["szoba          min| átl| max  vs tg"]
@@ -410,7 +375,8 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
     if loc.weekday() == 6:
         out += box("OKOS ESZKÖZÖK · EMLÉKEZTETŐ", GADGETS)
 
-    out += box("JELMAGYARÁZAT", LEGEND)
+    if loc.weekday() == 6:                              # hetente elég (a tulaj kérése), a HTML-ben összecsukva
+        out += ["<<LEGEND>>"] + box("JELMAGYARÁZAT", LEGEND) + ["<</LEGEND>>"]
     return out, head
 
 
@@ -523,11 +489,9 @@ def subject_line(now: datetime, head: dict, alerts: int = 0) -> str:
 
 
 LEGEND = [
-    "*    ugyanaddig az óráig, mint most",
-    "DoD  nap a naphoz: ma vs tegnap*",
-    "vs   ma vs 7 napos átlag*",
-    "0h|..|23h  órás sor ' .:-=+*#%@'",
-    "     a nap csúcsáig; üres = még hátra",
+    "DoD  nap a naphoz: ma vs tegnap ugyan-",
+    "     addig az óráig",
+    "›    a kör részletei a dashboardon",
     "B,A1 mérő; B-keret: havi kedv. kWh",
     "Ft   B 60,9; A1 36,2-70,1 közepe",
     "kWh/fok  kályha kWh fűtési fokonként",
@@ -544,9 +508,24 @@ def to_html(text: str, url: str) -> str:
            'border:2px solid #39ff14;border-radius:6px;color:#0b0f0b;background:#39ff14;text-decoration:none;'
            'font-family:Menlo,Consolas,\'Courier New\',monospace;font-weight:bold;font-size:14px">'
            '&gt;&gt; DASHBOARD MEGNYITÁSA &lt;&lt;</a>')
+    pre = ('<pre style="margin:6px 0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:13px;'
+           'line-height:1.3;color:#39ff14;background:#0b0f0b;white-space:pre-wrap;word-break:break-word">')
+    lk = 'style="color:#39ff14;text-decoration:none"'
+    body = []
+    for line in html.escape(text).split("\n"):
+        m = CIRC_ROW.match(line)
+        if m:                                               # a körök sorai: a dashboardon a kör részletei
+            line = f'<a href="{html.escape(url)}?kor={CIRC_LINK[m.group(1)]}" {lk}>{line}</a>'
+        elif line == "&lt;&lt;LEGEND&gt;&gt;":              # hetente, összecsukva (ahol a levelező támogatja)
+            line = '</pre><details><summary style="color:#b8f5a6;font-family:Menlo,Consolas,monospace;font-size:13px;cursor:pointer">▸ JELMAGYARÁZAT (heti)</summary>' + pre
+        elif line == "&lt;/&lt;LEGEND&gt;&gt;" or line == "&lt;&lt;/LEGEND&gt;&gt;":
+            line = "</pre></details>" + pre
+        body.append(line)
     return ('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
             '<body style="margin:0;background:#0b0f0b;-webkit-text-size-adjust:100%;text-size-adjust:100%"><div style="background:#0b0f0b;padding:10px 8px">'
-            + btn +
-            '<pre style="margin:6px 0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:13px;'
-            'line-height:1.3;color:#39ff14;background:#0b0f0b;white-space:pre-wrap;word-break:break-word">'
-            + html.escape(text) + "</pre>" + btn + "</div></body></html>")
+            + btn + pre + "\n".join(body) + "</pre>" + btn + "</div></body></html>")
+
+
+# a KÖRÖK táblázat sorai -> a térkép Eszközök paneljének kártyái (?kor=k5)
+CIRC_LINK = {"kályha": "k5", "bojler": "k7", "konyha": "k8", "klíma": "k9"}
+CIRC_ROW = re.compile(r"^│ (kályha|bojler|konyha|klíma) .*›\s*│$")

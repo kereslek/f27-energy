@@ -23,6 +23,7 @@ A publikus logba csak ennyi kerül: "Napi összefoglaló: elküldve" / "nem kell
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime, time, timedelta, timezone
 
 from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, battery_of, context_lines,
@@ -74,25 +75,25 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     start = datetime.combine(today, time(0, 0), BUDAPEST).astimezone(timezone.utc)
     out: list[str] = []
 
-    # 1. Ma történt
+    # 1. Riasztások ma: listában, kezdet-vég, időtartam, ment-e push (a tulaj választása, 3B)
     logs = _safe(lambda: sb.select("alert_log", "ts,rule_key,kind,text,channels", ts=f"gte.{start.isoformat()}",
                                    order="ts.asc", limit="200"), None)
-    out += stripe("RELEASE NOTES") + [""] + notes("Ma történt")
-    happened = [r for r in logs or [] if r.get("kind") in KIND]
+    state = _safe(lambda: sb.select("alert_state", "rule_key,active,last_text"), [])
+    active = [r for r in state if r.get("active")]
+    out += stripe("RELEASE NOTES") + [""] + notes("Riasztások ma")
     if logs is None:
         out.append("- nincs adat (alert_log)")
-    elif not happened:
-        out.append("- Nem volt riasztás.")
-    for r in happened:
-        t = parse_ts(r.get("ts"))
-        hm = t.astimezone(BUDAPEST).strftime("%H:%M") if t else "--:--"
-        held = " (nem ment ki: " + r["channels"][len("visszatartva: "):] + ")" if str(r.get("channels") or "").startswith("visszatartva") else ""
-        out.append(f"- {hm} {KIND[r['kind']]}: {r.get('text') or r.get('rule_key')}{held}")
+    else:
+        items = alert_items(logs, now)
+        if not items:
+            out.append("- Nem volt riasztás.")
+        for n, it in enumerate(items, 1):
+            out.append(f"{n}. {it['span']} {it['what']}")
+            out.append(f"   {it['detail']}")
+        out.append(f"Összesen: {len(items)} · aktív most: {len(active)}")
 
     # 2. Teendők
     todo: list[str] = []
-    state = _safe(lambda: sb.select("alert_state", "rule_key,active,last_text"), [])
-    active = [r for r in state if r.get("active")]
     for r in active:
         todo.append(f"Aktív riasztás: {r.get('last_text') or r.get('rule_key')}")
     devs = _safe(lambda: sb.select("devices", "pink,meta"), None)
@@ -173,9 +174,117 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             "Naponta legfeljebb egy ilyen levél jön; az azonnali riasztások pushon (ntfy) mennek. "
             "Beállítás: a térkép Riasztások panelje."]
     top = banner(now, head["kwh"], head["ft"], head["guest"], head.get("kwh_y")) + ["", f">> DASHBOARD: {MAP_URL}", ""]
-    text = "\n".join(top + out) + "\n"
+    top += tldr(head, books, snap, active, todo, today) + [""]
+    marked = "\n".join(top + out) + "\n"                 # a HTML-hez jelölt részekkel (összecsukott jelmagyarázat)
+    text = "\n".join(l for l in top + out if l not in ("<<LEGEND>>", "<</LEGEND>>")) + "\n"
     return {"subject": subject_line(now, head, len(active)), "email_body": text,
-            "email_html": to_html(text, MAP_URL)}
+            "email_html": to_html(marked, MAP_URL)}
+
+
+def _dur(sec: float) -> str:
+    m = max(0, int(sec // 60))
+    return f"{m // 60}ó{m % 60:02d}p" if m >= 60 else f"{m}p"
+
+
+def _short(text: str) -> str:
+    t = (text or "").strip()
+    for pre in ("F27 riasztás (még fennáll): ", "F27 riasztás: ", "F27 (még fennáll): ", "F27: "):
+        if t.startswith(pre):
+            t = t[len(pre):]
+    return t.rstrip(".")
+
+
+def alert_items(logs: list[dict], now: datetime) -> list[dict]:
+    """A nap riasztásai párba állítva (riasztás -> megszűnés): {span, what, detail}."""
+    hm = lambda t: t.astimezone(BUDAPEST).strftime("%H:%M")
+    open_, items = {}, []
+    for r in logs:
+        k, t = r.get("kind"), parse_ts(r.get("ts"))
+        if t is None:
+            continue
+        if k == "fired":
+            open_.setdefault(r.get("rule_key"), r)
+        elif k == "resolved":
+            f = open_.pop(r.get("rule_key"), None)
+            items.append((f, r))
+        elif k == "test":
+            items.append(("test", r))
+    items += [(f, None) for f in open_.values()]
+
+    def start_of(it):
+        f, r = it
+        src = r if f in (None, "test") else f
+        return parse_ts(src.get("ts"))
+    out = []
+    for f, r in sorted(items, key=start_of):
+        if f == "test":
+            out.append({"span": hm(parse_ts(r["ts"])), "what": "próba-értesítés", "detail": "push: " + _push(r)})
+            continue
+        t0 = parse_ts(f["ts"]) if f else None
+        t1 = parse_ts(r["ts"]) if r else None
+        a = hm(t0) if t0 else "éjfél előtt óta"
+        b = hm(t1) if t1 else "most"
+        dur = f" ({_dur(((t1 or now) - t0).total_seconds())})" if t0 else ""
+        what = _short((f or r).get("text") or (f or r).get("rule_key") or "")
+        detail = "push: " + _push(f) if f else "push: korábban"
+        if r is None:
+            detail += " · még aktív"
+        out.append({"span": f"{a}-{b}{dur}", "what": what, "detail": detail})
+    return out
+
+
+def _push(r: dict) -> str:
+    ch = str(r.get("channels") or "")
+    if ch.startswith("visszatartva"):
+        return "nem (" + ch[len("visszatartva: "):] + ")"
+    return "igen" if "push" in ch else "nem"
+
+
+def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date) -> list[str]:
+    """TL;DR blokk a fejléc alatt (a tulaj választása, 1C): mennyibe került a nap, mi a legnagyobb
+    pazarlás most, mennyi az ára, egy teendő, és mennyi spórolható. Csak javaslat, semmit nem kapcsol."""
+    from .report_stats import W, kv
+    V = W - 15                                              # az érték szélessége
+    cut = lambda v: v if len(v) <= V else v[:V - 1] + "."
+    kwh, ky, ft = head.get("kwh"), head.get("kwh_y"), head.get("ft")
+    dod = ""
+    if kwh and ky and ky >= 0.05:
+        p = (kwh - ky) / ky * 100
+        dod = f" ({'▲' if p >= 0 else '▼'}{abs(p):.0f}% DoD)"
+    cost = f"~{int(round(ft)):,} Ft ma".replace(",", " ") + dod if ft else "nincs adat"
+    covers = lambda d: books is not None and any(b["start_date"] <= d.isoformat() < b["end_date"] for b in books)
+    empty = books is not None and not covers(today)
+    nxt = None
+    if books is not None:
+        fut = sorted((b for b in books if b["start_date"] > today.isoformat()), key=lambda b: b["start_date"])
+        nxt = date.fromisoformat(fut[0]["start_date"]) if fut else None
+    ss = stove_state(snap)
+    x7 = snap.get("X7")
+    boiler_on = bool(x7 and x7.get("online") is not False and x7["status"].get("switch") is True)
+    openheat = [r for r in active if str(r.get("rule_key", "")).startswith("open_heat:")]
+    waste, price, todo1, save = "nincs nagy tétel", "--", (todo[0] if todo else "nincs"), "--"
+    if openheat:
+        waste, price = "ablak nyitva fűtés közben", "a meleg kimegy"
+        m = re.search(r"közben: (.+?) \d+ perce", openheat[0].get("last_text") or "")
+        todo1 = "csukd be: " + (m.group(1) if m else "a nyitott ablakot")
+    elif empty and (ss["heating"] or ss["idle_on"]):
+        kday = head.get("stove_y") or (ss["stage"] or 1) * 24
+        day_ft = kday * 60.9
+        waste = f"kályha BE, üres lakás"
+        price = f"~{int(round(day_ft, -1)):,} Ft/nap".replace(",", " ")
+        todo1 = "kályha LE" + (f", vissza {nxt:%m.%d.} 12h" if nxt else "")
+        if nxt:
+            days = max(1, (nxt - today).days)
+            save = f"~{int(round(day_ft * days, -2)):,} Ft az érkezésig".replace(",", " ")
+        else:
+            save = price
+    elif empty and boiler_on:
+        waste, price = "bojler megy, üres lakás", "~60-90 Ft/nap"
+        save = price
+        todo1 = "bojler LE (7-es kör)" + (f", vissza {nxt:%m.%d.} 12h" if nxt else "")
+    return ["TL;DR ▒ ▒▒ ▓▓ ▓▓▓▓ " + "█" * (W - 20),
+            " " + kv("Költség", cut(cost), 12), " " + kv("Pazarlás", cut(waste), 12), " " + kv("Ára", cut(price), 12),
+            " " + kv("Teendő", cut(todo1), 12), " " + kv("Megtakarít", cut(save), 12)]
 
 
 def run_digest(sb: SupabaseRest, now: datetime | None = None, environ=None, sender=None) -> dict:

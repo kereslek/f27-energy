@@ -140,12 +140,20 @@ class TestDigest(unittest.TestCase):
                                       "4": {"online": False}, "1": {"age_min": 8 * 60},
                                       "P": {"switch_1": True}, "X5": {"cur_power": 9950}, "X7": {"switch": False}})
         body = r["new"][0]["email_body"]
-        order = [body.index(h) for h in ("Ma történt\n~~~", "Teendők\n~~~", "Holnap (nov. 9. hétfő)", "ÉRZÉKELŐK MOST", "Térkép: " + A.MAP_URL)]
+        order = [body.index(h) for h in ("TL;DR", "Riasztások ma\n~~~", "Teendők\n~~~", "Holnap (nov. 9. hétfő)", "ÉRZÉKELŐK MOST", "Térkép: " + A.MAP_URL)]
         self.assertEqual(order, sorted(order))
-        for line in ("- 14:02 Riasztás: F27 riasztás: Kályha mögött 39,2 °C (határ 38 °C).",
-                     "- 14:32 Megszűnt: F27: megszűnt: Kályha mögött 36,0 °C (határ 38 °C).",
-                     "- 01:10 Riasztás: F27 riasztás: Nagy szoba 23,0 °C (határ 22 °C). (nem ment ki: csendes órák)",
-                     "- Aktív riasztás: F27: ablak nyitva fűtés közben: Kis szoba ablak 20 perce, közben a kályha 1 kW-on.",
+        # riasztások listában, kezdet-vég és időtartam szerint (a tulaj választása, 3B)
+        lines = body.splitlines()
+        i = lines.index("Riasztások ma")
+        self.assertEqual(lines[i + 2:i + 7], ["1. 01:10-most (18ó50p) Nagy szoba 23,0 °C (határ 22 °C)",
+                                              "   push: nem (csendes órák) · még aktív",
+                                              "2. 14:02-14:32 (30p) Kályha mögött 39,2 °C (határ 38 °C)",
+                                              "   push: igen", "Összesen: 2 · aktív most: 1"])
+        self.assertNotIn("tegnapi", body)
+        # TL;DR: nyitott ablak fűtés közben a legnagyobb tétel
+        self.assertIn(" Pazarlás ...: ablak nyitva fűtés közben", lines)
+        self.assertIn(" Teendő .....: csukd be: Kis szoba ablak", lines)
+        for line in (                     "- Aktív riasztás: F27: ablak nyitva fűtés közben: Kis szoba ablak 20 perce, közben a kályha 1 kW-on.",
                      "- Nyitva: Kis szoba ablak", "- Elem merül (15 %): Konyha ablak", "- Nem elérhető: Hőmérő, fürdő",
                      "- Régóta hallgat (8 órája): Hőmérő, kis szoba",
                      "- Holnap érkezik vendég, de a bojler (7-es kör) le van kapcsolva: legkésőbb holnap 12:00-kor kapcsold vissza.",
@@ -280,17 +288,19 @@ class TestDigestStats(unittest.TestCase):
         art = [l for l in lines if l[:2].strip()[:1] in set("▄▀░╔║╚┌│└") or l.startswith("  ▄") or l.startswith("  █")]
         self.assertTrue(art and max(len(l) for l in art) <= 44, max(art, key=len))
         # ma 0-20 óra: 6 óra 0 + 14 óra 1,05 = 14,7; tegnap ugyaneddig 20 x 1,05 = 21,0; DoD -30 %
-        self.assertIn("│ ma eddig .:  14,7 kWh  ~895 Ft", body)
-        self.assertIn("│ tegnap* ..:  21,0 kWh  DoD -30 %", body)
-        self.assertIn("│ 7n átl* ..:  21,0 kWh  vs -30 %", body)
-        self.assertIn("│ tegnap ...:  25,2 kWh  egész nap", body)
-        self.assertIn("│ 0h|      @@@@@@@@@@@@@@    |23h", body)                      # 0-5 óra: 0 kWh
-        self.assertIn("14 óra >0,3 kWh", body)
+        # a négy kör egy táblázatban (a tulaj választása, 2B); ma 0-20 óra: 14,7 kWh, tegnap ugyaneddig 21,0
+        self.assertIn("│ kályha     14,7   -30%    ~11 638 ›      │", body)
+        self.assertIn("│ bojler      2,0    +0%     ~1 145 ›      │", body)
+        self.assertIn("│ ÖSSZESEN   16,7   -27%    ~12 783        │", body)
+        self.assertNotIn("│ ma eddig .:", body)                                     # a körönkénti részletek a dashboardon
+        self.assertNotIn("KLÍMA vs KÁLYHA", body)                                   # télen nem fűtünk klímával
+        self.assertIn(" Költség ....: ~1 017 Ft ma (▼27% DoD)", body)               # TL;DR
+        self.assertIn(" Pazarlás ...: bojler megy, üres lakás", body)
+        self.assertNotIn("<<LEGEND>>", body)
         self.assertIn("│ Nagy szoba    20,5|21,0|21,5  -1,0", body)
         self.assertIn("│ Fürdő           --|  --|  --    --", body)                    # hiányzó adatnál sem csúszik el
         self.assertIn("bejárati ajtó: ma 2, tegnap 0", body)
         self.assertIn("│ Kályha  24,4 vs  10,0  +144 %", body)                          # előző hónap (app)
-        self.assertIn("TiPP · KLÍMA vs KÁLYHA", body)
         self.assertIn("│ B-keret ", body)
         self.assertIn("JELMAGYARÁZAT", body)
         # YoY: nov. 1-7. mért B (kályha 25,2 + bojler 2,4 = 27,6 kWh/nap) vs tavaly a 2025.09.10-2026.01.13
@@ -313,6 +323,8 @@ class TestDigestStats(unittest.TestCase):
         self.assertEqual(html_part.count('href="https://kereslek.github.io/f27-energy/"'), 2)   # gomb felül és alul
         self.assertIn("pre-wrap", html_part)
         self.assertIn("#39ff14", html_part)
+        self.assertIn('?kor=k5"', html_part)                                        # a kályha sora a dashboardra visz
+        self.assertIn("<details>", html_part)                                       # vasárnap: összecsukott jelmagyarázat
         with open(__import__("os").environ.get("F27_DIGEST_PREVIEW", "/dev/null"), "w", encoding="utf-8") as f:
             f.write(body)
 
