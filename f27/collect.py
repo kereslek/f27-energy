@@ -226,7 +226,7 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
             stats["errors"] += 1
             continue
         stats["received"] += 1
-        if d.get("role") == "breaker" and counter_check(status, meta, pink, now, cache):
+        if d.get("role") in METER_ROLES and counter_check(status, meta, pink, now, cache):
             stats["power_fixed"] += 1
         if needs_write(latest.get(pink), status, online, now, meta):
             rows.append({"pink": pink, "online": online, "status": status, "ts": now.isoformat()})
@@ -254,7 +254,7 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
 
     # Napi energia a kismegszakítókhoz (csak halmozott számlálónál; az add_ele-s köröket fent a napló adja).
     log_energy = (cache.get("hist") or {}).get("log_energy") or {}
-    breakers = [d for d in devs if d.get("role") == "breaker" and "_status" in d and d["pink"] not in log_energy]
+    breakers = [d for d in devs if d.get("role") in METER_ROLES and "_status" in d and d["pink"] not in log_energy]
     today = now.astimezone(BUDAPEST).date().isoformat()
     if breakers:
         pinks = ",".join(sorted(d["pink"] for d in breakers))
@@ -347,7 +347,9 @@ def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, s
     return out
 
 
+METER_ROLES = ("breaker", "plug")          # mérős kismegszakító (F27) és mérős okos konnektor (O2B)
 HIST_CODES = {"breaker": ("add_ele", "cur_power", "switch"),
+              "plug": ("add_ele", "cur_power", "switch_1"),
               "thermo": ("va_temperature", "temp_current", "va_humidity", "humidity_value")}
 HIST_BACKFILL = timedelta(days=7)          # első alkalommal ennyit (a Tuya ingyenes naplója kb. ennyit őriz)
 HIST_WINDOW_MS = 24 * 3600 * 1000          # kezdő ablak; eszközönként alkalmazkodik (sűrűnél fele, ritkánál dupla)
@@ -386,7 +388,7 @@ def hourly_metrics(pink: str, role: str, rows: list[dict], meta: dict | None) ->
     """Egy óra összesítője a tuya_log soraiból. Kismegszakító: kWh (az add_ele növekmények
     összege) és csúcsteljesítmény; hőmérő: hőmérséklet átlag/min/max, páratartalom átlag."""
     out = {"n": len(rows)}
-    if role == "breaker":
+    if role in METER_ROLES:
         inc = [_num(r["value"]) for r in rows if r["code"] == "add_ele"]
         pw = [_num(r["value"]) for r in rows if r["code"] == "cur_power"]
         out["kwh"] = round(sum(x for x in inc if x and x > 0) / 10 ** scale_of(meta, "add_ele"), 4)
@@ -494,7 +496,7 @@ def history_rows(client, sb, devs: list[dict], now: datetime, cache: dict, stats
                  for h in hours]
         sb.upsert("metrics_hourly", mrows, on_conflict="pink,hour")
         stats["hist_hours"] += len(mrows)
-        if role != "breaker":
+        if role not in METER_ROLES:
             continue
         # napi energia: a budapesti nap óráinak összege
         days = sorted({h.astimezone(BUDAPEST).date() for h in hours})
@@ -587,7 +589,7 @@ def main() -> int:
         print(f"::warning::{bk['note']}")
     text += "\n\n" + bk["note"]
     try:
-        al = run_alerts(sb)
+        al = run_alerts(sb) if SITE.id == "f27" else {"error": False, "note": f"Riasztások: {SITE.tag}-nél még nincsenek szabályok."}
     except Exception as e:              # a riasztás hibája ne állítsa meg a gyűjtést
         al = {"error": True, "note": f"Riasztások: HIBA ({type(e).__name__})."}
     if al["error"]:
@@ -601,7 +603,9 @@ def main() -> int:
         print(f"::warning::{bt['note']}")
     text += "\n" + bt["note"]
     try:
-        dg = run_digest(sb)
+        # Az esti levél és a riasztási szabályok egyelőre az F27-re szabottak (kályha, foglalások);
+        # a többi telephely levele külön készül (O2B: Pamutka), addig nem küldünk félrevezetőt.
+        dg = run_digest(sb) if SITE.id == "f27" else {"error": False, "note": f"Napi összefoglaló: {SITE.tag}-nél még nincs."}
     except Exception as e:
         dg = {"error": True, "note": f"Napi összefoglaló: hiba ({type(e).__name__})."}
     if dg["error"]:

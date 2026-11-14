@@ -1,6 +1,7 @@
 name: Adatgyűjtés
 
-# 10 percenként: Tuya állapotok -> Supabase (device_status, energy_daily).
+# 10 percenként: Tuya állapotok -> Supabase (device_status, energy_daily), az F27 és (ha be van
+# állítva) az O2B saját Supabase-projektjébe, egymás után ugyanabban a körben.
 # Óránként egyszer: időjárás (Open-Meteo) és foglaltság (Airbnb naptárexport, ha be van állítva).
 # Minden körben: riasztások kiértékelése és értesítés (ntfy push, e-mail), csak jelez, nem kapcsol.
 # Körönként szokásosan 2 Tuya API-hívás (token + eszközlista).
@@ -57,6 +58,9 @@ jobs:
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
           CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+          # Második telephely (O2B, sites/o2b): saját Supabase-projekt; amíg nincs beállítva, kimarad.
+          O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL }}
+          O2B_SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
         run: |
           end=$(( $(date +%s) + 55 * 60 ))
           n=0
@@ -64,6 +68,13 @@ jobs:
             n=$((n + 1))
             echo "::group::$n. kör"
             python -m f27.collect || echo "::warning::A(z) $n. kör hibával zárult, a következő 10 perc múlva jön."
+            if [ -n "$O2B_SUPABASE_URL" ] && [ -n "$O2B_SUPABASE_SECRET_KEY" ]; then
+              echo "--- O2B ---"
+              F27_SITE_CONFIG=sites/o2b/site.json F27_STATE_FILE=/tmp/o2b-collect-state.json \
+              SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+              AIRBNB_ICAL_URL= BOOKING_ICAL_URL= \
+                python -m f27.collect || echo "::warning::Az O2B $n. köre hibával zárult."
+            fi
             echo "::endgroup::"
             [ $(( $(date +%s) + 600 )) -lt "$end" ] || break
             sleep 600
