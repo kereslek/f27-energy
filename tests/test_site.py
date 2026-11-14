@@ -70,14 +70,15 @@ class O2BSiteTest(unittest.TestCase):
             {"id": "c", "name": "Hőmérő - nappali", "category": "wsdcg", "owner_id": H2},
             {"id": "d", "name": "Hőmérő - kagyló szoba", "category": "wsdcg", "owner_id": H2},
             {"id": "e", "name": "Klíma - Nappali", "category": "infrared_ac", "owner_id": H2},
-            {"id": "f", "name": "Klíma - gyerekszoba", "category": "infrared_ac", "owner_id": H2},
+            {"id": "f", "name": "Klíma - gyermeki szoba", "category": "infrared_ac", "owner_id": H2},
             {"id": "g", "name": "Emeleti bojler (meleg víz)", "category": "cz", "owner_id": H2},
             {"id": "h", "name": "Multifunctional infrared detector", "category": "pir", "owner_id": H2},
             {"id": "i", "name": "Hőmérő - Koshka télikertje", "category": "wsdcg", "owner_id": H2},
+            {"id": "j", "name": "Hőmérő - gyermeki szoba", "category": "wsdcg", "owner_id": H2},
         ]
         res = match_devices(devs, cfg["devices"], cfg["role_categories"])
         got = {p: d["id"] for p, d in res.mapping.items()}
-        self.assertEqual(got, {"T1": "c", "T5": "d", "K1": "e", "K4": "f", "C1": "g", "M1": "h", "T7": "i"})
+        self.assertEqual(got, {"T1": "c", "T5": "d", "K1": "e", "K4": "f", "C1": "g", "M1": "h", "T7": "i", "T6": "j"})
         self.assertNotIn("a", got.values())
         self.assertEqual(res.conflicts, {})
 
