@@ -9,6 +9,7 @@
   "timezone": "Europe/Budapest",
   "location": {"lat": 47.48, "lon": 19.07, "label": "Budapest IX. kerület"},
   "map_url": "https://kereslek.github.io/f27-energy/",
+  "advisor": {"name": "Energiaőr", "figure": "green_chair", "_comment": "A térkép tanácsadója. F27: a zöld szék (a lakás névadója). Másik telephelynek saját figurája lehet."},
   "tariff": {
     "quota_kwh_year": 2523,
     "meters": {

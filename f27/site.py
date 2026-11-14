@@ -30,6 +30,7 @@ class Site:
     lon: float
     map_url: str
     quota_kwh_year: float
+    advisor: dict = field(default_factory=dict)
     meters: dict = field(default_factory=dict)
     circuits: tuple = ()
     thermometers: tuple = ()
@@ -55,6 +56,7 @@ def load(path: str | os.PathLike | None = None) -> Site:
         tz=ZoneInfo(j.get("timezone") or "Europe/Budapest"),
         lat=float(loc.get("lat", 47.5)), lon=float(loc.get("lon", 19.05)),
         map_url=j.get("map_url") or "",
+        advisor={"name": "Energiaőr", "figure": "green_chair", **(j.get("advisor") or {})},
         quota_kwh_year=float(tar.get("quota_kwh_year") or 2523),
         meters=tar.get("meters") or {},
         circuits=tuple(c for c in j.get("circuits") or [] if isinstance(c, dict)),
