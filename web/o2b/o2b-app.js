@@ -665,7 +665,7 @@
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
-  var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sleep', wait: 4000, goal: null, face: 1, last: 0, fade: 1, dir: 1 };
+  var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sleep', wait: 4000, goal: null, face: 1, fs: 1, tilt: 0, v: 0, jump: null, sp: null, last: 0, fade: 1, dir: 1 };
   // Pamutka, a világ legcukibb macskája: ezüst cirmos, nagy fej, csillogó sárgászöld szem, pirospozsgás
   // pofi, fekete nyakörv aranycsengővel, csíkos farok. Három póz: ül (szemből), sétál (oldalt), alszik.
   var PAM = { fur: '#e3e7ea', fur2: '#c9cfd4', stripe: '#6b7179', belly: '#fbfcfd', pink: '#f6a9bf', eye: '#c3d84a' };
@@ -704,10 +704,6 @@
       '<path d="' + d + '" fill="none" stroke="' + PAM.fur + '" stroke-width="' + w + '" stroke-linecap="round"/>' +
       '<path d="' + d + '" fill="none" stroke="' + PAM.stripe + '" stroke-width="' + w + '" stroke-dasharray="4 6" stroke-linecap="butt" opacity=".85"/></g>';
   }
-  function pamCollar(cx, cy, w) {
-    return '<path d="M' + (cx - w) + ',' + cy + ' Q' + cx + ',' + (cy + 9) + ' ' + (cx + w) + ',' + cy + '" fill="none" stroke="#1e2a44" stroke-width="6" stroke-linecap="round"/>' +
-      '<circle class="bell" cx="' + cx + '" cy="' + (cy + 8) + '" r="5.2" fill="#ffd23f" stroke="#1e2a44" stroke-width="2"/><circle cx="' + (cx - 1.6) + '" cy="' + (cy + 6.3) + '" r="1.5" fill="#fff6c4"/>';
-  }
   // ül, szemből: a panel nagy képe és a térképen az üldögélő póz (origó: a lába közepe)
   function pamSit() {
     var o = pamTail('M22,-6 C52,-4 58,-36 42,-58 C38,-63 32,-60 35,-55', 9);
@@ -732,10 +728,10 @@
   }
   // alszik: összegömbölyödve, a farka körbeér, Zzz
   function pamSleep() {
-    var o = '<ellipse cx="0" cy="-14" rx="34" ry="17" fill="' + PAM.fur + '" stroke="#1e2a44" stroke-width="3"/>' +
+    var o = '<g class="snore"><ellipse cx="0" cy="-14" rx="34" ry="17" fill="' + PAM.fur + '" stroke="#1e2a44" stroke-width="3"/>' +
       '<path d="M-20,-28 Q-18,-20 -20,-12 M-8,-30 Q-6,-20 -8,-8 M4,-30 Q6,-20 4,-9" fill="none" stroke="' + PAM.stripe + '" stroke-width="2.6" stroke-linecap="round"/>' +
       pamTail('M-30,-6 C-20,6 22,6 34,-6', 8) +
-      '<g class="head">' + pamHead(16, -26, 0.55, true) + '</g>';
+      '<g class="head">' + pamHead(16, -26, 0.55, true) + '</g></g>';
     ['a', 'b'].forEach(function (c, i) { o += '<text class="zz ' + c + '" x="' + (34 + i * 7) + '" y="' + (-46 - i * 6) + '" font-family="Lilita One, sans-serif" font-size="16" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>'; });
     return o;
   }
@@ -783,38 +779,56 @@
     }
     if (Math.random() < 0.3) cat.dir = -cat.dir;                    // néha visszafordul
   }
+  // séta: lágy gyorsulás és lassulás, fordulás (a tükrözés átfordul, nem ugrik), a lenti lépcsőn fokról
+  // fokra felfelé (a magasság a lépcsőfokokat követi), a tetején ívben felugrik az emeletre; lefelé
+  // leugrik a lépcső tetejére, és lesétál a fokokon.
+  function catScreen(fl, x, y, z) { var P = scene.floors[fl].proj.P; return P(x, y, z == null ? S.stairZ(fl, x, y) : z); }
   function catStep(ts) {
     var dt = Math.min(100, ts - (cat.last || ts)); cat.last = ts;
-    var R = S.CAT_ROUTE, n = R.length;
-    if (cat.wait > 0) {
+    var R = S.CAT_ROUTE, n = R.length, k = uiK();
+    if (cat.jump) {                                   // ugrás két szint között (képernyő-ív)
+      var J = cat.jump; J.t = Math.min(1, J.t + dt / J.dur);
+      var a = catScreen(J.f0, J.x0, J.y0), b = catScreen(J.f1, J.x1, J.y1), e = J.t;
+      var px = a[0] + (b[0] - a[0]) * e, py = a[1] + (b[1] - a[1]) * e - Math.sin(Math.PI * e) * (60 + Math.abs(b[1] - a[1]) * 0.15) * k;
+      cat.face = b[0] >= a[0] ? 1 : -1; cat.tilt = (b[1] < a[1] ? -1 : 1) * 16 * (1 - 2 * Math.abs(e - 0.5)) * (e < 0.5 ? 1 : -0.6);
+      cat.sp = [px, py]; cat.mode = 'jump';
+      if (J.t >= 1) { cat.jump = null; cat.fl = J.f1; cat.x = J.x1; cat.y = J.y1; cat.i = J.ni; cat.v = 0; cat.mode = 'land'; cat.wait = 260; cat.tilt = 0; cat.sp = null; }
+    } else if (cat.wait > 0) {
       cat.wait -= dt;
-      if (cat.wait <= 0 && cat.mode !== 'walk') cat.mode = 'walk';
+      if (cat.wait <= 0 && cat.mode !== 'walk') { cat.mode = 'walk'; cat.v = 0; }
     } else {
       var ni = (cat.i + cat.dir + n) % n, nx = R[ni];
-      if (nx[0] !== cat.fl) {                         // lépcső: átugrik a másik szintre
-        cat.i = ni; cat.fl = nx[0]; cat.x = nx[1]; cat.y = nx[2]; cat.fade = 0;
+      if (nx[0] !== cat.fl) {                         // szintváltás: ugrás
+        cat.jump = { f0: cat.fl, x0: cat.x, y0: cat.y, f1: nx[0], x1: nx[1], y1: nx[2], ni: ni, t: 0, dur: 950 };
       } else {
-        var dx = nx[1] - cat.x, dy = nx[2] - cat.y, d = Math.hypot(dx, dy), sp = 0.7 * dt / 1000;
+        var dx = nx[1] - cat.x, dy = nx[2] - cat.y, d = Math.hypot(dx, dy);
+        var onStairs = S.stairZ(cat.fl, cat.x, cat.y) > 0, vmax = onStairs ? 0.45 : 0.72;
+        cat.v = Math.min(vmax, (cat.v || 0) + dt / 1000 * 1.6);          // gyorsul
+        if (d < 0.35) cat.v = Math.max(0.18, Math.min(cat.v, d * 2.2));  // a pont előtt lassul
+        var sp = cat.v * dt / 1000;
         if (d <= sp) {
           cat.x = nx[1]; cat.y = nx[2]; cat.i = ni;
-          var act = pickAction(catRoomAt(cat.fl, cat.x, cat.y), nx[3]);
-          if (act) startAction(act); else cat.mode = 'walk';
+          var act = nx[3] === 'stairtop' ? null : pickAction(catRoomAt(cat.fl, cat.x, cat.y), nx[3]);
+          if (act) { startAction(act); cat.v = 0; } else cat.mode = 'walk';
         } else {
           cat.x += dx / d * sp; cat.y += dy / d * sp; cat.mode = 'walk';
-          var a = scene.floors[cat.fl].proj.P(cat.x, cat.y, 0), b = scene.floors[cat.fl].proj.P(nx[1], nx[2], 0);
-          if (Math.abs(b[0] - a[0]) > 0.5) cat.face = b[0] > a[0] ? 1 : -1;
+          var p0 = catScreen(cat.fl, cat.x, cat.y), p1 = catScreen(cat.fl, nx[1], nx[2]);
+          if (Math.abs(p1[0] - p0[0]) > 1.5) cat.face = p1[0] > p0[0] ? 1 : -1;
+          cat.tilt = onStairs ? (p1[1] < p0[1] ? -10 : 10) * (p1[0] > p0[0] ? 1 : -1) : 0;
         }
       }
     }
+    cat.fs = (cat.fs == null ? cat.face : cat.fs) + (cat.face - (cat.fs == null ? cat.face : cat.fs)) * Math.min(1, dt / 110);
     cat.fade = Math.min(1, cat.fade + dt / 600);
     if (layer.cat && scene) {
-      var p = scene.floors[cat.fl].proj.P(cat.x, cat.y, 0), g = layer.cat;
-      g.setAttribute('transform', 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ') scale(' + r1(0.62 * uiK() * 100) / 100 + ')');
+      var p = cat.sp || catScreen(cat.fl, cat.x, cat.y), g = layer.cat;
+      g.setAttribute('transform', 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ') scale(' + r1(0.62 * k * 100) / 100 + ')');
       g.setAttribute('opacity', r1(cat.fade));
-      var cls = cat.mode + (cat.goal ? ' has-tip' : '');
+      var cls = (cat.mode === 'jump' || cat.mode === 'land' ? 'walk ' + cat.mode : cat.mode) + (cat.goal ? ' has-tip' : '');
       if (g.getAttribute('class') !== cls) g.setAttribute('class', cls);
       var walkPose = g.querySelector('.p-walk');
-      if (walkPose) walkPose.setAttribute('transform', 'scale(' + cat.face + ',1)');
+      var fsx = Math.abs(cat.fs) < 0.08 ? (cat.fs < 0 ? -0.08 : 0.08) : cat.fs;
+      if (walkPose) walkPose.setAttribute('transform', 'scale(' + Math.round(fsx * 100) / 100 + ',1) rotate(' + r1(cat.tilt || 0) + ')');
     }
     requestAnimationFrame(catStep);
   }

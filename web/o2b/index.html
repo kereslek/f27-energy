@@ -77,6 +77,13 @@ body{position:fixed;inset:0;touch-action:none}
 @keyframes pounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px)}}
 @keyframes pop2{0%{transform:scale(.6);opacity:0}15%{transform:scale(1.05);opacity:1}85%{opacity:1}100%{opacity:0}}
 #cat .stretchw{transform-box:fill-box;transform-origin:50% 100%}
+@keyframes snore{0%,100%{transform:scale(1,1)}45%{transform:scale(1.035,1.09)}}
+#cat .snore{transform-box:fill-box;transform-origin:50% 100%;animation:snore 2.8s ease-in-out infinite}
+#cat.jump .lA,#cat.jump .lB{animation:none}
+#cat.jump .lA{transform:rotate(-38deg)}#cat.jump .lB{transform:rotate(34deg)}
+#cat.jump .stretchw{transform:scale(1.14,.9)}
+#cat.land .stretchw{transform:scale(1.12,.84)}
+#cat.jump .body{animation:none}
 #cat.stretch .stretchw{animation:stretchy 2.3s ease-in-out}
 #cat .gpaw,#cat .yarn,#cat .bubble{display:none}
 #cat.groom .gpaw{display:inline}
@@ -372,8 +379,6 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
       <path d="M-3,-9 L3,-9 L0,-5 Z" fill="#f08aa4" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"/>
       <path d="M0,-5 Q-4,0 -8,-2 M0,-5 Q4,0 8,-2" fill="none" stroke="#1e2a44" stroke-width="1.8" stroke-linecap="round"/>
       <path d="M-14,-7 L-34,-10 M-14,-5 L-33,-2 M14,-7 L34,-10 M14,-5 L33,-2" stroke="#1e2a44" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M-20,6 Q0,14 20,6" fill="none" stroke="#1e2a44" stroke-width="5" stroke-linecap="round"/>
-      <circle cx="0" cy="11" r="3.2" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.6"/>
     </g>
   </defs>
 </svg>

@@ -226,11 +226,18 @@
   var CAT_ROUTE = [
     ['lo', 2.3, -1.0, 'sit'], ['lo', 2.2, 0.5], ['lo', 1.9, 1.6], ['lo', 0.75, 3.2, 'sleep'], ['lo', 2.0, 4.6], ['lo', 2.7, 6.3],
     ['lo', 2.6, 7.4], ['lo', 0.8, 9.2, 'sit'], ['lo', 2.3, 10.4], ['lo', 3.4, 11.4], ['lo', 2.2, 12.8, 'sleep'], ['lo', 3.4, 11.4],
-    ['lo', 3.0, 10.3], ['lo', 2.6, 10.25, 'stairs'],
-    ['up', 0.75, 7.6], ['up', 1.5, 5.6], ['up', 1.7, 4.62], ['up', 1.2, 2.4, 'sleep'], ['up', 1.7, 4.62], ['up', 3.3, 5.3],
-    ['up', 3.3, 4.62], ['up', 3.2, 2.2, 'sit'], ['up', 3.3, 4.62], ['up', 2.0, 5.8], ['up', 0.75, 7.6, 'stairs'],
-    ['lo', 2.6, 10.25], ['lo', 4.2, 8.5], ['lo', 5.8, 9.2], ['lo', 7.9, 9.9, 'sit'], ['lo', 5.8, 9.2], ['lo', 4.3, 8.5], ['lo', 2.7, 6.3], ['lo', 2.2, 0.5]
+    ['lo', 3.0, 10.3], ['lo', 2.6, 10.25], ['lo', 0.35, 10.25, 'stairtop'],
+    ['up', 0.75, 7.6], ['up', 1.5, 5.6], ['up', 1.7, 4.62], ['up', 1.85, 1.25, 'sleep'], ['up', 1.7, 4.62], ['up', 3.3, 5.3],
+    ['up', 3.3, 4.62], ['up', 3.2, 2.2, 'sit'], ['up', 3.3, 4.62], ['up', 2.0, 5.8], ['up', 0.75, 7.6, 'stairtop'],
+    ['lo', 0.35, 10.25], ['lo', 2.6, 10.25], ['lo', 4.2, 8.5], ['lo', 5.8, 9.2], ['lo', 7.9, 9.9, 'sit'], ['lo', 5.8, 9.2], ['lo', 4.3, 8.5], ['lo', 2.7, 6.3], ['lo', 2.2, 0.5]
   ];
+  // a lenti lépcső magassága egy pontban (Pamutka fokról fokra megy fel rajta): kelet felől emelkedik
+  function stairZ(fl, x, y) {
+    var s = FLOORS.lo.stairs;
+    if (fl !== 'lo' || x < s.x || x > s.x + s.w || y < s.y || y > s.y + s.d) return 0;
+    var i = Math.min(s.steps, Math.floor((s.x + s.w - x) / (s.w / s.steps)) + 1);
+    return i * (s.rise / s.steps) * 0.55;
+  }
   // a szoba középpontja (Pamutka ide sétál, ha ott van gond)
   function roomCenter(id) {
     var out = null;
@@ -519,6 +526,6 @@
 
   root.O2BScene = {
     U: U, INK: INK, FLOORS: FLOORS, PIECES: PIECES, PINS: PINS, CAT_ROUTE: CAT_ROUTE,
-    build: build, Proj: Proj, OFF: OFF, LIFT: LIFT, PLAN_NORTH: PLAN_NORTH, roomCenter: roomCenter, far: far
+    build: build, Proj: Proj, stairZ: stairZ, OFF: OFF, LIFT: LIFT, PLAN_NORTH: PLAN_NORTH, roomCenter: roomCenter, far: far
   };
 })(typeof window !== 'undefined' ? window : this);
