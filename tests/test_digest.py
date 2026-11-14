@@ -374,5 +374,22 @@ class TestDigestStats(unittest.TestCase):
         self.assertIn("007_history.sql", body)
 
 
+class PartialBookingAndLinksTest(unittest.TestCase):
+    """2026.11.14-i hibajelentés: a Booking-foglalások nem látszanak (csak Airbnb-naptár van bekötve),
+    és a körökre koppintva nem volt link."""
+
+    def test_partial_flag(self):
+        from f27.digest import booking_partial
+        self.assertTrue(booking_partial({"AIRBNB_ICAL_URL": "x"}))
+        self.assertFalse(booking_partial({"AIRBNB_ICAL_URL": "x", "BOOKING_ICAL_URL": "y"}))
+        self.assertFalse(booking_partial({}))
+
+    def test_circuit_buttons_in_html(self):
+        from f27.report_stats import CIRC_HINT, to_html
+        h = to_html("a\n" + CIRC_HINT + "\nb", "https://pelda.hu/")
+        for k in ("k5", "k7", "k8", "k9"):
+            self.assertIn(f'href="https://pelda.hu/?kor={k}"', h)
+
+
 if __name__ == "__main__":
     unittest.main()

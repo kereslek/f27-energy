@@ -254,7 +254,7 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
     head.update(kwh=round(tot_kwh, 2), ft=tot_ft, kwh_y=round(tot_y, 2) if any_y else None)
     trows.append(f"{'ÖSSZESEN':<9}{_f(tot_kwh):>6} {(_pct(tot_kwh, tot_y) if any_y else '--').replace(' ', ''):>6} {'~' + _ft(mtd_ft):>10}  ")
     out += box("KÖRÖK · MA", trows)
-    out += ["› a körre koppintva: részletek a dashboardon"]
+    out += ["› részletek: kályha · bojler · konyha · klíma"]
 
     # Összesítő és havi előrejelzés
     days_in_month = ((today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day
@@ -510,12 +510,17 @@ def to_html(text: str, url: str) -> str:
            '&gt;&gt; DASHBOARD MEGNYITÁSA &lt;&lt;</a>')
     pre = ('<pre style="margin:6px 0;font-family:Menlo,Consolas,\'Courier New\',monospace;font-size:13px;'
            'line-height:1.3;color:#39ff14;background:#0b0f0b;white-space:pre-wrap;word-break:break-word">')
-    lk = 'style="color:#39ff14;text-decoration:none"'
+    lk = 'style="color:#39ff14;text-decoration:underline"'
+    bt = ('style="color:#0b0f0b;background:#39ff14;text-decoration:none;padding:1px 6px;border-radius:3px;'
+          'font-weight:bold"')
     body = []
     for line in html.escape(text).split("\n"):
         m = CIRC_ROW.match(line)
         if m:                                               # a körök sorai: a dashboardon a kör részletei
             line = f'<a href="{html.escape(url)}?kor={CIRC_LINK[m.group(1)]}" {lk}>{line}</a>'
+        elif line == CIRC_HINT:                            # külön, jól látható gombok is (nem minden levelező jelzi a sor-linket)
+            line = "› részletek: " + " ".join(
+                f'<a href="{html.escape(url)}?kor={k}" {bt}>{n}</a>' for n, k in CIRC_LINK.items())
         elif line == "&lt;&lt;LEGEND&gt;&gt;":              # hetente, összecsukva (ahol a levelező támogatja)
             line = '</pre><details><summary style="color:#b8f5a6;font-family:Menlo,Consolas,monospace;font-size:13px;cursor:pointer">▸ JELMAGYARÁZAT (heti)</summary>' + pre
         elif line == "&lt;/&lt;LEGEND&gt;&gt;" or line == "&lt;&lt;/LEGEND&gt;&gt;":
@@ -528,4 +533,5 @@ def to_html(text: str, url: str) -> str:
 
 # a KÖRÖK táblázat sorai -> a térkép Eszközök paneljének kártyái (?kor=k5)
 CIRC_LINK = {"kályha": "k5", "bojler": "k7", "konyha": "k8", "klíma": "k9"}
+CIRC_HINT = "› részletek: kályha · bojler · konyha · klíma"
 CIRC_ROW = re.compile(r"^│ (kályha|bojler|konyha|klíma) .*›\s*│$")
