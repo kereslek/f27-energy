@@ -226,7 +226,12 @@ def alert_items(logs: list[dict], now: datetime) -> list[dict]:
         b = hm(t1) if t1 else "most"
         dur = f" ({_dur(((t1 or now) - t0).total_seconds())})" if t0 else ""
         what = _short((f or r).get("text") or (f or r).get("rule_key") or "")
-        detail = "push: " + _push(f) if f else "push: korábban"
+        extra = ""
+        m = re.match(r"(?:ajtó|ablak) nyitva (fűtés|klímázás) közben: (.+?) \d+ perce(?:, közben (.+))?$", what)
+        if m:                                           # "Kis szoba ablak nyitva fűtés közben", a hőforrás külön sorban
+            what = f"{m.group(2)} nyitva {m.group(1)} közben"
+            extra = f" · közben {m.group(3)}" if m.group(3) else ""
+        detail = ("push: " + _push(f) if f else "push: korábban") + extra
         if r is None:
             detail += " · még aktív"
         out.append({"span": f"{a}-{b}{dur}", "what": what, "detail": detail})

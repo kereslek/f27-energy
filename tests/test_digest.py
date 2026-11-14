@@ -338,6 +338,16 @@ class TestDigestStats(unittest.TestCase):
         body = self.run_at(AT(20, 0, d=9))["new"][0]["email_body"]         # hétfő
         self.assertNotIn("OKOS ESZKÖZÖK", body)
 
+    def test_alert_items_open_window_is_short(self):
+        T0_ = datetime(2026, 11, 14, 11, 35, tzinfo=timezone.utc)
+        logs = [{"ts": T0_.isoformat(), "rule_key": "open_heat:9", "kind": "fired", "channels": "push",
+                 "text": "F27: ablak nyitva fűtés közben: Nagy szoba bal ablak 15 perce, közben a kályha fűt (1,0 kW)."},
+                {"ts": (T0_ + timedelta(minutes=35)).isoformat(), "rule_key": "open_heat:9", "kind": "resolved",
+                 "channels": "push", "text": "F27: megszűnt: Nagy szoba bal ablak becsukva."}]
+        it = DG.alert_items(logs, T0_ + timedelta(hours=8))[0]
+        self.assertEqual((it["span"], it["what"], it["detail"]),
+                         ("12:35-13:10 (35p)", "Nagy szoba bal ablak nyitva fűtés közben", "push: igen · közben a kályha fűt (1,0 kW)"))
+
     def test_archive_outage_does_not_block_the_mail(self):
         def boom(a, b):
             raise OSError("hálózat")
