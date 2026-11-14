@@ -38,6 +38,7 @@ from .site import SITE
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError, fetch_logs
 from .alerts import run_alerts
+from .battery import run_battery
 from .bookings import collect_bookings
 from .digest import run_digest
 from .weather import collect_weather
@@ -592,6 +593,13 @@ def main() -> int:
     if al["error"]:
         print(f"::warning::{al['note']}")
     text += "\n\n" + al["note"]
+    try:
+        bt = run_battery(sb)
+    except Exception as e:              # az elembecslés hibája ne állítsa meg a gyűjtést
+        bt = {"error": True, "note": f"Elemek: HIBA ({type(e).__name__})."}
+    if bt["error"]:
+        print(f"::warning::{bt['note']}")
+    text += "\n" + bt["note"]
     try:
         dg = run_digest(sb)
     except Exception as e:

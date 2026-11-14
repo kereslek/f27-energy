@@ -163,3 +163,20 @@ mutat.
 | "hiba (SMTPAuthenticationError)" | rossz `SMTP_USER` / `SMTP_PASS` (Gmailnél alkalmazásjelszó kell, nem a fiók jelszava) |
 | Nem jön push, a Summary szerint elküldve | az appban pontosan ugyanarra a csatornanévre iratkoztál fel? |
 | A térkép csempéje "előnézet" | nincs belépés, vagy hiányzik a 006-os migráció |
+
+## Elemcsere-előrejelzés (2026.11.14)
+
+Minden elemes eszközre (hőmérők, nyitásérzékelők, mozgásérzékelő) az adatgyűjtő minden körben
+megbecsüli, mikor merül le az elem (`f27/battery.py`), és a `battery_status` táblába írja.
+A tulajnak egyszer futtatnia kell: `supabase/migrations/008_battery.sql` (SQL Editor).
+
+- **Elemtípusok** a `config/devices.json` (és `sites/o2b/devices.json`) `battery` részében:
+  Wi-Fi hőmérők 2 × AAA alkáli, Zigbee nyitásérzékelők és a mozgásérzékelő CR2032 gombelem.
+- **Becslés:** a százalékot jelentő eszközöknél a mért merülésből (robusztus meredekség, a
+  "térd" alatt gyorsabb merüléssel), a csak három szintet (magas, közepes, alacsony) jelentő
+  hőmérőknél a szintekből és a korábbi cserék közti időből. Mindig dátumtartomány.
+- **Csereészlelés:** ha a százalék legalább 25 ponttal felugrik, vagy a hőmérő "alacsony"-ról
+  "magas"-ra vált. Az élettartamot megjegyzi, a következő becslés ebből tanul.
+- **Figyelmeztetés:** 30 napon belül ELEMCSERE csempe a térkép felső sávjában (sárga) és
+  ELEMCSERE doboz az esti e-mailben; 14 napon belül piros, és eszközönként EGY push;
+  lemerült elemnél egy utolsó push. Push csak az utolsó két hétben, ahogy a tulaj kérte.

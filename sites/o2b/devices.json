@@ -1,5 +1,10 @@
 {
   "_comment": "O2B eszközök (a Smart Life saját otthonában). Device ID és családnév NEM kerül ide. A gyerekszoba két eszközét a tulaj átnevezi (a hőmérő 2026.11.14 óta 'Hőmérő - gyermeki szoba'). pos: a térkép koordinátái, a fotóhű térkép elkészültekor töltjük ki.",
+  "battery": {
+    "_comment": "Elemes szerepkörök (a tulaj, 2026.11.14): a Wi-Fi hőmérőkben 2 × AAA alkáli, a mozgásérzékelőben CR2032 gombelem.",
+    "thermo": {"type": "AAA", "count": 2},
+    "pir": {"type": "CR2032", "count": 1}
+  },
   "role_categories": {
     "thermo": ["wsdcg"],
     "plug": ["cz", "pc"],

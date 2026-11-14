@@ -1088,7 +1088,7 @@
         liveSky: true, now: Date.now(),
         devOpen: false, devFilter: 'all', devOpenId: null,
         bk: null, calOpen: false, calMonth: null, calSel: null,
-        al: null, alOpen: false, alLogOpen: false, alDemo: null, alBusy: false
+        al: null, alOpen: false, alLogOpen: false, alDemo: null, alBusy: false, bat: null
       };
     }
 
@@ -1227,6 +1227,7 @@
       v.bk = this.bkVals(v);
       v.cal = this.calVals(v.bk);
       v.al = this.alVals(v, dv);
+      v.bat = this.batVals();
       v.cons = this.consVals(v, dv);
       v.ov = this.ovVals(v, dv, v.cons);
       this.sceneVals(v, dv);
@@ -1663,6 +1664,7 @@
     loadAlerts() {
       var self = this, st = this.state;
       if (!this.sb || !st.user || !st.role) return;
+      this.loadBattery();
       if (st.role !== 'owner' && st.role !== 'cleaner') { this.setState({ al: { err: 'role' } }); return; }
       var missing = function (e) { var c = (e && e.code) || '', m = (e && e.message) || ''; return c === 'PGRST205' || c === '42P01' || /does not exist|Could not find the table/i.test(m); };
       var fail = function (e) { self.setState({ al: { err: missing(e) ? 'missing' : 'other', at: Date.now() } }); };
@@ -1677,6 +1679,38 @@
         self.setState({ al: { err: null, at: Date.now(), row: row, saved: cfg, draft: dirty ? prev.draft : cfg, state: r[1].data || [], log: prev.log || null, testAt: row ? row.test_requested_at : null } });
         if (self.state.role === 'owner' && (self.state.alLogOpen || !prev.log)) self.loadAlertLog();
       }, fail);
+    }
+
+    // Elemcsere-előrejelzés (008_battery.sql, f27/battery.py): az adatgyűjtő számolja, itt csak a lista.
+    loadBattery() {
+      var self = this;
+      if (!this.sb || !this.state.user) return;
+      this.sb.from('battery_status').select('pink,label,level,eta_lo,eta_hi,value,basis').then(function (res) {
+        self.setState({ bat: res.error ? { err: true, rows: [] } : { rows: res.data || [] } });
+      }, function () { self.setState({ bat: { err: true, rows: [] } }); });
+    }
+
+    // ELEM csempe: csak ha valamelyik elem 30 napon belül esedékes (a tulaj kérése, 2026.11.14).
+    batVals() {
+      var b = this.state.bat, order = { dead: 0, due14: 1, due30: 2 };
+      var rows = ((b && b.rows) || []).filter(function (r) { return order[r.level] != null; });
+      if (!rows.length) return { show: false };
+      rows.sort(function (x, y) { return order[x.level] - order[y.level] || (x.eta_lo || 0) - (y.eta_lo || 0); });
+      var day = function (n) { var d = new Date(Date.now() + n * 864e5); return (d.getMonth() + 1 + '').padStart(2, '0') + '.' + (d.getDate() + '').padStart(2, '0') + '.'; };
+      var when = function (r) {
+        if (r.level === 'dead') return 'lemerült, cseréld most';
+        if (r.eta_lo == null) return 'hamarosan';
+        return r.eta_lo <= 0 ? 'bármikor, legkésőbb ' + day(r.eta_hi) : 'kb. ' + r.eta_lo + '-' + r.eta_hi + ' nap (' + day(r.eta_lo) + '-' + day(r.eta_hi) + ')';
+      };
+      var r0 = rows[0], hot = r0.level === 'dead' || r0.level === 'due14';
+      return {
+        show: true,
+        cls: 'chip batchip ' + (hot ? 'hot' : 'warn'),
+        ck: 'ELEMCSERE' + (rows.length > 1 ? ' · ' + rows.length : ''),
+        cv: r0.label || r0.pink,
+        cs: when(r0) + (rows.length > 1 ? ' · +' + (rows.length - 1) + ' további' : ''),
+        tip: 'Elemcsere 30 napon belül: ' + rows.map(function (r) { return (r.label || r.pink) + ': ' + when(r); }).join('; ') + '. Becslés a merülés üteméből (f27/battery.py).'
+      };
     }
 
     loadAlertLog() {

@@ -1,5 +1,10 @@
 {
   "_comment": "Pink számok az alaprajzon -> Smart Life eszközök. Device ID NEM kerül ide (publikus repó). A párosítás névből történik: match = részszövegek (kisbetűs, ékezetesen is jó), exclude = kizáró részszövegek, exact = a pontos Smart Life név (döntetlennél ez nyer). Előtte az F27 otthonra szűrünk (a Smart Life fiókban más ingatlanok eszközei is vannak). pos = hely a térkép SVG koordinátáiban.",
+  "battery": {
+    "_comment": "Elemes szerepkörök (a tulaj, 2026.11.14): a Wi-Fi hőmérőkben 2 × AAA alkáli (Energizer, Duracell), a Zigbee nyitásérzékelőkben CR2032 gombelem. f27/battery.py becsli belőle az elemcserét.",
+    "thermo": {"type": "AAA", "count": 2},
+    "contact": {"type": "CR2032", "count": 1}
+  },
   "role_categories": {
     "_comment": "Tuya kategóriakódok szerepkörönként. Csak döntetlen feloldására szolgál: ha egy pink számra több eszköz illik, a nem ilyen kategóriájúak kiesnek (ha mind kiesne, a szűrő nem érvényesül).",
     "thermo": ["wsdcg"],

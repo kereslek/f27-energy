@@ -30,7 +30,8 @@ from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, batt
                      email_ready, fmt_num, last_report, merge_config, parse_ts, send_email, snapshot,
                      fmt_w, stove_state)
 from .site import SITE
-from .report_stats import banner, build_stats, footer, notes, stripe, subject_line, to_html
+from .battery import digest_lines as battery_lines
+from .report_stats import banner, box, build_stats, footer, notes, stripe, subject_line, to_html
 from .supa import SupabaseError, SupabaseRest
 
 MONTHS = ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec.")
@@ -110,7 +111,8 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
                 todo.append(f"Nyitva jelez, de {int((now - t).total_seconds() // 3600)} órája nem jelentett (lehet régi jelzés): {name}")
             else:
                 todo.append(f"Nyitva: {name}")
-    for pink in BATTERY_SENSORS:
+    bat = _safe(lambda: sb.select("battery_status", "pink,label,level,eta_lo,eta_hi"), None)
+    for pink in (BATTERY_SENSORS if bat is None else ()):     # régi út: amíg nincs 008_battery.sql
         d = snap.get(pink)
         b = battery_of(d["status"]) if d else None
         if b is not None and b < 20:
@@ -147,6 +149,9 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
                 and x7["status"].get("switch") is True):
             todo.append("Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).")
     out += [""] + notes("Teendők") + ([f"{i}. {t}" for i, t in enumerate(todo, 1)] if todo else ["- Nincs teendő."])
+    blines = battery_lines(bat or [], today)
+    if blines:                                   # csak a 30 napon belül esedékes elemek (a tulaj kérése)
+        out += [""] + box("ELEMCSERE", blines + ["!! = 2 héten belül vagy lemerült"])
 
     # 3. Holnap
     out += [""] + notes(f"Holnap ({day_label(tomorrow)})")

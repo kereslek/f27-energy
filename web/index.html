@@ -687,6 +687,12 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .alchip .cs{line-height:1.15;font-size:10.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .alchip.ok{background:#e7f8ec}.alchip.ok .cv{color:#2f7d4f}.alchip.ok:hover{background:#d6f2df}
 .alchip.alarm{background:#ffe1d6;border-color:#c8321f;box-shadow:0 4px 0 #c8321f}.alchip.alarm .ck,.alchip.alarm .cv{color:#c8321f}.alchip.alarm .cs{color:#9a3412}.alchip.alarm:hover{background:#ffd3c4}
+.batchip{flex:0 0 auto;gap:1px;padding:4px 10px;max-width:200px;cursor:default}
+.batchip .ck{line-height:1.1;letter-spacing:.7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.batchip .cv{font-family:"Baloo 2","Nunito",sans-serif;font-weight:800;font-size:16px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.batchip .cs{line-height:1.15;font-size:10.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.batchip.warn{background:#fff4d1;border-color:#b7791f;box-shadow:0 4px 0 #b7791f}.batchip.warn .ck,.batchip.warn .cv,.batchip.warn .cs{color:#8a5a00}
+.batchip.hot{background:#ffe1d6;border-color:#c8321f;box-shadow:0 4px 0 #c8321f}.batchip.hot .ck,.batchip.hot .cv{color:#c8321f}.batchip.hot .cs{color:#9a3412}
 .alchip.alarm.prev{border-color:#1e2a44;box-shadow:0 4px 0 #1e2a44}
 .alpop{pointer-events:auto;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:600px;max-width:calc(100vw - 24px);max-height:calc(var(--app-h,100vh) - 24px);box-sizing:border-box;display:flex;flex-direction:column;border-radius:22px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 6px 0 #1e2a44,0 18px 40px rgba(14,20,40,.35);font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden}
 .al-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 14px 10px;background:linear-gradient(180deg,#ffe1d6,#fffdf7);border-bottom:3px solid #1e2a44}
@@ -1186,6 +1192,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <button class="chip wxchip" type="button" onClick="{{wx.toggle}}" title="{{wx.title}}" aria-label="{{wx.aria}}" aria-expanded="{{wx.openAttr}}" aria-controls="f27-wxcard"><span class="ck">KINT<sc-if value="{{wx.hasFc}}"><span class="wxf"> · {{wx.fc}}</span></sc-if></span><span class="cv wxv"><sc-if value="{{wx.hasIcon}}"><svg class="wxi" viewBox="0 0 24 24" aria-hidden="true"><use href="{{wx.icon}}"></use></svg></sc-if>{{wx.now}}</span></button>
 <div class="{{bk.chip.cls}}" title="{{bk.chip.tip}}"><span class="ck">{{bk.chip.ck}}</span><span class="cv">{{bk.chip.cv}}</span><span class="cs">{{bk.chip.cs}}</span></div>
 <button class="{{ov.motion.cls}}" type="button" onClick="{{ov.motion.pick}}" title="{{ov.motion.tip}}" aria-label="{{ov.motion.tip}}"><span class="ck">UTOLSÓ MOZGÁS</span><span class="cv">{{ov.motion.big}}</span><span class="cs">{{ov.motion.sub}}</span></button>
+<sc-if value="{{bat.show}}"><div class="{{bat.cls}}" role="status" title="{{bat.tip}}"><span class="ck">{{bat.ck}}</span><span class="cv">{{bat.cv}}</span><span class="cs">{{bat.cs}}</span></div></sc-if>
 <button class="{{al.chip.cls}}" type="button" onClick="{{al.toggle}}" title="{{al.chip.tip}}" aria-expanded="{{al.openAttr}}" aria-controls="f27-alerts" aria-haspopup="dialog"><span class="ck">{{al.chip.ck}}</span><span class="cv">{{al.chip.cv}}</span><span class="cs">{{al.chip.cs}}</span></button>
 <div style="flex: 1 1 auto"></div>
 <sc-if value="{{ui.showDemo}}"><div class="demopill" title="Kitalált demóadatok a kiválasztott pálya szerint. A lakás valódi értékei belépés után látszanak."><b>DEMÓ</b><span>kitalált adat</span></div></sc-if>
