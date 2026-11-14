@@ -306,15 +306,36 @@ foglalásnak számít.
 
 ## Szerepkörök
 
-| Szerepkör | Lát | Betölt | Ment, töröl, alapértelmezett |
-|---|---|---|---|
-| tulaj (owner) | igen | igen | igen |
-| takarító (cleaner) | igen | igen | nem |
-| megtekintő (viewer) | igen | igen | nem |
-| listán kívüli fiók | csak demó | nem | nem |
+| Szerepkör | Lát | Szerkeszt (húzás, visszavonás, alaphelyzet) | Ment, töröl, alapértelmezett | Foglalások | Riasztás-beállítás |
+|---|---|---|---|---|---|
+| tulaj (owner) | igen | igen | igen | igen | állít |
+| takarító (cleaner) | igen | **nem** (csak megtekintés) | nem | igen | lát |
+| megtekintő (viewer) | igen | **nem** (csak megtekintés) | nem | nem | nem |
+| listán kívüli fiók | csak demó | demóban igen (nem mentődik) | nem | nem | nem |
 
-Új felhasználót a `docs/supabase-setup.md` 4. lépése szerint lehet felvenni, a megfelelő
-szerepkörrel.
+**Csak megtekintés** (2026.11.14): belépve csak a tulaj szerkeszthet. A megtekintőnél és a takarítónál
+nincs Szerkesztés gomb (az E billentyű és a Ctrl+Z sem változtat), nincs "Elrendezés visszaállítása",
+a húzás a térképet mozgatja, és a sávban lila **CSAK MEGTEKINTÉS** jelzés áll. A szerveroldali védelem
+az RLS: írni (elrendezés, riasztás-beállítás) eddig is csak az owner tudott; a megtekintő a
+foglalásokat, a mérési előzményt (`energy_daily`, `metrics_hourly`, `tuya_log`) és a riasztásokat sem látja.
+
+### Megtekintő fiók létrehozása (a tulajnak, egyszer)
+
+1. Supabase > **Authentication > Users > Add user > Create new user**: e-mail (pl. a saját
+   címed `+f27nezo` toldalékkal, így a levelek hozzád jönnek), jelszó, és pipáld be az
+   **Auto Confirm User** opciót.
+2. Supabase > **SQL Editor > New query**, az e-mail címet írd át, majd Run:
+
+   ```sql
+   insert into public.app_users (user_id, role)
+   select id, 'viewer' from auth.users where email = 'IDE-AZ-EMAIL-CIM'
+   on conflict (user_id) do update set role = excluded.role;
+   ```
+3. Próba: a térképen Fiók > Belépés ezzel az e-maillel és jelszóval. A fejlécben "Belépve:
+   megtekintő (csak megtekintés)." jelenik meg.
+
+Visszavonás: `delete from public.app_users where user_id = (select id from auth.users where email = '...');`
+(vagy a felhasználó törlése az Authentication > Users listában).
 
 ## Élő értékek
 

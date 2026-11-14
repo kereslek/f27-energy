@@ -59,6 +59,7 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .root.editing .pc:hover{filter:drop-shadow(0 0 3px #ffe066)}
 .zoombar .zb.zedit.on{background:#1e2a44;color:#ffe066}
 .editbtn{appearance:none;font:inherit;flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:14px;border:3px solid #1e2a44;background:#fffdf7;color:#1e2a44;cursor:pointer;box-shadow:0 3px 0 #1e2a44}
+.vopill{flex:0 0 auto;display:flex;align-items:center;gap:6px;height:44px;padding:0 14px;border-radius:14px;border:3px solid #1e2a44;background:#ece8fb;color:#4b3f8f;font-size:12px;font-weight:900;letter-spacing:.8px;box-sizing:border-box;white-space:nowrap;box-shadow:0 3px 0 #1e2a44}
 .editbtn.on{background:#1e2a44;color:#ffe066}
 .editbtn:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .pc:hover{filter:brightness(1.06) drop-shadow(0 0 3px #ffffff)}
@@ -1157,6 +1158,7 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 </section>
 
 <div style="position: absolute; left: 380px; width: 748px; top: 684px; height: 44px; display: flex; align-items: center; gap: 8px">
+<sc-if value="{{ui.canEditLayout}}">
 <button class="{{ui.editBtnCls}}" type="button" onClick="{{ui.toggleEdit}}" aria-pressed="{{ui.editPressed}}" title="{{ui.editTitle}}">
 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 <span class="sr">Bútorok mozgatása (Szerkesztés)</span>
@@ -1167,15 +1169,17 @@ Eszközök<span class="cnt">{{ui.devCount}}</span>
 <button class="btn ib" type="button" onClick="{{ui.redo}}" disabled="{{ui.redoDisabled}}" aria-label="Újra (Ctrl+Shift+Z)" title="Újra (Ctrl+Shift+Z vagy Ctrl+Y)">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 </button>
+</sc-if>
+<sc-if value="{{ui.viewOnly}}"><span class="vopill" title="{{ui.viewOnlyTip}}"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" fill="currentColor"></circle></svg>CSAK MEGTEKINTÉS</span></sc-if>
 <div style="flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 14px; background: #fff7e6; border: 3px solid #1e2a44; box-sizing: border-box; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden">
 <span style="font-size: 10.5px; font-weight: 900; letter-spacing: 1.1px; color: #45507a">KIJELÖLVE</span>
 <span style="font-weight: 900; overflow: hidden; text-overflow: ellipsis">{{selText}}</span>
 </div>
 <button class="{{ui.chipCls}}" type="button" onClick="{{ui.openDrawer}}" title="{{ui.chipTitle}}"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</button>
-<button class="btn" type="button" onClick="{{reset}}">
+<sc-if value="{{ui.canEditLayout}}"><button class="btn" type="button" onClick="{{reset}}">
 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 Elrendezés visszaállítása
-</button>
+</button></sc-if>
 </div>
 
 

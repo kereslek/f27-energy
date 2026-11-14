@@ -1174,7 +1174,7 @@
     // Bútorok és tűk csak Szerkesztés módban mozgathatók; alapból egy koppintás csak kijelöl,
     // a húzás pedig a térképet mozgatja (nagyítva), így nem kap el véletlenül egy bútort.
     startDrag(e, id, kind) {
-      if (!this.state.editMode) { if (this.state.sel !== id) this.setState({ sel: id }); return; }
+      if (!this.state.editMode || this.viewOnly()) { if (this.state.sel !== id) this.setState({ sel: id }); return; }
       this._before = posKey(this.state.pos);
       this._beforePos = Object.assign({}, this.state.pos || {});
       super.startDrag(e, id, kind);
@@ -2394,6 +2394,9 @@
         redo: function () { self.redo(); },
         undoDisabled: this.undoStack.length === 0,
         redoDisabled: this.redoStack.length === 0,
+        viewOnly: this.viewOnly(),
+        canEditLayout: !this.viewOnly(),
+        viewOnlyTip: 'Csak megtekintés (' + ((ROLE[st.role] || {}).label || '') + '): mindent látsz, de szerkeszteni a tulaj tud.',
         toasts: st.toasts.map(function (t) {
           return { text: t.text, cls: 'toast ' + t.kind + (t.action ? ' act' : ''), hasAct: !!t.action, actLabel: t.action ? t.action.label : '',
             act: function () { if (t.action) t.action.run(); self.setState({ toasts: self.state.toasts.filter(function (x) { return x.id !== t.id; }) }); } };
@@ -2430,19 +2433,30 @@
 
     applyKey(key) { this._drag = null; this.setState({ pos: JSON.parse(key), drag: null }); }
 
+    // Csak megtekintés: belépve csak a tulaj szerkeszthet (bútorok, tűk húzása, visszavonás,
+    // alaphelyzet, mentés). A megtekintő és a takarító csak néz; a húzás a térképet mozgatja.
+    // A demó (belépés nélkül) játszótér marad: ott semmi nem mentődik.
+    viewOnly() {
+      var st = this.state;
+      return !!(st.user && st.role && st.role !== 'owner');
+    }
+
     undo() {
+      if (this.viewOnly()) return;
       if (!this.undoStack.length) return;
       this.redoStack.push(posKey(this.state.pos));
       this.applyKey(this.undoStack.pop());
     }
 
     redo() {
+      if (this.viewOnly()) return;
       if (!this.redoStack.length) return;
       this.undoStack.push(posKey(this.state.pos));
       this.applyKey(this.redoStack.pop());
     }
 
     resetLayout() {
+      if (this.viewOnly()) { this.toast('Csak megtekintés: az elrendezést a tulaj módosíthatja.', 'info'); return; }
       var before = posKey(this.state.pos);
       this._drag = null;
       this.state.pos = {};
@@ -2540,9 +2554,12 @@
       this.sb.from('app_users').select('role').eq('user_id', user.id).maybeSingle().then(function (res) {
         if (res.error) { self.toast(self.errText(res.error, 'A jogosultság lekérése nem sikerült.'), 'err'); return; }
         var role = res.data ? res.data.role : null;
-        self.setState({ role: role });
+        var ro = !!role && role !== 'owner';
+        self.setState(ro ? { role: role, editMode: false, drag: null } : { role: role });
+        syncEditAllowed(!ro);
+        if (ro) syncEditBtn(false);
         if (!role) { self.toast('Belépve, de a fiókod nincs a jogosultsági listán.', 'err'); return; }
-        self.toast('Belépve: ' + (ROLE[role] ? ROLE[role].label.toLowerCase() : role) + '.', 'ok');
+        self.toast('Belépve: ' + (ROLE[role] ? ROLE[role].label.toLowerCase() : role) + (ro ? ' (csak megtekintés).' : '.'), 'ok');
         self.refreshLayouts(true);
         self.refreshLive();
         self.loadHistory();
@@ -2565,6 +2582,7 @@
       clearInterval(this.alTimer);
       this.setState({ bk: null, calSel: null, dism: {}, dismLoaded: false, dismRemote: null, dismMenu: null, al: null, alLogOpen: false });
       this.setState({ user: null, role: null, layouts: [], current: null, live: null, saveAs: false, confirmId: null, savedAt: null, savedKey: '{}' });
+      syncEditAllowed(true);
       this.toast('Kiléptél. A térkép demó módban fut.', 'info');
     }
 
@@ -2584,6 +2602,11 @@
 
     // Szerkesztés mód (bútorok és tűk húzása) be/ki; a nagyítósáv gombját is szinkronban tartja
     toggleEdit() {
+      if (this.viewOnly()) {
+        if (this.state.editMode) { this.setState({ editMode: false, drag: null }); syncEditBtn(false); }
+        this.toast('Csak megtekintés: a bútorokat és az eszközöket a tulaj mozgathatja.', 'info');
+        return;
+      }
       var on = !this.state.editMode;
       this.setState({ editMode: on, drag: null });
       this.toast(on ? 'Szerkesztés BE: húzd a bútorokat és az eszközöket.' : 'Szerkesztés KI: a húzás a térképet mozgatja.', 'info');
@@ -2807,6 +2830,9 @@
   }
 
   var editBtnZ = null;
+  function syncEditAllowed(ok) {
+    if (editBtnZ) editBtnZ.style.display = ok ? '' : 'none';
+  }
   function syncEditBtn(on) {
     if (!editBtnZ) return;
     editBtnZ.setAttribute('aria-pressed', on ? 'true' : 'false');
