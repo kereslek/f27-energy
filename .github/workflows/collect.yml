@@ -59,7 +59,7 @@ jobs:
           CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
           CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
           # Második telephely (O2B, sites/o2b): saját Supabase-projekt; amíg nincs beállítva, kimarad.
-          O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL }}
+          O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
           O2B_SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
         run: |
           end=$(( $(date +%s) + 55 * 60 ))

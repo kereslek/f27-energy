@@ -20,7 +20,7 @@ jobs:
           python-version: "3.12"
       - name: Ellenőrzés (O2B)
         env:
-          SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.O2B_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.O2B_SUPABASE_PUBLISHABLE_KEY || secrets.O2B_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
         run: python -m f27.supabase_check
