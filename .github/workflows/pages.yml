@@ -36,6 +36,9 @@ jobs:
           # Nyilvános értékek (GitHub Variables). A secret kulcs ide SOHA nem kerül.
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          # O2B (második telephely, /o2b/): saját Supabase-projekt, szintén csak a publishable kulcs.
+          O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+          O2B_SUPABASE_PUBLISHABLE_KEY: ${{ vars.O2B_SUPABASE_PUBLISHABLE_KEY || secrets.O2B_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           mkdir -p _site/data _site/config
           cp -r web/. _site/
@@ -44,28 +47,31 @@ jobs:
           cp data/*.enc _site/data/ 2>/dev/null || true
           python3 - <<'PY'
           import json, os
-          cfg = {"supabaseUrl": os.environ.get("SUPABASE_URL", "").strip(),
-                 "supabaseKey": os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip()}
-          key = cfg["supabaseKey"]
-          role = ""
-          if key.startswith("eyJ") and key.count(".") == 2:   # régi (JWT) kulcs: a szerepkör a tartalmában
-              import base64
-              part = key.split(".")[1]
-              try:
-                  role = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4))).get("role", "")
-              except Exception:
-                  role = ""
-          if key.startswith("sb_secret_") or role == "service_role":
-              raise SystemExit("HIBA: a SUPABASE_PUBLISHABLE_KEY helyén secret kulcs van. Csak a publishable (anon) kulcs mehet az oldalba.")
-          with open("_site/config.js", "w", encoding="utf-8") as f:
-              f.write("window.F27_CONFIG = " + json.dumps(cfg) + ";\n")
-          print("config.js kész, Supabase beállítva:", bool(cfg["supabaseUrl"] and cfg["supabaseKey"]))
+          import base64
+          def secretish(key):
+              role = ""
+              if key.startswith("eyJ") and key.count(".") == 2:   # régi (JWT) kulcs: a szerepkör a tartalmában
+                  part = key.split(".")[1]
+                  try:
+                      role = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4))).get("role", "")
+                  except Exception:
+                      role = ""
+              return key.startswith("sb_secret_") or role == "service_role"
+          for path, url_var, key_var in (("_site/config.js", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"),
+                                         ("_site/o2b/config.js", "O2B_SUPABASE_URL", "O2B_SUPABASE_PUBLISHABLE_KEY")):
+              cfg = {"supabaseUrl": os.environ.get(url_var, "").strip(), "supabaseKey": os.environ.get(key_var, "").strip()}
+              if secretish(cfg["supabaseKey"]):
+                  raise SystemExit(f"HIBA: a {key_var} helyén secret kulcs van. Csak a publishable (anon) kulcs mehet az oldalba.")
+              os.makedirs(os.path.dirname(path), exist_ok=True)
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write("window.F27_CONFIG = " + json.dumps(cfg) + ";\n")
+              print(path, "kész, Supabase beállítva:", bool(cfg["supabaseUrl"] and cfg["supabaseKey"]))
           PY
           # Gyorsítótár-törés: a szkriptek URL-je a commit rövid azonosítóját kapja (?v=...), így a
           # telefon böngészője minden telepítés után az új JS-t tölti be, nem a régit.
           V="${GITHUB_SHA::8}"
-          for f in _site/index.html _site/alaprajz.html; do
-            [ -f "$f" ] && sed -i -E "s#<script src=\"(js/[^\"?]+\.js|config\.js)\"#<script src=\"\1?v=$V\"#g" "$f"
+          for f in _site/index.html _site/alaprajz.html _site/o2b/index.html; do
+            [ -f "$f" ] && sed -i -E "s#<script src=\"(js/[^\"?]+\.js|config\.js|\.\./vendor/supabase\.js)\"#<script src=\"\1?v=$V\"#g" "$f"
           done
           grep -c "?v=$V" _site/index.html
           touch _site/.nojekyll

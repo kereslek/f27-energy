@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>O2B Energy</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@600;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* O2B első változat: fejléc-csempék, két szint izometrikus alaprajza élő tűkkel, mellette Pamutka
+   és az eszközlista szobánként. Ugyanaz a hangulat, mint az F27 térképé (meleg dioráma, sötét ég). */
+:root{
+  --sky:#1b2440; --sky2:#26335a; --panel:#fffaf0; --ink:#1e2a44; --muted:#5b6585; --line:#e6dcc6;
+  --oak:#d9ab6b; --oak2:#b98a4c; --lam:#e4d9c3; --lam2:#c9b99a; --tile:#d9dcd8; --tile2:#b9beb8; --balc:#a9c39a;
+  --wallA:#f6f1e6; --wallB:#e3dccb; --gas:#e2572b; --ac:#2a8fb8; --plug:#2f9a52; --thermo:#c47f22; --boil:#8a4fb0;
+  --off:#9a9486; --pir:#d94f9a; --ok:#2f7d4f; --warn:#b7791f; --hot:#c8321f;
+  --f-head:"Baloo 2","Nunito",system-ui,sans-serif; --f-body:"Nunito",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(120% 90% at 50% 0%,var(--sky2),var(--sky));color:var(--ink);font-family:var(--f-body);min-height:100vh;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));padding-block:14px 30px}
+.wrap{max-width:1360px;margin:0 auto;display:grid;gap:12px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.brand{background:#ff4fa3;color:#fff;border-radius:14px;padding:8px 14px;box-shadow:0 4px 0 #b8226f;display:grid;align-content:center}
+.brand b{font-family:var(--f-head);font-size:22px;line-height:1}
+.brand span{font-size:11.5px;font-weight:900;letter-spacing:.5px;opacity:.95}
+.chip{background:var(--panel);border:2px solid #1e2a44;border-radius:12px;box-shadow:0 4px 0 #1e2a44;padding:5px 12px;display:grid;gap:1px;min-width:112px}
+.chip .ck{font-size:10.5px;font-weight:900;letter-spacing:.8px;color:var(--muted)}
+.chip .cv{font-family:var(--f-head);font-weight:800;font-size:19px;line-height:1.05;white-space:nowrap}
+.chip .cs{font-size:10.5px;font-weight:900;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.chip.warn{background:#fff4d1;border-color:#b7791f;box-shadow:0 4px 0 #b7791f}.chip.warn .cv,.chip.warn .ck{color:#8a5a00}
+.chip.hot{background:#ffe1d6;border-color:#c8321f;box-shadow:0 4px 0 #c8321f}.chip.hot .cv,.chip.hot .ck{color:#c8321f}
+.grow{flex:1 1 auto}
+.acct{background:#fff3c4;border:2px solid #1e2a44;border-radius:12px;box-shadow:0 4px 0 #1e2a44;padding:6px 12px;display:flex;gap:8px;align-items:center;font-weight:900;font-size:13px}
+.acct button,.btn{font:inherit;font-weight:900;border:2px solid #1e2a44;border-radius:10px;background:#fff;padding:5px 10px;cursor:pointer;box-shadow:0 3px 0 #1e2a44}
+.acct button:focus-visible,.btn:focus-visible,.lv button:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.demo{background:#ffe066;border:2px solid #1e2a44;border-radius:10px;padding:4px 10px;font-weight:900;font-size:12px;align-self:center}
+.main{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:12px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{background:linear-gradient(#2a3866,#1f2a4d);border-radius:18px;padding:10px;position:relative;min-width:0;border:2px solid #0f1630}
+.lv{position:absolute;left:12px;top:12px;display:flex;gap:6px;z-index:2}
+.lv button{font:inherit;font-weight:900;font-size:13px;border:2px solid #1e2a44;border-radius:10px;background:#fff;padding:5px 10px;cursor:pointer;box-shadow:0 3px 0 #1e2a44}
+.lv button[aria-pressed="true"]{background:#ff4fa3;color:#fff}
+svg.plan{width:100%;height:auto;display:block}
+svg text{font-family:var(--f-body)}
+.pin{cursor:pointer}.pin .bub{filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
+.pin.sel .ring{stroke:#ff4fa3;stroke-width:3}
+.side{display:grid;gap:12px;min-width:0}
+.card{background:var(--panel);border:2px solid #1e2a44;border-radius:16px;box-shadow:0 5px 0 #1e2a44;padding:12px 14px}
+.card h2{font-family:var(--f-head);font-size:19px;margin:0 0 6px}
+.cat{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:start}
+.cat svg{width:86px;height:86px}
+.say{background:#fff;border:2px solid #1e2a44;border-radius:12px;padding:8px 10px;font-size:13.5px;line-height:1.45;position:relative}
+.say:before{content:"";position:absolute;left:-9px;top:18px;border:8px solid transparent;border-right-color:#1e2a44;border-left:0}
+.say ul{margin:4px 0 0;padding-left:18px}.say li{margin:2px 0}
+.rooms{display:grid;gap:8px}
+.room h3{margin:0 0 3px;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.dev{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13.5px;padding:3px 6px;border-radius:8px;cursor:pointer}
+.dev:hover,.dev.sel{background:#fff0c9}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #1e2a44}
+.val{font-family:var(--f-mono);font-size:12.5px;font-weight:700;white-space:nowrap}
+.val.off{color:var(--off)}.val.hot{color:var(--hot)}.val.cold{color:#2a6fb8}.val.on{color:var(--plug)}
+.foot{color:#c9d2ee;font-size:12px;text-align:center}
+.login{display:grid;gap:6px;margin-top:6px}
+.login input{font:inherit;padding:6px 8px;border:2px solid #1e2a44;border-radius:8px}
+.err{color:var(--hot);font-weight:800;font-size:12.5px}
+@media (prefers-reduced-motion:no-preference){.tail{transform-origin:62px 66px;animation:tail 3.2s ease-in-out infinite}@keyframes tail{50%{transform:rotate(-12deg)}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="brand"><b>O2B ENERGY</b><span id="sub">otthon · Pamutka vigyáz rá</span></div>
+    <div class="chip" id="c-out"><span class="ck">KINT</span><span class="cv">--</span><span class="cs">XI. kerület</span></div>
+    <div class="chip" id="c-in"><span class="ck">BENT ÁTLAG</span><span class="cv">--</span><span class="cs">cél: 22 °C nappal</span></div>
+    <div class="chip" id="c-pow"><span class="ck">FOGYASZTÁS MOST</span><span class="cv">--</span><span class="cs">mért konnektorok</span></div>
+    <div class="chip" id="c-mot"><span class="ck">UTOLSÓ MOZGÁS</span><span class="cv">--</span><span class="cs">lépcső teteje</span></div>
+    <div class="chip" id="c-bat" hidden><span class="ck">ELEMCSERE</span><span class="cv"></span><span class="cs"></span></div>
+    <div class="grow"></div>
+    <div class="demo" id="demo">DEMÓ · kitalált adat</div>
+    <div class="acct" id="acct"><span id="who">Nem vagy belépve</span><button type="button" id="b-login">Belépés</button></div>
+  </div>
+  <div class="main">
+    <div class="stage">
+      <div class="lv" role="group" aria-label="Szint">
+        <button type="button" id="l-lo" aria-pressed="true">Lent</button>
+        <button type="button" id="l-up" aria-pressed="false">Fent</button>
+      </div>
+      <svg class="plan" id="plan" role="img" aria-label="Az O2B alaprajza élő értékekkel"></svg>
+    </div>
+    <div class="side">
+      <div class="card">
+        <h2>Pamutka mondja</h2>
+        <div class="cat">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <ellipse cx="50" cy="92" rx="30" ry="5" fill="rgba(30,42,68,.18)"/>
+            <path class="tail" d="M70 80 C 92 78, 96 58, 84 50 C 80 48, 77 52, 82 56 C 88 62, 84 72, 68 74 Z" fill="#b9bec6" stroke="#1e2a44" stroke-width="2.5"/>
+            <path d="M28 88 C 22 60, 30 46, 50 46 C 70 46, 78 60, 72 88 Z" fill="#cfd3d9" stroke="#1e2a44" stroke-width="2.5"/>
+            <path d="M36 60 q 14 -6 28 0 M33 70 q 17 -6 34 0 M32 80 q 18 -6 36 0" fill="none" stroke="#5b6270" stroke-width="3" stroke-linecap="round"/>
+            <path d="M30 34 L 26 12 L 42 24 Z M70 34 L 74 12 L 58 24 Z" fill="#cfd3d9" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="50" cy="36" r="20" fill="#d9dce1" stroke="#1e2a44" stroke-width="2.5"/>
+            <path d="M40 20 l 3 8 M50 18 v 9 M60 20 l -3 8" stroke="#5b6270" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="42" cy="36" rx="4" ry="5" fill="#b9c84a" stroke="#1e2a44" stroke-width="1.6"/><ellipse cx="58" cy="36" rx="4" ry="5" fill="#b9c84a" stroke="#1e2a44" stroke-width="1.6"/>
+            <ellipse cx="42" cy="37" rx="1.3" ry="3.4" fill="#1e2a44"/><ellipse cx="58" cy="37" rx="1.3" ry="3.4" fill="#1e2a44"/>
+            <path d="M47 44 h6 l-3 3 z" fill="#e88aa0" stroke="#1e2a44" stroke-width="1.2"/>
+            <path d="M50 47 q -4 4 -8 2 M50 47 q 4 4 8 2" fill="none" stroke="#1e2a44" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M33 45 h-12 M33 48 l-11 4 M67 45 h12 M67 48 l11 4" stroke="#1e2a44" stroke-width="1.2"/>
+            <rect x="38" y="54" width="24" height="5" rx="2.5" fill="#1e2a44"/>
+          </svg>
+          <div class="say" id="say">Betöltés...</div>
+        </div>
+      </div>
+      <div class="card"><h2 id="dh">Eszközök</h2><div class="rooms" id="rooms"></div></div>
+      <div class="card" id="logincard" hidden>
+        <h2>Belépés</h2>
+        <form class="login" id="loginform">
+          <input id="em" type="email" autocomplete="username" placeholder="e-mail" required>
+          <input id="pw" type="password" autocomplete="current-password" placeholder="jelszó" required>
+          <button class="btn" type="submit">Belépés</button>
+          <span class="err" id="lerr"></span>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="foot" id="foot">Első változat: a fotóhű, bútorozott térkép ezután jön.</div>
+</div>
+<script src="../vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  // ---- alaprajz (méter, a hirdetés alaprajza szerint) -----------------------------------------
+  var LEVELS = {
+    lo: { name: 'Lent', rooms: [
+      { id: 'erkely', n: 'Erkély', a: 4.3, x: 0.75, y: -1.6, w: 3.4, d: 1.25, f: 'balc', nowall: true },
+      { id: 'nappali', n: 'Nappali', a: 27.4, x: 0, y: 0, w: 4.4, d: 6.2, f: 'oak' },
+      { id: 'etkezo', n: 'Étkező', a: 20.9, x: 0, y: 6.35, w: 4.45, d: 4.7, f: 'oak' },
+      { id: 'halo', n: 'Hálószoba', a: 14.2, x: 0, y: 11.2, w: 4.45, d: 3.2, f: 'oak' },
+      { id: 'furdo_lent', n: 'Fürdő', a: 3.1, x: 4.95, y: 5.8, w: 2.0, d: 1.5, f: 'tile' },
+      { id: 'eloszoba', n: 'Előszoba', a: 6.9, x: 4.95, y: 7.45, w: 1.85, d: 3.6, f: 'oak' },
+      { id: 'kamra', n: 'Kamra', a: 1.0, x: 6.95, y: 7.45, w: 1.15, d: 0.85, f: 'tile' },
+      { id: 'konyha', n: 'Konyha', a: 6.5, x: 6.95, y: 8.45, w: 2.6, d: 2.6, f: 'tile' }],
+      stairs: { x: 0.05, y: 9.55, w: 2.7, d: 1.45, dir: 'x' } },
+    up: { name: 'Fent', rooms: [
+      { id: 'kagylo', n: 'Kagyló szoba', a: 10.6, x: 0, y: 0, w: 2.33, d: 4.55, f: 'lam' },
+      { id: 'gyerek', n: 'Gyerekszoba', a: 9.9, x: 2.45, y: 0, w: 2.1, d: 4.55, f: 'lam' },
+      { id: 'eloter', n: 'Előtér + lépcső', a: 11.8, x: 0, y: 4.7, w: 4.55, d: 2.35, f: 'lam' },
+      { id: 'lph', n: '', a: 0, x: 0, y: 7.05, w: 2.25, d: 3.45, f: 'lam', join: true },
+      { id: 'furdo_fent', n: 'Fürdő', a: 3.3, x: 4.55, y: 5.65, w: 1.95, d: 1.4, f: 'tile' }],
+      stairs: { x: 0.3, y: 7.6, w: 0.85, d: 2.0, dir: 'y' } }
+  };
+  // tűk: pink -> szint, hely (m), magasság
+  var PINS = {
+    T1: ['lo', 3.2, 3.4, 1.2], T8: ['lo', 1.0, 2.0, 1.2], T2: ['lo', 1.2, 7.4, 1.2], T3: ['lo', 1.0, 12.6, 1.2],
+    T4: ['lo', 9.1, 10.3, 1.2], T7: ['lo', 3.7, -0.9, 0.8], K1: ['lo', 0.15, 1.6, 2.5], K2: ['lo', 3.6, 11.35, 2.5],
+    C2: ['lo', 0.4, 5.4, 0.4], C3: ['lo', 4.25, 2.6, 0.4], C4: ['lo', 1.3, 10.3, 1.4], C5: ['lo', 2.6, 6.5, 0.9],
+    C6: ['lo', 3.8, 8.8, 0.4], C7: ['lo', 1.2, 0.4, 0.4], C8: ['lo', 3.9, -1.45, 0.5],
+    T5: ['up', 1.2, 2.0, 1.2], T6: ['up', 3.4, 2.8, 1.2], K3: ['up', 0.15, 2.4, 2.6], K4: ['up', 4.4, 4.2, 2.6],
+    C1: ['up', 5.5, 6.3, 2.6], X1: ['up', 6.2, 6.9, 1.6], M1: ['up', 0.9, 7.2, 0.4],
+    IR1: ['lo', 0.4, 1.1, 2.1], IR2: ['lo', 4.2, 12.6, 2.0], IR3: ['up', 0.3, 3.1, 2.4], IR4: ['up', 4.2, 3.6, 2.3]
+  };
+  var DEFAULT_DEVS = [
+    ['T1','thermo','nappali','Hőmérő, nappali'],['T2','thermo','etkezo','Hőmérő, étkező'],['T3','thermo','halo','Hőmérő, hálószoba'],
+    ['T4','thermo','konyha','Hőmérő, konyha'],['T5','thermo','kagylo','Hőmérő, kagyló szoba'],['T6','thermo','gyerek','Hőmérő, gyerekszoba'],
+    ['T7','thermo','erkely','Hőmérő, erkély (kint)'],['T8','thermo','nappali','Hőmérő, nappali (2.)'],
+    ['K1','ac_ir','nappali','Klíma, nappali'],['K2','ac_ir','halo','Klíma, hálószoba'],['K3','ac_ir','kagylo','Klíma, kagyló szoba'],['K4','ac_ir','gyerek','Klíma, gyerekszoba'],
+    ['C1','plug','furdo_fent','Emeleti bojler (meleg víz)'],['C2','plug','nappali','Dupla állólámpa'],['C3','plug','nappali','TV led'],
+    ['C4','plug','etkezo','Lépcső, fények'],['C5','plug','etkezo','Tükör, étkező (lámpák)'],['C6','plug','etkezo','Karácsonyfa'],
+    ['C7','plug','nappali','Szarvas'],['C8','plug','erkely','Karácsonyi fények (erkély)'],
+    ['X1','breaker','furdo_fent','Emeleti fürdő köre'],['M1','pir','eloter','Mozgásérzékelő (lépcső teteje)']
+  ].map(function (r) { return { pink: r[0], role: r[1], room: r[2], label: r[3] }; });
+  var ROOM_NAMES = { erkely: 'Erkély', nappali: 'Nappali', etkezo: 'Étkező', halo: 'Hálószoba', furdo_lent: 'Fürdő (lent)', eloszoba: 'Előszoba',
+    kamra: 'Kamra', konyha: 'Konyha', kagylo: 'Kagyló szoba', gyerek: 'Gyerekszoba', eloter: 'Előtér (fent)', furdo_fent: 'Fürdő (fent)', lepcso_fent: 'Lépcső teteje' };
+  var ROLE_COL = { thermo: '--thermo', ac_ir: '--ac', plug: '--plug', breaker: '--boil', pir: '--pir', ir_hub: '--ac' };
+  var TARGET_DAY = 22, TARGET_NIGHT = 20;
+  var FLOOR = { oak: ['--oak', '--oak2'], lam: ['--lam', '--lam2'], tile: ['--tile', '--tile2'], balc: ['--balc', '--balc'] };
+
+  var st = { level: 'lo', live: false, devs: DEFAULT_DEVS, latest: {}, bat: [], wx: null, motion: null, sel: null, user: null };
+
+  // ---- demó adat (belépés nélkül) ---------------------------------------------------------------
+  function demo() {
+    var L = {}, now = Date.now();
+    var t = { T1: 228, T2: 236, T3: 215, T4: 205, T5: 211, T6: 227, T7: 62, T8: 224 };
+    Object.keys(t).forEach(function (p) { L[p] = { online: p !== 'T4', status: { va_temperature: t[p], va_humidity: 40, battery_state: p === 'T3' ? 'low' : 'high' } }; });
+    [['C1', 0, true], ['C2', 1250, true], ['C3', 440, true], ['C4', 0, true], ['C5', 0, false], ['C6', 0, true], ['C7', 0, false], ['C8', 0, false]].forEach(function (r) {
+      L[r[0]] = { online: ['C5', 'C6', 'C7', 'C8'].indexOf(r[0]) < 0, status: { cur_power: r[1], switch_1: r[2] } };
+    });
+    L.X1 = { online: true, status: { cur_power: 0, switch: true } };
+    L.M1 = { online: true, status: { pir: 'none', battery_percentage: 100 } };
+    ['K1', 'K2', 'K3', 'K4'].forEach(function (p) { L[p] = { online: true, status: {} }; });
+    st.latest = L; st.wx = { temp: 6.1 }; st.motion = now - 12 * 60000;
+    st.bat = [{ pink: 'T3', label: 'Hőmérő, hálószoba', level: 'due14', eta_lo: 0, eta_hi: 14 }];
+  }
+
+  // ---- érték-segédek ----------------------------------------------------------------------------
+  function temp(s) { var v = s && (s.va_temperature != null ? s.va_temperature : s.temp_current); return typeof v === 'number' ? v / 10 : null; }
+  function watts(s) { var v = s && s.cur_power; return typeof v === 'number' ? v / 10 : null; }
+  function isOn(s) { return !!(s && (s.switch_1 === true || s.switch === true)); }
+  function fmt(x, d) { return x == null ? '--' : x.toFixed(d == null ? 1 : d).replace('.', ','); }
+  function target() { var h = new Date().getHours(); return h >= 22 || h < 6 ? TARGET_NIGHT : TARGET_DAY; }
+  function devState(d) {
+    var r = st.latest[d.pink];
+    if (!r) return { txt: 'nincs adat', cls: 'off', col: '--off' };
+    var s = r.status || {}, off = r.online === false;
+    if (d.role === 'thermo') {
+      var t = temp(s); if (t == null) return { txt: off ? 'offline' : '--', cls: 'off', col: '--off' };
+      var tg = target(), cls = d.room === 'erkely' ? '' : t > tg + 1 ? 'hot' : t < tg - 1.5 ? 'cold' : '';
+      return { txt: fmt(t) + ' °C' + (off ? ' (régi)' : ''), cls: off ? 'off' : cls, col: off ? '--off' : '--thermo', big: fmt(t) + '°' };
+    }
+    if (d.role === 'plug' || d.role === 'breaker') {
+      if (off) return { txt: 'offline', cls: 'off', col: '--off' };
+      var w = watts(s), on = isOn(s);
+      return { txt: on ? (w ? fmt(w, 0) + ' W' : 'BE · 0 W') : 'KI', cls: on && w ? 'on' : '', col: d.role === 'breaker' ? '--boil' : '--plug', big: on ? (w ? fmt(w, 0) + 'W' : 'BE') : 'KI' };
+    }
+    if (d.role === 'pir') return { txt: s.pir === 'pir' ? 'mozgás most' : 'nyugalom', cls: s.pir === 'pir' ? 'on' : '', col: '--pir' };
+    return { txt: off ? 'offline' : 'online', cls: off ? 'off' : '', col: off ? '--off' : ROLE_COL[d.role] || '--ac' };
+  }
+
+  // ---- rajz -------------------------------------------------------------------------------------
+  var S = 50, C = Math.cos(Math.PI / 6), Sn = 0.5, NS = 'http://www.w3.org/2000/svg';
+  function P(x, y, z) { return [(x - y) * C * S, (x + y) * Sn * S - (z || 0) * S]; }
+  function pts(a) { return a.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
+  function el(t, at, par) { var e = document.createElementNS(NS, t); for (var k in at) e.setAttribute(k, at[k]); if (par) par.appendChild(e); return e; }
+  function cssv(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function draw() {
+    var L = LEVELS[st.level], svg = document.getElementById('plan'); svg.innerHTML = '';
+    var xs = [], ys = [];
+    L.rooms.forEach(function (r) { [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.d], [r.x + r.w, r.y + r.d]].forEach(function (q) { var a = P(q[0], q[1]), b = P(q[0], q[1], 3.2); xs.push(a[0]); ys.push(a[1], b[1]); }); });
+    var pad = 40, mx = Math.min.apply(0, xs) - pad, Mx = Math.max.apply(0, xs) + pad, my = Math.min.apply(0, ys) - pad, My = Math.max.apply(0, ys) + pad;
+    svg.setAttribute('viewBox', mx + ' ' + my + ' ' + (Mx - mx) + ' ' + (My - my));
+    var g = el('g', {}, svg), order = L.rooms.slice().sort(function (a, b) { return (a.x + a.y) - (b.x + b.y); });
+    order.forEach(function (r) { var f = FLOOR[r.f]; el('polygon', { points: pts([P(r.x, r.y), P(r.x + r.w, r.y), P(r.x + r.w, r.y + r.d), P(r.x, r.y + r.d)]), fill: cssv(f[0]), stroke: cssv(f[1]), 'stroke-width': 1.2 }, g); });
+    var s0 = L.stairs, n = 9;
+    for (var i = 0; i < n; i++) {
+      var t0 = i / n, t1 = (i + 1) / n, z = (n - i) * 0.12, q;
+      if (s0.dir === 'x') q = [P(s0.x + s0.w * t0, s0.y, z), P(s0.x + s0.w * t1, s0.y, z), P(s0.x + s0.w * t1, s0.y + s0.d, z), P(s0.x + s0.w * t0, s0.y + s0.d, z)];
+      else q = [P(s0.x, s0.y + s0.d * t0, z), P(s0.x + s0.w, s0.y + s0.d * t0, z), P(s0.x + s0.w, s0.y + s0.d * t1, z), P(s0.x, s0.y + s0.d * t1, z)];
+      el('polygon', { points: pts(q), fill: cssv('--wallA'), stroke: cssv('--wallB'), 'stroke-width': 1 }, g);
+    }
+    var h = 1.15;
+    order.forEach(function (r) {
+      if (r.nowall) return;
+      if (!r.join) el('polygon', { points: pts([P(r.x, r.y), P(r.x + r.w, r.y), P(r.x + r.w, r.y, h), P(r.x, r.y, h)]), fill: cssv('--wallA'), stroke: cssv('--wallB') }, g);
+      el('polygon', { points: pts([P(r.x, r.y), P(r.x, r.y + r.d), P(r.x, r.y + r.d, h), P(r.x, r.y, h)]), fill: cssv('--wallB'), stroke: cssv('--wallB') }, g);
+    });
+    order.forEach(function (r) {
+      if (!r.n) return; var c = P(r.x + r.w / 2, r.y + r.d / 2);
+      var t = el('text', { x: c[0], y: c[1] + 4, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 900, fill: '#3a3020', opacity: .75 }, g); t.textContent = r.n;
+    });
+    if (st.level === 'lo') {   // Pamutka az erkélyen
+      var pc = P(1.6, -0.9, 0);
+      var cat = el('g', { transform: 'translate(' + (pc[0] - 30) + ' ' + (pc[1] - 58) + ') scale(.66)' }, g);
+      cat.innerHTML = document.querySelector('.cat svg').innerHTML;
+      var lab = el('text', { x: pc[0] + 3, y: pc[1] + 16, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 900, fill: '#fff', stroke: '#1e2a44', 'stroke-width': 3, 'paint-order': 'stroke' }, g); lab.textContent = 'Pamutka';
+    }
+    st.devs.forEach(function (d) {
+      var p = PINS[d.pink]; if (!p || p[0] !== st.level) return;
+      var s = devState(d), a = P(p[1], p[2], p[3]), b = P(p[1], p[2], 0), col = cssv(s.col);
+      var pg = el('g', { class: 'pin' + (st.sel === d.pink ? ' sel' : ''), tabindex: 0, 'data-pink': d.pink, role: 'button', 'aria-label': d.label + ': ' + s.txt }, g);
+      el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: col, 'stroke-dasharray': '2 2', opacity: .8 }, pg);
+      var big = s.big;
+      if (big) {
+        var w = 12 + big.length * 7.2;
+        el('rect', { class: 'bub ring', x: a[0] - w / 2, y: a[1] - 11, width: w, height: 22, rx: 11, fill: col, stroke: '#1e2a44', 'stroke-width': 2 }, pg);
+        var tx = el('text', { x: a[0], y: a[1] + 4.5, 'text-anchor': 'middle', 'font-size': 12.5, 'font-weight': 900, fill: '#fff' }, pg); tx.textContent = big;
+      } else {
+        el('circle', { class: 'bub ring', cx: a[0], cy: a[1], r: 8, fill: col, stroke: '#1e2a44', 'stroke-width': 2 }, pg);
+      }
+      var ti = el('title', {}, pg); ti.textContent = d.label + ': ' + s.txt;
+      pg.addEventListener('click', function () { select(d.pink); });
+      pg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(d.pink); } });
+    });
+  }
+  function select(pink) {
+    st.sel = st.sel === pink ? null : pink;
+    var p = PINS[pink]; if (st.sel && p && p[0] !== st.level) setLevel(p[0]); else { draw(); list(); }
+  }
+  function setLevel(l) {
+    st.level = l;
+    document.getElementById('l-lo').setAttribute('aria-pressed', l === 'lo');
+    document.getElementById('l-up').setAttribute('aria-pressed', l === 'up');
+    draw(); list();
+  }
+
+  // ---- lista, csempék, Pamutka ----------------------------------------------------------------------
+  function list() {
+    var by = {};
+    st.devs.filter(function (d) { return d.role !== 'ir_hub'; }).forEach(function (d) { (by[d.room] = by[d.room] || []).push(d); });
+    var box = document.getElementById('rooms'); box.innerHTML = '';
+    Object.keys(ROOM_NAMES).forEach(function (rid) {
+      var ds = by[rid]; if (!ds) return;
+      var sec = document.createElement('div'); sec.className = 'room';
+      sec.innerHTML = '<h3>' + ROOM_NAMES[rid] + '</h3>';
+      ds.forEach(function (d) {
+        var s = devState(d), row = document.createElement('div');
+        row.className = 'dev' + (st.sel === d.pink ? ' sel' : ''); row.tabIndex = 0;
+        row.innerHTML = '<span class="dot" style="background:var(' + s.col + ')"></span><span></span><span class="val ' + s.cls + '"></span>';
+        row.children[1].textContent = d.label; row.children[2].textContent = s.txt;
+        row.addEventListener('click', function () { select(d.pink); });
+        sec.appendChild(row);
+      });
+      box.appendChild(sec);
+    });
+    document.getElementById('dh').textContent = 'Eszközök · ' + st.devs.filter(function (d) { return st.latest[d.pink] && st.latest[d.pink].online !== false; }).length + ' online';
+  }
+  function chip(id, cv, cs, cls) {
+    var c = document.getElementById(id); c.hidden = false; c.className = 'chip' + (cls ? ' ' + cls : '');
+    c.querySelector('.cv').textContent = cv; if (cs != null) c.querySelector('.cs').textContent = cs;
+  }
+  function ago(ms) { var m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'most' : m < 60 ? m + ' p' : m < 1440 ? Math.floor(m / 60) + ' ó ' + (m % 60) + ' p' : Math.floor(m / 1440) + ' nap'; }
+  function chips() {
+    chip('c-out', st.wx && st.wx.temp != null ? fmt(st.wx.temp) + ' °C' : '--', 'XI. kerület');
+    var ins = st.devs.filter(function (d) { return d.role === 'thermo' && d.room !== 'erkely'; }).map(function (d) { var r = st.latest[d.pink]; return r && r.online !== false ? temp(r.status) : null; }).filter(function (x) { return x != null; });
+    var avg = ins.length ? ins.reduce(function (a, b) { return a + b; }, 0) / ins.length : null;
+    chip('c-in', avg == null ? '--' : fmt(avg) + ' °C', 'cél: ' + target() + ' °C · ' + ins.length + ' hőmérő', avg != null && avg > target() + 1 ? 'warn' : '');
+    var w = st.devs.filter(function (d) { return d.role === 'plug' || d.role === 'breaker'; }).reduce(function (a, d) { var r = st.latest[d.pink]; var x = r && r.online !== false ? watts(r.status) : null; return a + (x || 0); }, 0);
+    chip('c-pow', fmt(w, 0) + ' W', 'mért konnektorok + fürdőkör');
+    chip('c-mot', st.motion ? ago(st.motion) : '--', st.motion ? 'lépcső teteje' : 'még nem volt');
+    var due = (st.bat || []).filter(function (r) { return r.level === 'due30' || r.level === 'due14' || r.level === 'dead'; });
+    if (due.length) {
+      due.sort(function (a, b) { return ({ dead: 0, due14: 1, due30: 2 })[a.level] - ({ dead: 0, due14: 1, due30: 2 })[b.level]; });
+      var r0 = due[0], hot = r0.level !== 'due30';
+      chip('c-bat', r0.label || r0.pink, (r0.level === 'dead' ? 'lemerült, cseréld most' : r0.eta_lo <= 0 ? 'két héten belül' : 'kb. ' + r0.eta_lo + '-' + r0.eta_hi + ' nap') + (due.length > 1 ? ' · +' + (due.length - 1) : ''), hot ? 'hot' : 'warn');
+      document.querySelector('#c-bat .ck').textContent = 'ELEMCSERE' + (due.length > 1 ? ' · ' + due.length : '');
+    } else document.getElementById('c-bat').hidden = true;
+  }
+  function pamutka() {
+    var tips = [], tg = target();
+    st.devs.forEach(function (d) {
+      var r = st.latest[d.pink]; if (!r) return;
+      if (d.role === 'thermo' && d.room !== 'erkely' && r.online !== false) {
+        var t = temp(r.status);
+        if (t != null && t > tg + 1) tips.push('<b>' + ROOM_NAMES[d.room] + '</b>: ' + fmt(t) + ' °C, a cél ' + tg + '. Egy fokkal lejjebb kb. 6% gázt spórolsz.');
+        if (t != null && t < tg - 1.5) tips.push('<b>' + ROOM_NAMES[d.room] + '</b>: csak ' + fmt(t) + ' °C. Nem hűl ki? Nézd meg a radiátorszelepet.');
+      }
+      if (d.role === 'plug' && d.pink === 'C1' && r.online !== false) {
+        var w = watts(r.status);
+        if (w && w > 500) tips.push('A <b>fenti bojler</b> most fűt (' + fmt(w, 0) + ' W).');
+      }
+    });
+    var off = st.devs.filter(function (d) { return d.role === 'thermo' && st.latest[d.pink] && st.latest[d.pink].online === false; });
+    if (off.length) tips.push(off.length + ' hőmérő offline (' + off.map(function (d) { return ROOM_NAMES[d.room]; }).join(', ') + '): valószínűleg elem kell bele.');
+    (st.bat || []).forEach(function (b) { if (b.level === 'due14' || b.level === 'dead') tips.push('Elemcsere: <b>' + (b.label || b.pink) + '</b>' + (b.level === 'dead' ? ', most.' : ', két héten belül.')); });
+    var html = tips.length ? 'Miaú! Ezt láttam:<ul>' + tips.slice(0, 5).map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' : 'Minden rendben, dorombolok. A szobák a cél körül vannak.';
+    document.getElementById('say').innerHTML = html + (st.live ? '' : '<br><small><i>Demó: belépés után a valódi adatokból szólok.</i></small>');
+  }
+  function render() {
+    document.getElementById('demo').hidden = st.live;
+    chips(); draw(); list(); pamutka();
+    document.getElementById('foot').textContent = (st.live ? 'Élő adat a Supabase-ből, 10 percenként frissül. ' : 'Demó mód. ') + 'Első változat: a fotóhű, bútorozott térkép ezután jön.';
+  }
+
+  // ---- Supabase ---------------------------------------------------------------------------------
+  var cfg = window.F27_CONFIG || {}, sb = null;
+  function load() {
+    if (!sb || !st.user) return;
+    Promise.all([
+      sb.from('devices').select('pink,role,room,label'),
+      sb.from('device_latest').select('pink,ts,online,status'),
+      sb.from('battery_status').select('pink,label,level,eta_lo,eta_hi'),
+      sb.from('weather_hourly').select('ts,temp,is_forecast').gte('ts', new Date(Date.now() - 6 * 3600e3).toISOString()).order('ts', { ascending: false }).limit(60),
+      sb.from('device_status').select('ts,status').eq('pink', 'M1').gte('ts', new Date(Date.now() - 7 * 864e5).toISOString()).order('ts', { ascending: false }).limit(200)
+    ]).then(function (r) {
+      if (r[1].error) { document.getElementById('say').textContent = 'Az adatbázis most nem érhető el.'; return; }
+      if (r[0].data && r[0].data.length) {
+        var known = {}; DEFAULT_DEVS.forEach(function (d) { known[d.pink] = d; });
+        st.devs = r[0].data.map(function (d) { return Object.assign({}, known[d.pink] || {}, d, { room: d.room || (known[d.pink] || {}).room }); });
+      }
+      st.latest = {}; (r[1].data || []).forEach(function (x) { st.latest[x.pink] = x; });
+      st.bat = r[2].error ? [] : (r[2].data || []);
+      var past = (r[3].data || []).filter(function (x) { return Date.parse(x.ts) <= Date.now(); });
+      st.wx = r[3].error || !past.length ? null : past[0];
+      var mv = (r[4].data || []).filter(function (x) { return x.status && x.status.pir === 'pir'; });
+      st.motion = mv.length ? Date.parse(mv[0].ts) : null;
+      st.live = true; render();
+    });
+  }
+  function setUser(u) {
+    st.user = u;
+    document.getElementById('who').textContent = u ? 'Belépve: ' + (u.email || '') : 'Nem vagy belépve';
+    document.getElementById('b-login').textContent = u ? 'Kilépés' : 'Belépés';
+    document.getElementById('logincard').hidden = true;
+    if (u) load(); else { st.live = false; st.devs = DEFAULT_DEVS; demo(); render(); }
+  }
+  if (cfg.supabaseUrl && cfg.supabaseKey && window.supabase && window.supabase.createClient) {
+    try { sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'o2b-auth' } }); } catch (e) { sb = null; }
+  }
+  if (sb) sb.auth.onAuthStateChange(function (ev, ses) { setTimeout(function () { setUser(ses && ses.user ? ses.user : null); }, 0); });
+  document.getElementById('b-login').addEventListener('click', function () {
+    if (st.user && sb) { sb.auth.signOut(); return; }
+    var c = document.getElementById('logincard'); c.hidden = !c.hidden; if (!c.hidden) document.getElementById('em').focus();
+  });
+  document.getElementById('loginform').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = document.getElementById('lerr');
+    if (!sb) { err.textContent = 'Az O2B adatbázis még nincs bekötve ezen az oldalon.'; return; }
+    err.textContent = '';
+    sb.auth.signInWithPassword({ email: document.getElementById('em').value.trim(), password: document.getElementById('pw').value }).then(function (res) {
+      if (res.error) err.textContent = 'Hibás e-mail vagy jelszó.';
+    });
+  });
+  document.getElementById('l-lo').addEventListener('click', function () { setLevel('lo'); });
+  document.getElementById('l-up').addEventListener('click', function () { setLevel('up'); });
+  setInterval(load, 5 * 60000);
+  demo(); render();
+})();
+</script>
+</body>
+</html>
