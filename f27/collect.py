@@ -283,6 +283,7 @@ def collect(client: TuyaClient, sb: SupabaseRest, now: datetime | None = None, u
 
 
 CONTACT_CODES = ("doorcontact_state", "contact_state")
+PIR_CODES = ("pir",)                   # mozgásérzékelő: "pir" (mozgás) / "none"; a pillanatképből szinte mindig kimarad
 LOG_BACKFILL = timedelta(days=7)      # első alkalommal ennyit töltünk vissza (a Tuya ingyenes naplója kb. ennyi)
 LOG_MAX_PAGES = 5
 LOG_PAUSE = 0.4                       # mp a napló-lapok között (a Tuya a sűrű lekérdezést elutasítja)
@@ -299,7 +300,7 @@ def _bool(v):
 
 
 def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, stats: dict) -> list[dict]:
-    """device_status sorok a nyitásérzékelők Tuya-naplójából, a nyitás/csukás pontos idejével.
+    """device_status sorok a nyitás- és mozgásérzékelők Tuya-naplójából, az esemény pontos idejével.
 
     Mikor kérdez: egy futás első körében minden érzékelőt (felzárkózás), utána csak azt, amelyik
     a Tuya eszközlistája szerint jelentett az előző kör óta (_upd nőtt). Honnan: az utolsó már
@@ -308,7 +309,7 @@ def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, s
     _src = "log" és _upd = az esemény ideje; a változásfigyelés az aláhúzásos kulcsokat nem nézi."""
     # csak ha a Tuya ad jelentésidőt (update_time): ebből tudjuk, jelentett-e azóta
     contacts = [d for d in devs if "_status" in d and d["_status"].get("_upd")
-                and any(c in d["_status"] for c in CONTACT_CODES)]
+                and any(c in d["_status"] for c in CONTACT_CODES + PIR_CODES)]
     if not contacts:
         return []
     lc = cache.setdefault("contact_logs", {})          # pink -> {"seen": utolsó látott _upd, "upto": ms}
@@ -335,8 +336,12 @@ def contact_log_rows(client, sb, devs: list[dict], now: datetime, cache: dict, s
         base = {k: v for k, v in st.items() if not str(k).startswith("_")}
         last = upto
         for e in sorted(res["logs"], key=lambda x: int(x.get("event_time") or 0)):
-            t, code, v = int(e.get("event_time") or 0), e.get("code"), _bool(e.get("value"))
-            if code not in CONTACT_CODES or v is None or t <= upto or t > now_ms:
+            t, code = int(e.get("event_time") or 0), e.get("code")
+            if code in PIR_CODES:
+                v = e.get("value") if e.get("value") in ("pir", "none") else None
+            else:
+                v = _bool(e.get("value")) if code in CONTACT_CODES else None
+            if v is None or t <= upto or t > now_ms:
                 continue
             row_st = dict(base, **{code: v, "_upd": t // 1000, "_src": "log"})
             out.append({"pink": pink, "online": True, "status": row_st,

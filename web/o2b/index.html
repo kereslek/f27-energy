@@ -314,8 +314,10 @@ svg text{font-family:var(--f-body)}
     var ins = st.devs.filter(function (d) { return d.role === 'thermo' && d.room !== 'erkely'; }).map(function (d) { var r = st.latest[d.pink]; return r && r.online !== false ? temp(r.status) : null; }).filter(function (x) { return x != null; });
     var avg = ins.length ? ins.reduce(function (a, b) { return a + b; }, 0) / ins.length : null;
     chip('c-in', avg == null ? '--' : fmt(avg) + ' °C', 'cél: ' + target() + ' °C · ' + ins.length + ' hőmérő', avg != null && avg > target() + 1 ? 'warn' : '');
-    var w = st.devs.filter(function (d) { return d.role === 'plug' || d.role === 'breaker'; }).reduce(function (a, d) { var r = st.latest[d.pink]; var x = r && r.online !== false ? watts(r.status) : null; return a + (x || 0); }, 0);
-    chip('c-pow', fmt(w, 0) + ' W', 'mért konnektorok + fürdőkör');
+    // a fenti fürdő köre (X1) a bojlert is táplálja: ha a kör mér, a bojler konnektorát (C1) nem adjuk hozzá még egyszer
+    var x1 = st.latest.X1 && st.latest.X1.online !== false && watts(st.latest.X1.status) != null;
+    var w = st.devs.filter(function (d) { return (d.role === 'plug' || d.role === 'breaker') && !(x1 && d.pink === 'C1'); }).reduce(function (a, d) { var r = st.latest[d.pink]; var x = r && r.online !== false ? watts(r.status) : null; return a + (x || 0); }, 0);
+    chip('c-pow', fmt(w, 0) + ' W', x1 ? 'konnektorok + fenti fürdőkör' : 'mért konnektorok');
     chip('c-mot', st.motion ? ago(st.motion) : '--', st.motion ? 'lépcső teteje' : 'még nem volt');
     var due = (st.bat || []).filter(function (r) { return r.level === 'due30' || r.level === 'due14' || r.level === 'dead'; });
     if (due.length) {
