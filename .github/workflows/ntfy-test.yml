@@ -1,0 +1,42 @@
+name: Push-próba (ntfy)
+
+# Kézzel indítható: Actions > Push-próba (ntfy) > Run workflow.
+# Ugyanazon az úton küld egy próba-értesítést, mint az adatgyűjtő riasztásai (NTFY_TOPIC secret,
+# f27.alerts.send_ntfy). A log publikus: csak OK vagy a hiba típusa kerül bele, a topic soha.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ntfy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Próba-értesítés
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+        run: |
+          python - <<'PY'
+          import os, sys
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          from f27.alerts import send_ntfy
+          if not (os.environ.get("NTFY_TOPIC") or "").strip():
+              print("::error::Nincs beállítva az NTFY_TOPIC secret."); sys.exit(1)
+          now = datetime.now(ZoneInfo("Europe/Budapest")).strftime("%Y.%m.%d %H:%M")
+          msg = {"title": "F27 push-próba", "priority": "default", "tags": "white_check_mark",
+                 "body": f"Push-próba a GitHub Actionsből ({now}). Ha ezt látod, az F27 riasztások ide érkeznek."}
+          try:
+              send_ntfy(msg, os.environ)
+          except Exception as e:
+              print(f"::error::A küldés nem sikerült ({type(e).__name__})."); sys.exit(1)
+          print("OK: a próba-értesítés elment.")
+          PY
