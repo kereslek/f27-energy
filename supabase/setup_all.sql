@@ -947,3 +947,6 @@ create policy battery_status_select on public.battery_status
 
 revoke all on public.battery_status from anon;
 grant select on public.battery_status to authenticated;
+
+-- A REST-réteg azonnal lássa az új táblát (különben az ellenőrzés "nem létezik"-et mondhat).
+notify pgrst, 'reload schema';
