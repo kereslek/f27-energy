@@ -17,8 +17,8 @@
     ['T4', 'thermo', 'konyha', 'Hőmérő, konyha'], ['T5', 'thermo', 'kagylo', 'Hőmérő, kagyló szoba'], ['T6', 'thermo', 'gyerek', 'Hőmérő, gyerekszoba'],
     ['T7', 'thermo', 'erkely', 'Hőmérő, erkély (kint)'], ['T8', 'thermo', 'nappali', 'Hőmérő, nappali (2.)'],
     ['K1', 'ac_ir', 'nappali', 'Klíma, nappali'], ['K2', 'ac_ir', 'halo', 'Klíma, hálószoba'], ['K3', 'ac_ir', 'kagylo', 'Klíma, kagyló szoba'], ['K4', 'ac_ir', 'gyerek', 'Klíma, gyerekszoba'],
-    ['C1', 'plug', 'furdo_fent', 'Emeleti bojler (meleg víz)'], ['C2', 'plug', 'nappali', 'Dupla állólámpa'], ['C3', 'plug', 'nappali', 'TV led'],
-    ['C4', 'plug', 'etkezo', 'Lépcső, fények'], ['C5', 'plug', 'etkezo', 'Tükör, étkező (lámpák)'], ['C6', 'plug', 'etkezo', 'Karácsonyfa'],
+    ['C1', 'plug', 'furdo_fent', 'Emeleti bojler (meleg víz)'], ['C2', 'plug', 'etkezo', 'Dupla lámpa (étkező, a tükör alatt)'], ['C3', 'plug', 'nappali', 'TV led'],
+    ['C4', 'plug', 'etkezo', 'Lépcső, fények'], ['C5', 'plug', 'etkezo', 'Tükör, étkező'], ['C6', 'plug', 'etkezo', 'Karácsonyfa'],
     ['C7', 'plug', 'nappali', 'Szarvas'], ['C8', 'plug', 'erkely', 'Karácsonyi fények (erkély)'],
     ['X1', 'breaker', 'furdo_fent', 'Emeleti fürdő köre'], ['M1', 'pir', 'lepcso_fent', 'Mozgásérzékelő (lépcső teteje)'],
     ['IR1', 'ir_hub', 'nappali', 'IR-távirányító, nappali'], ['IR2', 'ir_hub', 'halo', 'IR-távirányító, hálószoba'],
@@ -78,7 +78,7 @@
     var L = {}, now = Date.now();
     var t = { T1: 228, T2: 236, T3: 215, T4: 205, T5: 211, T6: 227, T7: 62, T8: 224 };
     Object.keys(t).forEach(function (p) { L[p] = { online: p !== 'T4', status: { va_temperature: t[p], va_humidity: 40, battery_state: p === 'T3' ? 'low' : 'high' } }; });
-    [['C1', 0, true], ['C2', 1250, true], ['C3', 440, true], ['C4', 0, true], ['C5', 0, false], ['C6', 0, true], ['C7', 0, false], ['C8', 0, false]].forEach(function (r) {
+    [['C1', 0, true], ['C2', 250, true], ['C3', 440, true], ['C4', 0, true], ['C5', 0, false], ['C6', 0, true], ['C7', 0, false], ['C8', 0, false]].forEach(function (r) {
       L[r[0]] = { online: ['C5', 'C6', 'C7', 'C8'].indexOf(r[0]) < 0, status: { cur_power: r[1], switch_1: r[2] } };
     });
     L.X1 = { online: true, status: { cur_power: 0, switch: true } };
