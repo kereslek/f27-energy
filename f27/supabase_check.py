@@ -20,7 +20,7 @@ import urllib.error
 import urllib.request
 
 TABLES = ["app_users", "layouts", "devices", "device_status", "device_latest", "energy_daily",
-          "weather_hourly", "bookings", "alert_settings", "alert_state", "tuya_log", "metrics_hourly", "battery_status"]
+          "weather_hourly", "bookings", "alert_settings", "alert_state", "tuya_log", "metrics_hourly", "battery_status", "site_info"]
 
 
 def call(url: str, key: str) -> tuple[int, dict]:

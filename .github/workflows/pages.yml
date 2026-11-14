@@ -71,7 +71,7 @@ jobs:
           # telefon böngészője minden telepítés után az új JS-t tölti be, nem a régit.
           V="${GITHUB_SHA::8}"
           for f in _site/index.html _site/alaprajz.html _site/o2b/index.html; do
-            [ -f "$f" ] && sed -i -E "s#<script src=\"(js/[^\"?]+\.js|config\.js|\.\./vendor/supabase\.js)\"#<script src=\"\1?v=$V\"#g" "$f"
+            [ -f "$f" ] && sed -i -E "s#<script src=\"((\.\./)?js/[^\"?]+\.js|o2b-[a-z]+\.js|config\.js|\.\./vendor/supabase\.js)\"#<script src=\"\1?v=$V\"#g" "$f"
           done
           grep -c "?v=$V" _site/index.html
           touch _site/.nojekyll
