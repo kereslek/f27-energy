@@ -73,7 +73,7 @@ adatot mutat: Actions > Adatgyűjtés > Run workflow, ez újraindítja a láncot
   kiértékeli a térkép Riasztások panelján beállított szabályokat (hőmérő-sávok, nyitott ablak
   fűtés/klíma közben, klíma nagy teljesítményen nyitott ablakkal). Ha egy feltétel legalább a
   beállított ideig fennáll, push megy (ntfy, `NTFY_TOPIC`; ha be van kapcsolva, WhatsApp is),
-  riasztásonként legfeljebb óránként; csendes órákban csak a kályha mögötti túlmelegedés. A
+  riasztásonként legfeljebb óránként (csendes időszak nincs). A
   Summary-ban csak darabszám: "Riasztások: 2 aktív, 1 értesítés elküldve, 0 hiba".
 - **Napi e-mail összefoglaló** (`f27/digest.py`): naponta legfeljebb egy levél a beállított
   időpontban (alapból 20:00, budapesti idő; ha az a kör kimarad, a következő pótolja éjfélig): a nap

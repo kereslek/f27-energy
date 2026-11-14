@@ -27,14 +27,11 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 @keyframes drift{0%{transform:translateX(0)}100%{transform:translateX(60px)}}
 @keyframes tw{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes spark{0%,100%{transform:scale(.4) rotate(0deg);opacity:.2}50%{transform:scale(1.15) rotate(45deg);opacity:1}}
-@keyframes flag{0%,100%{transform:skewY(0deg)}50%{transform:skewY(-7deg)}}
 @keyframes rise{0%{transform:translate(0,0) scale(.6);opacity:0}25%{opacity:.7}100%{transform:translate(6px,-56px) scale(1.5);opacity:0}}
 @keyframes pop{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@keyframes dash{to{stroke-dashoffset:-48}}
 @keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,60,.7)}100%{box-shadow:0 0 0 12px rgba(255,90,60,0)}}
 .gh1{animation:ghost 3.4s ease-in-out infinite}
-.gh2{animation:ghost 2.7s ease-in-out infinite .9s}
 .coin{animation:spin 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 .fire{animation:fire .9s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
 .mk{animation:bob 3s ease-in-out infinite}
@@ -47,11 +44,9 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .cloud2{animation:drift 31s ease-in-out infinite alternate-reverse}
 .tw{animation:tw 3.4s ease-in-out infinite}
 .spark{animation:spark 1.9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-.flag{animation:flag 1.7s ease-in-out infinite;transform-box:fill-box;transform-origin:left center}
 .rise{animation:rise 4.2s ease-out infinite}
 .rise2{animation:rise 5s ease-out infinite 1.6s}
 .pop{animation:pop 2.4s ease-in-out infinite}
-.trail{animation:dash 1.6s linear infinite}
 .breathe{animation:breathe 3.6s ease-in-out infinite}
 .root{user-select:none;-webkit-user-select:none}
 .pc{cursor:pointer}
@@ -67,10 +62,6 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 .pc.drag{cursor:grabbing;filter:drop-shadow(0 14px 6px rgba(30,42,68,.45)) brightness(1.08)}
 .wall{pointer-events:none}
 .panel{box-sizing:border-box;border-radius:24px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44}
-.qb{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:24px minmax(0,1fr);gap:4px 10px;width:100%;padding:10px 12px;border-radius:16px;border:2px solid #e3cfa6;background:#fffaf0;font-family:"Nunito",sans-serif;transition:transform .12s}
-.qb:hover{transform:translateY(-1px)}
-.qb:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
-.qb.on{border-color:#1e2a44;background:#fff1c9;box-shadow:0 3px 0 #1e2a44}
 .pu{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 12px;border-radius:16px;border:3px solid #1e2a44;background:#fff7e6;box-shadow:0 4px 0 #1e2a44;font-family:"Nunito",sans-serif;transition:transform .12s}
 .pu:hover{transform:translateY(-2px)}
 .pu:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
@@ -131,6 +122,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .zoombar .zb:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .zoombar .zb:disabled{opacity:.35;cursor:default;background:#ffffff}
 .zoombar .zl{min-width:52px;text-align:center;font:900 14px "Nunito",sans-serif;color:#1e2a44}
+.zoombar .zrotb{position:relative}.zoombar .zrot{position:absolute;right:2px;bottom:1px;font:900 9px/1 "Nunito",sans-serif;color:#45507a}
 @media (max-width:600px){.zoombar{right:8px;bottom:8px;gap:4px;padding:4px}.zoombar .zb{width:44px;height:44px}}
 #stage{position:absolute;left:0;top:0;width:1440px;height:900px;transform-origin:0 0}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
@@ -386,7 +378,6 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 /* ---- Energiaőr: tanácsadó a térkép bal alsó sarkában (a lakáson kívül) ---- */
 .adv{--adv-play:paused;--adv-talk:0;font-family:"Nunito",sans-serif;color:#1e2a44}
 .adv.talk{--adv-play:running;--adv-talk:1}
-.adv-stage{position:absolute;left:302px;top:646px;width:520px;height:82px;pointer-events:none;z-index:5}
 .adv-char{all:unset;box-sizing:border-box;pointer-events:auto;cursor:pointer;position:absolute;left:0;top:0;width:67px;height:82px;border-radius:16px}
 .adv-char:focus-visible,.adv-bubble:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .adv-char svg{display:block;width:67px;height:82px;overflow:visible}
@@ -450,7 +441,6 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .ip-list .adv-tip > .dm-menu{grid-column:1 / -1}
 .ip-foot{margin:0;padding:6px 4px 0;border-top:2px dashed #e3cfa6;font-size:10px;font-weight:800;color:#8a8f9c;line-height:1.3}
 @media (max-width:700px){
-.adv-stage{display:none}
 .adv-fixed{display:block;position:fixed;left:8px;bottom:8px;width:60px;height:72px;pointer-events:none;z-index:1}
 .adv-fixed .adv-char{width:60px;height:72px}
 .adv-fixed .adv-char svg{width:60px;height:72px}
@@ -584,8 +574,6 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 button.ov-sec{cursor:pointer}
 button.ov-sec:hover,.ov-pr:hover,.ov-door:hover,.ov-t:hover{background:#fff1c9}
 .ov-sl{display:flex;align-items:center;gap:8px}
-.ov-sw{margin-left:auto;text-align:right;font-size:10.5px;font-weight:800;line-height:1.2;color:#45507a}
-.ov-sw b{color:#9a3412}
 .ov-pr{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:44px 50px minmax(0,1fr) 50px;align-items:center;gap:6px;padding:1px 2px;border-radius:6px;font-size:11px;font-weight:900}
 .ov-pr .bar{height:7px;border-radius:4px;border:1.5px solid #1e2a44;background:#eee3cc;overflow:hidden}
 .ov-pr .bar span{display:block;height:100%}
@@ -842,6 +830,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <path d="{{sc.cityWin}}" fill="{{L.cityWin}}"></path>
 
 <g transform="translate(756 134) scale(0.82)">
+<sc-if value="{{sc.far.N}}">
 <polygon points="{{sc.road}}" fill="#5b6478" stroke="#1e2a44" stroke-width="2"></polygon>
 <path d="{{sc.roadLine}}" stroke="#ffe8a8" stroke-width="2.5" stroke-dasharray="10 9" fill="none"></path>
 <polygon points="{{sc.walk}}" fill="#c9c2b4" stroke="#1e2a44" stroke-width="2"></polygon>
@@ -863,8 +852,14 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <circle cx="12" cy="-98" r="5" fill="#fff0c4" stroke="#1e2a44" stroke-width="2"></circle>
 </g>
 </sc-for>
+</sc-if>
 
 <ellipse cx="-13" cy="572" rx="380" ry="54" fill="#1e2a44" opacity="0.2"></ellipse>
+<sc-if value="{{sc.far.S}}">
+<polygon points="{{sc.gangSlab}}" fill="#d9c3a0" stroke="#1e2a44" stroke-width="2"></polygon>
+<path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+<text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
+</sc-if>
 
 <sc-for list="{{sc.slab}}" as="b" hint-placeholder-count="0">
 <g>
@@ -890,6 +885,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </g>
 </sc-for>
 
+<g transform="{{sc.glowTr}}">
 <g opacity="{{L.glow}}">
 <ellipse cx="158" cy="218" rx="120" ry="58" fill="url(#warm2)"></ellipse>
 <ellipse cx="107" cy="395" rx="110" ry="52" fill="url(#warm2)"></ellipse>
@@ -897,6 +893,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </g>
 <ellipse class="breathe" cx="51" cy="330" rx="120" ry="58" fill="url(#ember2)" opacity="{{L.ember}}"></ellipse>
 <ellipse cx="-173" cy="462" rx="96" ry="44" fill="url(#cold2)"></ellipse>
+</g>
 
 <sc-for list="{{sc.back}}" as="b" hint-placeholder-count="0">
 <g>
@@ -913,6 +910,30 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <path d="{{w.shine}}" stroke="#ffffff" stroke-width="2" opacity="0.6" fill="none"></path>
 </g>
 </sc-for>
+<sc-if value="{{sc.far.E}}"><g style="pointer-events: none">
+<path d="{{sc.mirror.frame}}" fill="#ffffff" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path>
+<path d="{{sc.mirror.glass}}" fill="#cfe3ea" stroke="#9fb3bd" stroke-width="1"></path>
+<path d="{{sc.mirror.shine}}" stroke="#ffffff" stroke-width="2.5" opacity="0.8" fill="none" stroke-linecap="round"></path>
+<sc-for list="{{sc.mirror.shelf}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+</g>
+</sc-for>
+</g></sc-if>
+<sc-if value="{{sc.far.S}}"><g style="pointer-events: none">
+<path d="{{sc.blind.slats}}" stroke="#1c1916" stroke-width="1.3" fill="none" opacity="0.8"></path>
+<path d="{{sc.blind.sheer}}" fill="#ffffff" opacity="0.5"></path>
+<path d="{{sc.blind.lace}}" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.9"></path>
+<sc-for list="{{sc.blind.curt}}" as="b" hint-placeholder-count="0">
+<g>
+<polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.right}}" fill="{{b.cr}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+<polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
+</g>
+</sc-for>
+</g></sc-if>
 
 <sc-for list="{{layers}}" as="ly" hint-placeholder-count="0">
 <g class="{{ly.cls}}" data-piece="{{ly.id}}" transform="{{ly.tr}}" onPointerDown="{{ly.down}}">
@@ -966,6 +987,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </g>
 
 <g style="pointer-events: none">
+<sc-if value="{{sc.near.E}}">
 <path d="{{sc.mirror.frame}}" fill="#ffffff" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></path>
 <path d="{{sc.mirror.glass}}" fill="#cfe3ea" stroke="#9fb3bd" stroke-width="1"></path>
 <path d="{{sc.mirror.shine}}" stroke="#ffffff" stroke-width="2.5" opacity="0.8" fill="none" stroke-linecap="round"></path>
@@ -976,14 +998,17 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
 </g>
 </sc-for>
+
 <g opacity="0.24">
 <polygon points="{{sc.ghost.right}}" fill="{{sc.ghost.cr}}"></polygon>
 <polygon points="{{sc.ghost.top}}" fill="{{sc.ghost.ct}}"></polygon>
 </g>
 <polygon points="{{sc.ghost.right}}" fill="none" stroke="#1e2a44" stroke-width="1.6" stroke-dasharray="5 5" opacity="0.55"></polygon>
+</sc-if>
 </g>
 
 <g style="pointer-events: none">
+<sc-if value="{{sc.near.S}}">
 <path d="{{sc.blind.slats}}" stroke="#1c1916" stroke-width="1.3" fill="none" opacity="0.8"></path>
 <path d="{{sc.blind.sheer}}" fill="#ffffff" opacity="0.5"></path>
 <path d="{{sc.blind.lace}}" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.9"></path>
@@ -994,9 +1019,10 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="1.4" stroke-linejoin="round"></polygon>
 </g>
 </sc-for>
+</sc-if>
 </g>
 
-<polygon points="{{sc.gangSlab}}" fill="#d9c3a0" stroke="#1e2a44" stroke-width="2"></polygon>
+<sc-if value="{{sc.near.S}}"><polygon points="{{sc.gangSlab}}" fill="#d9c3a0" stroke="#1e2a44" stroke-width="2"></polygon></sc-if>
 <sc-for list="{{sc.front}}" as="b" hint-placeholder-count="0">
 <g>
 <polygon points="{{b.left}}" fill="{{b.cl}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
@@ -1004,26 +1030,60 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <polygon points="{{b.top}}" fill="{{b.ct}}" stroke="#1e2a44" stroke-width="2" stroke-linejoin="round"></polygon>
 </g>
 </sc-for>
+<sc-if value="{{sc.near.S}}">
 <polygon points="{{sc.win7}}" fill="#bfe6ff" stroke="#1e2a44" stroke-width="2"></polygon>
 <polygon points="{{sc.win8}}" fill="#e6f6ff" stroke="#1e2a44" stroke-width="2.5" opacity="0.92"></polygon>
 <path d="{{sc.win8frame}}" stroke="#ffffff" stroke-width="2" fill="none"></path>
 <path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
 <text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
+</sc-if>
+<sc-for list="{{winsNear}}" as="w" hint-placeholder-count="0">
+<g opacity="0.35">
+<path d="{{w.glass}}" fill="{{w.fill}}" stroke="#1e2a44" stroke-width="2.5"></path>
+<path d="{{w.frame}}" stroke="#fff7e6" stroke-width="3" fill="none"></path>
+<path d="{{w.shine}}" stroke="#ffffff" stroke-width="2" opacity="0.6" fill="none"></path>
+</g>
+</sc-for>
+<sc-if value="{{sc.near.N}}">
+<polygon points="{{sc.road}}" fill="#5b6478" stroke="#1e2a44" stroke-width="2"></polygon>
+<path d="{{sc.roadLine}}" stroke="#ffe8a8" stroke-width="2.5" stroke-dasharray="10 9" fill="none"></path>
+<polygon points="{{sc.walk}}" fill="#c9c2b4" stroke="#1e2a44" stroke-width="2"></polygon>
+<sc-for list="{{sc.trees}}" as="t" hint-placeholder-count="0">
+<g transform="{{t.tr}}">
+<line x1="0" y1="0" x2="0" y2="-40" stroke="#1e2a44" stroke-width="7" stroke-linecap="round"></line>
+<line x1="0" y1="0" x2="0" y2="-40" stroke="#8a5a3a" stroke-width="3.5" stroke-linecap="round"></line>
+<circle cx="-16" cy="-52" r="20" fill="{{L.tree1}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="17" cy="-55" r="22" fill="{{L.tree1}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="0" cy="-76" r="26" fill="{{L.tree2}}" stroke="#1e2a44" stroke-width="3"></circle>
+<circle cx="-7" cy="-84" r="8" fill="#ffffff" opacity="0.25"></circle>
+</g>
+</sc-for>
+<sc-for list="{{sc.lamps}}" as="l" hint-placeholder-count="0">
+<g transform="{{l.tr}}">
+<line x1="0" y1="0" x2="0" y2="-92" stroke="#1e2a44" stroke-width="4"></line>
+<path d="M0,-92 q0,-10 12,-10" stroke="#1e2a44" stroke-width="4" fill="none"></path>
+<circle class="breathe" cx="12" cy="-98" r="34" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle>
+<circle cx="12" cy="-98" r="5" fill="#fff0c4" stroke="#1e2a44" stroke-width="2"></circle>
+</g>
+</sc-for>
+</sc-if>
 
 <g class="compass" transform="{{sc.fx.compass}}" style="pointer-events: none" aria-label="Iránytű: észak a Ferenc körút felé">
 <ellipse cx="0" cy="3" rx="50" ry="25" fill="#1e2a44" opacity="0.18"></ellipse>
 <ellipse cx="0" cy="0" rx="50" ry="25" fill="#fff7e6" fill-opacity="0.92" stroke="#1e2a44" stroke-width="3"></ellipse>
 <ellipse cx="0" cy="0" rx="36" ry="18" fill="none" stroke="#d9c9a6" stroke-width="1.5"></ellipse>
+<g transform="{{sc.compassM}}">
 <polygon points="-2.7,-5.4 32,-16 2.7,5.4" fill="#e8432f" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
 <polygon points="-2.7,-5.4 -32,16 2.7,5.4" fill="#ffffff" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
 <polygon points="2.7,-5.4 32,16 -2.7,5.4" fill="#45507a" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
 <polygon points="2.7,-5.4 -32,-16 -2.7,5.4" fill="#45507a" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
+</g>
 <circle cx="0" cy="0" r="3" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.5"></circle>
 <g font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="14" text-anchor="middle" stroke="#1e2a44" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">
-<text x="47" y="-22" fill="#ff6b52">É</text>
-<text x="48" y="34" fill="#ffffff">K</text>
-<text x="-47" y="34" fill="#ffffff">D</text>
-<text x="-50" y="-22" fill="#ffffff">NY</text>
+<text x="{{sc.compassL.e.x}}" y="{{sc.compassL.e.y}}" fill="#ff6b52">É</text>
+<text x="{{sc.compassL.k.x}}" y="{{sc.compassL.k.y}}" fill="#ffffff">K</text>
+<text x="{{sc.compassL.d.x}}" y="{{sc.compassL.d.y}}" fill="#ffffff">D</text>
+<text x="{{sc.compassL.ny.x}}" y="{{sc.compassL.ny.y}}" fill="#ffffff">NY</text>
 </g>
 </g>
 <g transform="{{sc.fx.priv}}" style="pointer-events: none">

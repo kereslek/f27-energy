@@ -17,10 +17,9 @@ Folyamat egy körben (f27.collect hívja a Tuya rész után, attól függetlenü
   4. public.alert_state szabályonként: since = mióta áll fenn; ha legalább a beállított percig
      fennáll, active = igaz, és megy az értesítés (szabályonként legfeljebb cooldownMin
      percenként egyszer). Ha megszűnik és ment róla értesítés, "megszűnt" üzenet megy
-     (resolvedMsg). Csendes órákban (Europe/Budapest) nem megy ki semmi, kivéve ha a kályha
-     mögötti hőmérő a quietExceptStoveC fölött van; a még élő riasztás a csend végén kimegy.
+     (resolvedMsg). Csendes időszak nincs (a tulaj kérése): a push éjjel-nappal megy.
   5. Próba-értesítés: ha az alert_settings.test_requested_at frissebb a legutóbbi 'test'
-     naplósornál, egy próbaüzenet megy ki (a csendes órák erre nem vonatkoznak).
+     naplósornál, egy próbaüzenet megy ki.
   6. public.alert_log: minden elküldött (vagy visszatartott) riasztás és próba egy sorban.
 
 Csatornák (csak ha a beállításban be vannak kapcsolva ÉS a GitHub Secret meg van adva):
@@ -73,8 +72,6 @@ DEFAULT_CONFIG = {
                               # a régi skipKitchen kulcsot szándékosan nem olvassuk, hogy az új alapérték érvényesüljön
     "cooldownMin": 60,
     "resolvedMsg": True,
-    "quiet": {"on": False, "from": "23:00", "to": "07:00"},   # a tulaj kérése: nincs csendes időszak (a telefonon szundiz)
-    "quietExceptStoveC": 40,
     "channels": {"push": True, "whatsapp": False},
     "digest": {"on": True, "time": "20:00"},
 }
@@ -83,7 +80,6 @@ THERMO = {"1": "Kis szoba", "2": "Nagy szoba", "3": "Kályha mögött", "4": "F�
 OPENINGS = {"5": "Bejárati ajtó", "7": "Konyha ablak", "8": "Kis szoba ablak",
             "9": "Nagy szoba bal ablak", "10": "Nagy szoba jobb ablak"}
 WINDOWS = ("7", "8", "9", "10")
-STOVE_KEY = "temp_hi:3"
 THERMO_STALE = timedelta(hours=6)
 CONTACT_STALE = timedelta(hours=24)
 DEAD_BATTERY = 10
@@ -128,14 +124,7 @@ def merge_config(stored) -> dict:
     cfg["watchKitchen"] = _bool(s.get("watchKitchen"), cfg["watchKitchen"])
     cfg["cooldownMin"] = _num(s.get("cooldownMin"), 5, 1440, cfg["cooldownMin"])
     cfg["resolvedMsg"] = _bool(s.get("resolvedMsg"), cfg["resolvedMsg"])
-    cfg["quietExceptStoveC"] = _num(s.get("quietExceptStoveC"), 20, 80, cfg["quietExceptStoveC"])
-    q = s.get("quiet") if isinstance(s.get("quiet"), dict) else {}
-    # A tulaj kérése: nincs csendes időszak. Egy régen elmentett "on: true" se némítson el riasztást
-    # (a felületen már nincs kapcsolója, így kikapcsolni sem lehetne).
-    cfg["quiet"]["on"] = False
-    for k in ("from", "to"):
-        if isinstance(q.get(k), str) and HM.match(q[k]):
-            cfg["quiet"][k] = q[k]
+    # A régi mentésekben lehet "quiet" (csendes órák): figyelmen kívül marad, csendes időszak nincs.
     ch = s.get("channels") if isinstance(s.get("channels"), dict) else {}
     for k in cfg["channels"]:
         cfg["channels"][k] = _bool(ch.get(k), cfg["channels"][k])
@@ -149,19 +138,6 @@ def merge_config(stored) -> dict:
 def rules_on(cfg: dict) -> int:
     return (sum(1 for t in cfg["temps"].values() if t["on"]) + int(cfg["openHeat"]["on"])
             + int(cfg["acMaxOpen"]["on"]))
-
-
-def in_quiet(cfg: dict, now: datetime) -> bool:
-    q = cfg["quiet"]
-    if not q["on"]:
-        return False
-    loc = now.astimezone(BUDAPEST)
-    m = loc.hour * 60 + loc.minute
-    a = int(q["from"][:2]) * 60 + int(q["from"][3:])
-    b = int(q["to"][:2]) * 60 + int(q["to"][3:])
-    if a == b:
-        return False
-    return a <= m < b if a < b else (m >= a or m < b)
 
 
 # ----------------------------------------------------------------------------- eszközállapot
@@ -338,7 +314,7 @@ def context_lines(snap: dict, now: datetime) -> list[str]:
 
 def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
     """Visszaad: (feltételek kulcsonként, ismeretlen kulcsok). Egy feltétel:
-    {on, short, title, text(perc), rtext, minutes, quiet_ok}. Ismeretlen: a szabály be van
+    {on, short, title, text(perc), rtext, minutes}. Ismeretlen: a szabály be van
     kapcsolva, de nincs friss adat; ilyenkor az állapota változatlan marad."""
     conds, unknown = {}, set()
     mins = cfg["minDuration"]["minutes"]
@@ -361,7 +337,6 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "text": (lambda age, s=short, lm=limit: f"F27 riasztás: {s} {lm}."),
                 "rtext": f"F27: megszűnt: {short} {limit}.",
                 "minutes": mins,
-                "quiet_ok": key == STOVE_KEY and v > cfg["quietExceptStoveC"],
             }
     skip = cfg["skipDeadContacts"]
     kitchen_out = set() if cfg["watchKitchen"] else {"7"}
@@ -390,7 +365,7 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "on": on, "short": f"{name} nyitva", "title": f"F27: {what} nyitva {verb} közben",
                 "text": (lambda age, w=what, vb=verb, n=name, h=heat:
                          f"F27: {w} nyitva {vb} közben: {n} {age} perce, közben {h}."),
-                "rtext": rtext, "minutes": cfg["openHeat"]["minutes"], "quiet_ok": False,
+                "rtext": rtext, "minutes": cfg["openHeat"]["minutes"],
             }
     if cfg["acMaxOpen"]["on"]:
         key = "ac_max_open"
@@ -412,12 +387,12 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
                 "rtext": (f"F27: megszűnt: a klíma már nem megy nagy teljesítményen ({fmt_w(w9)})." if w9 <= limit
                           else "F27: megszűnt: csak a konyhaablak van nyitva, azt nem figyeljük." if kitchen_open
                           else "F27: megszűnt: az ablakok zárva."),
-                "minutes": mins, "quiet_ok": False,
+                "minutes": mins,
             }
     return conds, unknown
 
 
-def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime, quiet: bool) -> tuple[dict, list]:
+def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime) -> tuple[dict, list]:
     """Az állapotgép egy köre. state: rule_key -> alert_state sor. Visszaad: (módosított sorok
     kulcsonként, események). Esemény: {key, kind ('fired'|'reminder'|'resolved'), title, text,
     short, send (bool), reason}. A last_sent-et csak a sikeres küldés után állítja a hívó."""
@@ -446,8 +421,6 @@ def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime, quiet
                       "send": False, "reason": ""}
                 if last is not None and now - last < cool:
                     ev["reason"] = "türelmi idő"
-                elif quiet and not c["quiet_ok"]:
-                    ev["reason"] = "csendes órák"
                 else:
                     ev["send"] = True
                 if ev["send"] or (first and kind == "fired"):
@@ -457,8 +430,6 @@ def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime, quiet
             if notified and cfg["resolvedMsg"]:
                 ev = {"key": key, "kind": "resolved", "title": "F27: megszűnt", "short": c["short"],
                       "text": c["rtext"], "send": True, "reason": ""}
-                if quiet and key != STOVE_KEY:
-                    ev["send"], ev["reason"] = False, "csendes órák"
                 events.append(ev)
             row.update(active=False, since=None, last_text=c["rtext"])
         if row != old:
@@ -620,9 +591,8 @@ def run_alerts(sb: SupabaseRest, now: datetime | None = None, environ=None, send
         res["note"], res["error"] = f"Riasztások: HIBA ({e}).", True
         return res
     snap = snapshot(devs, latest)
-    quiet = in_quiet(cfg, now)
     conds, unknown = evaluate(cfg, snap, now)
-    changed, events = step(cfg, conds, unknown, state, now, quiet)
+    changed, events = step(cfg, conds, unknown, state, now)
     channels = channels_ready(cfg, environ)
     logs = []
 

@@ -292,9 +292,6 @@
   ];
   var PRICE_B = 60.9, PRICE_A1_IN = 36.2, PRICE_A1_OUT = 70.1;
   var HIST_MS = 6 * 3600000;
-  function consVariantFromUrl() {
-    try { var m = /[?&]fogyasztas=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
-  }
   function fmtW(w) { return w == null ? '--' : w >= 1000 ? fmtNum(w / 1000, w >= 9950 ? 0 : 1) + ' kW' : fmtNum(w, 0) + ' W'; }
   // Lapozott lekérdezés: make() minden lapra új lekérdezést ad, mi tesszük rá a range-et. A Supabase
   // alapból legfeljebb 1000 sort ad egy kérésre; legfeljebb 20 lap (20 000 sor).
@@ -385,12 +382,6 @@
     try { var m = /[?&]attekintes=([123])\b/.exec(window.location.search); return m ? Number(m[1]) : 1; } catch (e) { return 1; }
   }
   // időtartam alapalakban ("25 perc", "3 óra", "2 nap") a "legalább ... óta" mondathoz
-  function spanText(ms) {
-    var m = Math.max(0, Math.round(ms / 60000));
-    if (m < 60) return m + ' perc';
-    var h = Math.floor(m / 60);
-    return h < 48 ? h + ' óra' : Math.floor(h / 24) + ' nap';
-  }
   // Mikor mozdult utoljára a nyitásérzékelő: a device_status előzményben az utolsó állapotváltás.
   // Ha az ablakban nincs váltás, csak alsó becslés adható ("legalább ... óta").
   function lastMove(rows, pink, curOpen, fallbackMs) {
@@ -960,7 +951,7 @@
     temps: { '1': { on: true, lo: 19, hi: 24 }, '2': { on: true, lo: 19, hi: 22 }, '3': { on: true, lo: 20, hi: 38 }, '4': { on: false, lo: 19, hi: 25 } },
     minDuration: { minutes: 10 }, openHeat: { on: true, minutes: 10 }, acMaxOpen: { on: true, watts: 900 },
     skipDeadContacts: true, watchKitchen: false, cooldownMin: 60, resolvedMsg: true,
-    quiet: { on: false, from: '23:00', to: '07:00' }, quietExceptStoveC: 40,
+
     channels: { push: true, whatsapp: false },
     digest: { on: true, time: '20:00' }
   };
@@ -970,7 +961,6 @@
   var AL_OPEN = { '5': 'Bejárati ajtó', '7': 'Konyha ablak', '8': 'Kis szoba ablak', '9': 'Nagy szoba bal ablak', '10': 'Nagy szoba jobb ablak' };
   var AL_WINDOWS = ['7', '8', '9', '10'];
   var AL_REFRESH_MS = 2 * 60000;
-  var AL_HOURS = (function () { var o = []; for (var h = 0; h < 24; h++) { o.push((h < 10 ? '0' : '') + h + ':00'); o.push((h < 10 ? '0' : '') + h + ':30'); } return o; })();
   function alNum(v, lo, hi, def) { return typeof v === 'number' && isFinite(v) && v >= lo && v <= hi ? v : def; }
   function alBool(v, def) { return typeof v === 'boolean' ? v : def; }
   function alObj(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
@@ -991,10 +981,7 @@
     c.watchKitchen = alBool(s.watchKitchen, c.watchKitchen);
     c.cooldownMin = alNum(s.cooldownMin, 5, 1440, c.cooldownMin);
     c.resolvedMsg = alBool(s.resolvedMsg, c.resolvedMsg);
-    c.quietExceptStoveC = alNum(s.quietExceptStoveC, 20, 80, c.quietExceptStoveC);
-    var q = alObj(s.quiet);
-    c.quiet.on = false;                 // nincs csendes időszak (a tulaj kérése); a régi mentés se némítson
-    ['from', 'to'].forEach(function (k) { if (typeof q[k] === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(q[k])) c.quiet[k] = q[k]; });
+    // a régi mentések "quiet" (csendes órák) mezője figyelmen kívül marad: csendes időszak nincs (a tulaj kérése)
     var ch = alObj(s.channels);
     Object.keys(c.channels).forEach(function (k) { c.channels[k] = alBool(ch[k], c.channels[k]); });
     var dg = alObj(s.digest);
@@ -1073,12 +1060,6 @@
     var t = String(text || '').replace(/^F27( riasztás)?( \(még fennáll\))?:\s*(megszűnt:\s*)?/, '');
     var i = t.indexOf(' (');
     return (i > 0 ? t.slice(0, i) : t).replace(/\.$/, '') || k;
-  }
-  function alInQuiet(c, ms) {
-    if (!c.quiet.on) return false;
-    var m = hmMin(budKey(ms).slice(11, 16)), a = hmMin(c.quiet.from), b = hmMin(c.quiet.to);
-    if (a === b) return false;
-    return a < b ? m >= a && m < b : m >= a || m < b;
   }
   function alDemoLog(now) {
     var t = function (min) { return new Date(now - min * 60000).toISOString(); };
@@ -1787,7 +1768,7 @@
           act.sort(function (a, b) { return (a.rule_key === 'temp_hi:3' ? -1 : 0) - (b.rule_key === 'temp_hi:3' ? -1 : 0) || String(a.since || '').localeCompare(String(b.since || '')); });
           var a0 = act[0], sent = a0.last_sent && a0.since && a0.last_sent >= a0.since ? Date.parse(a0.last_sent) : null;
           chip = { k: 'alarm', ck: 'RIASZTÁS · MOST', cv: alShort(a0.rule_key, a0.last_text),
-            cs: (act.length > 1 ? '+' + (act.length - 1) + ' további · ' : '') + (sent ? 'elküldve ' + dayTime(sent, now) : alInQuiet(saved || cfg, now) ? 'csendes órák: később megy ki' : 'még nem ment ki'),
+            cs: (act.length > 1 ? '+' + (act.length - 1) + ' további · ' : '') + (sent ? 'elküldve ' + dayTime(sent, now) : 'még nem ment ki'),
             tip: 'Aktív riasztás: ' + act.map(function (r) { return r.last_text || r.rule_key; }).join(' ') + ' Kattints a beállításokért.' };
         } else {
           var last = null;
@@ -1834,8 +1815,6 @@
         return vals.map(function (x) { return { label: fmt(x), cls: 'al-sg' + (x === cur ? ' on' : ''), pressed: x === cur ? 'true' : 'false', pick: edit(function (c) { set(c, x); }) }; });
       };
       var sw = function (on, label, set) { return { cls: 'al-sw' + (on ? ' on' : ''), on: on ? 'true' : 'false', label: label, toggle: edit(set) }; };
-      var hrs = function (cur) { return AL_HOURS.map(function (h) { return { v: h, sel: h === cur }; }); };
-      var stoveOpts = [35, 38, 40, 42, 45].map(function (x) { return { v: String(x), sel: x === cfg.quietExceptStoveC }; });
       var logRows = null, logNote = '';
       if (mode === 'demo') { logRows = alDemoLog(now); logNote = 'Demó: kitalált napló.'; }
       else if (!owner) logNote = 'A naplót a tulaj látja.';
@@ -1875,15 +1854,9 @@
         wa: sw(cfg.channels.whatsapp, 'WhatsApp (CallMeBot, nem kötelező)', function (c) { c.channels.whatsapp = !c.channels.whatsapp; }),
         cool: seg([30, 60, 120], cfg.cooldownMin, function (x) { return x === 30 ? '30 percenként' : x === 60 ? 'óránként' : '2 óránként'; }, function (c, x) { c.cooldownMin = x; }),
         resolved: sw(cfg.resolvedMsg, 'Megszűnéskor is szól ("megszűnt" üzenet)', function (c) { c.resolvedMsg = !c.resolvedMsg; }),
-        quiet: sw(cfg.quiet.on, 'Csendes órák', function (c) { c.quiet.on = !c.quiet.on; }),
-        qFrom: hrs(cfg.quiet.from), qTo: hrs(cfg.quiet.to), qFromV: cfg.quiet.from, qToV: cfg.quiet.to, stoveOpts: stoveOpts, stoveV: String(cfg.quietExceptStoveC),
-        qOff: !cfg.quiet.on || ro,
-        setFrom: function (e) { var x = e.target.value; if (!ro) self.alEdit(function (c) { c.quiet.from = x; }); },
-        setTo: function (e) { var x = e.target.value; if (!ro) self.alEdit(function (c) { c.quiet.to = x; }); },
-        setStove: function (e) { var x = Number(e.target.value); if (!ro && isFinite(x)) self.alEdit(function (c) { c.quietExceptStoveC = x; }); },
         prevText: prev.length ? 'Most riasztana: ' + prev.map(function (p) { return p.text; }).join('; ') + '.' : 'Most nem riasztana semmi.',
         prevCls: 'al-prev' + (prev.length ? ' bad' : ' good'),
-        prevNote: 'A böngésző a mostani értékekből számolja; az adatgyűjtő csak ' + cfg.minDuration.minutes + ' perc tartós eltérés után szól' + (cfg.quiet.on ? ', csendes órákban (' + cfg.quiet.from + '-' + cfg.quiet.to + ') csak a kályha ' + cfg.quietExceptStoveC + ' °C fölött.' : '.'),
+        prevNote: 'A böngésző a mostani értékekből számolja; az adatgyűjtő csak ' + cfg.minDuration.minutes + ' perc tartós eltérés után szól' + '.',
         saveDisabled: ro || st.alBusy || (mode === 'live' && !dirty),
         saveLabel: mode === 'live' && !dirty ? 'Mentve' : 'Mentés',
         save: function () { self.saveAlerts(); },
@@ -2271,7 +2244,7 @@
         var sky = liveSky(LV, now), look = sky.look;
         Object.keys(look).forEach(function (k) { v.L[k] = look[k]; });
         v.L.sunHalo = Math.round(look.sunOp * 0.8 * 100) / 100;
-        v.wins.forEach(function (w) { w.fill = look.glass; });
+        v.wins.concat(v.winsNear || []).forEach(function (w) { w.fill = look.glass; });
         var tt = sunTimes(now);
         v.titleLine = 'ÉLŐ: ' + sky.phase + ', ' + budTime(now);
         v.titleTip = 'A napszak a valódi budapesti időt követi.' +
@@ -2600,6 +2573,16 @@
       }, function (err) { self.toast(self.errText(err, 'Az elrendezések betöltése nem sikerült.'), 'err'); });
     }
 
+    // Nézet forgatása 90 fokonként (csak a nézet: a mentett elrendezés a 0 fokos nézetben tárolódik)
+    rotateView(dir) {
+      var k = ((((this.state.rot || 0) + (dir || 1)) % 4) + 4) % 4;
+      this._drag = null;
+      this.setState({ rot: k, drag: null });
+      syncRotBtn(k);
+      var side = ['alapnézet: az utca és a nyugati fal hátul', 'a gang és a nyugati fal hátul', 'a gang és a keleti fal hátul', 'az utca és a keleti fal hátul'][k];
+      this.toast('Nézet: ' + (k * 90) + '° (' + side + ').', 'info');
+    }
+
     // Szerkesztés mód (bútorok és tűk húzása) be/ki; a nagyítósáv gombját is szinkronban tartja
     toggleEdit() {
       if (this.viewOnly()) {
@@ -2830,6 +2813,12 @@
   }
 
   var editBtnZ = null;
+  var rotBtnZ = null;
+  function syncRotBtn(k) {
+    if (!rotBtnZ) return;
+    var l = rotBtnZ.querySelector('.zrot'); if (l) l.textContent = (k * 90) + '°';
+    rotBtnZ.title = 'Forgatás 90 fokkal (R; Shift+R visszafelé). Most: ' + (k * 90) + '°';
+  }
   function syncEditAllowed(ok) {
     if (editBtnZ) editBtnZ.style.display = ok ? '' : 'none';
   }
@@ -2862,6 +2851,9 @@
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>');
     editBtnZ.classList.add('zedit');
     syncEditBtn(false);
+    rotBtnZ = mk('', 'Forgatás 90 fokkal (R; Shift+R visszafelé)', function () { app.rotateView(1); },
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span class="zrot">0°</span>');
+    rotBtnZ.classList.add('zrotb');
     mk('', 'Teljes nézet (0)', resetView,
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>');
     document.body.appendChild(bar);
@@ -3144,6 +3136,7 @@
       if (editableTarget(t)) return;
       if (app.state.alOpen || app.state.calOpen) return;
       if ((e.key === 'e' || e.key === 'E') && !(e.ctrlKey || e.metaKey || e.altKey)) { app.toggleEdit(); return; }
+      if ((e.key === 'r' || e.key === 'R') && !(e.ctrlKey || e.metaKey || e.altKey)) { app.rotateView(e.shiftKey ? -1 : 1); return; }
       if (!(e.ctrlKey || e.metaKey)) return;
       var k = e.key.toLowerCase();
       if (k === 'z' && !e.shiftKey) { e.preventDefault(); app.undo(); }

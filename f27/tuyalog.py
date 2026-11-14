@@ -45,7 +45,6 @@ BREAKERS = ("X5", "X7", "X8", "X9")
 THERMOS = ("1", "2", "3", "4")
 COUNTER_CODES = ("total_forward_energy", "forward_energy_total")   # halmozott állás (add_ele: növekmény)
 CONTACT_CODES = ("doorcontact_state", "contact_state")
-PAGE = 100
 PAUSE = float(os.environ.get("TUYALOG_PAUSE", "0.5") or 0.5)   # lapok között (mp)
 EVENT_TYPES = {"1": "online", "2": "offline", "3": "aktiválás", "4": "reset", "5": "parancs", "6": "firmware",
                "7": "adatpont", "8": "jelzés", "9": "újraindulás", "10": "időzítő"}

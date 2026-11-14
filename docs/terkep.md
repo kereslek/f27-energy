@@ -74,6 +74,16 @@ A jobb alsó sarokban a nagyítósáv: **−**, a nagyítás mértéke, **+**, �
 
 A böngésző saját nagyítása (Ctrl + görgő) ezen az oldalon a térképet nagyítja, nem az egész oldalt.
 
+### Forgatás (90 fokonként)
+
+A nagyítósáv forgató gombja (a sarkában az aktuális szög: 0°, 90°, 180°, 270°) vagy az **R**
+billentyű 90 fokkal elforgatja a lakást (**Shift + R** visszafelé). Mindig a nézőtől távoli két
+fal teljes magasságú, a közeliek alacsonyak; az utca, a gang, az ablakok, a tükör, az iránytű és a
+tűk is forognak, forgatott nézetben a tűk feliratai nem takarják egymást. A forgatás csak a nézet:
+az elrendezés a 0 fokos nézetben mentődik, így forgatva húzott bútor minden nézetben ugyanott áll.
+Ismert apróság: egyes bútorok díszítő vonalai (fiók, ajtókeret) forgatva néha a túloldali lapon
+látszanak.
+
 ## Eszközök panel
 
 Felső sáv: **Eszközök** gomb, rajta az eszközök száma; piros vagy narancs pötty, ha valami
@@ -165,8 +175,8 @@ Az **UTOLSÓ MOZGÁS** mellett a **RIASZTÁSOK** csempe: zöld "minden rendben" 
 van bekapcsolva és mikor volt az utolsó riasztás), vagy piros "RIASZTÁS · MOST" az aktív riasztás
 rövid szövegével. Kattintásra nyílik a beállító panel: hőmérőnként kétfogantyús csúszka (túl hideg /
 túl meleg, a zöld sáv a rendben, a fekete vonal a mostani érték), a nyitott ablak + fűtés/klíma
-szabályok, a csatornák (push azonnal, e-mail csak a napi 20:00-s összefoglalóban), türelmi idő és
-csendes órák, Mentés (tulaj), Próba-értesítés, Napló. Belépés nélkül, vagy ha még nincs lefuttatva a
+szabályok, a csatornák (push azonnal, e-mail csak a napi 20:00-s összefoglalóban), türelmi idő
+(csendes időszak nincs), Mentés (tulaj), Próba-értesítés, Napló. Belépés nélkül, vagy ha még nincs lefuttatva a
 006-os migráció, a csempe a böngészőben számolt előnézetet mutatja. Részletek és a beállítás
 lépései (ntfy app, Gmail alkalmazásjelszó, GitHub Secrets): [`docs/riasztasok.md`](riasztasok.md).
 

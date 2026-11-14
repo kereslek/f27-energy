@@ -324,7 +324,7 @@ class TestQuiet(Base):
         self.run_at(self.NIGHT, **hot)
         r = self.run_at(self.NIGHT + timedelta(minutes=10), **hot)
         self.assertTrue(self.texts(r)[0].startswith("F27 riasztás: Nagy szoba 24,0 °C"))
-        self.assertFalse(A.in_quiet(A.merge_config({"quiet": {"on": True, "from": "00:00", "to": "23:59"}}), self.NIGHT))
+        self.assertNotIn("quiet", A.merge_config({"quiet": {"on": True, "from": "00:00", "to": "23:59"}}))
 
 
 
@@ -342,7 +342,7 @@ class TestTestAndChannels(Base):
         self.sb.db["alert_settings"][1]["test_requested_at"] = (T0 + timedelta(minutes=15)).isoformat()
         self.assertEqual(len(self.run_at(T0 + timedelta(minutes=20))["new"]), 1)
 
-    def test_test_ignores_quiet_hours(self):
+    def test_test_at_night(self):
         night = datetime(2026, 11, 8, 23, 0, tzinfo=timezone.utc)
         self.sb.db["alert_settings"][1] = {"id": 1, "config": {}, "test_requested_at": night.isoformat()}
         self.assertTrue(self.run_at(night + timedelta(minutes=5))["new"])
@@ -405,7 +405,7 @@ class TestTestAndChannels(Base):
         self.assertEqual(cfg["temps"]["1"], {"on": True, "lo": 19, "hi": 24})
         self.assertEqual(cfg["temps"]["2"], {"on": True, "lo": 18.5, "hi": 23})
         self.assertEqual(cfg["cooldownMin"], 60)
-        self.assertEqual(cfg["quiet"], {"on": False, "from": "23:00", "to": "06:00"})
+        self.assertNotIn("quiet", cfg)                                     # csendes időszak nincs
         self.assertNotIn("email", cfg["channels"])
         self.assertEqual(cfg["digest"], {"on": True, "time": "20:00"})
         self.assertEqual(cfg["acMaxOpen"]["watts"], 900)

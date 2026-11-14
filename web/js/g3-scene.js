@@ -6,14 +6,39 @@
  */
 // A világ (lakás) helye és mérete a 1440x900-as színpadon; a sablon <g transform>-jával egyezzen.
 var WX0 = 756, WY0 = 134, WS = 0.82;
+// Forgatás (a tulaj kérése, 2026.11.14): a lakás 90 fokonként elforgatható. A forgatás a (nyújtott)
+// alaprajz közepe körül történik a vetítés előtt; a mentett eltolások (pos) mindig a 0 fokos nézet
+// képernyő-egységeiben maradnak (kanonikus), megjelenítéskor és húzáskor számolódnak át.
+var RCX = 282, RCY = 330;
+function rotVec(du, dv, k) { var t; for (var i = 0; i < k; i++) { t = du; du = -dv; dv = t; } return [du, dv]; }
+// a talajsík képernyő-lineáris leképezése a 0 fokos nézetből a k-szor forgatottba: A R^k A^-1
+function rotMat(k) {
+  var e1 = rotVec(0.5, -0.5, k), e2 = rotVec(1, 1, k);          // A^-1 oszlopai, forgatva
+  return [e1[0] - e1[1], (e1[0] + e1[1]) / 2, e2[0] - e2[1], (e2[0] + e2[1]) / 2];   // [a, b, c, d]: x' = a x + c y, y' = b x + d y
+}
+// a lakás (a gangot is beleértve) befoglaló téglalapjának képernyő-közepe k forgatásnál; minden
+// nézetet az alapnézet közepére tolunk, hogy elforgatva se csússzon ki a keretből
+var PLAN = [[84.2, 44], [482, 44], [482, 616], [84.2, 616]];
+function planCenter(k) {
+  var xs = [], ys = [];
+  PLAN.forEach(function (c) { var r = rotVec(c[0] - RCX, c[1] - RCY, k), u = RCX + r[0], v = RCY + r[1]; xs.push(u - v); ys.push((u + v) / 2); });
+  return [(Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2];
+}
+var SHIFT = [0, 1, 2, 3].map(function (k) { var a = planCenter(0), b = planCenter(k); return [a[0] - b[0], a[1] - b[1]]; });
+function matApply(m, x, y) { return [m[0] * x + m[2] * y, m[1] * x + m[3] * y]; }
+function matInv(m) { var det = m[0] * m[3] - m[1] * m[2]; return [m[3] / det, -m[1] / det, -m[2] / det, m[0] / det]; }
 class G3Scene extends MiniDC.Component {
   // A déli sáv (y >= 452.4: konyha, előszoba, WC, tároló) a jobb láthatóságért nyugat felé
   // 60%-kal nyújtva (a tulaj kérése): x' = 333 - (333 - x) * 1.6, a 333-as faltól keletre változatlan.
   wx(x, y) { return y >= 452.4 && x < 333 ? 333 - (333 - x) * 1.6 : x; }
-  P(x, y, z) { var w = this.wx(x, y); return [w - y, (w + y) / 2 - (z || 0)]; }
+  rotK() { return (((this.state && this.state.rot) || 0) % 4 + 4) % 4; }
+  rp(u, v) { var r = rotVec(u - RCX, v - RCY, this.rotK()); return [RCX + r[0], RCY + r[1]]; }
+  P(x, y, z) { var r = this.rp(this.wx(x, y), y), d = SHIFT[this.rotK()]; return [r[0] - r[1] + d[0], (r[0] + r[1]) / 2 - (z || 0) + d[1]]; }
 
   scene() {
-    if (this._sc) return this._sc;
+    var K = this.rotK();
+    this._scs = this._scs || {};
+    if (this._scs[K]) return this._scs[K];
     var self = this;
     function P(x, y, z) { return self.P(x, y, z); }
     function r1(n) { return Math.round(n * 10) / 10; }
@@ -24,23 +49,34 @@ class G3Scene extends MiniDC.Component {
     function quad(x0, y0, x1, y1, z) { return pts([P(x0, y0, z), P(x1, y0, z), P(x1, y1, z), P(x0, y1, z)]); }
     function faceY(y, x0, x1, z0, z1) { return pth([P(x0, y, z0), P(x1, y, z0), P(x1, y, z1), P(x0, y, z1)]); }
     function faceX(x, y0, y1, z0, z1) { return pth([P(x, y0, z0), P(x, y1, z0), P(x, y1, z1), P(x, y0, z1)]); }
+    var SH = SHIFT[K];
+    function Q(u, v, z) { return [u - v + SH[0], (u + v) / 2 - (z || 0) + SH[1]]; }
+    // a téglalap a forgatott, nyújtott síkban (90 fokos forgatás után is tengelyirányú)
+    function aabb(x0, y0, w, d) {
+      var x1 = x0 + w, y1 = y0 + d;
+      var cs = [self.rp(self.wx(x0, y0), y0), self.rp(self.wx(x1, y0), y0), self.rp(self.wx(x1, y1), y1), self.rp(self.wx(x0, y1), y1)];
+      var us = cs.map(function (c) { return c[0]; }), vs = cs.map(function (c) { return c[1]; });
+      return { u0: Math.min.apply(null, us), u1: Math.max.apply(null, us), v0: Math.min.apply(null, vs), v1: Math.max.apply(null, vs) };
+    }
     function box(x0, y0, w, d, z, h, c, ex) {
-      var x1 = x0 + w, y1 = y0 + d, zt = z + h;
+      var zt = z + h, a = aabb(x0, y0, w, d), u0 = a.u0, u1 = a.u1, v0 = a.v0, v1 = a.v1;
       var o = {
-        key: x0 + w / 2 + y0 + d / 2,
-        top: pts([P(x0, y0, zt), P(x1, y0, zt), P(x1, y1, zt), P(x0, y1, zt)]),
-        left: pts([P(x0, y1, z), P(x1, y1, z), P(x1, y1, zt), P(x0, y1, zt)]),
-        right: pts([P(x1, y0, z), P(x1, y1, z), P(x1, y1, zt), P(x1, y0, zt)]),
+        // a 0 fokos nézet mélységkulcsa változatlan (x + y); forgatva a nyújtott, forgatott középpont
+        key: K === 0 ? x0 + w / 2 + y0 + d / 2 : (u0 + u1) / 2 + (v0 + v1) / 2,
+        top: pts([Q(u0, v0, zt), Q(u1, v0, zt), Q(u1, v1, zt), Q(u0, v1, zt)]),
+        left: pts([Q(u0, v1, z), Q(u1, v1, z), Q(u1, v1, zt), Q(u0, v1, zt)]),
+        right: pts([Q(u1, v0, z), Q(u1, v1, z), Q(u1, v1, zt), Q(u1, v0, zt)]),
         ct: c[0], cl: c[1], cr: c[2], lines: '', lc: 'none', f1: '', f1c: 'none', f1cls: '', f1f: '', sw: 1.8
       };
       if (ex) { for (var k in ex) { if (k === 'bias') o.key += ex.bias; else o[k] = ex[k]; } }
       return o;
     }
     function grid(x0, y0, w, d, z, h, nx, ny, nz) {
-      var x1 = x0 + w, y1 = y0 + d, s = '', i;
-      for (i = 1; i < nx; i++) { var x = x0 + w * i / nx; s += seg(P(x, y1 + 0.2, z), P(x, y1 + 0.2, z + h)); }
-      for (i = 1; i < ny; i++) { var y = y0 + d * i / ny; s += seg(P(x1 + 0.2, y, z), P(x1 + 0.2, y, z + h)); }
-      for (i = 1; i < nz; i++) { var zz = z + h * i / nz; s += seg(P(x0, y1 + 0.2, zz), P(x1, y1 + 0.2, zz)) + seg(P(x1 + 0.2, y0, zz), P(x1 + 0.2, y1, zz)); }
+      // a két látható oldallapra (forgatva is a nézőhöz közeli lapokra)
+      var a = aabb(x0, y0, w, d), s = '', i, nu = K % 2 ? ny : nx, nv = K % 2 ? nx : ny;
+      for (i = 1; i < nu; i++) { var u = a.u0 + (a.u1 - a.u0) * i / nu; s += seg(Q(u, a.v1 + 0.2, z), Q(u, a.v1 + 0.2, z + h)); }
+      for (i = 1; i < nv; i++) { var v = a.v0 + (a.v1 - a.v0) * i / nv; s += seg(Q(a.u1 + 0.2, v, z), Q(a.u1 + 0.2, v, z + h)); }
+      for (i = 1; i < nz; i++) { var zz = z + h * i / nz; s += seg(Q(a.u0, a.v1 + 0.2, zz), Q(a.u1, a.v1 + 0.2, zz)) + seg(Q(a.u1 + 0.2, a.v0, zz), Q(a.u1 + 0.2, a.v1, zz)); }
       return s;
     }
 
@@ -145,20 +181,40 @@ class G3Scene extends MiniDC.Component {
       var c0 = P(282.8, dy, dz), c1 = P(282.8, dy + 3, dz + 3.2), c2 = P(282.8, dy + 6, dz), c3 = P(282.8, dy + 3, dz - 3.2);
       damask += 'M' + r1(c0[0]) + ',' + r1(c0[1]) + 'Q' + r1(c1[0] - 2) + ',' + r1(c1[1] - 1) + ' ' + r1(c2[0]) + ',' + r1(c2[1]) + 'Q' + r1(c3[0] + 2) + ',' + r1(c3[1] + 1) + ' ' + r1(c0[0]) + ',' + r1(c0[1]);
     }
-    var back = [
-      box(277.5, 45.5, 5, 285, 0, WH, WB, { lines: seg(P(282.8, 46, 24), P(282.8, 330, 24)) + damask, lc: '#d9bd8a' }),
-      box(277.5, 45.5, 200, 5, 0, WH, WB, { lines: seg(P(282, 50.8, 24), P(477, 50.8, 24)), lc: '#d9bd8a' }),
-      box(252.5, 325.5, 27.5, 5, 0, WH, WB),
-      box(252.5, 325.5, 5, 126.8, 0, WH, ['#6a4c38', '#ffffff', '#f2f4f5'], { lines: subway, lc: '#cfd6da' }),
-      box(177.5, 452.5, 77.5, 5, 0, WH, WB),
-      box(177.5, 452.5, 5, 142, 0, WH, WB, { lines: ktile, lc: '#d9c39a' })
+    // Külső falak: a nézőtől távoli oldalak teljes magasak (belső díszítéssel), a közeliek alacsonyak
+    // (átlátunk fölöttük). A 0 fokos nézetben az északi és a nyugati fal távoli, a déli és a keleti közeli.
+    var WF = ['#ffe0b0', '#d99a5e', '#b97c45'];
+    var WFG = ['#c9dcc2', '#a8bf9f', '#93ab8a'];
+    var SAGEW = ['#6a4c38', '#b7cdb0', '#a9c1a0'];
+    function farSide(n) { var r = rotVec(n[0], n[1], K); return r[0] < -0.5 || r[1] < -0.5; }
+    var FAR = { N: farSide([0, -1]), S: farSide([0, 1]), E: farSide([1, 0]), W: farSide([-1, 0]) };
+    var PER = [
+      { b: [277.5, 45.5, 5, 285], side: 'W', c: WB, ex: { lines: seg(P(282.8, 46, 24), P(282.8, 330, 24)) + damask, lc: '#d9bd8a' } },
+      { b: [277.5, 45.5, 200, 5], side: 'N', c: WB, ex: { lines: seg(P(282, 50.8, 24), P(477, 50.8, 24)), lc: '#d9bd8a' } },
+      { b: [252.5, 325.5, 27.5, 5], side: 'N', c: WB },
+      { b: [252.5, 325.5, 5, 126.8], side: 'W', c: ['#6a4c38', '#ffffff', '#f2f4f5'], ex: { lines: subway, lc: '#cfd6da' } },
+      { b: [177.5, 452.5, 77.5, 5], side: 'N', c: WB },
+      { b: [177.5, 452.5, 5, 142], side: 'W', c: WB, ex: { lines: ktile, lc: '#d9c39a' } },
+      { b: [177.5, 589.5, 110.5, 5], side: 'S', c: WB, low: WF },
+      { b: [316, 589.5, 161.5, 5], side: 'S', c: WB, low: WF },
+      { b: [472.5, 45.5, 5, 549], side: 'E', c: SAGEW, low: WFG }
     ];
-    var winsBase = [[305, 350], [405, 460]].map(function (w) {
-      var m = (w[0] + w[1]) / 2, yf = 50.9;
+    var back = [], front = [];
+    PER.forEach(function (w) {
+      var b = w.b;
+      if (FAR[w.side]) back.push(box(b[0], b[1], b[2], b[3], 0, WH, w.c, w.ex));
+      else front.push(box(b[0], b[1], b[2], b[3], 0, 12, w.low || WF));
+    });
+    // ablaküvegek: az utcai (9, 10) az északi, a konyha (7) és a kis szoba (8) a déli falon; a távoli
+    // falon a falra rajzolva, a közelin halványan (átlátunk rajta)
+    var winsBase = [];
+    [[305, 350, 50.9, 'N'], [405, 460, 50.9, 'N'], [198, 238, 589.4, 'S'], [380, 425, 589.4, 'S']].forEach(function (w) {
+      if (w[3] === 'S' && !FAR.S) return;             // közeli déli fal: a régi, falra fektetett ablakjel marad (win7, win8)
+      var m = (w[0] + w[1]) / 2, yf = w[2];
       // magas, kétszárnyú fa ablak felülvilágítóval: párkány kb. 0,9 m, teteje kb. 3,3 m
-      return { glass: faceY(yf, w[0], w[1], 26, 100),
+      winsBase.push({ far: FAR[w[3]], glass: faceY(yf, w[0], w[1], 26, 100),
         frame: seg(P(m, yf, 26), P(m, yf, 100)) + seg(P(w[0], yf, 76), P(w[1], yf, 76)) + seg(P(w[0], yf, 73.5), P(w[1], yf, 73.5)),
-        shine: seg(P(w[0] + 5, yf, 34), P(w[0] + 14, yf, 66)) + seg(P(w[0] + 5, yf, 82), P(w[0] + 10, yf, 94)) };
+        shine: seg(P(w[0] + 5, yf, 34), P(w[0] + 14, yf, 66)) + seg(P(w[0] + 5, yf, 82), P(w[0] + 10, yf, 94)) });
     });
 
     var WI = ['#6a4c38', '#f6e7c8', '#e3cb9c'];
@@ -641,9 +697,6 @@ class G3Scene extends MiniDC.Component {
       p.key = p.boxes[0].key;
     });
 
-    var WF = ['#ffe0b0', '#d99a5e', '#b97c45'];
-    var WFG = ['#c9dcc2', '#a8bf9f', '#93ab8a'];
-    var front = [box(177.5, 589.5, 110.5, 5, 0, 12, WF), box(316, 589.5, 161.5, 5, 0, 12, WF), box(472.5, 45.5, 5, 549, 0, 12, WFG)];
     // kis szoba keleti (zöld) fala: áttetsző szellemfal, rajta a fekvő tükör és a kerubos polc
     var mirror = {
       frame: faceX(472.2, 346, 458, 33, 59),
@@ -669,19 +722,32 @@ class G3Scene extends MiniDC.Component {
     for (var gx = 180; gx <= 480; gx += 10) railing += seg(P(gx, 614, 0), P(gx, 614, 22));
     for (gx = 185; gx <= 475; gx += 20) railing += 'M' + r1(P(gx, 614, 10)[0]) + ',' + r1(P(gx, 614, 10)[1]) + 'm-3,0a3,3 0 1 0 6,0a3,3 0 1 0 -6,0';
 
+    // képernyőn rögzített talajszintű elemek (fényfoltok, iránytű-tű) forgatása: síkbeli mátrix
+    var M = rotMat(K), MS = M.map(function (v) { return Math.round(v * 1000) / 1000; }).join(',');
+    var CS = [RCX - RCY, (RCX + RCY) / 2];
+    function textAng() {                                     // a +x irányú (utca, gang menti) felirat olvasható szöge
+      var d = rotVec(1, 0, K), a = Math.atan2((d[0] + d[1]) / 2, d[0] - d[1]) * 180 / Math.PI;
+      if (a > 90) a -= 180; if (a <= -90) a += 180;
+      return Math.round(a * 100) / 100;
+    }
+    function letter(x, y) { var q = matApply(M, x, y); return { x: r1(q[0]), y: r1(q[1]) }; }
     var sc = {
       stars: stars, city: city, cityWin: cityWin, road: road, roadLine: roadLine, walk: walk,
-      streetTr: 'translate(' + r1(P(300, -32, 0)[0]) + ',' + r1(P(300, -32, 0)[1]) + ') rotate(26.57)',
-      gangTr: 'translate(' + r1(P(352, 640, 0)[0]) + ',' + r1(P(352, 640, 0)[1]) + ') rotate(26.57)',
+      rot: K, far: FAR, near: { N: !FAR.N, S: !FAR.S, E: !FAR.E, W: !FAR.W },
+      glowTr: 'translate(' + (CS[0] + SH[0]) + ',' + (CS[1] + SH[1]) + ') matrix(' + MS + ',0,0) translate(' + (-CS[0]) + ',' + (-CS[1]) + ')',
+      compassM: 'matrix(' + MS + ',0,0)',
+      compassL: { e: letter(47, -22), k: letter(48, 34), d: letter(-47, 34), ny: letter(-50, -22) },
+      streetTr: 'translate(' + r1(P(300, -32, 0)[0]) + ',' + r1(P(300, -32, 0)[1]) + ') rotate(' + textAng() + ')',
+      gangTr: 'translate(' + r1(P(352, 640, 0)[0]) + ',' + r1(P(352, 640, 0)[1]) + ') rotate(' + textAng() + ')',
       trees: trees, lamps: lamps, slab: slab, floors: floors, checks: checks, rugs: rugs,
       back: back, winsBase: winsBase, walls: W, pieces: pieces, front: front, win7: win7, win8: win8, win8frame: win8frame,
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
-        stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), boss: tr(341, 303, 154), ch1: tr(377, 190, 96), ch2: tr(404, 470, 96),
-        ghosts: tr(414, 552, 34), compass: tr(640, 470, 0), gw: tr(460, 568, 60), start: tr(300, 556, 0), plus: tr(330, 498, 62), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
+        stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), ch1: tr(377, 190, 96), ch2: tr(404, 470, 96),
+        ghosts: tr(414, 552, 34), compass: 'translate(170,555)', gw: tr(460, 568, 60), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };
-    this._sc = sc;
+    this._scs[K] = sc;
     return sc;
   }
 
@@ -739,6 +805,9 @@ class G3Scene extends MiniDC.Component {
     var ny = d.oy + (e.clientY - d.sy) / d.k;
     var snap = this.props.snap ?? true;
     if (d.kind === 'piece') {
+      // forgatott nézetben a képernyő-elmozdulás a kanonikus (0 fokos) nézetbe
+      var dd = matApply(matInv(rotMat(this.rotK())), (e.clientX - d.sx) / d.k, (e.clientY - d.sy) / d.k);
+      nx = d.ox + dd[0]; ny = d.oy + dd[1];
       var gx = nx / WS, gy = ny / WS;
       var wx = gy + gx / 2, wy = gy - gx / 2;
       if (snap) { wx = Math.round(wx / 4) * 4; wy = Math.round(wy / 4) * 4; }
@@ -773,7 +842,8 @@ class G3Scene extends MiniDC.Component {
     function r1(n) { return Math.round(n * 10) / 10; }
     function P(x, y, z) { return self.P(x, y, z); }
     function trp(p) { return 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ')'; }
-    function off(id) { var o = pos[id] || [0, 0]; return [o[0] / WS, o[1] / WS]; }
+    var RM = rotMat(this.rotK());
+    function off(id) { var o = pos[id] || [0, 0], q = matApply(RM, o[0] / WS, o[1] / WS); return [q[0], q[1]]; }
     function trw(x, y, z, id) { var p = P(x, y, z), o = id ? off(id) : [0, 0]; return trp([p[0] + o[0], p[1] + o[1]]); }
 
     // rétegek: falak + húzható bútorok mélység szerint
@@ -791,24 +861,6 @@ class G3Scene extends MiniDC.Component {
     var targets = { AC: [340, 494, 64, 'ac'], GAS: [404, 585, 20, 'gas'], W: [341, 303, 60, null], '8': [404, 594, 30, null], k: [326, 586, 30, 'panelbox'], '2': [470, 150, 40, null] };
     var colors = { AC: '#4fc3f7', GAS: '#ffb74d', W: '#ff7043', '8': '#b39ddb', k: '#66bb6a', '2': '#ff4fa3' };
     var ft = targets[focus] || targets.AC;
-
-    // ugrási útvonal
-    var route = [[300, 548, 0], [445, 492, 19], [457, 378, 13], [424, 106, 12], [318, 215, 16], [343, 406, 13]];
-    var scr = route.map(function (p) { return P(p[0], p[1], p[2]); });
-    var arcs = [], coins = [], hero = null;
-    function qpt(a, c, b, t) { var u = 1 - t; return [u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]]; }
-    for (var i = 0; i < scr.length - 1; i++) {
-      var a = scr[i], b = scr[i + 1];
-      var c = [(a[0] + b[0]) / 2, Math.min(a[1], b[1]) - 84];
-      arcs.push({ d: 'M' + r1(a[0]) + ',' + r1(a[1]) + ' Q' + r1(c[0]) + ',' + r1(c[1]) + ' ' + r1(b[0]) + ',' + r1(b[1]) });
-      [0.3, 0.72].forEach(function (t, j) {
-        var p = qpt(a, c, b, t);
-        coins.push({ tr: trp([p[0], p[1] - 10]), op: i < 2 ? 0.35 : 1, d: r1((i * 2 + j) * 0.18) + 's' });
-      });
-      if (i === 2) { var hp = qpt(a, c, b, 0.5); hero = { tr: trp([hp[0], hp[1] - 30]) }; }
-    }
-    [[282, 378, 84], [296, 378, 90], [310, 378, 84]].forEach(function (p, j) { coins.push({ tr: trp(P(p[0], p[1], p[2])), op: 1, d: r1(j * 0.25) + 's' }); });
-    var pads = route.slice(1, 5).map(function (p) { return { tr: trp(P(p[0], p[1], p[2])) }; });
 
     // eszköz-tűk (HTML), vezetővonallal a horgonyhoz
     var DEV = [
@@ -830,7 +882,15 @@ class G3Scene extends MiniDC.Component {
       { id: 'k9', name: 'Kör 9: klíma', p: [326, 586, 40], o: [-60, 126], val: L.k9, sm: true },
       { id: 'G', name: 'Zigbee + IR gateway (a vitrin tetején)', p: [460, 568, 60], o: [46, 6], val: 'online' }
     ];
+    // forgatott nézetben a felirat a tűhöz képest a világban ugyanarra néz (a hossza marad);
+    // a körök (k5-k9) sora jelmagyarázat, az marad
+    function pinOff(m) {
+      if (!self.rotK() || m.sm) return m.o;
+      var q = matApply(RM, m.o[0], m.o[1]), L0 = Math.hypot(m.o[0], m.o[1]), L1 = Math.hypot(q[0], q[1]) || 1;
+      return [q[0] * L0 / L1, q[1] * L0 / L1];
+    }
     var pins = DEV.map(function (m) {
+      m = Object.assign({}, m, { o: pinOff(m) });
       var g = P(m.p[0], m.p[1], m.p[2]);
       var o = pos['d' + m.id] || [0, 0];
       var ax = WX0 + WS * g[0] + o[0], ay = WY0 + WS * g[1] + o[1];
@@ -843,6 +903,22 @@ class G3Scene extends MiniDC.Component {
         down: function (e) { self.startDrag(e, 'd' + m.id, 'pin'); } };
     });
 
+    // forgatott nézetben a tűk feliratai ne fedjék egymást (a 0 fokos nézetet a tulaj rendezte el, az marad)
+    if (self.rotK()) {
+      var big = pins.filter(function (q, i) { return !DEV[i].sm; });
+      for (var it = 0; it < 6; it++) {
+        for (var a1 = 0; a1 < big.length; a1++) for (var b1 = a1 + 1; b1 < big.length; b1++) {
+          var A = big[a1], B = big[b1], dx = B.x - A.x, dy = B.y - A.y, dd = Math.hypot(dx, dy), need = 34;
+          if (dd < need) {
+            if (dd < 0.01) { dx = 1; dy = 0; dd = 1; }
+            var push = (need - dd) / 2;
+            A.x = r1(A.x - dx / dd * push); A.y = r1(A.y - dy / dd * push);
+            B.x = r1(B.x + dx / dd * push); B.y = r1(B.y + dy / dd * push);
+          }
+        }
+      }
+    }
+
     var selText = 'Kattints egy tárgyra';
     if (st.sel) {
       var hit = null;
@@ -851,35 +927,10 @@ class G3Scene extends MiniDC.Component {
       if (hit) selText = hit;
     }
 
-    var tools = TL.map(function (t, j) {
-      return { name: t.name, stat: t.stat, rarity: t.rarity, rc: t.rc, color: t.color, icon: t.icon,
-        cls: j === ti ? 'on' : '', pressed: j === ti ? 'true' : 'false',
-        pick: function () { self.setState({ tool: j, focus: t.target }); } };
-    });
-    var eq = TL[ti];
-
-    var QS = [
-      { title: 'Huzatvadász', desc: 'Csukd be a kis szoba ablakát, mielőtt a gáz fűt.', reward: '+250', prog: L.open8 ? '0/1' : '1/1', pw: L.open8 ? '4%' : '100%', done: !L.open8, target: '8' },
-      { title: 'Kályhaszelídítő', desc: 'Éjjel max 2 fokozat a kályhán.', reward: '+400', prog: '2/3 éj', pw: '66%', done: false, target: 'W' },
-      { title: 'Hűvös fej', desc: 'Klíma 23 °C limit vendég módban.', reward: '+150', prog: 'kész', pw: '100%', done: true, target: 'AC' },
-      { title: 'Komfortzóna', desc: 'Nagy szoba 20-22 °C között.', reward: '+300', prog: '78%', pw: '78%', done: false, target: '2' },
-      { title: 'Bojlerbarát', desc: 'Bojler csak éjszakai ablakban.', reward: '+200', prog: '4/7 nap', pw: '57%', done: false, target: 'k' }
-    ];
-    var questDone = 0;
-    var quests = QS.map(function (q) {
-      if (q.done) questDone++;
-      return { title: q.title, desc: q.desc, reward: q.reward, prog: q.prog, pw: q.pw,
-        bar: q.done ? '#3fae6a' : '#ff4fa3', boxFill: q.done ? '#3fae6a' : '#fffaf0',
-        check: q.done ? 'M7.5 13.5l4 4 7-9' : '', cls: focus === q.target ? 'on' : '',
-        aria: q.title + ': mutasd a térképen',
-        pick: function () { self.setState({ focus: q.target }); } };
-    });
-
     var levels = LV.map(function (l, j) {
       return { code: l.code, name: l.name, cls: (j === li ? 'on ' : '') + (j === 3 ? 'boss' : ''), pressed: j === li ? 'true' : 'false',
         pick: function () { self.setState({ lvl: j }); } };
     });
-    var hearts = [0, 1, 2, 3, 4].map(function (j) { return { f: j < L.hearts ? '#ff4f6d' : '#e8dccb' }; });
     var ranking = [
       { name: 'Klíma, A1 kereten belül', v: '12', n: 12, c: '#4fc3f7', tc: '#1e2a44' },
       { name: 'Gázkonvektor', v: '15', n: 15, c: '#ffb74d', tc: '#1e2a44' },
@@ -892,20 +943,18 @@ class G3Scene extends MiniDC.Component {
       { name: 'Ablakőr', bg: '#e6dcff', op: 1, icon: 'M4 4h16v16H4zM12 4v16M4 12h16' },
       { name: '7 nap', bg: '#eeeeee', op: 0.55, icon: 'M6 10V7a6 6 0 0 1 12 0v3M5 10h14v11H5z' }
     ];
-    var wins = sc.winsBase.map(function (w) { return { glass: w.glass, frame: w.frame, shine: w.shine, fill: L.glass }; });
+    var wins = sc.winsBase.filter(function (w) { return w.far; }).map(function (w) { return { glass: w.glass, frame: w.frame, shine: w.shine, fill: L.glass }; });
+    var winsNear = sc.winsBase.filter(function (w) { return !w.far; }).map(function (w) { return { glass: w.glass, frame: w.frame, shine: w.shine, fill: L.glass }; });
 
     return {
-      sc: sc, L: L, wins: wins, layers: layers, arcs: arcs, coins: coins, pads: pads, hero: hero, pins: pins,
-      fx: { horn: trw(344, 428, 28, 'sewing'), plant: trw(367, 59, 25, 'stand'), lamp: trw(298, 52, 56, 'flamp'), lamp2: trw(417, 68, 50, 'arclamp'), lamp3: trw(288.5, 137.5, 26, 'night'), lamp4: trw(288.5, 216.5, 26, 'night'), flag: trw(343, 406, 0, 'gchair1'), seat5: trw(400, 486, 0, 'dining') },
+      sc: sc, L: L, wins: wins, winsNear: winsNear, layers: layers, pins: pins,
+      fx: { horn: trw(344, 428, 28, 'sewing'), plant: trw(367, 59, 25, 'stand'), lamp: trw(286, 54.5, 56, 'flamp'), lamp2: trw(417, 68, 50, 'arclamp'), lamp3: trw(288.5, 137.5, 26, 'night'), lamp4: trw(288.5, 216.5, 26, 'night'), seat5: trw(400, 486, 0, 'dining') },
       focusFx: { tr: trw(ft[0], ft[1], ft[2], ft[3]), c: colors[focus] || '#4fc3f7' },
-      bossW: Math.round(196 * L.boss),
-      tools: tools, eq: { name: eq.name, effect: eq.effect, stat: eq.stat, color: eq.color, targetLabel: eq.targetLabel },
-      quests: quests, questDone: questDone, levels: levels, hearts: hearts, ranking: ranking, badges: badges,
+      levels: levels, ranking: ranking, badges: badges,
       selText: selText,
       onMove: function (e) { self.moveDrag(e); },
       onUp: function () { self.endDrag(); },
       reset: function () { self._drag = null; self.setState({ pos: {}, sel: null, drag: null }); },
-      showPath: this.props.showPath ?? true,
       showMarkers: this.props.showMarkers ?? true
     };
   }
