@@ -37,6 +37,21 @@ def _password() -> str:
     return pw
 
 
+REF = Path(__file__).resolve().parent.parent / "data" / "latest.json.enc"
+
+
+def _check(pw: str) -> None:
+    """A jelszó ellenőrzése a repó egy meglévő titkosított fájlján, hogy elírt jelszóval ne
+    készüljön használhatatlan csomag (a rejtett bekérésnél könnyű elütni)."""
+    if not REF.exists():
+        return
+    try:
+        decrypt_bytes(json.loads(REF.read_text(encoding="utf-8")), pw)
+    except Exception:
+        sys.exit("A jelszó nem egyezik a repó jelszavával (data/latest.json.enc nem nyílik vele). "
+                 "Valószínűleg elütés: futtasd újra, és figyelj a kis- és nagybetűkre.")
+
+
 def pack(src: Path, out: Path) -> None:
     files = {}
     for p in sorted(src.rglob("*")):
@@ -49,8 +64,10 @@ def pack(src: Path, out: Path) -> None:
         files[rel] = base64.b64encode(p.read_bytes()).decode()
     if not files:
         sys.exit("Nincs becsomagolható fájl.")
+    pw = _password()
+    _check(pw)
     blob = json.dumps({"files": files}).encode()
-    env = encrypt_bytes(blob, _password())
+    env = encrypt_bytes(blob, pw)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(env), encoding="utf-8")
     print(f"Kész: {len(files)} fájl titkosítva -> {out} ({out.stat().st_size // 1024} KB)")
