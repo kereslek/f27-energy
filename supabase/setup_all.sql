@@ -919,7 +919,8 @@ grant select on public.energy_app_history, public.tuya_log, public.metrics_hourl
 -- push 14 napon belüli / lemerült elemről. Írni csak a titkos kulcs tud (Actions),
 -- olvasni a tulaj, a takarító és a megtekintő (a dashboard ELEM csempéje).
 --
---   level: ok | due30 (30 napon belül) | due14 (14 napon belül) | dead (lemerült) | unknown
+--   level: ok | due30 (30 napon belül) | due14 (14 napon belül) | dead (lemerült)
+--          | offline (elemes eszköz, amely nem jelentkezik: valószínűleg elem kell) | unknown
 
 create table if not exists public.battery_status (
   pink        text primary key check (char_length(pink) <= 20),
@@ -937,6 +938,11 @@ create table if not exists public.battery_status (
   notified    jsonb not null default '{}'::jsonb,
   updated_at  timestamptz not null default now()
 );
+
+-- a korábbi változatból hiányzott az 'offline' szint: a szabály újra, bővítve (régi táblán is)
+alter table public.battery_status drop constraint if exists battery_status_level_check;
+alter table public.battery_status add constraint battery_status_level_check
+  check (level in ('ok', 'due30', 'due14', 'dead', 'offline', 'unknown'));
 
 alter table public.battery_status enable row level security;
 

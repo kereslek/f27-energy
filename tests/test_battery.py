@@ -82,6 +82,13 @@ class StateTest(unittest.TestCase):
         high_unknown = feed([(100, "high")], kind="state")
         self.assertEqual(B.forecast(high_unknown, "AAA", True, today)["level"], "ok")
 
+    def test_offline_is_its_own_level(self):
+        today = D0 + timedelta(days=10)
+        self.assertEqual(B.forecast({"samples": []}, "AAA", False, today)["level"], "offline")
+        mid = feed([(10, "middle")], kind="state")
+        self.assertEqual(B.forecast(mid, "AAA", False, today)["level"], "offline")
+        self.assertEqual(B.eta_text(B.forecast(mid, "AAA", False, today), today), "nem jelentkezik, valószínűleg elem kell")
+
     def test_learned_life_from_change(self):
         # 150 napos tanult élettartam, a csere 120 napja volt: 0,85*150-120 = 7,5 -> 14 napon belül
         row = feed([(0, "high")], kind="state")
@@ -108,6 +115,13 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([(p["pink"], p["level"]) for p in pushes3], [("8", "dead")])   # a 14 napos nem ismétlődik
         title, text = B.push_text(pushes[0])
         self.assertIn("Kis szoba ablak", text if pushes[0]["pink"] == "8" else B.push_text(pushes[1])[1])
+
+    def test_offline_without_reading_no_push(self):
+        latest = {"T3": {"online": False, "status": {"va_temperature": 200}}}
+        ups, pushes = B.plan(self.DEVS, latest, {}, D0)
+        self.assertEqual([(r["pink"], r["level"]) for r in ups], [("T3", "offline")])
+        self.assertEqual(pushes, [])
+        self.assertTrue(B.digest_lines(ups, D0)[0].startswith("!! Hőmérő, hálószoba: nem jelentkezik"))
 
     def test_dead_push_schedule(self):
         """Lemerült elem: 10 napig naponta (max 10), utána hetente, az első után 40 napig; aztán csend."""
@@ -169,6 +183,20 @@ class RunTest(unittest.TestCase):
         self.assertEqual((res["dead"], res["pushed"]), (1, 1))
         self.assertEqual(sb.upserted[0]["notified"].get("dead"), "2026-11-14")
         self.assertIn("Kis szoba ablak", sent[0]["body"])
+
+    def test_old_table_without_offline_level(self):
+        from f27.supa import SupabaseError
+
+        class SB(self.FakeSB):
+            def upsert(self, table, rows, on_conflict=None):
+                if any(r["level"] == "offline" for r in rows):
+                    raise SupabaseError(400, "23514", "check")
+                self.upserted += rows
+        sb = SB([{"pink": "T1", "online": False, "status": {}}])
+        cfg = {"battery": {"thermo": {"type": "AAA", "count": 2}}, "devices": [{"pink": "T1", "role": "thermo"}]}
+        res = B.run_battery(sb, environ={}, cfg=cfg)
+        self.assertFalse(res["error"], res)
+        self.assertEqual(sb.upserted[0]["level"], "unknown")
 
     def test_missing_table_is_quiet(self):
         from f27.supa import SupabaseError

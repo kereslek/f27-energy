@@ -121,10 +121,12 @@ def _life(row: dict, prof: dict) -> float:
 
 
 def forecast(row: dict, chem: str, online: bool | None, today: date) -> dict:
-    """{'level': ok|due30|due14|dead|unknown, 'eta_lo', 'eta_hi' (nap), 'basis', 'value'}."""
+    """{'level': ok|due30|due14|dead|offline|unknown, 'eta_lo', 'eta_hi' (nap), 'basis', 'value'}."""
     prof = CHEM.get(chem) or CHEM["AAA"]
     samples = row.get("samples") or []
     if not samples:
+        if online is False:          # elemes eszköz, amely nem jelentkezik: legtöbbször elem kell bele
+            return {"level": "offline", "eta_lo": 0, "eta_hi": 0, "basis": "nem jelentkezik, elemjelzés nincs", "value": None}
         return {"level": "unknown", "eta_lo": None, "eta_hi": None, "basis": "nincs adat", "value": None}
     value = samples[-1][1]
     life = _life(row, prof)
@@ -155,6 +157,9 @@ def forecast(row: dict, chem: str, online: bool | None, today: date) -> dict:
             if online is False:
                 return {"level": "dead", "eta_lo": 0, "eta_hi": 0, "basis": "alacsony, offline", "value": value}
             lo, hi, basis = 0.0, 14.0, "alacsony szint"
+        elif online is False:
+            return {"level": "offline", "eta_lo": 0, "eta_hi": 0, "value": value,
+                    "basis": f"nem jelentkezik (utoljára: {'közepes' if value == 'middle' else 'magas'})"}
         elif value == "middle":
             if age is not None:
                 lo = max(0.0, 0.85 * life - age)
@@ -177,6 +182,8 @@ def eta_text(fc: dict, today: date) -> str:
     """Rövid, emberi szöveg: 'cseréld most', 'kb. 5-12 nap (11.19-11.26)'."""
     if fc["level"] == "dead":
         return "lemerült, cseréld most"
+    if fc["level"] == "offline":
+        return "nem jelentkezik, valószínűleg elem kell"
     if fc.get("eta_lo") is None:
         return "rendben"
     a, b = today + timedelta(days=fc["eta_lo"]), today + timedelta(days=fc["eta_hi"])
@@ -211,8 +218,11 @@ def plan(devs: dict, latest: dict, rows: dict, today: date) -> tuple[list[dict],
             continue
         r = reading(cur.get("status") or {})
         if r is None:
-            continue
-        row = update(rows.get(pink) or {"pink": pink}, r[0], r[1], today)
+            if cur.get("online") is not False:
+                continue
+            row = dict(rows.get(pink) or {"pink": pink})     # offline, elemjelzés nélkül: "offline" szint, push nélkül
+        else:
+            row = update(rows.get(pink) or {"pink": pink}, r[0], r[1], today)
         fc = forecast(row, info["chem"], cur.get("online"), today)
         notified = dict(row.get("notified") or {})
         if fc["level"] == "due14" and "due14" not in notified:          # 14 napon belül: egyetlen push
@@ -273,7 +283,7 @@ def run_battery(sb: SupabaseRest, now: datetime | None = None, environ=None, sen
     now = now or datetime.now(timezone.utc)
     environ = os.environ if environ is None else environ
     today = now.astimezone(SITE.tz).date()
-    res = {"devices": 0, "due30": 0, "due14": 0, "dead": 0, "pushed": 0, "note": "", "error": False}
+    res = {"devices": 0, "due30": 0, "due14": 0, "dead": 0, "offline": 0, "pushed": 0, "note": "", "error": False}
     devs = battery_devices(cfg)
     if not devs:
         res["note"] = "Elemek: nincs elemes eszköz a konfigban."
@@ -321,27 +331,34 @@ def run_battery(sb: SupabaseRest, now: datetime | None = None, environ=None, sen
         row["updated_at"] = stamp
     try:
         if upserts:
-            sb.upsert("battery_status", upserts, on_conflict="pink")
+            try:
+                sb.upsert("battery_status", upserts, on_conflict="pink")
+            except SupabaseError as e:
+                if e.code != "23514" or not any(r["level"] == "offline" for r in upserts):
+                    raise
+                # régi tábla, még nem ismeri az 'offline' szintet: addig 'unknown'-ként írjuk
+                sb.upsert("battery_status", [dict(r, level="unknown") if r["level"] == "offline" else r
+                                             for r in upserts], on_conflict="pink")
     except SupabaseError as e:
         res["note"], res["error"] = f"Elemek: HIBA ({e}).", True
         return res
     res["devices"] = len(upserts)
-    for lvl in ("due30", "due14", "dead"):
+    for lvl in ("due30", "due14", "dead", "offline"):
         res[lvl] = sum(1 for r in upserts if r["level"] == lvl)
     res["note"] = (f"Elemek: {res['devices']} eszköz, 30 napon belül {res['due30']}, 14 napon belül "
-                   f"{res['due14']}, lemerült {res['dead']}; push: {res['pushed']}.")
+                   f"{res['due14']}, lemerült {res['dead']}, nem jelentkezik {res['offline']}; push: {res['pushed']}.")
     return res
 
 
 def digest_lines(rows: list[dict], today: date) -> list[str]:
     """Az esti e-mail ELEMCSERE doboza: csak a 30 napon belül esedékesek, a legsürgősebb elöl."""
-    order = {"dead": 0, "due14": 1, "due30": 2}
+    order = {"dead": 0, "offline": 1, "due14": 2, "due30": 3}
     hot = sorted((r for r in rows or [] if r.get("level") in order),
                  key=lambda r: (order[r["level"]], r.get("eta_lo") if r.get("eta_lo") is not None else 0))
     out = []
     for r in hot:
         fc = {"level": r["level"], "eta_lo": r.get("eta_lo"), "eta_hi": r.get("eta_hi")}
-        mark = "!!" if r["level"] in ("dead", "due14") else " ."
+        mark = "!!" if r["level"] in ("dead", "offline", "due14") else " ."
         out.append(f"{mark} {r.get('label') or r['pink']}: {eta_text(fc, today)}")
     return out
 

@@ -1,0 +1,43 @@
+name: Supabase séma futtatása
+
+# Kézzel indítható. A supabase/ alatti SQL-fájlt (alapból a teljes, újrafuttatható setup_all.sql-t)
+# lefuttatja az F27 és/vagy az O2B Supabase-projektjében a Management API-n át, utána megnézi a
+# táblák és a tulajdonosok számát. Így az SQL Editorba nem kell kézzel másolni semmit.
+# Kell hozzá: SUPABASE_ACCESS_TOKEN secret (docs/supabase-setup.md, "Séma futtatása Actionsből").
+# A log publikus: csak OK / HIBA és darabszám.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Melyik projekt"
+        type: choice
+        options: [mindketto, f27, o2b]
+        default: mindketto
+      sql_file:
+        description: "SQL-fájl a repóban (csak supabase/ alatt)"
+        default: supabase/setup_all.sql
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Séma futtatása
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+          TARGET: ${{ inputs.target }}
+          SQL_FILE: ${{ inputs.sql_file }}
+        run: python -m f27.migrate | tee -a "$GITHUB_STEP_SUMMARY"; exit ${PIPESTATUS[0]}

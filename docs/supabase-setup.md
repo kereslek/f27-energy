@@ -170,3 +170,23 @@ A mérési adatokat csak a GitHub Actions adatgyűjtő írja a secret kulccsal.
 Ingyenes keret: 500 MB adatbázis, kb. évi 100-150 MB méréssel számolunk. Az ingyenes projekt
 egy hét tétlenség után elalszik; a rendszeresen író adatgyűjtő ébren tartja (amíg az nem fut,
 a Supabase felületén egy kattintással felébreszthető).
+
+## Séma futtatása Actionsből (SQL Editor nélkül)
+
+2026.11.14-től az SQL-t nem kell kézzel bemásolni: az **Actions > "Supabase séma futtatása"**
+workflow a Supabase Management API-n át futtatja a `supabase/setup_all.sql`-t (vagy bármely más
+`supabase/` alatti SQL-fájlt) az F27 és/vagy az O2B projektben, utána megnézi a táblák és a
+tulajdonosok számát. A setup_all újrafuttatható, adat nem vész el.
+
+Egyszeri beállítás (a tulaj):
+
+1. supabase.com > jobb felső sarok, a profilképed > **Account preferences** > **Access Tokens**
+   (közvetlenül: supabase.com/dashboard/account/tokens) > **Generate new token**.
+   Név: `f27-energy GitHub Actions`, lejárat: amit szeretnél (lejárat után újat kell csinálni).
+2. A kapott `sbp_...` kezdetű kulcsot másold ki (csak egyszer látszik).
+3. GitHub: a repó > Settings > Secrets and variables > Actions > **New repository secret**,
+   név: `SUPABASE_ACCESS_TOKEN`, érték: a kulcs. (Secret legyen, ne Variable.)
+
+Ez a kulcs a Supabase-fiók minden projektjéhez hozzáfér: csak GitHub Secretsben él, soha nem a
+chatben vagy a kódban. Visszavonni ugyanott lehet (Access Tokens > Revoke).
+Futtatás: Actions > Supabase séma futtatása > Run workflow (projekt: mindketto / f27 / o2b).

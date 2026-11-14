@@ -126,6 +126,7 @@ svg text{font-family:var(--f-body)}
   <div class="foot" id="foot">Első változat: a fotóhű, bútorozott térkép ezután jön.</div>
 </div>
 <script src="../js/sun.js"></script>
+<script src="../js/battery.js"></script>
 <script src="../vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script>
@@ -369,11 +370,12 @@ svg text{font-family:var(--f-body)}
     var w = st.devs.filter(function (d) { return (d.role === 'plug' || d.role === 'breaker') && !(x1 && d.pink === 'C1'); }).reduce(function (a, d) { var r = st.latest[d.pink]; var x = r && r.online !== false ? watts(r.status) : null; return a + (x || 0); }, 0);
     chip('c-pow', fmt(w, 0) + ' W', x1 ? 'konnektorok + fenti fürdőkör' : 'mért konnektorok');
     chip('c-mot', st.motion ? ago(st.motion) : '--', st.motion ? 'lépcső teteje' : 'még nem volt');
-    var due = (st.bat || []).filter(function (r) { return r.level === 'due30' || r.level === 'due14' || r.level === 'dead'; });
+    var due = window.F27Battery ? window.F27Battery.due(st.bat) : [];
     if (due.length) {
-      due.sort(function (a, b) { return ({ dead: 0, due14: 1, due30: 2 })[a.level] - ({ dead: 0, due14: 1, due30: 2 })[b.level]; });
       var r0 = due[0], hot = r0.level !== 'due30';
-      chip('c-bat', r0.label || r0.pink, (r0.level === 'dead' ? 'lemerült, cseréld most' : r0.eta_lo <= 0 ? 'két héten belül' : 'kb. ' + r0.eta_lo + '-' + r0.eta_hi + ' nap') + (due.length > 1 ? ' · +' + (due.length - 1) : ''), hot ? 'hot' : 'warn');
+      chip('c-bat', r0.label || r0.pink, window.F27Battery.when(r0) + (due.length > 1 ? ' · +' + (due.length - 1) : ''), hot ? 'hot' : 'warn');
+      document.getElementById('c-bat').title = 'Elemcsere: ' + due.map(function (r) { return (r.label || r.pink) + ': ' + window.F27Battery.when(r) + (r.basis ? ' [' + r.basis + ']' : ''); }).join('; ')
+        + '. A dashboard számolja a merülés üteméből és az elem típusából (hőmérő: 2 × AAA, mozgásérzékelő: CR2032).';
       document.querySelector('#c-bat .ck').textContent = 'ELEMCSERE' + (due.length > 1 ? ' · ' + due.length : '');
     } else document.getElementById('c-bat').hidden = true;
   }
@@ -393,7 +395,9 @@ svg text{font-family:var(--f-body)}
     });
     var off = st.devs.filter(function (d) { return d.role === 'thermo' && st.latest[d.pink] && st.latest[d.pink].online === false; });
     if (off.length) tips.push(off.length + ' hőmérő offline (' + off.map(function (d) { return ROOM_NAMES[d.room]; }).join(', ') + '): valószínűleg elem kell bele.');
-    (st.bat || []).forEach(function (b) { if (b.level === 'due14' || b.level === 'dead') tips.push('Elemcsere: <b>' + (b.label || b.pink) + '</b>' + (b.level === 'dead' ? ', most.' : ', két héten belül.')); });
+    (st.bat || []).forEach(function (b) {
+      if (b.level === 'due14' || b.level === 'dead') tips.push('Elemcsere: <b>' + (b.label || b.pink) + '</b>' + (b.level === 'dead' ? ', most.' : ', két héten belül.'));
+    });
     var html = tips.length ? 'Miaú! Ezt láttam:<ul>' + tips.slice(0, 5).map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' : 'Minden rendben, dorombolok. A szobák a cél körül vannak.';
     document.getElementById('say').innerHTML = html + (st.live ? '' : '<br><small><i>Demó: belépés után a valódi adatokból szólok.</i></small>');
   }
@@ -420,7 +424,8 @@ svg text{font-family:var(--f-body)}
         st.devs = r[0].data.map(function (d) { return Object.assign({}, known[d.pink] || {}, d, { room: d.room || (known[d.pink] || {}).room }); });
       }
       st.latest = {}; (r[1].data || []).forEach(function (x) { st.latest[x.pink] = x; });
-      st.bat = r[2].error ? [] : (r[2].data || []);
+      st.batTable = r[2].error ? [] : (r[2].data || []);
+      batCalc();
       var past = (r[3].data || []).filter(function (x) { return Date.parse(x.ts) <= Date.now(); });
       st.wx = r[3].error || !past.length ? null : past[0];
       var mv = (r[4].data || []).filter(function (x) { return x.status && x.status.pir === 'pir'; });
@@ -428,12 +433,25 @@ svg text{font-family:var(--f-body)}
       st.live = true; render();
     });
   }
+  // Elemcsere: a dashboard maga becsli (web/js/battery.js) az előzményből és az élő állapotból;
+  // a battery_status táblával (ha megvan) eszközönként a sürgősebb becslés nyer. Előzmény 3 óránként.
+  var batHist = null, batHistAt = 0;
+  function batCalc() {
+    var B = window.F27Battery;
+    if (!B) { st.bat = st.batTable || []; return; }
+    st.bat = B.merge(st.batTable || [], B.build(st.devs, st.latest, batHist || [], Date.now()));
+    if (sb && st.user && Date.now() - batHistAt > 3 * 3600e3) {
+      batHistAt = Date.now();
+      var pinks = st.devs.filter(function (d) { return B.CHEM_BY_ROLE[d.role]; }).map(function (d) { return d.pink; });
+      B.fetchHistory(sb, pinks, 30).then(function (h) { batHist = h; if (!st.user) return; st.bat = B.merge(st.batTable || [], B.build(st.devs, st.latest, h, Date.now())); render(); });
+    }
+  }
   function setUser(u) {
     st.user = u;
     document.getElementById('who').textContent = u ? 'Belépve: ' + (u.email || '') : 'Nem vagy belépve';
     document.getElementById('b-login').textContent = u ? 'Kilépés' : 'Belépés';
     document.getElementById('logincard').hidden = true;
-    if (u) load(); else { st.live = false; st.devs = DEFAULT_DEVS; demo(); render(); }
+    if (u) load(); else { batHist = null; batHistAt = 0; st.batTable = []; st.live = false; st.devs = DEFAULT_DEVS; demo(); render(); }
   }
   if (cfg.supabaseUrl && cfg.supabaseKey && window.supabase && window.supabase.createClient) {
     try { sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'o2b-auth' } }); } catch (e) { sb = null; }

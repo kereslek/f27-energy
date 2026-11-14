@@ -876,6 +876,8 @@
     if (v == null) return '-';
     return typeof v === 'object' ? JSON.stringify(v) : String(v);
   }
+  // az elemes eszközök (hőmérők, nyitásérzékelők) a katalógusból, az elemcsere-becsléshez
+  function batPinks() { return Object.keys(DEVINFO).filter(function (k) { return DEVINFO[k].kind === 'thermo' || DEVINFO[k].kind === 'contact'; }); }
   function batteryOf(st) {
     var codes = ['battery_percentage', 'va_battery', 'battery_value'];
     for (var i = 0; i < codes.length; i++) if (typeof st[codes[i]] === 'number') return { pct: Math.max(0, Math.min(100, Math.round(st[codes[i]]))), label: null };
@@ -1725,35 +1727,56 @@
       }, fail);
     }
 
-    // Elemcsere-előrejelzés (008_battery.sql, f27/battery.py): az adatgyűjtő számolja, itt csak a lista.
+    // Elemcsere-előrejelzés: a dashboard maga számolja (web/js/battery.js) a device_status előzményből
+    // és az élő állapotból, így a battery_status tábla (008_battery.sql) nélkül is működik; ha a tábla
+    // megvan, eszközönként a sürgősebb becslés nyer. Az előzményt legfeljebb 3 óránként kéri le újra.
     loadBattery() {
-      var self = this;
-      if (!this.sb || !this.state.user) return;
-      this.sb.from('battery_status').select('pink,label,level,eta_lo,eta_hi,value,basis').then(function (res) {
-        self.setState({ bat: res.error ? { err: true, rows: [] } : { rows: res.data || [] } });
-      }, function () { self.setState({ bat: { err: true, rows: [] } }); });
+      var self = this, sb = this.sb;
+      if (!sb || !this.state.user) return;
+      var fresh = this._batHist && Date.now() - this._batHistAt < 3 * 3600e3;
+      var table = sb.from('battery_status').select('pink,label,level,eta_lo,eta_hi,value,basis')
+        .then(function (res) { return res.error ? null : (res.data || []); }, function () { return null; });
+      var hist = fresh || !window.F27Battery ? Promise.resolve(this._batHist || []) : window.F27Battery.fetchHistory(sb, batPinks(), 30);
+      Promise.all([table, hist]).then(function (r) {
+        if (!fresh) { self._batHist = r[1]; self._batHistAt = Date.now(); }
+        self.setState({ bat: { rows: r[0] || [], err: r[0] == null, hist: r[1] } });
+      });
     }
 
-    // ELEM csempe: csak ha valamelyik elem 30 napon belül esedékes (a tulaj kérése, 2026.11.14).
+    // a becslés: a tábla és a böngésző számítása összefésülve (eszközönként a sürgősebb)
+    batRows() {
+      var b = this.state.bat, live = this.state.live;
+      if (!b) return [];
+      if (!window.F27Battery) return b.rows || [];
+      var day = Math.floor(Date.now() / 36e5);
+      if (this._batMemo && this._batMemo.b === b && this._batMemo.live === live && this._batMemo.day === day) return this._batMemo.rows;
+      var latest = {};
+      Object.keys(live || {}).forEach(function (k) { if (k !== '__any') latest[k] = live[k]; });
+      var devs = batPinks().map(function (k) { return { pink: k, role: DEVINFO[k].kind, label: DEVINFO[k].name }; });
+      var rows = window.F27Battery.merge(b.rows, window.F27Battery.build(devs, latest, b.hist, Date.now()));
+      this._batMemo = { b: b, live: live, day: day, rows: rows };
+      return rows;
+    }
+
+    // ELEMCSERE csempe: csak ha valamelyik elem 30 napon belül esedékes vagy nem jelentkezik (a tulaj kérése, 2026.11.14).
     batVals() {
-      var b = this.state.bat, order = { dead: 0, due14: 1, due30: 2 };
-      var rows = ((b && b.rows) || []).filter(function (r) { return order[r.level] != null; });
+      var B = window.F27Battery, order = { dead: 0, offline: 1, due14: 2, due30: 3 };
+      var rows = this.batRows().filter(function (r) { return order[r.level] != null; });
       if (!rows.length) return { show: false };
       rows.sort(function (x, y) { return order[x.level] - order[y.level] || (x.eta_lo || 0) - (y.eta_lo || 0); });
-      var day = function (n) { var d = new Date(Date.now() + n * 864e5); return (d.getMonth() + 1 + '').padStart(2, '0') + '.' + (d.getDate() + '').padStart(2, '0') + '.'; };
       var when = function (r) {
-        if (r.level === 'dead') return 'lemerült, cseréld most';
-        if (r.eta_lo == null) return 'hamarosan';
-        return r.eta_lo <= 0 ? 'bármikor, legkésőbb ' + day(r.eta_hi) : 'kb. ' + r.eta_lo + '-' + r.eta_hi + ' nap (' + day(r.eta_lo) + '-' + day(r.eta_hi) + ')';
+        if (B) return B.when(r);
+        return r.level === 'dead' ? 'lemerült, cseréld most' : r.eta_lo == null ? 'hamarosan' : 'kb. ' + r.eta_lo + '-' + r.eta_hi + ' nap';
       };
-      var r0 = rows[0], hot = r0.level === 'dead' || r0.level === 'due14';
+      var r0 = rows[0], hot = r0.level !== 'due30';
       return {
         show: true,
         cls: 'chip batchip ' + (hot ? 'hot' : 'warn'),
         ck: 'ELEMCSERE' + (rows.length > 1 ? ' · ' + rows.length : ''),
         cv: r0.label || r0.pink,
         cs: when(r0) + (rows.length > 1 ? ' · +' + (rows.length - 1) + ' további' : ''),
-        tip: 'Elemcsere 30 napon belül: ' + rows.map(function (r) { return (r.label || r.pink) + ': ' + when(r); }).join('; ') + '. Becslés a merülés üteméből (f27/battery.py).'
+        tip: 'Elemcsere: ' + rows.map(function (r) { return (r.label || r.pink) + ': ' + when(r) + (r.basis ? ' [' + r.basis + ']' : ''); }).join('; ')
+          + '. A becslést a dashboard számolja a merülés üteméből és az elem típusából (hőmérő: 2 × AAA, ajtó- és ablakérzékelő: CR2032).'
       };
     }
 
