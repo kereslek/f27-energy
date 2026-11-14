@@ -179,4 +179,7 @@ A tulajnak egyszer futtatnia kell: `supabase/migrations/008_battery.sql` (SQL Ed
   "magas"-ra vált. Az élettartamot megjegyzi, a következő becslés ebből tanul.
 - **Figyelmeztetés:** 30 napon belül ELEMCSERE csempe a térkép felső sávjában (sárga) és
   ELEMCSERE doboz az esti e-mailben; 14 napon belül piros, és eszközönként EGY push;
-  lemerült elemnél egy utolsó push. Push csak az utolsó két hétben, ahogy a tulaj kérte.
+  lemerült elemnél ritkuló push: az első 10 napon naponta egy (legfeljebb 10), utána hetente
+  egy, az első push után 40 napig; aztán nincs több push (a tulaj kérése, 2026.11.14). Az esti
+  e-mail és a térkép csempéje a cseréig minden nap szól. Ahol még nincs saját esti levél (O2B),
+  ott 20:00 után egy rövid ELEMCSERE-levél megy, csak ha van esedékes elem.

@@ -215,11 +215,16 @@ def plan(devs: dict, latest: dict, rows: dict, today: date) -> tuple[list[dict],
         row = update(rows.get(pink) or {"pink": pink}, r[0], r[1], today)
         fc = forecast(row, info["chem"], cur.get("online"), today)
         notified = dict(row.get("notified") or {})
-        for lvl in ("due14", "dead"):
-            if fc["level"] == lvl and lvl not in notified:
-                pushes.append({"pink": pink, "label": info["label"], "level": lvl, "text": eta_text(fc, today),
-                               "chem": info["chem"], "count": info["count"]})
-                notified[lvl] = today.isoformat()
+        if fc["level"] == "due14" and "due14" not in notified:          # 14 napon belül: egyetlen push
+            pushes.append({"pink": pink, "label": info["label"], "level": "due14", "text": eta_text(fc, today),
+                           "chem": info["chem"], "count": info["count"]})
+            notified["due14"] = today.isoformat()
+        if fc["level"] == "dead" and dead_push_due(notified, today):    # lemerült: ritkuló push, aztán csend
+            pushes.append({"pink": pink, "label": info["label"], "level": "dead", "text": eta_text(fc, today),
+                           "chem": info["chem"], "count": info["count"], "n": int(notified.get("dead_n") or 0) + 1})
+            notified["dead_n"] = int(notified.get("dead_n") or 0) + 1
+            notified.setdefault("dead", today.isoformat())                # az első lemerült push napja
+            notified["dead_last"] = today.isoformat()
         row.update({"pink": pink, "label": info["label"], "chem": info["chem"], "notified": notified,
                     "level": fc["level"], "eta_lo": fc["eta_lo"], "eta_hi": fc["eta_hi"], "basis": fc["basis"],
                     "value": str(fc["value"])})
@@ -227,11 +232,35 @@ def plan(devs: dict, latest: dict, rows: dict, today: date) -> tuple[list[dict],
     return upserts, pushes
 
 
+DEAD_DAILY = 10          # lemerült elem: az első 10 napon naponta egy push (legfeljebb 10)
+DEAD_WEEKLY_UNTIL = 40   # utána hetente egy, az első push után 40 napig; aztán nincs több push
+                          # (a tulaj kérése, 2026.11.14: ennyi után "értette, de nem érdekli";
+                          # az esti e-mail és a dashboard továbbra is mutatja, amíg ki nem cseréli)
+
+
+def dead_push_due(notified: dict, today: date) -> bool:
+    """Kell-e ma push a lemerült elemről. A számláló az elemcserénél nullázódik (update)."""
+    n = int(notified.get("dead_n") or 0)
+    first = notified.get("dead")
+    last = notified.get("dead_last") or first
+    if n == 0 or not first:
+        return True
+    since_first = (today - _d(first)).days
+    since_last = (today - _d(last)).days
+    if since_last < 1:
+        return False
+    if n < DEAD_DAILY and since_first < DEAD_DAILY:
+        return True
+    return since_first < DEAD_WEEKLY_UNTIL and since_last >= 7
+
+
 def push_text(p: dict) -> tuple[str, str]:
     elem = f"{p['count']} × {p['chem']}" if p.get("count", 1) > 1 else p["chem"]
     if p["level"] == "dead":
+        n = p.get("n") or 1
+        tail = "" if n < DEAD_DAILY else " (hetente emlékeztetek még egy ideig, utána csak az esti e-mail és a térkép szól)"
         return (f"{SITE.tag}: elem lemerült: {p['label']}",
-                f"{SITE.tag}: lemerült az elem: {p['label']}. Cseréld most ({elem}).")
+                f"{SITE.tag}: lemerült az elem: {p['label']}. Cseréld most ({elem}).{tail}")
     return (f"{SITE.tag}: elemcsere 2 héten belül: {p['label']}",
             f"{SITE.tag}: elemcsere esedékes: {p['label']}, {p['text']} ({elem}).")
 
@@ -315,3 +344,53 @@ def digest_lines(rows: list[dict], today: date) -> list[str]:
         mark = "!!" if r["level"] in ("dead", "due14") else " ."
         out.append(f"{mark} {r.get('label') or r['pink']}: {eta_text(fc, today)}")
     return out
+
+
+MAIL_HOUR = 20           # a telephely helyi ideje szerint, mint az F27 esti levele
+
+
+def battery_email(sb: SupabaseRest, now: datetime | None = None, environ=None, sender=None) -> dict:
+    """Ideiglenes esti elemcsere-levél azoknak a telephelyeknek, amelyeknek még nincs saját esti
+    levele (O2B). Naponta legfeljebb egy, 20:00 után, és csak ha van 30 napon belül esedékes vagy
+    lemerült elem: így a lemerült elemről az e-mail folyamatosan szól, akkor is, amikor a push
+    már elhallgatott. Visszaad: {'sent', 'note', 'error'}; a note nem tartalmaz értéket."""
+    from .alerts import email_ready, send_email          # körkörös import elkerülése
+    now = now or datetime.now(timezone.utc)
+    environ = os.environ if environ is None else environ
+    loc = now.astimezone(SITE.tz)
+    res = {"sent": False, "note": "Elem-levél: nem kellett.", "error": False}
+    if loc.hour < MAIL_HOUR or not email_ready(environ):
+        return res
+    key = f"battery-mail:{loc.date().isoformat()}"
+    try:
+        if sb.select("alert_log", "id", rule_key=f"eq.{key}", limit="1"):
+            return res
+        rows = sb.select("battery_status", "pink,label,level,eta_lo,eta_hi")
+    except SupabaseError as e:
+        if e.code in MISSING_TABLE:
+            return res
+        res["note"], res["error"] = f"Elem-levél: HIBA ({e}).", True
+        return res
+    lines = digest_lines(rows, loc.date())
+    if not lines:
+        return res
+    from .report_stats import box, to_html
+    dead = sum(1 for r in rows if r.get("level") == "dead")
+    subject = f"▓▒░ {SITE.tag}·NRG ░▒▓ {loc:%m.%d} ⚠ ELEMCSERE · {len(lines)}"
+    body = ([f"{SITE.brand} · elemcsere ({loc:%Y.%m.%d})", ""] + box("ELEMCSERE", lines + ["!! = 2 héten belül vagy lemerült"])
+            + ["", ("A lemerült elemről a push egy idő után elhallgat, ez a levél viszont minden este szól, "
+                    "amíg ki nem cseréled." if dead else "Ez a levél csak akkor jön, ha van esedékes elem."),
+               "", f"Térkép: {SITE.map_url}"])
+    text = "\n".join(body) + "\n"
+    try:
+        (sender or send_email)({"subject": subject, "email_body": text, "email_html": to_html(text, SITE.map_url)}, environ)
+    except Exception as e:                                  # SMTP, hálózat: holnap újra
+        res["note"], res["error"] = f"Elem-levél: küldési hiba ({type(e).__name__}).", True
+        return res
+    try:
+        sb.insert("alert_log", [{"rule_key": key, "kind": "digest", "text": subject[:1000], "channels": "email",
+                                 "ts": now.isoformat()}])
+    except SupabaseError:
+        pass
+    res.update(sent=True, note="Elem-levél: elküldve.")
+    return res

@@ -38,7 +38,7 @@ from .site import SITE
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError, fetch_logs
 from .alerts import run_alerts
-from .battery import run_battery
+from .battery import battery_email, run_battery
 from .bookings import collect_bookings
 from .digest import run_digest
 from .weather import collect_weather
@@ -607,6 +607,12 @@ def main() -> int:
     if bt["error"]:
         print(f"::warning::{bt['note']}")
     text += "\n" + bt["note"]
+    if SITE.id != "f27":                    # saját esti levél még nincs: ideiglenes elemcsere-levél
+        try:
+            bm = battery_email(sb)
+        except Exception as e:
+            bm = {"error": True, "note": f"Elem-levél: HIBA ({type(e).__name__})."}
+        text += "\n" + bm["note"]
     try:
         # Az esti levél és a riasztási szabályok egyelőre az F27-re szabottak (kályha, foglalások);
         # a többi telephely levele külön készül (O2B: Pamutka), addig nem küldünk félrevezetőt.

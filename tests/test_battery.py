@@ -102,10 +102,39 @@ class PlanTest(unittest.TestCase):
         ups, pushes = B.plan(self.DEVS, latest, {}, D0)
         self.assertEqual(sorted((p["pink"], p["level"]) for p in pushes), [("8", "dead"), ("T3", "due14")])
         rows = {r["pink"]: r for r in ups}
-        ups2, pushes2 = B.plan(self.DEVS, latest, rows, D0 + timedelta(days=1))
-        self.assertEqual(pushes2, [])                  # másnap már nem push-ol újra
+        ups2, pushes2 = B.plan(self.DEVS, latest, rows, D0)
+        self.assertEqual(pushes2, [])                  # ugyanazon a napon nem push-ol újra
+        ups3, pushes3 = B.plan(self.DEVS, latest, {r["pink"]: r for r in ups2}, D0 + timedelta(days=1))
+        self.assertEqual([(p["pink"], p["level"]) for p in pushes3], [("8", "dead")])   # a 14 napos nem ismétlődik
         title, text = B.push_text(pushes[0])
         self.assertIn("Kis szoba ablak", text if pushes[0]["pink"] == "8" else B.push_text(pushes[1])[1])
+
+    def test_dead_push_schedule(self):
+        """Lemerült elem: 10 napig naponta (max 10), utána hetente, az első után 40 napig; aztán csend."""
+        latest = {"8": {"online": True, "status": {"battery_percentage": 1}}}
+        rows, days = {}, []
+        for d in range(0, 60):
+            ups, pushes = B.plan({"8": self.DEVS["8"]}, latest, rows, D0 + timedelta(days=d))
+            rows = {r["pink"]: r for r in ups}
+            if pushes:
+                days.append(d)
+        self.assertEqual(days[:10], list(range(10)))
+        self.assertEqual(days[10:], [16, 23, 30, 37])
+        self.assertEqual(len(days), 14)
+
+    def test_dead_counter_resets_on_replacement(self):
+        latest = {"8": {"online": True, "status": {"battery_percentage": 1}}}
+        rows = {}
+        for d in range(0, 45):
+            ups, _ = B.plan({"8": self.DEVS["8"]}, latest, rows, D0 + timedelta(days=d))
+            rows = {r["pink"]: r for r in ups}
+        new = {"8": {"online": True, "status": {"battery_percentage": 100}}}
+        ups, pushes = B.plan({"8": self.DEVS["8"]}, new, rows, D0 + timedelta(days=46))
+        self.assertEqual(pushes, [])
+        self.assertEqual(ups[0]["notified"], {})       # csere: tiszta lap
+        dead = {"8": {"online": True, "status": {"battery_percentage": 2}}}
+        ups, pushes = B.plan({"8": self.DEVS["8"]}, dead, {"8": ups[0]}, D0 + timedelta(days=300))
+        self.assertEqual([p["level"] for p in pushes], ["dead"])
 
     def test_digest_only_due_within_30(self):
         rows = [{"pink": "1", "label": "A", "level": "ok", "eta_lo": 90, "eta_hi": 120},
@@ -151,6 +180,40 @@ class RunTest(unittest.TestCase):
         res = B.run_battery(SB([]), environ={}, cfg=cfg)
         self.assertFalse(res["error"])
         self.assertIn("008_battery.sql", res["note"])
+
+
+class BatteryEmailTest(unittest.TestCase):
+    class SB:
+        def __init__(self, rows):
+            self.rows, self.log = rows, []
+
+        def select(self, table, cols, **kw):
+            if table == "alert_log":
+                return [x for x in self.log if x["rule_key"] == kw.get("rule_key", "")[3:]]
+            return self.rows
+
+        def insert(self, table, rows):
+            self.log += rows
+
+    ENV = {"SMTP_HOST": "smtp.pelda.hu", "ALERT_EMAIL_TO": "a@pelda.hu"}
+
+    def test_once_a_day_after_20(self):
+        sb, sent = self.SB([{"pink": "T3", "label": "Hőmérő, hálószoba", "level": "dead", "eta_lo": 0, "eta_hi": 0}]), []
+        snd = lambda m, e: sent.append(m)
+        B.battery_email(sb, datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc), self.ENV, snd)    # 19:00 Budapest
+        self.assertEqual(sent, [])
+        B.battery_email(sb, datetime(2026, 11, 14, 19, 5, tzinfo=timezone.utc), self.ENV, snd)    # 20:05
+        B.battery_email(sb, datetime(2026, 11, 14, 21, 0, tzinfo=timezone.utc), self.ENV, snd)    # ugyanaznap
+        self.assertEqual(len(sent), 1)
+        self.assertIn("ELEMCSERE", sent[0]["subject"])
+        self.assertIn("lemerült", sent[0]["email_body"])
+        B.battery_email(sb, datetime(2026, 11, 15, 19, 5, tzinfo=timezone.utc), self.ENV, snd)    # másnap is
+        self.assertEqual(len(sent), 2)
+
+    def test_no_mail_when_nothing_due(self):
+        sb, sent = self.SB([{"pink": "T1", "label": "x", "level": "ok", "eta_lo": 90, "eta_hi": 120}]), []
+        B.battery_email(sb, datetime(2026, 11, 14, 19, 5, tzinfo=timezone.utc), self.ENV, lambda m, e: sent.append(m))
+        self.assertEqual(sent, [])
 
 
 if __name__ == "__main__":
