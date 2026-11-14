@@ -29,7 +29,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, battery_of, context_lines,
                      email_ready, fmt_num, last_report, merge_config, parse_ts, send_email, snapshot,
                      fmt_w, stove_state)
-from .report_stats import banner, build_stats, subject_line, to_html
+from .report_stats import banner, build_stats, footer, notes, stripe, subject_line, to_html
 from .supa import SupabaseError, SupabaseRest
 
 MONTHS = ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec.")
@@ -86,7 +86,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     # 1. Ma történt
     logs = _safe(lambda: sb.select("alert_log", "ts,rule_key,kind,text,channels", ts=f"gte.{start.isoformat()}",
                                    order="ts.asc", limit="200"), None)
-    out.append("MA TÖRTÉNT")
+    out += stripe("RELEASE NOTES") + [""] + notes("Ma történt")
     happened = [r for r in logs or [] if r.get("kind") in KIND]
     if logs is None:
         out.append("- nincs adat (alert_log)")
@@ -153,10 +153,10 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
         if (not covers(today) and not arrive_tomorrow and x7 and x7.get("online") is not False
                 and x7["status"].get("switch") is True):
             todo.append("Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).")
-    out += ["", "TEENDŐK"] + ([f"- {t}" for t in todo] if todo else ["- Nincs teendő."])
+    out += [""] + notes("Teendők") + ([f"{i}. {t}" for i, t in enumerate(todo, 1)] if todo else ["- Nincs teendő."])
 
     # 3. Holnap
-    out += ["", f"HOLNAP ({day_label(tomorrow)})"]
+    out += [""] + notes(f"Holnap ({day_label(tomorrow)})")
     if books is None:
         out.append("- nincs foglalási adat")
     else:
@@ -171,7 +171,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
         out += lines
 
     # 4. Mai fogyasztás
-    out += ["", "MAI FOGYASZTÁS (eddig)"]
+    out += [""] + notes("Mai fogyasztás (eddig)")
     energy = _safe(lambda: sb.select("energy_daily", "pink,kwh", day=f"eq.{today.isoformat()}"), None)
     if energy is None:
         out.append("- nincs adat (energy_daily)")
@@ -194,15 +194,15 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
 
     # 4b. Statisztika: ASCII-táblázat, órás oszlopsor, összevetések (f27.report_stats)
     stats, head = build_stats(sb, now, _safe)
-    out += ["", "STATISZTIKA (a Tuya-naplóból)"] + stats
+    out += [""] + stripe("STATISZTIKA") + ["(a Tuya-naplóból)"] + stats
 
     # 5. Érzékelők most + link
-    out += ["", "ÉRZÉKELŐK MOST"] + [f"- {x}" for x in context_lines(snap, now)]
-    out += ["", f"Térkép: {MAP_URL}", "",
+    out += [""] + stripe("ÉRZÉKELŐK MOST") + [f"- {x}" for x in context_lines(snap, now)]
+    out += footer() + ["", f"Térkép: {MAP_URL}", "",
             f"Ezt az F27 adatgyűjtő küldte {loc.strftime('%H:%M')}-kor (csak jelez, semmit nem kapcsol). "
             "Naponta legfeljebb egy ilyen levél jön; az azonnali riasztások pushon (ntfy) mennek. "
             "Beállítás: a térkép Riasztások panelje."]
-    top = banner(now, head["kwh"], head["ft"], head["guest"]) + ["", f">> DASHBOARD: {MAP_URL}", ""]
+    top = banner(now, head["kwh"], head["ft"], head["guest"], head.get("kwh_y")) + ["", f">> DASHBOARD: {MAP_URL}", ""]
     text = "\n".join(top + out) + "\n"
     return {"subject": subject_line(now, head), "email_body": text,
             "email_html": to_html(text, MAP_URL)}

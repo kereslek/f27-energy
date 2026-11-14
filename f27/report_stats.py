@@ -32,12 +32,14 @@ DAYS = ("H", "K", "Sze", "Cs", "P", "Szo", "V")
 METERS = Path(__file__).resolve().parent.parent / "config" / "meter_readings.json"
 
 LOGO = [
-    "  ▄█████▄ ▄█████▄ ▄██████▄",
-    "  ██      ▀▀   ██ ▀▀   ▄█▀",
-    "  █████▌    ▄██▀     ▄█▀  ",
-    "  ██     ▄██▀       ██▌   ",
-    "  ██     ███████▌   ██    ",
+    "  ░▒▓███████▓  ▄███████▄  ▓█████████▓▒░",
+    "  ░▒▓██▀▀▀▀▀▀  ▀▀▀▀▀▀▀██  ▀▀▀▀▀▀▄██▀",
+    "  ░▒▓██████▓     ▄▄▄██▀▀        ▄██▀",
+    "  ░▒▓██▀▀▀▀▀▀  ▄██▀▀▀         ▄██▀",
+    "  ░▒▓██        █████████▓    ███",
+    "     ▀▀        ▀▀▀▀▀▀▀▀▀▀    ▀▀▀",
 ]
+GREETZ = ["zöld szék", "gramofon", "LUXiON", "Gree", "Lampart", "Hajdu", "Beko", "haozee", "Aubess", "TONGOU"]
 
 
 def _f(v: float | None, dec: int = 1) -> str:
@@ -55,11 +57,35 @@ def _pct(a: float | None, b: float | None) -> str:
     return ("+" if p >= 0 else "") + f"{p:.0f} %"
 
 
+def kv(label: str, value: str, w: int = 11) -> str:
+    """NFO-stílusú pontozott sor: "ma eddig ..: 14,7 kWh"."""
+    return (label + " ").ljust(w, ".") + ": " + value
+
+
+def center(text: str, w: int = W) -> str:
+    return text.center(w).rstrip()
+
+
+def stripe(title: str) -> list[str]:
+    """TAPDAT-szerű szekciófejléc: keretezett cím, mellette ░▒▓█ csík (W széles)."""
+    inner = len(title) + 2
+    bar = " ▒ ▒▒ ▓▓ ▓▓▓▓ "
+    bar = (bar + "█" * W)[:W - inner - 3]
+    return ["┌" + "─" * inner + "┐", "│ " + title + " │" + bar, "└" + "─" * inner + "┘"]
+
+
+def notes(title: str) -> list[str]:
+    """Razor-szerű alcím ~~~ aláhúzással."""
+    return [title, "~" * len(title)]
+
+
 def box(title: str, lines: list[str]) -> list[str]:
-    """Keskeny keret: ┌─[ CÍM ]───┐ ... └───┘, a sorok W-4 karakterre vágva/kitöltve."""
+    """Keskeny keret: ┌─[ CÍM ]──░▒▓┐ ... └───┘, a sorok W-4 karakterre vágva/kitöltve."""
     inner = W - 4
     top = "┌─[ " + title + " ]"
-    top += "─" * max(0, W - 1 - len(top)) + "┐"
+    fill = W - 1 - len(top)
+    top += ("─" * max(0, fill - 3) + "░▒▓")[-fill:] if fill >= 3 else "─" * max(0, fill)
+    top += "┐"
     out = [top]
     for ln in lines:
         while len(ln) > inner:                     # túl hosszú: tördelés szóhatáron
@@ -72,25 +98,64 @@ def box(title: str, lines: list[str]) -> list[str]:
     return out
 
 
-def banner(now: datetime, kwh: float | None, ft: float | None, guest: str) -> list[str]:
-    """Warez/NFO-stílusú fejléc: blokkbetűs F27, árnyékolt sáv, release-doboz, greetz."""
+def banner(now: datetime, kwh: float | None, ft: float | None, guest: str, kwh_y: float | None = None) -> list[str]:
+    """Warez/NFO-fejléc (a tulaj referenciái: TAPDAT, Razor 1911, DARCK): nagy logó, "presents"
+    sáv, dobozolt "proudly presents" fejléc kétoszlopos pontozott infóblokkal."""
     loc = now.astimezone(BUDAPEST)
-    rel = f"f27.napi.jelentes.{loc:%Y.%m.%d}"
+    days = ("H", "K", "Sze", "Cs", "P", "Szo", "V")
+    dod = "--"
+    if kwh and kwh_y and kwh_y >= 0.05:
+        p = (kwh - kwh_y) / kwh_y * 100
+        dod = ("▲" if p >= 0 else "▼") + f"{abs(p):.0f}%"
+    half = (W - 3) // 2                                     # két oszlop, köztük │
+    lak = "bent" if "bent" in guest else "üres" if guest.startswith("üres") else "--"
+    left = [" " + kv("Dátum", f"{loc:%m.%d} {days[loc.weekday()]}", 7), " " + kv("Idő", f"{loc:%H:%M}", 7),
+            " " + kv("Vendég", lak, 7)]
+    right = [" " + kv("Energia", f"{_f(kwh)} kWh", 8), " " + kv("Költség", f"~{_ft(ft)} Ft", 8), " " + kv("DoD", dod, 8)]
     lines = [
         " ▄" + "▄" * (W - 3),
         *LOGO,
-        " ░▒▓█ E N E R G Y  ·  C R E W █▓▒░",
-        " ▀" + "▀" * (W - 3),
-        " ╔" + "═" * (W - 4) + "╗",
+        " " + "▀" * (W - 2),
+        " ▓▒░ F · 2 · 7 · E · N · E · R · G · Y ░▒▓",
+        center("p r e s e n t s"),
+        "",
+        "╔" + "═" * (W - 2) + "╗",
+        "║" + "F27 ENERGY CREW proudly presents:".center(W - 2) + "║",
+        "║" + f'"Napi jelentés" {loc:%Y.%m.%d}'.center(W - 2) + "║",
+        "║" + "(p) 2026, csak olvas, semmit nem kapcsol".center(W - 2)[:W - 2] + "║",
+        "╠" + "═" * half + "╤" + "═" * (W - 3 - half) + "╣",
     ]
-    for k, v in (("ReLEASE", rel), ("TiME", f"{loc:%H:%M}  NODE F27://bp-ix"),
-                 ("STATUS", "[ONLiNE]  csak olvas"),
-                 ("ENERGiA", f"{_f(kwh)} kWh ma  ~{_ft(ft)} Ft"), ("LAKÁS", guest)):
-        lines.append(" ║ " + (k.ljust(8) + v)[:W - 6].ljust(W - 6) + " ║")
-    lines += [" ╚" + "═" * (W - 4) + "╝",
-              "  >> 01000110 00110010 00110111 << F27",
-              "  greetz: zöld szék · gramofon · LUXiON"]
+    for a, b in zip(left, right):
+        lines.append("║" + a[:half].ljust(half) + "│" + b[:W - 3 - half].ljust(W - 3 - half) + "║")
+    lines.append("╚" + "═" * half + "╧" + "═" * (W - 3 - half) + "╝")
     return lines
+
+
+def footer() -> list[str]:
+    """Záró rész: greetz középre zárva (DARCK), kis háromszög-logó (Razor), ovális logó (TAPDAT)."""
+    g, row, rows = GREETZ, "", []
+    for name in g:
+        if len(row) + len(name) + 3 > W - 4:
+            rows.append(row); row = ""
+        row = (row + " · " if row else "") + name
+    rows.append(row)
+    t = ["   /\\", "  /__\\", " /\\  /\\", "/__\\/__\\"]
+    side = ["", "F27 ENERGY", "Since 2024", ""]
+    blk = [a.ljust(9) + "  " + b for a, b in zip(t, side)]
+    pad = " " * ((W - max(len(x) for x in blk)) // 2)
+    tri = [(pad + x).rstrip() for x in blk]
+    out = ["", center("<-- F27 ENERGY CREW greetz -->"), ""] + [center(r) for r in rows] + [
+        "",
+        *tri,
+        "",
+        "  ▄▄▄" + "▀" * (W - 10) + "▄▄▄",
+        " █" + "▒ F · 2 · 7 ▒".center(W - 4) + "█",
+        "  ▀▀▀" + "▄" * (W - 10) + "▀▀▀",
+        center("estd. 2024"),
+        "",
+        center("SUPPORT THE GREEN CHAIR. SPEND LESS kWh!"),
+    ]
+    return out
 
 
 def spark(values: list[float | None], top: float | None = None) -> str:
@@ -203,12 +268,12 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
         run_h = sum(1 for v in hours if v is not None and v >= 0.3)
         peak = max([r.get("w_max") or 0 for h, r in s.items() if h >= t0] or [0])
         lines = [
-            f"ma eddig  {_f(td).rjust(6)} kWh   ~{_ft(None if td is None else td * price)} Ft",
-            f"tegnap*   {_f(yd).rjust(6)} kWh   DoD {_pct(td, yd)}",
-            f"7n átl*   {_f(a7).rjust(6)} kWh   vs  {_pct(td, a7)}",
-            f"30n átl*  {_f(a30).rjust(6)} kWh   ({len(s30)} nap)",
-            f"tegnap    {_f(yfull).rjust(6)} kWh   egész nap",
-            f"hónap     {_f(m).rjust(6)} kWh   ~{_ft(None if m is None else m * price)} Ft",
+            kv("ma eddig", f"{_f(td).rjust(5)} kWh  ~{_ft(None if td is None else td * price)} Ft", 10),
+            kv("tegnap*", f"{_f(yd).rjust(5)} kWh  DoD {_pct(td, yd)}", 10),
+            kv("7n átl*", f"{_f(a7).rjust(5)} kWh  vs {_pct(td, a7)}", 10),
+            kv("30n átl*", f"{_f(a30).rjust(5)} kWh  ({len(s30)} nap)", 10),
+            kv("tegnap", f"{_f(yfull).rjust(5)} kWh  egész nap", 10),
+            kv("hónap", f"{_f(m).rjust(5)} kWh  ~{_ft(None if m is None else m * price)} Ft", 10),
             f"0h|{spark(hours)}|23h",
             f"   {run_h} óra >0,3 kWh · csúcs {_f(float(peak) / 1000 if peak else None, 2)} kW",
         ]
