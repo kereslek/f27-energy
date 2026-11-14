@@ -1,0 +1,949 @@
+-- O2B (és bármely új telephely) teljes adatbázis-sémája egy fájlban: supabase/schema.sql + migrations/002-008.
+-- Generálva: tools/build_setup_sql.sh. Újrafuttatható (create if not exists, drop policy if exists).
+-- Az új Supabase-projekt SQL Editorában egyben futtasd (Run). Adat nem vész el.
+
+-- ===================================================================== supabase/schema.sql
+-- F27 Energy: Supabase adatbázis-séma
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható (idempotens): ami már létezik, azt nem rontja el.
+--
+-- Jogosultság röviden:
+--   * Névtelen látogató (anon) semmit nem lát és nem ír.
+--   * Bejelentkezett felhasználó csak akkor lát bármit, ha szerepel az app_users táblában.
+--   * owner: mindent lát, elrendezést ment és töröl.
+--   * cleaner / viewer: elrendezéseket és az aktuális állapotot látja, írni nem tud.
+--   * A mérési adatokat csak a GitHub Actions adatgyűjtő írja, a titkos (secret / service_role)
+--     kulccsal, ami a sorszintű szabályokat megkerüli. Ez a kulcs csak GitHub Secrets-ben él.
+
+-- ---------------------------------------------------------------------------
+-- Felhasználók és szerepkörök
+-- ---------------------------------------------------------------------------
+create table if not exists public.app_users (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  role       text not null check (role in ('owner', 'cleaner', 'viewer')),
+  created_at timestamptz not null default now()
+);
+
+-- A bejelentkezett felhasználó szerepköre (null, ha nincs a listán).
+create or replace function public.my_role()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select role from public.app_users where user_id = auth.uid()
+$$;
+
+revoke all on function public.my_role() from public, anon;
+grant execute on function public.my_role() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Mentett lakás-elrendezések (húzható bútorok és eszközök pozíciói)
+-- ---------------------------------------------------------------------------
+create table if not exists public.layouts (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null check (char_length(name) between 1 and 80),
+  data        jsonb not null,               -- { "bed": [dx, dy], "pin:8": [dx, dy], ... }
+  note        text,
+  is_default  boolean not null default false,
+  created_by  uuid default auth.uid() references auth.users (id) on delete set null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create unique index if not exists layouts_name_key on public.layouts (lower(name));
+create unique index if not exists layouts_one_default on public.layouts (is_default) where is_default;
+
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end
+$$;
+
+drop trigger if exists layouts_touch on public.layouts;
+create trigger layouts_touch before update on public.layouts
+  for each row execute function public.touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Eszközök (pink szám -> Tuya eszköz). A Tuya device ID csak az ownernek látszik.
+-- ---------------------------------------------------------------------------
+create table if not exists public.devices (
+  pink           text primary key,          -- '1'..'11', 'P', 'X5', 'X7', 'X8', 'X9', 'G'
+  role           text not null,             -- thermo, contact, breaker, switch3, ac_ir, gateway
+  room           text,
+  label          text not null,
+  tuya_device_id text unique,
+  meta           jsonb,                     -- státuszkód -> {scale, unit, type} a Tuya specifikációból
+  updated_at     timestamptz not null default now()
+);
+-- Korábbi telepítésen hiányozhat (lásd supabase/migrations/002_device_meta.sql).
+alter table public.devices add column if not exists meta jsonb;
+
+-- ---------------------------------------------------------------------------
+-- Eszközállapotok idősora. Az adatgyűjtő csak változáskor (vagy óránként) ír,
+-- így a sorok száma kezelhető marad az ingyenes 500 MB-os kereten belül.
+-- ---------------------------------------------------------------------------
+create table if not exists public.device_status (
+  id      bigint generated always as identity primary key,
+  ts      timestamptz not null default now(),
+  pink    text not null references public.devices (pink) on delete cascade,
+  online  boolean,
+  status  jsonb not null                    -- nyers Tuya status: { "va_temperature": 236, ... }
+);
+
+create index if not exists device_status_pink_ts on public.device_status (pink, ts desc);
+
+-- Legfrissebb állapot eszközönként (a térkép ezt olvassa).
+create or replace view public.device_latest
+with (security_invoker = true) as
+select distinct on (pink) pink, ts, online, status
+from public.device_status
+order by pink, ts desc;
+
+-- ---------------------------------------------------------------------------
+-- Napi energia körönként (okos kismegszakítók: X5 kályha, X7 bojler, X8 főzőlap, X9 klíma)
+-- ---------------------------------------------------------------------------
+create table if not exists public.energy_daily (
+  day   date not null,
+  pink  text not null references public.devices (pink) on delete cascade,
+  kwh   numeric(10, 3) not null check (kwh >= 0),
+  last_counter numeric(14, 4),              -- a fogyasztásszámláló utolsó látott állása (kWh)
+  primary key (day, pink)
+);
+alter table public.energy_daily add column if not exists last_counter numeric(14, 4);
+
+-- ---------------------------------------------------------------------------
+-- Sorszintű jogosultság (RLS)
+-- ---------------------------------------------------------------------------
+alter table public.app_users     enable row level security;
+alter table public.layouts       enable row level security;
+alter table public.devices       enable row level security;
+alter table public.device_status enable row level security;
+alter table public.energy_daily  enable row level security;
+
+-- app_users: mindenki a saját sorát látja, az owner mindet.
+drop policy if exists app_users_select on public.app_users;
+create policy app_users_select on public.app_users
+  for select to authenticated
+  using (user_id = (select auth.uid()) or (select public.my_role()) = 'owner');
+
+-- layouts: minden tag olvas, csak az owner ír.
+drop policy if exists layouts_select on public.layouts;
+create policy layouts_select on public.layouts
+  for select to authenticated
+  using ((select public.my_role()) is not null);
+
+drop policy if exists layouts_insert on public.layouts;
+create policy layouts_insert on public.layouts
+  for insert to authenticated
+  with check ((select public.my_role()) = 'owner');
+
+drop policy if exists layouts_update on public.layouts;
+create policy layouts_update on public.layouts
+  for update to authenticated
+  using ((select public.my_role()) = 'owner')
+  with check ((select public.my_role()) = 'owner');
+
+drop policy if exists layouts_delete on public.layouts;
+create policy layouts_delete on public.layouts
+  for delete to authenticated
+  using ((select public.my_role()) = 'owner');
+
+-- devices: csak az owner (benne van a Tuya device ID).
+drop policy if exists devices_select on public.devices;
+create policy devices_select on public.devices
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+-- device_status: minden tag olvas (a takarító is lássa a hőmérsékleteket).
+drop policy if exists device_status_select on public.device_status;
+create policy device_status_select on public.device_status
+  for select to authenticated
+  using ((select public.my_role()) is not null);
+
+-- energy_daily: csak az owner.
+drop policy if exists energy_daily_select on public.energy_daily;
+create policy energy_daily_select on public.energy_daily
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+-- Az anon szerepkör semmihez ne férjen hozzá (az RLS ezt amúgy is biztosítja).
+revoke all on public.app_users, public.layouts, public.devices, public.device_status,
+  public.energy_daily, public.device_latest from anon;
+
+-- ---------------------------------------------------------------------------
+-- Időjárás (003_weather.sql): óránként az adatgyűjtő tölti, napi összesítők
+-- ---------------------------------------------------------------------------
+--
+-- Az adatgyűjtő (GitHub Actions) óránként egyszer tölti: az elmúlt 2 nap mért (modell-
+-- elemzés) óráit és a következő kb. 1 nap előrejelzését. Egy óra sora addig frissül, amíg
+-- a lekérés pillanatában még jövőbeli (is_forecast = true); utána a mért érték marad.
+
+create table if not exists public.weather_hourly (
+  ts           timestamptz primary key,          -- az óra kezdete (UTC)
+  temp         numeric(4, 1),                    -- léghőmérséklet 2 m-en, °C
+  apparent     numeric(4, 1),                    -- hőérzet, °C
+  humidity     smallint,                         -- relatív páratartalom, %
+  dew_point    numeric(4, 1),                    -- harmatpont, °C
+  precip       numeric(5, 1),                    -- csapadék az órában, mm
+  cloud        smallint,                         -- felhőzet, %
+  wind         numeric(4, 1),                    -- szél 10 m-en, km/h
+  gust         numeric(4, 1),                    -- széllökés, km/h
+  radiation    numeric(6, 1),                    -- rövidhullámú (nap)sugárzás, W/m² (az órára átlag)
+  weather_code smallint,                         -- WMO időjáráskód
+  is_day       boolean,
+  is_forecast  boolean not null default false,   -- a legutóbbi lekéréskor még nem telt el az óra
+  fetched_at   timestamptz not null default now()
+);
+create index if not exists weather_hourly_fetched_idx on public.weather_hourly (fetched_at desc);
+
+alter table public.weather_hourly enable row level security;
+
+-- Minden listán szereplő felhasználó olvashatja (a térkép KINT csipje innen olvas).
+drop policy if exists weather_hourly_select on public.weather_hourly;
+create policy weather_hourly_select on public.weather_hourly
+  for select to authenticated
+  using ((select public.my_role()) is not null);
+
+-- Napi időjárás budapesti napokra, csak a már eltelt (mért) órákból.
+-- Hőfokhíd az Eurostat szerint:
+--   fűtési (hdd):  ha a napi átlag <= 15 °C, akkor 18 - átlag, egyébként 0;
+--   hűtési (cdd):  ha a napi átlag >= 24 °C, akkor átlag - 21, egyébként 0.
+-- Napsugárzás: az órás W/m² értékek összege / 1000 = kWh/m² naponta.
+create or replace view public.weather_daily
+with (security_invoker = true) as
+select
+  d.day,
+  d.hours,
+  round(d.t_avg, 1) as t_avg,
+  d.t_min,
+  d.t_max,
+  round(case when d.t_avg <= 15 then 18 - d.t_avg else 0 end, 1) as hdd,
+  round(case when d.t_avg >= 24 then d.t_avg - 21 else 0 end, 1) as cdd,
+  d.sun_kwh_m2,
+  d.precip,
+  d.wind_avg
+from (
+  select
+    (ts at time zone 'Europe/Budapest')::date as day,
+    count(*)::int as hours,
+    avg(temp) as t_avg,
+    min(temp) as t_min,
+    max(temp) as t_max,
+    round(sum(radiation) / 1000, 2) as sun_kwh_m2,
+    round(sum(precip), 1) as precip,
+    round(avg(wind), 1) as wind_avg
+  from public.weather_hourly
+  where not is_forecast
+  group by 1
+) d;
+
+-- Napi energia körönként az időjárás mellett (elemzéshez: kályha kWh a hőfokhíd
+-- függvényében, klíma hűtés a melegnapok függvényében stb.). Az energy_daily sorszintű
+-- szabálya érvényes: az energia oszlopokat csak az owner látja.
+create or replace view public.energy_weather_daily
+with (security_invoker = true) as
+select
+  w.*,
+  x5.kwh as stove_kwh,
+  x7.kwh as boiler_kwh,
+  x8.kwh as kitchen_kwh,
+  x9.kwh as ac_kwh
+from public.weather_daily w
+left join public.energy_daily x5 on x5.day = w.day and x5.pink = 'X5'
+left join public.energy_daily x7 on x7.day = w.day and x7.pink = 'X7'
+left join public.energy_daily x8 on x8.day = w.day and x8.pink = 'X8'
+left join public.energy_daily x9 on x9.day = w.day and x9.pink = 'X9';
+
+revoke all on public.weather_hourly, public.weather_daily, public.energy_weather_daily from anon;
+grant select on public.weather_hourly, public.weather_daily, public.energy_weather_daily to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Foglaltság (004_bookings.sql): óránként az adatgyűjtő tölti az Airbnb naptárból
+-- ---------------------------------------------------------------------------
+-- Az adatgyűjtő (GitHub Actions) óránként egyszer letölti az AIRBNB_ICAL_URL (és ha van,
+-- a BOOKING_ICAL_URL) naptárt, és ide csak a minimumot írja: forrás, fajta, érkezés és
+-- távozás napja. Vendégnév, telefonszám, foglalási link vagy a nyers iCal UID soha nem
+-- kerül ide; az id a forrás + UID sha256 hash-e (csak azonosításra, visszafejthetetlen).
+--   kind = 'reservation': Airbnb foglalás ("Reserved")
+--   kind = 'blocked':     lezárt nap ("Airbnb (Not available)"): importált naptár
+--                         (valószínűleg Booking-vendég) vagy elérhetőségi szabály
+
+create table if not exists public.bookings (
+  id          text primary key,                 -- sha256(forrás + iCal UID), hex
+  source      text not null check (source in ('airbnb', 'booking')),
+  kind        text not null check (kind in ('reservation', 'blocked')),
+  start_date  date not null,                    -- érkezés napja
+  end_date    date not null,                    -- távozás napja (az iCal DTEND, kizáró)
+  seen_at     timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+create index if not exists bookings_end_idx on public.bookings (end_date);
+create index if not exists bookings_seen_idx on public.bookings (seen_at desc);
+
+alter table public.bookings enable row level security;
+
+-- Az owner és a takarító látja (érkezés előtti beállításokhoz), a viewer és idegen nem.
+-- Írni csak a titkos kulcs tud (Actions), ahhoz nem kell szabály.
+drop policy if exists bookings_select on public.bookings;
+create policy bookings_select on public.bookings
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner'));
+
+revoke all on public.bookings from anon;
+grant select on public.bookings to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Energiaőr-tippek elrejtése (005_tip_dismissals.sql)
+-- ---------------------------------------------------------------------------
+--
+-- Felhasználónként tárolódik: amit a tulaj elrejt, az a tulajnál rejtett minden eszközén,
+-- a takarítónál nem (és fordítva). Mindenki csak a saját sorait látja és írja.
+--   mode: 'ok'      = Rendben: rejtve, amíg a helyzet fennáll (ha megszűnik, a sor törlődik)
+--         'until'   = Később (1 óra, holnap reggel): rejtve until_ts-ig
+--         'booking' = ennél a vendégnél ne: rejtve until_ts-ig (a foglalás vége)
+--         'never'   = ilyen tippet soha: rejtve, amíg vissza nem kapcsolja
+
+create table if not exists public.tip_dismissals (
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  tip_key    text not null check (char_length(tip_key) <= 200),
+  mode       text not null check (mode in ('ok', 'until', 'booking', 'never')),
+  until_ts   timestamptz,
+  label      text check (char_length(label) <= 200),
+  created_at timestamptz not null default now(),
+  primary key (user_id, tip_key)
+);
+
+alter table public.tip_dismissals enable row level security;
+
+drop policy if exists tip_dismissals_select on public.tip_dismissals;
+create policy tip_dismissals_select on public.tip_dismissals
+  for select to authenticated
+  using (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+drop policy if exists tip_dismissals_insert on public.tip_dismissals;
+create policy tip_dismissals_insert on public.tip_dismissals
+  for insert to authenticated
+  with check (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+drop policy if exists tip_dismissals_update on public.tip_dismissals;
+create policy tip_dismissals_update on public.tip_dismissals
+  for update to authenticated
+  using (user_id = (select auth.uid()) and (select public.my_role()) is not null)
+  with check (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+drop policy if exists tip_dismissals_delete on public.tip_dismissals;
+create policy tip_dismissals_delete on public.tip_dismissals
+  for delete to authenticated
+  using (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+revoke all on public.tip_dismissals from anon;
+grant select, insert, update, delete on public.tip_dismissals to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Riasztások: beállítás, állapot, napló (006_alerts.sql)
+-- ---------------------------------------------------------------------------
+--
+-- A térkép "Riasztások" panelje a beállítást az alert_settings egyetlen sorába (id = 1) menti
+-- (csak a tulaj írja, a takarító olvassa). Az adatgyűjtő (GitHub Actions, titkos kulcs) 10
+-- percenként kiértékeli a szabályokat, az alert_state-ben tartja, mi aktív és mikor ment ki
+-- utoljára értesítés, és az alert_log-ba írja az elküldött (vagy csendes órák miatt visszatartott)
+-- riasztásokat. Azonnali értesítés csak pushon (ntfy) megy; e-mail naponta legfeljebb egy, a
+-- napi összefoglaló (alapból 20:00). Csak jelez, semmit nem kapcsol.
+--   alert_settings.config            a szabályok JSON-ban (lásd docs/riasztasok.md)
+--   alert_settings.test_requested_at a Próba-értesítés gomb ideje: a következő körben kimegy
+--   alert_state.since                mióta áll fenn a feltétel (null: most nem áll fenn)
+--   alert_state.active               a feltétel elég régóta fennáll, riasztás él
+--   alert_log.kind                   'fired' (riasztás), 'resolved' (megszűnt), 'test' (próba),
+--                                    'digest' (a napi 20:00-s e-mail összefoglaló; rule_key: digest:ÉÉÉÉ-HH-NN)
+
+create table if not exists public.alert_settings (
+  id                smallint primary key default 1 check (id = 1),
+  config            jsonb not null,
+  test_requested_at timestamptz,
+  updated_at        timestamptz not null default now(),
+  updated_by        uuid default auth.uid()
+);
+
+create or replace function public.alert_settings_touch()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  new.updated_by := coalesce(auth.uid(), new.updated_by);
+  return new;
+end;
+$$;
+
+drop trigger if exists alert_settings_touch on public.alert_settings;
+create trigger alert_settings_touch before insert or update on public.alert_settings
+  for each row execute function public.alert_settings_touch();
+
+alter table public.alert_settings enable row level security;
+
+drop policy if exists alert_settings_select on public.alert_settings;
+create policy alert_settings_select on public.alert_settings
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner'));
+
+drop policy if exists alert_settings_insert on public.alert_settings;
+create policy alert_settings_insert on public.alert_settings
+  for insert to authenticated
+  with check ((select public.my_role()) = 'owner');
+
+drop policy if exists alert_settings_update on public.alert_settings;
+create policy alert_settings_update on public.alert_settings
+  for update to authenticated
+  using ((select public.my_role()) = 'owner')
+  with check ((select public.my_role()) = 'owner');
+
+revoke all on public.alert_settings from anon;
+grant select, insert, update on public.alert_settings to authenticated;
+
+-- Szabályonkénti állapot. Írni csak a titkos kulcs tud (Actions), ahhoz nem kell szabály.
+create table if not exists public.alert_state (
+  rule_key  text primary key check (char_length(rule_key) <= 100),
+  active    boolean not null default false,
+  since     timestamptz,
+  last_sent timestamptz,
+  last_text text check (char_length(last_text) <= 500)
+);
+
+alter table public.alert_state enable row level security;
+
+drop policy if exists alert_state_select on public.alert_state;
+create policy alert_state_select on public.alert_state
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner'));
+
+revoke all on public.alert_state from anon;
+grant select on public.alert_state to authenticated;
+
+-- Napló: csak a tulaj olvassa, csak a titkos kulcs írja.
+create table if not exists public.alert_log (
+  id       bigserial primary key,
+  ts       timestamptz not null default now(),
+  rule_key text check (char_length(rule_key) <= 100),
+  kind     text not null,
+  text     text check (char_length(text) <= 1000),
+  channels text check (char_length(channels) <= 200)
+);
+create index if not exists alert_log_ts_idx on public.alert_log (ts desc);
+-- a fajta-ellenőrzés külön, így egy régebbi változat újrafuttatása is frissíti
+alter table public.alert_log drop constraint if exists alert_log_kind_check;
+alter table public.alert_log add constraint alert_log_kind_check
+  check (kind in ('fired', 'resolved', 'test', 'digest'));
+
+alter table public.alert_log enable row level security;
+
+drop policy if exists alert_log_select on public.alert_log;
+create policy alert_log_select on public.alert_log
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+revoke all on public.alert_log from anon;
+grant select on public.alert_log to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Előzmények, háromszintű tárolás (007_history.sql)
+create table if not exists public.energy_app_history (
+  pink         text not null references public.devices (pink) on delete cascade,
+  period       text not null check (period in ('hour', 'day', 'month', 'year', 'lifetime')),
+  period_start timestamptz not null,               -- az időszak kezdete (Budapest szerinti nap/hónap/év eleje)
+  kwh          numeric(12, 3) not null check (kwh >= 0),
+  exact        boolean not null default false,     -- true: az app fejlécében kiírt szám; false: oszlopmagasságból leolvasva
+  partial      boolean not null default false,     -- true: az időszak a felvételkor még nem zárult le
+  note         text check (char_length(note) <= 200),
+  source       text not null default 'smartlife-app',
+  recorded_at  timestamptz not null default now(),
+  primary key (pink, period, period_start)
+);
+
+-- ---------------------------------------------------------------------------
+-- 2. A Tuya eszköznapló nyers bejegyzései (az adatgyűjtő írja, 90 napig)
+-- ---------------------------------------------------------------------------
+create table if not exists public.tuya_log (
+  pink  text not null references public.devices (pink) on delete cascade,
+  ts    timestamptz not null,                      -- a jelentés ideje (Tuya event_time)
+  code  text not null,                             -- pl. add_ele, cur_power, va_temperature
+  value numeric,                                   -- nyers érték (a skálát a devices.meta adja)
+  primary key (pink, ts, code)
+);
+create index if not exists tuya_log_ts_idx on public.tuya_log (ts);
+
+-- ---------------------------------------------------------------------------
+-- 3. Órás összesítő (örökre)
+-- ---------------------------------------------------------------------------
+create table if not exists public.metrics_hourly (
+  pink     text not null references public.devices (pink) on delete cascade,
+  hour     timestamptz not null,                   -- az óra kezdete (UTC)
+  kwh      numeric(10, 4),                         -- kismegszakító: az órában felvett energia
+  w_max    numeric(8, 1),                          -- kismegszakító: legnagyobb jelentett teljesítmény, W
+  temp_avg numeric(5, 2),                          -- hőmérő: átlag, °C
+  temp_min numeric(5, 2),
+  temp_max numeric(5, 2),
+  hum_avg  numeric(5, 2),                          -- hőmérő: átlagos páratartalom, %
+  n        integer not null default 0,             -- ennyi naplóbejegyzésből
+  primary key (pink, hour)
+);
+create index if not exists metrics_hourly_hour_idx on public.metrics_hourly (hour);
+
+-- ---------------------------------------------------------------------------
+-- 4. energy_daily: honnan jön a sor ('log' = a Tuya-napló add_ele összege)
+-- ---------------------------------------------------------------------------
+alter table public.energy_daily add column if not exists source text;
+
+-- ---------------------------------------------------------------------------
+-- Jogosultság: mérési adat, csak az owner olvassa; írni csak az adatgyűjtő (secret kulcs) és
+-- a tulaj az SQL Editorban tud.
+-- ---------------------------------------------------------------------------
+alter table public.energy_app_history enable row level security;
+alter table public.tuya_log           enable row level security;
+alter table public.metrics_hourly     enable row level security;
+
+drop policy if exists energy_app_history_select on public.energy_app_history;
+create policy energy_app_history_select on public.energy_app_history
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+drop policy if exists tuya_log_select on public.tuya_log;
+create policy tuya_log_select on public.tuya_log
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+drop policy if exists metrics_hourly_select on public.metrics_hourly;
+create policy metrics_hourly_select on public.metrics_hourly
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+revoke all on public.energy_app_history, public.tuya_log, public.metrics_hourly from anon;
+grant select on public.energy_app_history, public.tuya_log, public.metrics_hourly to authenticated;
+
+-- ===================================================================== supabase/migrations/002_device_meta.sql
+-- 002: eszköz-meta és napi energia számlálóállás
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható: ha az oszlopok már léteznek, nem csinál semmit.
+
+-- A Tuya státuszkódok skálája és mértékegysége (pl. cur_power: scale 1 = 0,1 W).
+-- Az Eszközfelderítés tölti ki a Tuya specifikációból; a térkép ezzel skáláz.
+alter table public.devices add column if not exists meta jsonb;
+
+-- A kismegszakító fogyasztásszámlálójának utolsó látott állása (kWh).
+-- Az adatgyűjtő ebből számolja a napi kWh-t.
+alter table public.energy_daily add column if not exists last_counter numeric(14, 4);
+
+-- ===================================================================== supabase/migrations/003_weather.sql
+-- 003: óránkénti időjárás (Open-Meteo, Budapest IX. kerület) és napi összesítők
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható: ami már létezik, azt nem rontja el, adatot nem töröl.
+--
+-- Az adatgyűjtő (GitHub Actions) óránként egyszer tölti: az elmúlt 2 nap mért (modell-
+-- elemzés) óráit és a következő kb. 1 nap előrejelzését. Egy óra sora addig frissül, amíg
+-- a lekérés pillanatában még jövőbeli (is_forecast = true); utána a mért érték marad.
+
+create table if not exists public.weather_hourly (
+  ts           timestamptz primary key,          -- az óra kezdete (UTC)
+  temp         numeric(4, 1),                    -- léghőmérséklet 2 m-en, °C
+  apparent     numeric(4, 1),                    -- hőérzet, °C
+  humidity     smallint,                         -- relatív páratartalom, %
+  dew_point    numeric(4, 1),                    -- harmatpont, °C
+  precip       numeric(5, 1),                    -- csapadék az órában, mm
+  cloud        smallint,                         -- felhőzet, %
+  wind         numeric(4, 1),                    -- szél 10 m-en, km/h
+  gust         numeric(4, 1),                    -- széllökés, km/h
+  radiation    numeric(6, 1),                    -- rövidhullámú (nap)sugárzás, W/m² (az órára átlag)
+  weather_code smallint,                         -- WMO időjáráskód
+  is_day       boolean,
+  is_forecast  boolean not null default false,   -- a legutóbbi lekéréskor még nem telt el az óra
+  fetched_at   timestamptz not null default now()
+);
+create index if not exists weather_hourly_fetched_idx on public.weather_hourly (fetched_at desc);
+
+alter table public.weather_hourly enable row level security;
+
+-- Minden listán szereplő felhasználó olvashatja (a térkép KINT csipje innen olvas).
+drop policy if exists weather_hourly_select on public.weather_hourly;
+create policy weather_hourly_select on public.weather_hourly
+  for select to authenticated
+  using ((select public.my_role()) is not null);
+
+-- Napi időjárás budapesti napokra, csak a már eltelt (mért) órákból.
+-- Hőfokhíd az Eurostat szerint:
+--   fűtési (hdd):  ha a napi átlag <= 15 °C, akkor 18 - átlag, egyébként 0;
+--   hűtési (cdd):  ha a napi átlag >= 24 °C, akkor átlag - 21, egyébként 0.
+-- Napsugárzás: az órás W/m² értékek összege / 1000 = kWh/m² naponta.
+create or replace view public.weather_daily
+with (security_invoker = true) as
+select
+  d.day,
+  d.hours,
+  round(d.t_avg, 1) as t_avg,
+  d.t_min,
+  d.t_max,
+  round(case when d.t_avg <= 15 then 18 - d.t_avg else 0 end, 1) as hdd,
+  round(case when d.t_avg >= 24 then d.t_avg - 21 else 0 end, 1) as cdd,
+  d.sun_kwh_m2,
+  d.precip,
+  d.wind_avg
+from (
+  select
+    (ts at time zone 'Europe/Budapest')::date as day,
+    count(*)::int as hours,
+    avg(temp) as t_avg,
+    min(temp) as t_min,
+    max(temp) as t_max,
+    round(sum(radiation) / 1000, 2) as sun_kwh_m2,
+    round(sum(precip), 1) as precip,
+    round(avg(wind), 1) as wind_avg
+  from public.weather_hourly
+  where not is_forecast
+  group by 1
+) d;
+
+-- Napi energia körönként az időjárás mellett (elemzéshez: kályha kWh a hőfokhíd
+-- függvényében, klíma hűtés a melegnapok függvényében stb.). Az energy_daily sorszintű
+-- szabálya érvényes: az energia oszlopokat csak az owner látja.
+create or replace view public.energy_weather_daily
+with (security_invoker = true) as
+select
+  w.*,
+  x5.kwh as stove_kwh,
+  x7.kwh as boiler_kwh,
+  x8.kwh as kitchen_kwh,
+  x9.kwh as ac_kwh
+from public.weather_daily w
+left join public.energy_daily x5 on x5.day = w.day and x5.pink = 'X5'
+left join public.energy_daily x7 on x7.day = w.day and x7.pink = 'X7'
+left join public.energy_daily x8 on x8.day = w.day and x8.pink = 'X8'
+left join public.energy_daily x9 on x9.day = w.day and x9.pink = 'X9';
+
+revoke all on public.weather_hourly, public.weather_daily, public.energy_weather_daily from anon;
+grant select on public.weather_hourly, public.weather_daily, public.energy_weather_daily to authenticated;
+
+-- ===================================================================== supabase/migrations/004_bookings.sql
+-- 004: foglaltság (Airbnb naptárexport, iCal), a térkép vendég-csipje és sávja ehhez
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható: ami már létezik, azt nem rontja el, adatot nem töröl.
+--
+-- Az adatgyűjtő (GitHub Actions) óránként egyszer letölti az AIRBNB_ICAL_URL (és ha van,
+-- a BOOKING_ICAL_URL) naptárt, és ide csak a minimumot írja: forrás, fajta, érkezés és
+-- távozás napja. Vendégnév, telefonszám, foglalási link vagy a nyers iCal UID soha nem
+-- kerül ide; az id a forrás + UID sha256 hash-e (csak azonosításra, visszafejthetetlen).
+--   kind = 'reservation': Airbnb foglalás ("Reserved")
+--   kind = 'blocked':     lezárt nap ("Airbnb (Not available)"): importált naptár
+--                         (valószínűleg Booking-vendég) vagy elérhetőségi szabály
+
+create table if not exists public.bookings (
+  id          text primary key,                 -- sha256(forrás + iCal UID), hex
+  source      text not null check (source in ('airbnb', 'booking')),
+  kind        text not null check (kind in ('reservation', 'blocked')),
+  start_date  date not null,                    -- érkezés napja
+  end_date    date not null,                    -- távozás napja (az iCal DTEND, kizáró)
+  seen_at     timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+create index if not exists bookings_end_idx on public.bookings (end_date);
+create index if not exists bookings_seen_idx on public.bookings (seen_at desc);
+
+alter table public.bookings enable row level security;
+
+-- Az owner és a takarító látja (érkezés előtti beállításokhoz), a viewer és idegen nem.
+-- Írni csak a titkos kulcs tud (Actions), ahhoz nem kell szabály.
+drop policy if exists bookings_select on public.bookings;
+create policy bookings_select on public.bookings
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner'));
+
+revoke all on public.bookings from anon;
+grant select on public.bookings to authenticated;
+
+-- ===================================================================== supabase/migrations/005_tip_dismissals.sql
+-- 005: az Energiaőr tippjeinek elrejtése és elhalasztása (Rendben / Később / ennél a vendégnél / soha)
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható: ami már létezik, azt nem rontja el, adatot nem töröl.
+--
+-- Felhasználónként tárolódik: amit a tulaj elrejt, az a tulajnál rejtett minden eszközén,
+-- a takarítónál nem (és fordítva). Mindenki csak a saját sorait látja és írja.
+--   mode: 'ok'      = Rendben: rejtve, amíg a helyzet fennáll (ha megszűnik, a sor törlődik)
+--         'until'   = Később (1 óra, holnap reggel): rejtve until_ts-ig
+--         'booking' = ennél a vendégnél ne: rejtve until_ts-ig (a foglalás vége)
+--         'never'   = ilyen tippet soha: rejtve, amíg vissza nem kapcsolja
+
+create table if not exists public.tip_dismissals (
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  tip_key    text not null check (char_length(tip_key) <= 200),
+  mode       text not null check (mode in ('ok', 'until', 'booking', 'never')),
+  until_ts   timestamptz,
+  label      text check (char_length(label) <= 200),
+  created_at timestamptz not null default now(),
+  primary key (user_id, tip_key)
+);
+
+alter table public.tip_dismissals enable row level security;
+
+drop policy if exists tip_dismissals_select on public.tip_dismissals;
+create policy tip_dismissals_select on public.tip_dismissals
+  for select to authenticated
+  using (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+drop policy if exists tip_dismissals_insert on public.tip_dismissals;
+create policy tip_dismissals_insert on public.tip_dismissals
+  for insert to authenticated
+  with check (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+drop policy if exists tip_dismissals_update on public.tip_dismissals;
+create policy tip_dismissals_update on public.tip_dismissals
+  for update to authenticated
+  using (user_id = (select auth.uid()) and (select public.my_role()) is not null)
+  with check (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+drop policy if exists tip_dismissals_delete on public.tip_dismissals;
+create policy tip_dismissals_delete on public.tip_dismissals
+  for delete to authenticated
+  using (user_id = (select auth.uid()) and (select public.my_role()) is not null);
+
+revoke all on public.tip_dismissals from anon;
+grant select, insert, update, delete on public.tip_dismissals to authenticated;
+
+-- ===================================================================== supabase/migrations/006_alerts.sql
+-- 006: riasztások (beállítás, állapot, napló)
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható: ami már létezik, azt nem rontja el, adatot nem töröl.
+--
+-- A térkép "Riasztások" panelje a beállítást az alert_settings egyetlen sorába (id = 1) menti
+-- (csak a tulaj írja, a takarító olvassa). Az adatgyűjtő (GitHub Actions, titkos kulcs) 10
+-- percenként kiértékeli a szabályokat, az alert_state-ben tartja, mi aktív és mikor ment ki
+-- utoljára értesítés, és az alert_log-ba írja az elküldött (vagy csendes órák miatt visszatartott)
+-- riasztásokat. Azonnali értesítés csak pushon (ntfy) megy; e-mail naponta legfeljebb egy, a
+-- napi összefoglaló (alapból 20:00). Csak jelez, semmit nem kapcsol.
+--   alert_settings.config            a szabályok JSON-ban (lásd docs/riasztasok.md)
+--   alert_settings.test_requested_at a Próba-értesítés gomb ideje: a következő körben kimegy
+--   alert_state.since                mióta áll fenn a feltétel (null: most nem áll fenn)
+--   alert_state.active               a feltétel elég régóta fennáll, riasztás él
+--   alert_log.kind                   'fired' (riasztás), 'resolved' (megszűnt), 'test' (próba),
+--                                    'digest' (a napi 20:00-s e-mail összefoglaló; rule_key: digest:ÉÉÉÉ-HH-NN)
+
+create table if not exists public.alert_settings (
+  id                smallint primary key default 1 check (id = 1),
+  config            jsonb not null,
+  test_requested_at timestamptz,
+  updated_at        timestamptz not null default now(),
+  updated_by        uuid default auth.uid()
+);
+
+create or replace function public.alert_settings_touch()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  new.updated_by := coalesce(auth.uid(), new.updated_by);
+  return new;
+end;
+$$;
+
+drop trigger if exists alert_settings_touch on public.alert_settings;
+create trigger alert_settings_touch before insert or update on public.alert_settings
+  for each row execute function public.alert_settings_touch();
+
+alter table public.alert_settings enable row level security;
+
+drop policy if exists alert_settings_select on public.alert_settings;
+create policy alert_settings_select on public.alert_settings
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner'));
+
+drop policy if exists alert_settings_insert on public.alert_settings;
+create policy alert_settings_insert on public.alert_settings
+  for insert to authenticated
+  with check ((select public.my_role()) = 'owner');
+
+drop policy if exists alert_settings_update on public.alert_settings;
+create policy alert_settings_update on public.alert_settings
+  for update to authenticated
+  using ((select public.my_role()) = 'owner')
+  with check ((select public.my_role()) = 'owner');
+
+revoke all on public.alert_settings from anon;
+grant select, insert, update on public.alert_settings to authenticated;
+
+-- Szabályonkénti állapot. Írni csak a titkos kulcs tud (Actions), ahhoz nem kell szabály.
+create table if not exists public.alert_state (
+  rule_key  text primary key check (char_length(rule_key) <= 100),
+  active    boolean not null default false,
+  since     timestamptz,
+  last_sent timestamptz,
+  last_text text check (char_length(last_text) <= 500)
+);
+
+alter table public.alert_state enable row level security;
+
+drop policy if exists alert_state_select on public.alert_state;
+create policy alert_state_select on public.alert_state
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner'));
+
+revoke all on public.alert_state from anon;
+grant select on public.alert_state to authenticated;
+
+-- Napló: csak a tulaj olvassa, csak a titkos kulcs írja.
+create table if not exists public.alert_log (
+  id       bigserial primary key,
+  ts       timestamptz not null default now(),
+  rule_key text check (char_length(rule_key) <= 100),
+  kind     text not null,
+  text     text check (char_length(text) <= 1000),
+  channels text check (char_length(channels) <= 200)
+);
+create index if not exists alert_log_ts_idx on public.alert_log (ts desc);
+-- a fajta-ellenőrzés külön, így egy régebbi változat újrafuttatása is frissíti
+alter table public.alert_log drop constraint if exists alert_log_kind_check;
+alter table public.alert_log add constraint alert_log_kind_check
+  check (kind in ('fired', 'resolved', 'test', 'digest'));
+
+alter table public.alert_log enable row level security;
+
+drop policy if exists alert_log_select on public.alert_log;
+create policy alert_log_select on public.alert_log
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+revoke all on public.alert_log from anon;
+grant select on public.alert_log to authenticated;
+
+-- ===================================================================== supabase/migrations/007_history.sql
+-- 007: előzmények, háromszintű tárolás (a tulaj kérése, 2026.11.12)
+-- Futtatás: Supabase > SQL Editor > New query > ennek a fájlnak a teljes tartalma > Run.
+-- Újrafuttatható: ami már létezik, azt nem rontja el, adatot nem töröl.
+--
+-- Szintek:
+--   1. Nyers (90 napig): device_status (10 perces pillanatkép, ajtó/ablak események) és az új
+--      tuya_log (a Tuya eszköznapló bejegyzései: fogyasztás-növekmény, teljesítmény, hőmérséklet).
+--      A 90 napnál régebbi nyers sorokat az adatgyűjtő törli (az ajtó/ablak eseményeket nem).
+--   2. Órás összesítő (örökre): metrics_hourly, körönként és hőmérőnként.
+--   3. Napi összesítő (örökre): energy_daily (mostantól a Tuya-naplóból, source = 'log'),
+--      weather_daily nézet.
+-- Mellette: energy_app_history, a Smart Life app Electricity füléről (képernyőképből) beírt
+-- múltbeli értékek. Mérési adat: csak a tulaj látja, és a publikus repóba nem kerül.
+
+-- ---------------------------------------------------------------------------
+-- 1. A Smart Life app előzményei (kézzel, a tulaj futtatja az SQL Editorban)
+-- ---------------------------------------------------------------------------
+create table if not exists public.energy_app_history (
+  pink         text not null references public.devices (pink) on delete cascade,
+  period       text not null check (period in ('hour', 'day', 'month', 'year', 'lifetime')),
+  period_start timestamptz not null,               -- az időszak kezdete (Budapest szerinti nap/hónap/év eleje)
+  kwh          numeric(12, 3) not null check (kwh >= 0),
+  exact        boolean not null default false,     -- true: az app fejlécében kiírt szám; false: oszlopmagasságból leolvasva
+  partial      boolean not null default false,     -- true: az időszak a felvételkor még nem zárult le
+  note         text check (char_length(note) <= 200),
+  source       text not null default 'smartlife-app',
+  recorded_at  timestamptz not null default now(),
+  primary key (pink, period, period_start)
+);
+
+-- ---------------------------------------------------------------------------
+-- 2. A Tuya eszköznapló nyers bejegyzései (az adatgyűjtő írja, 90 napig)
+-- ---------------------------------------------------------------------------
+create table if not exists public.tuya_log (
+  pink  text not null references public.devices (pink) on delete cascade,
+  ts    timestamptz not null,                      -- a jelentés ideje (Tuya event_time)
+  code  text not null,                             -- pl. add_ele, cur_power, va_temperature
+  value numeric,                                   -- nyers érték (a skálát a devices.meta adja)
+  primary key (pink, ts, code)
+);
+create index if not exists tuya_log_ts_idx on public.tuya_log (ts);
+
+-- ---------------------------------------------------------------------------
+-- 3. Órás összesítő (örökre)
+-- ---------------------------------------------------------------------------
+create table if not exists public.metrics_hourly (
+  pink     text not null references public.devices (pink) on delete cascade,
+  hour     timestamptz not null,                   -- az óra kezdete (UTC)
+  kwh      numeric(10, 4),                         -- kismegszakító: az órában felvett energia
+  w_max    numeric(8, 1),                          -- kismegszakító: legnagyobb jelentett teljesítmény, W
+  temp_avg numeric(5, 2),                          -- hőmérő: átlag, °C
+  temp_min numeric(5, 2),
+  temp_max numeric(5, 2),
+  hum_avg  numeric(5, 2),                          -- hőmérő: átlagos páratartalom, %
+  n        integer not null default 0,             -- ennyi naplóbejegyzésből
+  primary key (pink, hour)
+);
+create index if not exists metrics_hourly_hour_idx on public.metrics_hourly (hour);
+
+-- ---------------------------------------------------------------------------
+-- 4. energy_daily: honnan jön a sor ('log' = a Tuya-napló add_ele összege)
+-- ---------------------------------------------------------------------------
+alter table public.energy_daily add column if not exists source text;
+
+-- ---------------------------------------------------------------------------
+-- Jogosultság: mérési adat, csak az owner olvassa; írni csak az adatgyűjtő (secret kulcs) és
+-- a tulaj az SQL Editorban tud.
+-- ---------------------------------------------------------------------------
+alter table public.energy_app_history enable row level security;
+alter table public.tuya_log           enable row level security;
+alter table public.metrics_hourly     enable row level security;
+
+drop policy if exists energy_app_history_select on public.energy_app_history;
+create policy energy_app_history_select on public.energy_app_history
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+drop policy if exists tuya_log_select on public.tuya_log;
+create policy tuya_log_select on public.tuya_log
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+drop policy if exists metrics_hourly_select on public.metrics_hourly;
+create policy metrics_hourly_select on public.metrics_hourly
+  for select to authenticated
+  using ((select public.my_role()) = 'owner');
+
+revoke all on public.energy_app_history, public.tuya_log, public.metrics_hourly from anon;
+grant select on public.energy_app_history, public.tuya_log, public.metrics_hourly to authenticated;
+
+-- ===================================================================== supabase/migrations/008_battery.sql
+-- 008: elemcsere-előrejelzés (f27/battery.py). Újrafuttatható.
+--
+-- Eszközönként egy sor: napi minták (naponta egy), az utolsó elemcsere napja, a korábbi
+-- élettartamok (ebből tanul a becslés), a becslés (szint, nap-tartomány) és hogy ment-e már
+-- push 14 napon belüli / lemerült elemről. Írni csak a titkos kulcs tud (Actions),
+-- olvasni a tulaj, a takarító és a megtekintő (a dashboard ELEM csempéje).
+--
+--   level: ok | due30 (30 napon belül) | due14 (14 napon belül) | dead (lemerült) | unknown
+
+create table if not exists public.battery_status (
+  pink        text primary key check (char_length(pink) <= 20),
+  label       text check (char_length(label) <= 200),
+  chem        text check (char_length(chem) <= 20),
+  kind        text check (kind in ('pct', 'state')),
+  value       text check (char_length(value) <= 20),
+  changed_at  date,
+  samples     jsonb not null default '[]'::jsonb,
+  lifetimes   jsonb not null default '[]'::jsonb,
+  level       text not null default 'unknown' check (level in ('ok', 'due30', 'due14', 'dead', 'unknown')),
+  eta_lo      integer,
+  eta_hi      integer,
+  basis       text check (char_length(basis) <= 100),
+  notified    jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.battery_status enable row level security;
+
+drop policy if exists battery_status_select on public.battery_status;
+create policy battery_status_select on public.battery_status
+  for select to authenticated
+  using ((select public.my_role()) in ('owner', 'cleaner', 'viewer'));
+
+revoke all on public.battery_status from anon;
+grant select on public.battery_status to authenticated;
