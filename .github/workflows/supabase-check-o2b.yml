@@ -1,0 +1,26 @@
+name: Supabase ellenőrzés (O2B)
+
+# Kézzel indítható. Az O2B saját Supabase-projektjét ellenőrzi: elérhető-e, ki van-e kapcsolva
+# az idegen regisztráció, lefutott-e a teljes séma (supabase/setup_all.sql), névtelenül tiltott-e
+# minden tábla, érvényes-e a titkos kulcs, és van-e tulajdonos. A logba csak OK / HIBA és darabszám.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Ellenőrzés (O2B)
+        env:
+          SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.O2B_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
+        run: python -m f27.supabase_check

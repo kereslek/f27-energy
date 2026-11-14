@@ -19,7 +19,8 @@ import sys
 import urllib.error
 import urllib.request
 
-TABLES = ["app_users", "layouts", "devices", "device_status", "device_latest", "energy_daily"]
+TABLES = ["app_users", "layouts", "devices", "device_status", "device_latest", "energy_daily",
+          "weather_hourly", "bookings", "alert_settings", "alert_state", "tuya_log", "metrics_hourly", "battery_status"]
 
 
 def call(url: str, key: str) -> tuple[int, dict]:
@@ -65,6 +66,22 @@ def main() -> int:
             rows.append((f"Tábla: {t}", False, "névtelenül OLVASHATÓ: a séma jogosultsági része nem futott le"))
         else:
             rows.append((f"Tábla: {t}", False, f"váratlan válasz: HTTP {code} {pg}"))
+
+    # Opcionális: a titkos kulcs (csak Actionsből) érvényes-e, és van-e tulajdonos. A logba csak darabszám.
+    secret = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
+    if secret:
+        req = urllib.request.Request(f"{base}/rest/v1/app_users?select=role&role=eq.owner",
+                                     headers={"apikey": secret, "Authorization": f"Bearer {secret}", "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                owners = len(json.loads(r.read().decode() or "[]"))
+            rows.append(("Titkos kulcs érvényes", True, "OK"))
+            rows.append(("Tulajdonos (owner) felhasználó", owners >= 1,
+                         f"{owners} db" if owners else "nincs: az app_users insert ... 'owner' SQL nem talált felhasználót"))
+        except urllib.error.HTTPError as e:
+            rows.append(("Titkos kulcs érvényes", False, f"HTTP {e.code}: rossz a SUPABASE_SECRET_KEY (Secrets)"))
+        except Exception as e:
+            rows.append(("Titkos kulcs érvényes", False, type(e).__name__))
 
     ok = all(r[1] for r in rows)
     lines = ["| Ellenőrzés | Eredmény | Megjegyzés |", "|---|---|---|"]
