@@ -68,7 +68,6 @@ body{position:fixed;inset:0;touch-action:none}
 #cat.walk .lA{animation:legA .42s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0}
 #cat.walk .lB{animation:legB .42s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0}
 #cat .tail{animation:tail 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:0% 100%}
-#cat .eye{animation:blink 4.2s infinite;transform-box:fill-box;transform-origin:center}
 #cat .pose{display:none}
 #cat.walk .p-walk,#cat.sit .p-sit,#cat.sleep .p-sleep{display:inline}
 #cat.sit .body,#cat.sleep .body{animation:none}
@@ -158,9 +157,82 @@ select.lay[hidden]{display:none}
 #logincard input{width:100%;height:40px;border-radius:12px;border:3px solid #1e2a44;padding:0 10px;font:800 14px "Nunito",sans-serif}
 #lerr{color:#c43f1f;font-weight:900;font-size:12px;min-height:16px;margin-top:6px}
 #who{font-size:12px;font-weight:900;margin-top:8px;color:#45507a}
+#streetbox{margin-top:12px;padding-top:10px;border-top:2px dashed #c9b48a}
+#streetbox[hidden]{display:none}
+.hint{font-size:11px;font-weight:800;color:#7a5a2e;margin-top:4px}
 #toast{position:absolute;left:50%;top:96px;transform:translateX(-50%);z-index:9;padding:8px 14px;border-radius:14px;border:3px solid #1e2a44;background:#1e2a44;color:#fff7e6;font:900 13px "Nunito",sans-serif;box-shadow:0 4px 0 rgba(0,0,0,.25)}
 #toast[hidden]{display:none}
 #toast.ok{background:#3fae6a}#toast.err{background:#e8432f}
+
+/* asztali elrendezés a F27 mintájára: bal oldalt Pamutka panel, jobb oldalt Áttekintés, középen a ház */
+#ov{display:none}
+.sayhd{font-weight:900;margin-bottom:6px}
+ul.tips{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:7px}
+.tipc{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:12px;border:2.5px solid #1e2a44;background:#fff6e0;box-shadow:0 2px 0 #1e2a44;font:800 12.5px/1.3 "Nunito",sans-serif}
+.tipc.red{background:#ffefe9}.tipc.blue{background:#eaf5ff}.tipc.green{background:#e7f8ec}
+.tipc .tx{flex:1 1 auto;min-width:0}
+.tipc .tbtn{min-height:30px;padding:0 10px;font-size:11.5px;border-width:2.5px;box-shadow:0 2px 0 #1e2a44}
+body.wide #pam{top:96px;bottom:12px;width:328px;display:flex;flex-direction:column}
+body.wide #pam #say{flex:1 1 auto;max-height:none}
+body.wide #pam .min{display:none}
+body.wide #ov{display:flex;flex-direction:column;position:absolute;right:12px;top:96px;bottom:12px;width:328px;z-index:5;padding:10px 12px;border-radius:22px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44;overflow:hidden}
+body.wide #ovbody{overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px;overscroll-behavior:contain}
+body.wide #tools{left:356px;right:356px;max-width:none;justify-content:center}
+body.wide #info{right:auto;left:50%;transform:translateX(-50%);top:100px}
+body.wide .sheet,body.wide #logincard{right:356px}
+.ovtitle{font-family:"Fraunces",serif;font-weight:800;font-size:22px;color:#3b2a14;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ovs{background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;padding:8px 9px;box-shadow:0 2px 0 #1e2a44}
+.ovh{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;margin-bottom:6px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.ovh b{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:17px;letter-spacing:.3px;color:#1e2a44}
+.ovh small{font-size:10px;color:#7a5a2e;letter-spacing:.3px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ovt{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;padding:5px 8px;border-radius:11px;border:2px solid #1e2a44;background:#e7f8ec;font-family:"Nunito",sans-serif}
+.ovt:hover{filter:brightness(1.04)}.ovt:focus-visible{outline:3px solid #ff4fa3}
+.ovt.hot{background:#ffe1d6}.ovt.cold{background:#dcecff}.ovt.off{background:#eceef1;opacity:.8}.ovt.sel{outline:3px solid #ff4fa3}
+.ovt .r{font-size:10.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ovt .v{font-family:"Lilita One","Baloo 2",sans-serif;font-size:21px;line-height:1.1;color:#1e2a44}
+.ovt .m{font-size:10px;font-weight:800;color:#6b7280}
+.ovt .bw{color:#c43f1f}
+.cr{display:grid;grid-template-columns:minmax(0,1fr) 84px 58px;align-items:center;gap:6px;font:800 11.5px "Nunito",sans-serif;padding:2px 0}
+.cr .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr .bar{height:9px;border-radius:999px;border:2px solid #1e2a44;background:#eef0f2;overflow:hidden}
+.cr .bar i{display:block;height:100%;background:#ff8a3d}
+.cr .w{text-align:right;font-weight:900}
+.cr.off{opacity:.55}
+.br{display:flex;justify-content:space-between;gap:8px;font:800 11.5px/1.3 "Nunito",sans-serif;padding:5px 7px;border-radius:9px;margin-bottom:4px;background:#e7f8ec}
+.br.dead,.br.offline,.br.due14{background:#ffefe9}.br.due30{background:#fff6e0}
+.br span{text-align:right;color:#6b7280}
+
+/* Pamutka animációk (térkép és panel) */
+@keyframes twitch{0%,86%,100%{transform:rotate(0)}89%{transform:rotate(-14deg)}92%{transform:rotate(4deg)}}
+@keyframes breath2{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.035)}}
+@keyframes tilt{0%,100%{transform:rotate(0)}30%{transform:rotate(-5deg)}60%{transform:rotate(3deg)}}
+@keyframes bellj{0%,100%{transform:rotate(0)}50%{transform:rotate(12deg)}}
+.tail{transform-box:fill-box;transform-origin:0% 100%;animation:tail 1.8s ease-in-out infinite}
+.eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.2s infinite}
+.ear.el{transform-box:fill-box;transform-origin:80% 90%;animation:twitch 6.5s infinite}
+.ear.er{transform-box:fill-box;transform-origin:20% 90%;animation:twitch 7.7s 1.3s infinite}
+.breath{transform-box:fill-box;transform-origin:50% 100%;animation:breath2 3.2s ease-in-out infinite}
+.cat-hero .head{transform-box:fill-box;transform-origin:50% 90%;animation:tilt 5.5s ease-in-out infinite}
+.bell{transform-box:fill-box;transform-origin:50% 0;animation:bellj 1.4s ease-in-out infinite}
+#pamhero{display:none;cursor:pointer}
+body.wide #pamhero{display:flex;justify-content:center;align-items:flex-end;margin-top:6px;flex:0 0 auto}
+body.wide #pamhero svg{width:210px;height:210px;overflow:visible}
+
+@media (min-width: 761px) and (max-width: 1560px){
+  #chips{flex-wrap:nowrap;gap:7px}
+  .chip{min-width:0;padding:5px 9px;border-radius:14px}
+  .cv{font-size:19px}.ck{font-size:9.5px;letter-spacing:.8px}.cs{font-size:9.5px;max-width:130px}
+  .brand{padding:3px 10px 5px}.brand b{font-size:18px}.brand small{font-size:9px}
+  #acts .btn{padding:0 12px;min-height:40px}
+}
+
+@media (min-width: 761px) and (max-width: 1099px){
+  #chips{overflow-x:auto;scrollbar-width:none;padding-bottom:6px;min-width:0;flex:1 1 auto}
+  #chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto}
+  #tools{max-width:calc(100% - 24px);left:12px;justify-content:flex-end}
+}
 
 /* telefon */
 @media (max-width: 760px){
@@ -211,9 +283,15 @@ select.lay[hidden]{display:none}
       <div><div class="ip-title">Pamutka</div><div class="ip-sub">a tanácsadó macska <span class="src demo" id="demo">DEMÓ</span><span class="src live" id="livepill" hidden>ÉLŐ</span></div></div>
     </div>
     <div id="say">Miaú!</div>
+    <div id="pamhero" title="Pamutka, a tanácsadó macska. Kattints rá!"></div>
   </div>
 
   <div id="info" hidden></div>
+
+  <aside id="ov" aria-label="Áttekintés">
+    <div class="ovtitle">Áttekintés <span class="src demo" id="ovsrc">DEMÓ</span></div>
+    <div id="ovbody"></div>
+  </aside>
 
   <div id="tools">
     <span class="vopill" id="viewonly" hidden title="Belépve csak a tulajdonos szerkeszthet">CSAK MEGTEKINTÉS</span>
@@ -246,6 +324,15 @@ select.lay[hidden]{display:none}
       <button class="btn primary" type="submit" style="width:100%;margin-top:4px">Belépés</button>
     </form>
     <div id="who">Nem vagy belépve</div>
+    <button class="btn sm" id="b-logout" type="button" hidden style="margin-top:8px">Kilépés</button>
+    <form id="streetform">
+      <div id="streetbox" hidden>
+        <label for="streetin">Az utca felirata a térképen</label>
+        <input id="streetin" type="text" maxlength="60" placeholder="pl. az utca neve" autocomplete="off">
+        <div class="hint">Csak belépve látszik, a nyilvános oldalon és a repóban nem. Egyszer kell megadni.</div>
+        <button class="btn sm" type="submit" style="margin-top:6px">Felirat mentése</button>
+      </div>
+    </form>
   </div>
   <div id="toast" hidden role="status"></div>
 </div>

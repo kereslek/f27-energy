@@ -240,8 +240,8 @@
   // Babaház: a felső szint a lépcső fölött áll (a lépcsőnyílása a lenti lépcső fölé esik), és a
   // jobb láthatóságért LIFT méterrel a valódi helye fölé emelve lebeg. Egy közös forgatási középpont
   // (az alsó szinté), így forgatva is egymás fölött maradnak.
-  var LIFT = 9.5;
-  var OFF = { lo: [0, 0, 0], up: [0.7, 1.6, 3.0 + LIFT] };
+  var LIFT = 4.6;
+  var OFF = { lo: [0, 0, 0], up: [-2.6, 1.6, 3.0 + LIFT] };
   function Proj(f, k) {
     var b = bounds('lo'), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, o = OFF[f];
     function rot(x, y) { var u = (x + o[0] - cx) * U, v = (y + o[1] - cy) * U, t; for (var i = 0; i < k; i++) { t = u; u = -v; v = t; } return [u, v]; }
