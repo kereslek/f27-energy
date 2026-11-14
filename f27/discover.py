@@ -29,13 +29,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .site import SITE
 from .crypto import password_from_env, write_encrypted_json
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG = ROOT / "config" / "devices.json"
-DATA = ROOT / "data"
+CONFIG = SITE.devices_config     # telephelyenként: config/site.json "devices_config"
+DATA = SITE.data_dir
 
 DROP_FIELDS = {"local_key", "ip", "lat", "lon", "uid", "owner_id", "uuid", "asset_id"}
 
@@ -163,7 +164,7 @@ def summary_lines(config: list[dict], res: MatchResult, total: int) -> list[str]
     lines.append(f"Párosítva: {len(res.mapping)}/{len(config)}. Eszközök a felhőben: {total}.")
     if res.home_filter:
         lines.append(f"Otthon-szűrő: aktív. Más otthonok eszközei (kihagyva): {res.other_home_count}. "
-                     f"Az F27 otthon párosítatlan eszközei: {len(res.unmatched)}.")
+                     f"Az {SITE.tag} otthon párosítatlan eszközei: {len(res.unmatched)}.")
     else:
         lines.append(f"Otthon-szűrő: nem elérhető (a Tuya válaszban nincs otthon-azonosító). "
                      f"Párosítatlan eszközök: {len(res.unmatched)}.")

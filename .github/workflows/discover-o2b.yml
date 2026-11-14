@@ -1,0 +1,55 @@
+name: Eszközfelderítés (O2B)
+
+# Kézzel indítható: Actions fül > Eszközfelderítés (O2B) > Run workflow.
+# Ugyanaz, mint az F27-é, csak az O2B konfiggal (sites/o2b/): kiolvassa a Tuya
+# eszközlistát, párosítja az O2B eszközeihez, és TITKOSÍTVA commitolja a
+# data/o2b/ mappába. A log publikus: csak pink, címke és OK/nincs kerül bele.
+# Supabase: az O2B saját projektje (O2B_SUPABASE_URL változó és
+# O2B_SUPABASE_SECRET_KEY secret); amíg nincs beállítva, ez a lépés kimarad.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-write
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Függőségek
+        run: pip install -r requirements.txt
+
+      - name: Felderítés (O2B)
+        env:
+          F27_SITE_CONFIG: sites/o2b/site.json
+          TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
+          TUYA_ACCESS_SECRET: ${{ secrets.TUYA_ACCESS_SECRET }}
+          TUYA_ENDPOINT: ${{ secrets.TUYA_ENDPOINT }}
+          TUYA_UID: ${{ secrets.TUYA_UID }}
+          F27_DATA_PASSWORD: ${{ secrets.F27_DATA_PASSWORD }}
+          SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
+        run: python -m f27.discover
+
+      - name: Commit (csak titkosított fájlok)
+        run: |
+          git config user.name "f27-bot"
+          git config user.email "f27-bot@users.noreply.github.com"
+          git add data/o2b/*.enc
+          if git diff --cached --quiet; then
+            echo "Nincs változás."
+          else
+            git commit -m "data: O2B eszközfelderítés $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi

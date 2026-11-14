@@ -1,0 +1,41 @@
+{
+  "_comment": "O2B: a tulaj saját otthona (két szint, kb. 115 m², gázkombi radiátorokkal, 4 klíma két multi-splitről). Publikus repó: cím, utcanév, családnév, számla- és mérőszám NEM kerül ide; a hely csak kerületi pontosságú. A motor ezt az F27_SITE_CONFIG=sites/o2b/site.json beállítással olvassa.",
+  "id": "o2b",
+  "tag": "O2B",
+  "brand": "O2B ENERGY",
+  "since": 2026,
+  "name": "O2B otthon",
+  "smartlife_home": "O2B (a Smart Life-ban saját otthon)",
+  "timezone": "Europe/Budapest",
+  "location": {"lat": 47.48, "lon": 19.04, "label": "Budapest XI. kerület"},
+  "map_url": "https://kereslek.github.io/f27-energy/o2b/",
+  "devices_config": "sites/o2b/devices.json",
+  "data_dir": "data/o2b",
+  "advisor": {"name": "Pamutka", "figure": "cat", "place": "balcony",
+              "_comment": "A tanácsadó a ház ezüst cirmos macskája (a tulaj döntése, 2026.11.14). Az erkélyen ül, ahol napozni szokott."},
+  "comfort": {"heat_day_c": 22, "heat_night_c": 20, "_comment": "A tulaj kívánsága télre (2026.11.14). Ehhez méri a túlfűtést."},
+  "presence": {"sources": ["pir", "consumption"], "_comment": "Nincs foglalási naptár: a jelenlétet a mozgásérzékelő és az eszközhasználat (fogyasztás) mutatja; később további érzékelők."},
+  "heating": {"base": "gas_boiler", "boiler": "Savio Acta NOx 24 kombi (2021), nem kondenzációs, a lenti fürdőben",
+              "hot_water": "lent a gázkombi (átfolyós), fent a villanybojler (okos konnektoron)",
+              "ac_heating": false},
+  "email": {"daily_at": "20:00"},
+  "tariff": {
+    "quota_kwh_year": 2523,
+    "meters": {
+      "A1": {"label": "A1 általános (egy mérő)", "in_quota": 36.2, "over_quota": 70.1}
+    },
+    "_comment": "Egyetlen villanymérő, A1. A fogyasztás tartósan a kedvezményes keret kétszerese fölött van, ezért a határköltség a keret feletti ár."
+  },
+  "circuits": [
+    {"pink": "C1", "name": "BOJLER", "meter": "A1", "ft_low": 70.1, "ft_high": 70.1, "_why": "emeleti villanybojler okos konnektoron; mér-e, az első felderítés mutatja"}
+  ],
+  "thermometers": [
+    {"pink": "T1", "name": "Nappali"},
+    {"pink": "T2", "name": "Étkező"},
+    {"pink": "T3", "name": "Hálószoba"},
+    {"pink": "T4", "name": "Konyha"},
+    {"pink": "T5", "name": "Kagyló szoba"},
+    {"pink": "T6", "name": "Gyerekszoba"},
+    {"pink": "T7", "name": "Télikert"}
+  ]
+}

@@ -42,5 +42,45 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(out.stdout.split(), ["D1", "https://example.org/d1/", "S1", "48.2"])
 
 
+class O2BSiteTest(unittest.TestCase):
+    """A második telephely (O2B) konfigja: betölthető, és a párosítás nem keveri az F27 eszközeivel."""
+
+    CFG = ROOT / "sites" / "o2b" / "site.json"
+
+    def test_loads(self):
+        s = load(self.CFG)
+        self.assertEqual((s.tag, s.advisor["name"], s.comfort["heat_day_c"]), ("O2B", "Pamutka", 22))
+        self.assertTrue(s.devices_config.exists())
+        self.assertEqual(s.data_dir, ROOT / "data" / "o2b")
+        self.assertEqual(set(s.meters), {"A1"})
+
+    def test_no_private_names(self):
+        for f in (ROOT / "sites" / "o2b").glob("*.json"):
+            low = f.read_text(encoding="utf-8").lower()
+            for bad in ("olivér", "orlay", "2/b"):
+                self.assertNotIn(bad, low, f"{f.name}: {bad}")
+
+    def test_matching_two_homes(self):
+        from f27.discover import match_devices
+        cfg = json.loads((ROOT / "sites" / "o2b" / "devices.json").read_text(encoding="utf-8"))
+        H1, H2 = "home-f27", "home-o2b"
+        devs = [
+            {"id": "a", "name": "F27 - Hőmérő - Kis szoba", "category": "wsdcg", "owner_id": H1},
+            {"id": "b", "name": "F27 - Klíma kismegszakító (9.)", "category": "dlq", "owner_id": H1},
+            {"id": "c", "name": "Hőmérő - nappali", "category": "wsdcg", "owner_id": H2},
+            {"id": "d", "name": "Hőmérő - kagyló szoba", "category": "wsdcg", "owner_id": H2},
+            {"id": "e", "name": "Klíma - Nappali", "category": "infrared_ac", "owner_id": H2},
+            {"id": "f", "name": "Klíma - gyerekszoba", "category": "infrared_ac", "owner_id": H2},
+            {"id": "g", "name": "Emeleti bojler (meleg víz)", "category": "cz", "owner_id": H2},
+            {"id": "h", "name": "Multifunctional infrared detector", "category": "pir", "owner_id": H2},
+            {"id": "i", "name": "Hőmérő - Koshka télikertje", "category": "wsdcg", "owner_id": H2},
+        ]
+        res = match_devices(devs, cfg["devices"], cfg["role_categories"])
+        got = {p: d["id"] for p, d in res.mapping.items()}
+        self.assertEqual(got, {"T1": "c", "T5": "d", "K1": "e", "K4": "f", "C1": "g", "M1": "h", "T7": "i"})
+        self.assertNotIn("a", got.values())
+        self.assertEqual(res.conflicts, {})
+
+
 if __name__ == "__main__":
     unittest.main()

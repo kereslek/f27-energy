@@ -14,7 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-DEFAULT = Path(__file__).resolve().parent.parent / "config" / "site.json"
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT = ROOT / "config" / "site.json"
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,9 @@ class Site:
     map_url: str
     quota_kwh_year: float
     advisor: dict = field(default_factory=dict)
+    devices_config: Path = ROOT / "config" / "devices.json"
+    data_dir: Path = ROOT / "data"
+    comfort: dict = field(default_factory=dict)
     meters: dict = field(default_factory=dict)
     circuits: tuple = ()
     thermometers: tuple = ()
@@ -56,6 +60,9 @@ def load(path: str | os.PathLike | None = None) -> Site:
         tz=ZoneInfo(j.get("timezone") or "Europe/Budapest"),
         lat=float(loc.get("lat", 47.5)), lon=float(loc.get("lon", 19.05)),
         map_url=j.get("map_url") or "",
+        devices_config=ROOT / (j.get("devices_config") or "config/devices.json"),
+        data_dir=ROOT / (j.get("data_dir") or "data"),
+        comfort=j.get("comfort") or {},
         advisor={"name": "Energiaőr", "figure": "green_chair", **(j.get("advisor") or {})},
         quota_kwh_year=float(tar.get("quota_kwh_year") or 2523),
         meters=tar.get("meters") or {},

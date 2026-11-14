@@ -1,0 +1,37 @@
+{
+  "_comment": "O2B eszközök (a Smart Life saját otthonában). Device ID és családnév NEM kerül ide. A gyerekszoba két eszközét a tulaj átnevezi '... - gyerekszoba' névre (2026.11.14). pos: a térkép koordinátái, a fotóhű térkép elkészültekor töltjük ki.",
+  "role_categories": {
+    "thermo": ["wsdcg"],
+    "plug": ["cz", "pc"],
+    "ac_ir": ["infrared_ac", "kt", "qt"],
+    "pir": ["pir"]
+  },
+  "devices": [
+    {"pink": "T1", "role": "thermo", "room": "nappali",     "label": "Hőmérő, nappali",      "match": ["hőmérő - nappali"],     "exact": "Hőmérő - nappali"},
+    {"pink": "T2", "role": "thermo", "room": "etkezo",      "label": "Hőmérő, étkező",       "match": ["hőmérő - étkező"],      "exact": "Hőmérő - étkező"},
+    {"pink": "T3", "role": "thermo", "room": "halo",        "label": "Hőmérő, hálószoba",    "match": ["hőmérő - hálószoba"],   "exact": "Hőmérő - hálószoba"},
+    {"pink": "T4", "role": "thermo", "room": "konyha",      "label": "Hőmérő, konyha",       "match": ["hőmérő - konyha"],      "exact": "Hőmérő - konyha"},
+    {"pink": "T5", "role": "thermo", "room": "kagylo",      "label": "Hőmérő, kagyló szoba", "match": ["hőmérő - kagyló"],      "exact": "Hőmérő - kagyló szoba"},
+    {"pink": "T6", "role": "thermo", "room": "gyerek",      "label": "Hőmérő, gyerekszoba",  "match": ["hőmérő - gyerekszoba"], "exact": "Hőmérő - gyerekszoba"},
+    {"pink": "T7", "role": "thermo", "room": "telikert",    "label": "Hőmérő, télikert",     "match": ["télikert"]},
+    {"pink": "K1", "role": "ac_ir",  "room": "nappali",     "label": "Klíma, nappali (lenti multi-split)",  "match": ["klíma - nappali"],     "exact": "Klíma - Nappali"},
+    {"pink": "K2", "role": "ac_ir",  "room": "halo",        "label": "Klíma, hálószoba (lenti multi-split)", "match": ["klíma - hálószoba"],  "exact": "Klíma - hálószoba"},
+    {"pink": "K3", "role": "ac_ir",  "room": "kagylo",      "label": "Klíma, kagyló szoba (tetőn lévő multi-split)", "match": ["klíma - kagyló"], "exact": "Klíma - Kagyló"},
+    {"pink": "K4", "role": "ac_ir",  "room": "gyerek",      "label": "Klíma, gyerekszoba (tetőn lévő multi-split)", "match": ["klíma - gyerekszoba"], "exact": "Klíma - gyerekszoba"},
+    {"pink": "C1", "role": "plug",   "room": "furdo_fent",  "label": "Emeleti bojler (meleg víz)", "match": ["emeleti bojler"],  "exact": "Emeleti bojler (meleg víz)"},
+    {"pink": "C2", "role": "plug",   "room": "nappali",     "label": "Dupla állólámpa",      "match": ["dupla állólámpa"]},
+    {"pink": "C3", "role": "plug",   "room": "nappali",     "label": "TV led",               "match": ["tv led"],              "exact": "TV led"},
+    {"pink": "C4", "role": "plug",   "room": "etkezo",      "label": "Lépcső, fények",       "match": ["lépcső - fények"],     "exact": "Lépcső - fények"},
+    {"pink": "C5", "role": "plug",   "room": "etkezo",      "label": "Tükör, étkező (két asztali lámpa)", "match": ["tükör - étkező"]},
+    {"pink": "C6", "role": "plug",   "room": "etkezo",      "label": "Karácsonyfa",          "match": ["karácsonyfa"],         "exact": "Karácsonyfa"},
+    {"pink": "C7", "role": "plug",   "room": "nappali",     "label": "Szarvas",              "match": ["szarvas"],             "exact": "Szarvas"},
+    {"pink": "C8", "role": "plug",   "room": "erkely",      "label": "Karácsonyi fények (erkély)", "match": ["karácsonyi fények"], "exact": "Karácsonyi fények - konnektor"},
+    {"pink": "M1", "role": "pir",    "room": "?",           "label": "Mozgásérzékelő",       "match": ["infrared detector", "mozgás"]}
+  ],
+  "fixed": [
+    {"id": "GAS",  "label": "Gázkazán, Savio Acta NOx 24 kombi (2021): fűtés + lenti meleg víz, a lenti fürdőben", "room": "furdo_lent"},
+    {"id": "ODU1", "label": "Klíma kültéri egység az erkélyen (nappali + háló)", "room": "erkely"},
+    {"id": "ODU2", "label": "Klíma kültéri egység a tetőn (kagyló + gyerekszoba)", "room": "teto"},
+    {"id": "ROBOT", "label": "Robotporszívó dokk", "room": "nappali"}
+  ]
+}
