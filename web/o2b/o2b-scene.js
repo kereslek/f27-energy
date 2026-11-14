@@ -215,11 +215,26 @@
     return out;
   }
 
+  // Tájolás: a terv "fel" iránya (az erkély felé) és az észak közti szög, óramutató szerint.
+  var PLAN_NORTH = 55;
+  // az utca: középpont, irány (észak-dél) és a lakás felől kifelé mutató (keleti) egységvektor, méterben
+  function streetGeom() {
+    var a = PLAN_NORTH * Math.PI / 180;
+    var d = [Math.sin(a), -Math.cos(a)];                        // észak a terven
+    var e = [Math.sin(a + Math.PI / 2), -Math.cos(a + Math.PI / 2)];   // kelet a terven
+    var c = [4.8 + e[0] * 7.6, 7.2 + e[1] * 7.6];
+    return { c: c, d: d, e: e, len: 5.2 };
+  }
+
   // ---- vetítés ------------------------------------------------------------------------------------
   function bounds(f) {
     var xs = [], ys = [];
     FLOORS[f].rooms.forEach(function (r) { xs.push(r.x, r.x + r.w); ys.push(r.y, r.y + r.d); });
-    if (f === 'lo') { ys.push(-4.6); xs.push(-0.5, 6.0); }           // az utca és a fák is férjenek el
+    if (f === 'lo') {                                               // a fák és az utca is férjenek el
+      ys.push(-3.2);
+      var g = streetGeom();
+      [-1, 1].forEach(function (t) { [-1.6, 0.8].forEach(function (o) { xs.push(g.c[0] + g.d[0] * g.len * t + g.e[0] * o); ys.push(g.c[1] + g.d[1] * g.len * t + g.e[1] * o); }); });
+    }
     return { x0: Math.min.apply(0, xs), x1: Math.max.apply(0, xs), y0: Math.min.apply(0, ys), y1: Math.max.apply(0, ys) };
   }
   // Babaház: a felső szint a lépcső fölött áll (a lépcsőnyílása a lenti lépcső fölé esik), és a
@@ -421,16 +436,22 @@
         guides.stair = 'M' + r1(hc[0]) + ',' + r1(hc[1]) + 'L' + r1(lc[0]) + ',' + r1(lc[1]);
         guides.mid = [(hc[0] + lc[0]) / 2, (hc[1] + lc[1]) / 2];
       }
-      // az utca (csak lent, az erkély előtt) és a fák
+      // Környezet (csak lent). Az erkély felől (a Gellért-hegy felé) nincs látható utca, csak fák.
+      // Az egyetlen utca a lakástól keletre fut, nagyjából észak-déli irányban (a tulaj térképe szerint);
+      // a babaházon a konyha és a bejárat felőli oldalon. A neve csak belépve látszik (site_info).
       var street = null;
       if (f === 'lo') {
+        var S0 = streetGeom();
+        var at = function (t, o) { return P(S0.c[0] + S0.d[0] * t + S0.e[0] * o, S0.c[1] + S0.d[1] * t + S0.e[1] * o, 0); };
+        var la = at(-S0.len, 0), lb = at(S0.len, 0), ang = Math.atan2(lb[1] - la[1], lb[0] - la[0]) * 180 / Math.PI;
+        if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
         street = {
-          road: pts([P(-0.5, -4.6, 0), P(6.0, -4.6, 0), P(6.0, -3.0, 0), P(-0.5, -3.0, 0)]),
-          walk: pts([P(-0.5, -3.0, 0), P(6.0, -3.0, 0), P(6.0, -2.2, 0), P(-0.5, -2.2, 0)]),
-          line: (function () { var a = P(-0.3, -3.8, 0), c = P(5.8, -3.8, 0); return 'M' + r1(a[0]) + ',' + r1(a[1]) + 'L' + r1(c[0]) + ',' + r1(c[1]); })(),
+          road: pts([at(-S0.len, -0.8), at(S0.len, -0.8), at(S0.len, 0.8), at(-S0.len, 0.8)]),
+          walk: pts([at(-S0.len, -1.6), at(S0.len, -1.6), at(S0.len, -0.8), at(-S0.len, -0.8)]),
+          line: 'M' + r1(la[0]) + ',' + r1(la[1]) + 'L' + r1(lb[0]) + ',' + r1(lb[1]),
+          lamps: [],
           trees: [-0.1, 1.6, 3.3, 5.0].map(function (x) { return P(x, -2.6, 0); }),
-          lamps: [0.75, 4.15].map(function (x) { return P(x, -2.4, 0); }),
-          label: P(5.2, -3.8, 0)
+          label: at(S0.len * 0.45, 0), ang: ang
         };
       }
       // a képernyő-befoglaló (a padló és a falak teteje)
@@ -444,6 +465,6 @@
 
   root.O2BScene = {
     U: U, INK: INK, FLOORS: FLOORS, PIECES: PIECES, PINS: PINS, CAT_ROUTE: CAT_ROUTE,
-    build: build, Proj: Proj, OFF: OFF, LIFT: LIFT, roomCenter: roomCenter, far: far
+    build: build, Proj: Proj, OFF: OFF, LIFT: LIFT, PLAN_NORTH: PLAN_NORTH, roomCenter: roomCenter, far: far
   };
 })(typeof window !== 'undefined' ? window : this);

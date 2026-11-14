@@ -8,7 +8,7 @@
   'use strict';
   var S = window.O2BScene, SUN = window.F27Sun, BAT = window.F27Battery;
   var NS = 'http://www.w3.org/2000/svg', INK = '#1e2a44';
-  var LAT = 47.48, LON = 19.04, PLAN_NORTH = 55, TARGET_DAY = 22, TARGET_NIGHT = 20;
+  var LAT = 47.48, LON = 19.04, PLAN_NORTH = S.PLAN_NORTH, TARGET_DAY = 22, TARGET_NIGHT = 20;
   var DAILY_URL = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
     '&current=temperature_2m,weather_code&daily=temperature_2m_min,temperature_2m_max&forecast_days=2&timezone=Europe%2FBudapest';
 
@@ -236,12 +236,10 @@
     });
     // az utca neve csak belépve (a privát site_info táblából); kijelentkezve és demóban csak "utca"
     var name = st.user ? (st.street || 'utca') : 'utca', lx = r1(s.label[0]), ly = r1(s.label[1] + 5);
-    var t = el('text', { x: lx, y: ly, 'text-anchor': 'middle', class: 'slab-t', 'data-street': '1', style: 'font-size:16px', transform: 'rotate(' + textAng() + ' ' + lx + ' ' + ly + ')' }, sg);
+    var t = el('text', { x: lx, y: ly, 'text-anchor': 'middle', class: 'slab-t', 'data-street': '1', style: 'font-size:16px', transform: 'rotate(' + r1(s.ang) + ' ' + lx + ' ' + ly + ')' }, sg);
     t.textContent = name + (st.user && st.role === 'owner' && !st.street ? ' ✎' : '');
     if (st.user && st.role === 'owner') { var tt = el('title', {}, sg); tt.textContent = 'Az utcanév csak belépve látszik. Kattints a módosításhoz.'; sg.addEventListener('click', editStreet); }
   }
-  // az utca szövegének dőlése: a felirat az utca irányával fusson
-  function textAng() { return [26.6, -26.6, 26.6, -26.6][st.k]; }
 
   // iránytű a talajon (a F27 mintájára), a nap mai útjával, napkeltével, napnyugtával, holnapi min/max-szal
   function drawCompass(g) {

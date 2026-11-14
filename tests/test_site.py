@@ -54,11 +54,26 @@ class O2BSiteTest(unittest.TestCase):
         self.assertEqual(s.data_dir, ROOT / "data" / "o2b")
         self.assertEqual(set(s.meters), {"A1"})
 
+    # A tiltott szavak (családnév, utcanév) csak SHA-256 lenyomatként szerepelnek, hogy maga a teszt
+    # se írja ki őket a publikus repóba.
+    BAD_HASHES = {
+        "aa51f0c852c8c94e4cb318f3436552df13803afc23565232d3c1629344f6507a",
+        "e6c5ea9b3d6047223db9c14809a57be18973df3883a6d679b787ef7a5f940b44",
+        "68d3ac7030de7beb1933fc5eefdeaac2a6f9a5e61e00bf30a2a1c263e2fc34f7",
+        "1631afb3197b7fbae519551bd501ff4169de3d96a4ba7feea71a195a782d6402",
+    }
+
     def test_no_private_names(self):
-        for f in (ROOT / "sites" / "o2b").glob("*.json"):
-            low = f.read_text(encoding="utf-8").lower()
-            for bad in ("olivér", "orlay", "2/b"):
-                self.assertNotIn(bad, low, f"{f.name}: {bad}")
+        import hashlib
+        import re
+        files = list((ROOT / "sites" / "o2b").glob("*.json")) + list((ROOT / "web" / "o2b").glob("*.*")) \
+            + list((ROOT / "docs").glob("*.md")) + [ROOT / "CLAUDE.md"]
+        for f in files:
+            low = f.read_text(encoding="utf-8", errors="ignore").lower()
+            if f.parent.name == "o2b" and f.suffix == ".json":
+                self.assertNotIn("2/b", low, f"{f.name}: házszám")
+            for tok in set(re.findall(r"[0-9a-záéíóöőúüű]+", low)):
+                self.assertNotIn(hashlib.sha256(tok.encode()).hexdigest(), self.BAD_HASHES, f"{f.name}: privát név")
 
     def test_matching_two_homes(self):
         from f27.discover import match_devices

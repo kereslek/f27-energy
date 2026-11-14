@@ -1,7 +1,7 @@
 # O2B: az első élő dashboard beállítása
 
 Kb. 15 perc. A végén az O2B-nek saját, az F27-től független adatbázisa lesz, és az adatgyűjtő
-10 percenként írja bele a Smart Life "Orlay" otthon eszközeinek állapotát.
+10 percenként írja bele a Smart Life második (O2B) otthonának eszközeinek állapotát.
 **Kulcsot, jelszót soha ne másolj a chatbe**, csak a GitHubba.
 
 ## 1. Új Supabase-projekt
