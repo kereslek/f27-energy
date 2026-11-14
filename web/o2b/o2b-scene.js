@@ -46,7 +46,7 @@
       // külső falak: [x0, y0, x1, y1, oldal (a kifelé néző irány), nyílások [[a, b, fajta]]]
       // fajta: d = ajtó, w = ablak, g = üvegajtó (erkély)
       outer: [
-        [0, 0, 4.4, 0, 'N', [[1.5, 2.9, 'g']]],
+        [0, 0, 4.4, 0, 'N', [[1.5, 2.9, 'g', 0, 2.6]], { low: 1.05 }],      // az erkély felé: alacsony, hogy látsszon az erkély
         [4.4, 0, 4.4, 5.8, 'E', [[1.4, 2.6, 'w']]],
         [4.4, 5.8, 6.95, 5.8, 'N', []],
         [6.95, 5.8, 6.95, 7.45, 'E', []],
@@ -54,9 +54,9 @@
         [8.1, 7.45, 8.1, 8.45, 'E', []],
         [8.1, 8.45, 9.55, 8.45, 'N', []],
         [9.55, 8.45, 9.55, 11.05, 'E', [[9.1, 10.3, 'w']]],
-        [4.45, 11.05, 9.55, 11.05, 'S', [[5.35, 6.4, 'd'], [7.6, 8.8, 'w']]],
+        [4.45, 11.05, 9.55, 11.05, 'S', [[5.35, 6.4, 'd', 0, 2.2, 'double'], [7.6, 8.8, 'w']]],   // bejárati ajtó (kétszárnyú, felülvilágítóval)
         [4.45, 11.05, 4.45, 14.4, 'E', []],
-        [0, 14.4, 4.45, 14.4, 'S', [[1.4, 2.9, 'w']]],
+        [0, 14.4, 4.45, 14.4, 'S', [[1.35, 2.95, 'w', 0.45, 2.75]]],         // a háló magas ablaka
         [0, 0, 0, 14.4, 'W', []]
       ],
       inner: [
@@ -125,6 +125,7 @@
   // Nappali
   piece('lv_curtains', 'Zöld bársonyfüggöny az erkélyajtónál', 'lo', [[1.2, 0.08, 0.25, 0.12, 0, 2.7, C.VELVET], [2.95, 0.08, 0.25, 0.12, 0, 2.7, C.VELVET], [1.1, 0.04, 2.2, 0.05, 2.7, 0.05, C.BLACK]], false);
   piece('lv_radiator', 'Radiátor az erkélyajtó mellett', 'lo', [[3.25, 0.12, 0.9, 0.1, 0.12, 0.55, C.WHITE]], false);
+  piece('ac_lv', 'Klíma beltéri egysége a kanapé fölött (Gree, IR-ről)', 'lo', [[0.04, 2.75, 0.26, 0.95, 2.25, 0.32, C.WHITE], [0.29, 2.8, 0.02, 0.85, 2.27, 0.06, C.GREY]], false);
   piece('lv_sofa', 'Kanapé', 'lo', [[0.25, 2.2, 0.9, 2.2, 0, 0.42, C.GREY], [0.12, 2.2, 0.25, 2.2, 0, 0.8, C.GREY], [0.25, 2.05, 0.9, 0.2, 0, 0.62, C.GREY], [0.25, 4.35, 0.9, 0.2, 0, 0.62, C.GREY], [0.35, 2.4, 0.18, 0.5, 0.42, 0.3, C.BLUEC], [0.35, 3.8, 0.18, 0.5, 0.42, 0.3, C.YELLOW]]);
   piece('lv_rug', 'Szőnyeg', 'lo', [[1.3, 2.1, 2.1, 2.6, 0, 0.02, C.CREAM]]);
   piece('lv_coffee', 'Dohányzóasztal', 'lo', [].concat(legs(1.65, 2.85, 0.9, 0.9, 0.38, C.DARK), [[1.6, 2.8, 1.0, 1.0, 0.38, 0.05, C.WALNUT], [1.95, 3.15, 0.22, 0.22, 0.43, 0.12, C.LEAF]]));
@@ -136,9 +137,19 @@
   piece('lv_deer', 'Szarvas (dekor, okos konnektoron)', 'lo', [[1.0, 0.35, 0.12, 0.3, 0, 0.55, C.CREAM], [0.98, 0.35, 0.16, 0.36, 0.55, 0.22, C.CREAM], [1.0, 0.3, 0.12, 0.1, 0.77, 0.25, C.CREAM]]);
 
   // Étkező
-  piece('dn_rug', 'Kék-bézs szőnyeg', 'lo', [[1.1, 7.6, 2.3, 1.9, 0, 0.02, C.RUGB]]);
-  piece('dn_table', 'Élfás tölgyasztal, 6 szürke kagylószékkel', 'lo', [].concat([[1.4, 8.3, 0.08, 0.6, 0, 0.74, C.BLACK], [2.95, 8.3, 0.08, 0.6, 0, 0.74, C.BLACK], [1.3, 8.15, 1.85, 0.95, 0.74, 0.06, C.OAK]], chairs6(2.22, 8.62)));
-  piece('dn_side', 'Fekete üvegajtós tálalószekrény, rajta két lámpa és tükör', 'lo', [[3.75, 7.0, 0.5, 1.6, 0, 0.85, C.BLACK], [3.8, 7.05, 0.02, 1.5, 0.15, 0.6, C.GLASS], [3.85, 7.15, 0.18, 0.18, 0.85, 0.35, C.LAMP], [3.85, 8.3, 0.18, 0.18, 0.85, 0.35, C.LAMP], [4.22, 7.35, 0.06, 1.0, 1.0, 0.95, C.BLACK]]);
+  piece('dn_rug', 'Kék-bézs, kopott mintás szőnyeg', 'lo', [[0.95, 6.75, 2.6, 2.75, 0, 0.02, C.RUGB], [1.15, 6.95, 2.2, 2.35, 0.02, 0.01, C.CREAM]]);
+  // élfás (live edge) tölgylap, fekete fém U-lábak; hosszában a nappali felé áll; 6 szürke kagylószék
+  piece('dn_table', 'Élfás tölgyasztal fekete fémlábbal, 6 szürke kagylószékkel', 'lo', (function () {
+    var o = [[1.82, 7.3, 0.8, 0.06, 0, 0.72, C.BLACK], [1.82, 8.94, 0.8, 0.06, 0, 0.72, C.BLACK],
+      [1.74, 7.2, 0.96, 1.9, 0.72, 0.05, C.OAK], [1.7, 7.45, 0.04, 0.6, 0.72, 0.05, C.OAK], [2.7, 8.2, 0.04, 0.55, 0.72, 0.05, C.OAK]];
+    function shell(x, y, w, d, bx, by, bw, bd) { o.push([x, y, w, d, 0.0, 0.46, C.GREY], [bx, by, bw, bd, 0.3, 0.42, C.GREY]); }
+    shell(1.2, 7.55, 0.42, 0.42, 1.14, 7.55, 0.12, 0.42); shell(1.2, 8.35, 0.42, 0.42, 1.14, 8.35, 0.12, 0.42);
+    shell(2.84, 7.55, 0.42, 0.42, 3.2, 7.55, 0.12, 0.42); shell(2.84, 8.35, 0.42, 0.42, 3.2, 8.35, 0.12, 0.42);
+    shell(2.02, 6.72, 0.42, 0.4, 2.02, 6.66, 0.42, 0.12); shell(2.02, 9.18, 0.42, 0.38, 2.02, 9.48, 0.42, 0.1);
+    return o;
+  })());
+  piece('dn_side', 'Fekete üvegajtós tálalószekrény, rajta két fehér lámpa', 'lo', [[3.85, 7.4, 0.5, 1.6, 0, 0.85, C.BLACK], [3.83, 7.45, 0.02, 1.5, 0.15, 0.6, C.GLASS], [3.95, 7.5, 0.22, 0.22, 0.85, 0.12, C.BLACK], [3.92, 7.47, 0.28, 0.28, 0.97, 0.26, C.CREAM], [3.95, 8.65, 0.22, 0.22, 0.85, 0.12, C.BLACK], [3.92, 8.62, 0.28, 0.28, 0.97, 0.26, C.CREAM]]);
+  piece('dn_mirror', 'Nagy, hosszú, fekvő tükör fekete kerettel', 'lo', [[4.3, 7.45, 0.07, 1.5, 1.3, 0.8, C.BLACK], [4.27, 7.52, 0.04, 1.36, 1.37, 0.66, C.GLASS]], false);
   piece('dn_radiator', 'Radiátor (0-ra véve; itt mér a Computherm)', 'lo', [[3.1, 6.42, 0.8, 0.1, 0.12, 0.55, C.WHITE]], false);
   piece('dn_thermostat', 'Computherm termosztát (étkező sarka)', 'lo', [[4.32, 6.45, 0.06, 0.14, 1.3, 0.18, C.WHITE]], false);
   piece('dn_chair', 'Krém füles fotel a lépcső alatt', 'lo', [[0.2, 8.3, 0.75, 0.75, 0, 0.42, C.CREAM], [0.12, 8.3, 0.15, 0.75, 0, 1.0, C.CREAM], [0.2, 8.2, 0.75, 0.12, 0, 0.62, C.CREAM], [0.2, 9.0, 0.75, 0.12, 0, 0.62, C.CREAM]]);
@@ -146,6 +157,8 @@
   piece('dn_tree', 'Karácsonyfa (okos konnektoron)', 'lo', [[3.6, 9.9, 0.3, 0.3, 0, 0.2, C.TERRA], [3.42, 9.72, 0.66, 0.66, 0.2, 0.6, C.LEAF], [3.52, 9.82, 0.46, 0.46, 0.8, 0.5, C.LEAF], [3.62, 9.92, 0.26, 0.26, 1.3, 0.4, C.LEAF2], [3.7, 10.0, 0.1, 0.1, 1.7, 0.12, C.YELLOW]]);
 
   // Hálószoba
+  piece('ac_bd', 'Klíma beltéri egysége az ajtó fölött (IR-távirányítóval)', 'lo', [[3.0, 11.2, 0.9, 0.24, 2.38, 0.3, C.WHITE]], false);
+  piece('bd_curtain', 'Fehér függöny a magas ablakon', 'lo', [[1.15, 14.16, 0.25, 0.1, 0.1, 2.65, C.LINEN], [2.95, 14.16, 0.25, 0.1, 0.1, 2.65, C.LINEN]], false);
   piece('bd_wardrobe', 'Beépített szekrényfal (zsályazöld fülkével)', 'lo', [[0.08, 11.3, 0.6, 2.95, 0, 2.6, C.WHITE], [0.66, 12.1, 0.03, 1.4, 0.45, 1.3, C.SAGE]], false);
   piece('bd_bed', 'Franciaágy', 'lo', [[0.7, 12.0, 2.0, 1.6, 0, 0.45, C.WALNUT], [0.72, 12.02, 1.96, 1.56, 0.45, 0.14, C.LINEN], [1.6, 12.0, 1.08, 1.6, 0.58, 0.05, C.SAGE], [0.8, 12.15, 0.4, 0.55, 0.59, 0.14, C.WHITE], [0.8, 12.9, 0.4, 0.55, 0.59, 0.14, C.WHITE]]);
   piece('bd_desk', 'Állítható íróasztal LG monitorral', 'lo', [].concat([[3.3, 13.4, 1.0, 0.6, 0.72, 0.04, C.OAK], [3.35, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [4.2, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [3.55, 13.85, 0.55, 0.06, 0.95, 0.35, C.BLACK]], [[3.6, 12.95, 0.45, 0.45, 0, 0.5, C.BLACK], [3.62, 12.9, 0.42, 0.08, 0.5, 0.5, C.BLACK]]));
@@ -159,18 +172,29 @@
   piece('bt_washer', 'Gorenje mosógép, fölötte a szekrényben a Savio gázkazán', 'lo', [[5.0, 5.9, 0.6, 0.55, 0, 0.85, C.BLACK], [5.0, 5.86, 0.6, 0.45, 1.5, 0.75, C.WHITE], [5.12, 5.86, 0.36, 0.03, 1.62, 0.5, C.CREAM]], false);
   piece('bt_wc', 'Fekete fali WC és mosdó', 'lo', [[5.05, 6.85, 0.36, 0.5, 0.25, 0.25, C.BLACK], [5.6, 7.05, 0.45, 0.3, 0.5, 0.35, C.WALNUT], [5.62, 7.07, 0.41, 0.26, 0.85, 0.06, C.WHITE]], false);
   piece('bt_towel', 'Fekete törölközőszárító radiátor', 'lo', [[6.85, 6.2, 0.06, 0.5, 0.4, 1.0, C.BLACK]], false);
-  piece('kc_counter', 'Konyhapult: gázfőzőlap, mosogató, félsziget', 'lo', [[9.0, 8.5, 0.55, 2.5, 0, 0.9, C.SHAKER], [9.0, 8.5, 0.55, 2.5, 0.9, 0.04, C.OAK], [7.0, 10.45, 2.0, 0.55, 0, 0.9, C.SHAKER], [7.0, 10.45, 2.0, 0.55, 0.9, 0.04, C.OAK], [9.1, 9.0, 0.4, 0.55, 0.94, 0.03, C.BLACK], [9.05, 8.5, 0.5, 2.5, 1.45, 0.75, C.SHAKER], [7.0, 9.3, 0.55, 1.15, 0, 0.9, C.SHAKER], [7.0, 9.3, 0.55, 1.15, 0.9, 0.04, C.OAK]], false);
-  piece('kc_tall', 'Magas oszlop: sütő, mikró, hűtő', 'lo', [[7.05, 8.5, 0.6, 0.75, 0, 2.5, C.SHAKER], [7.62, 8.62, 0.03, 0.5, 0.75, 0.55, C.BLACK], [7.62, 8.62, 0.03, 0.5, 1.4, 0.35, C.BLACK], [7.7, 8.5, 0.6, 0.6, 0, 2.5, C.SHAKER]], false);
+  // C alakú konyha: a pult az északi falon (főzőlap, mosogató), a nyugati végén félsziget fordul be a
+  // szoba közepe felé; a keleti falon magas oszlopok (sütő, mikró, hűtő); fent felső szekrények.
+  piece('kc_counter', 'Konyhapult: gázfőzőlap, fekete gránit mosogató', 'lo', [[7.0, 8.5, 2.5, 0.6, 0, 0.88, C.SHAKER], [7.0, 8.5, 2.5, 0.62, 0.88, 0.05, C.OAK],
+    [8.25, 8.58, 0.55, 0.46, 0.93, 0.03, C.BLACK], [7.45, 8.6, 0.5, 0.4, 0.92, 0.02, C.BLACK], [7.0, 8.47, 2.5, 0.03, 0.93, 0.55, C.MARBLE],
+    [7.0, 8.5, 1.95, 0.36, 1.48, 0.92, C.SHAKER]], false);
+  piece('kc_peninsula', 'Félsziget a mosogatóval (befordul a szoba közepe felé)', 'lo', [[7.0, 9.12, 0.62, 0.95, 0, 0.88, C.SHAKER], [6.98, 9.12, 0.66, 0.99, 0.88, 0.05, C.OAK], [7.12, 9.3, 0.38, 0.4, 0.92, 0.02, C.WHITE]], false);
+  piece('kc_tall', 'Magas oszlopok: beépített sütő, mikró, hűtő', 'lo', [[8.95, 9.12, 0.55, 0.7, 0, 2.4, C.SHAKER], [8.93, 9.22, 0.03, 0.5, 0.8, 0.55, C.BLACK], [8.93, 9.22, 0.03, 0.5, 1.42, 0.3, C.BLACK],
+    [8.95, 9.82, 0.55, 0.65, 0, 2.4, C.SHAKER], [8.95, 10.47, 0.55, 0.53, 0, 2.4, C.SHAKER]], false);
   piece('kc_radiator', 'Radiátor a konyhaablak alatt', 'lo', [[7.8, 10.92, 1.0, 0.08, 0.12, 0.5, C.WHITE]], false);
-  piece('kc_lamp', 'Háromágú függesztett lámpa', 'lo', [[7.7, 9.5, 1.0, 0.04, 2.95, 0.02, C.BLACK], [7.75, 9.45, 0.15, 0.15, 2.1, 0.18, C.BLACK], [8.15, 9.45, 0.15, 0.15, 2.1, 0.18, C.BLACK], [8.55, 9.45, 0.15, 0.15, 2.1, 0.18, C.BLACK]], false);
+  piece('kc_lamp', 'Háromágú fekete függesztett lámpa', 'lo', [[7.6, 9.6, 1.0, 0.04, 2.95, 0.02, C.BLACK], [7.62, 9.55, 0.15, 0.15, 2.1, 0.18, C.LAMP], [8.02, 9.55, 0.15, 0.15, 2.05, 0.18, C.LAMP], [8.42, 9.55, 0.15, 0.15, 2.0, 0.18, C.LAMP]], false);
   piece('pn_shelf', 'Kamra polcai', 'lo', [[7.0, 7.5, 1.05, 0.3, 0, 2.0, C.OAK]], false);
 
   // FENT ------------------------------------------------------------------------------------------
-  piece('kg_sofa', 'IKEA Friheten kinyitható kanapé (barna-narancs)', 'up', [[0.15, 1.2, 0.9, 2.1, 0, 0.42, C.ORANGE], [0.08, 1.2, 0.22, 2.1, 0, 0.8, C.ORANGE], [0.15, 1.05, 0.9, 0.18, 0, 0.6, C.ORANGE], [0.15, 3.25, 0.9, 0.18, 0, 0.6, C.ORANGE]]);
-  piece('kg_desk', 'Sötét íróasztal két monitorral', 'up', [[1.55, 2.6, 0.7, 1.5, 0.72, 0.04, C.DARK], [1.6, 2.65, 0.06, 1.4, 0, 0.72, C.DARK], [2.15, 2.65, 0.06, 1.4, 0, 0.72, C.DARK], [2.15, 2.9, 0.06, 0.5, 0.95, 0.35, C.BLACK], [2.0, 3.45, 0.2, 0.06, 0.8, 0.55, C.BLACK], [1.1, 3.1, 0.45, 0.45, 0, 0.5, C.BLACK]]);
+  // kagyló szoba: belépve jobbra, a szoba végében a falhoz tolt kanapé; az íróasztal a kék falnál
+  piece('ac_kg', 'Klíma beltéri egysége a kék falon (IR-ről)', 'up', [[0.04, 1.55, 0.26, 0.9, 2.1, 0.3, C.WHITE]], false);
+  piece('kg_sofa', 'IKEA Friheten kinyitható kanapé (barna-narancs), a jobb falnál a szoba végében', 'up', [[1.42, 0.22, 0.66, 2.1, 0, 0.42, C.ORANGE], [2.08, 0.22, 0.24, 2.1, 0, 0.82, C.ORANGE],
+    [1.42, 0.2, 0.9, 0.18, 0, 0.62, C.ORANGE], [1.42, 2.14, 0.9, 0.18, 0, 0.62, C.ORANGE], [1.95, 0.5, 0.14, 0.45, 0.42, 0.3, C.CREAM]]);
+  piece('kg_desk', 'Sötét íróasztal két monitorral, irodai szék', 'up', [[0.08, 2.65, 0.7, 1.4, 0.72, 0.04, C.DARK], [0.12, 2.7, 0.06, 1.3, 0, 0.72, C.DARK], [0.68, 2.7, 0.06, 1.3, 0, 0.72, C.DARK],
+    [0.14, 2.85, 0.06, 0.55, 0.92, 0.36, C.BLACK], [0.14, 3.45, 0.06, 0.5, 0.86, 0.5, C.BLACK], [0.88, 3.1, 0.45, 0.45, 0, 0.5, C.BLACK], [1.27, 3.12, 0.08, 0.42, 0.5, 0.5, C.BLACK]]);
   piece('kg_shelf', 'Könyvespolc a gerendák között', 'up', [[0.08, 0.2, 0.3, 0.8, 0.3, 1.6, C.WALNUT], [0.12, 0.25, 0.25, 0.7, 0.9, 0.3, C.RED], [0.12, 0.25, 0.25, 0.7, 1.4, 0.3, C.NAVY]]);
-  piece('kg_radiator', 'Radiátor az ablak alatt, áttört burkolattal', 'up', [[0.7, 0.12, 1.0, 0.16, 0, 0.7, C.WHITE]], false);
-  piece('kg_mat', 'Jógamatrac', 'up', [[0.9, 3.75, 0.6, 0.6, 0, 0.03, C.PINKC]]);
+  piece('kg_radiator', 'Radiátor az ablak alatt, áttört burkolattal', 'up', [[0.55, 0.12, 0.8, 0.16, 0, 0.7, C.WHITE]], false);
+  piece('kg_mat', 'Jógamatrac', 'up', [[1.45, 3.55, 0.6, 0.7, 0, 0.03, C.PINKC]]);
+  piece('ac_gy', 'Klíma beltéri egysége az ajtó melletti falon (IR-ről)', 'up', [[4.27, 3.3, 0.26, 0.9, 2.1, 0.3, C.WHITE]], false);
   piece('gy_bed', 'Egyszemélyes kárpitozott ágy', 'up', [[3.6, 1.6, 0.9, 2.0, 0, 0.4, C.SAGE], [3.62, 1.62, 0.86, 1.96, 0.4, 0.12, C.LINEN], [3.65, 1.65, 0.8, 0.4, 0.52, 0.12, C.WHITE], [4.42, 1.6, 0.08, 2.0, 0.4, 0.5, C.SAGE]]);
   piece('gy_desk', 'Beépített sötét fa íróasztal az ablak előtt', 'up', [[2.55, 0.1, 1.9, 0.55, 0.72, 0.05, C.WALNUT], [2.55, 0.1, 0.45, 0.55, 0, 0.72, C.WALNUT], [4.0, 0.1, 0.45, 0.55, 0, 0.72, C.WALNUT]], false);
   piece('gy_chair', 'Kis fotel', 'up', [[2.6, 2.6, 0.6, 0.6, 0, 0.38, C.YELLOW], [2.55, 2.6, 0.12, 0.6, 0, 0.75, C.YELLOW]]);
@@ -180,17 +204,17 @@
   piece('ub_bath', 'Kád csempézett előfallal', 'up', [[4.62, 5.72, 1.8, 0.75, 0, 0.55, C.WHITE], [4.7, 5.8, 1.64, 0.6, 0.5, 0.06, C.BLUEC]], false);
   piece('ub_sink', 'Mosdószekrény tükörrel, fali WC', 'up', [[5.0, 6.62, 0.6, 0.4, 0, 0.85, C.GREY], [5.05, 6.98, 0.5, 0.04, 1.1, 0.6, C.GLASS], [5.85, 6.7, 0.36, 0.3, 0.25, 0.25, C.WHITE]], false);
   piece('ub_towel', 'Króm törölközőszárító', 'up', [[6.42, 6.55, 0.05, 0.4, 0.3, 1.0, C.STEEL]], false);
-  piece('ub_boiler', 'Villanybojler a fürdő mennyezete fölött', 'up', [[4.75, 5.8, 1.2, 0.5, 2.45, 0.5, C.WHITE], [4.75, 5.8, 1.2, 0.5, 2.95, 0.04, C.STEEL]], false);
+  piece('ub_boiler', 'Villanybojler: kerek, álló, a fürdő mennyezete fölötti térben', 'up', [{ cyl: [5.45, 6.32, 0.28, 2.38, 1.0], c: C.WHITE }, { cyl: [5.45, 6.32, 0.29, 2.38, 0.08], c: C.STEEL }], false);
 
   // ---- eszközök (tűk): pink -> [szint, x, y, z (m)] ----------------------------------------------
   var PINS = {
     T1: ['lo', 3.2, 3.4, 1.2], T8: ['lo', 1.0, 1.9, 1.2], T2: ['lo', 1.2, 7.3, 1.2], T3: ['lo', 1.1, 13.9, 1.2],
-    T4: ['lo', 8.6, 9.8, 1.4], T7: ['lo', 2.6, -1.0, 0.9], K1: ['lo', 0.12, 1.6, 2.5], K2: ['lo', 3.4, 11.25, 2.4],
-    C2: ['lo', 0.32, 4.9, 1.7], C3: ['lo', 4.05, 2.9, 0.9], C4: ['lo', 1.6, 10.2, 1.4], C5: ['lo', 3.95, 7.7, 1.25],
+    T4: ['lo', 8.6, 9.8, 1.4], T7: ['lo', 2.6, -1.0, 0.9], K1: ['lo', 0.17, 3.2, 2.62], K2: ['lo', 3.45, 11.32, 2.75],
+    C2: ['lo', 0.32, 4.9, 1.7], C3: ['lo', 4.05, 2.9, 0.9], C4: ['lo', 1.6, 10.2, 1.4], C5: ['lo', 4.05, 8.2, 1.35],
     C6: ['lo', 3.75, 10.05, 1.9], C7: ['lo', 1.05, 0.5, 1.0], C8: ['lo', 4.0, -0.5, 1.0],
     IR1: ['lo', 0.5, 1.0, 2.2], IR2: ['lo', 4.2, 13.1, 2.2],
-    T5: ['up', 1.2, 2.0, 1.2], T6: ['up', 3.3, 2.8, 1.2], K3: ['up', 0.12, 2.6, 2.4], K4: ['up', 4.45, 4.0, 2.4],
-    C1: ['up', 5.3, 6.0, 3.0], X1: ['up', 6.3, 6.9, 1.6], M1: ['up', 0.75, 7.25, 0.3],
+    T5: ['up', 1.2, 2.0, 1.2], T6: ['up', 3.3, 2.8, 1.2], K3: ['up', 0.17, 2.0, 2.45], K4: ['up', 4.4, 3.75, 2.45],
+    C1: ['up', 5.45, 6.32, 3.5], X1: ['up', 6.3, 6.9, 1.6], M1: ['up', 0.75, 7.25, 0.3],
     IR3: ['up', 0.3, 3.4, 2.2], IR4: ['up', 4.3, 3.0, 2.2]
   };
   // nem okos, de fontos tárgyak jelölése (nem kattintható eszköz, csak felirat)
@@ -273,6 +297,14 @@
     };
   }
 
+  // álló henger (pl. a bojler): oldallap + felső ellipszis
+  function cyl(pj, cx, cy, r, z, h, c) {
+    var rc = pj.rot(cx, cy), T = pj.P(cx, cy, z + h), B = pj.P(cx, cy, z), rx = r * U * Math.SQRT2, ry = rx / 2;
+    var side = 'M' + r1(T[0] - rx) + ',' + r1(T[1]) + 'L' + r1(B[0] - rx) + ',' + r1(B[1]) + 'A' + r1(rx) + ',' + r1(ry) + ' 0 0 0 ' + r1(B[0] + rx) + ',' + r1(B[1]) +
+      'L' + r1(T[0] + rx) + ',' + r1(T[1]) + 'A' + r1(rx) + ',' + r1(ry) + ' 0 0 1 ' + r1(T[0] - rx) + ',' + r1(T[1]) + 'Z';
+    return { key: rc[0] + rc[1] + z * 0.01, cyl: { side: side, tx: r1(T[0]), ty: r1(T[1]), rx: r1(rx), ry: r1(ry) }, c: c };
+  }
+
   // a fal oldala a nézőtől távol esik-e (forgatva)
   function far(side, k) {
     var n = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[side], u = n[0], v = n[1], t;
@@ -324,34 +356,52 @@
       });
       return r;
     }
-    function seg(axis, line, a, b, z, h, c, t, bias) {
+    function seg(axis, line, a, b, z, h, c, t, bias, alpha) {
       // hosszú falat darabolunk, hogy a mélységrendezés a bútorokkal is jó legyen
       for (var s = a; s < b - 0.001; s += 0.7) {
-        var e = Math.min(b, s + 0.7);
-        if (axis === 'x') out.push(box(pj, s, line - t / 2, e - s, t, z, h, c, bias));
-        else out.push(box(pj, line - t / 2, s, t, e - s, z, h, c, bias));
+        var e = Math.min(b, s + 0.7), bx;
+        if (axis === 'x') bx = box(pj, s, line - t / 2, e - s, t, z, h, c, bias);
+        else bx = box(pj, line - t / 2, s, t, e - s, z, h, c, bias);
+        if (alpha) bx.alpha = alpha;
+        out.push(bx);
       }
     }
+    // befelé (a szoba felé) mutató irány a fal oldalából
+    var INWARD = { N: [0, 1], S: [0, -1], E: [-1, 0], W: [1, 0] };
     F.outer.forEach(function (w) {
       var axis = w[1] === w[3] ? 'x' : 'y', line = axis === 'x' ? w[1] : w[0];
       var a = axis === 'x' ? Math.min(w[0], w[2]) : Math.min(w[1], w[3]), b = axis === 'x' ? Math.max(w[0], w[2]) : Math.max(w[1], w[3]);
-      var isFar = far(w[4], k), side = w[4];
+      var isFar = far(w[4], k), side = w[4], low = w[6] && w[6].low;
       var off = (side === 'N' || side === 'W') ? -T / 2 : T / 2;     // a fal a szoba külső oldalán áll
       var col = F === FLOORS.up ? (side === 'W' ? C.WALLB : C.WALLW) : (side === 'E' && w[1] < 6 ? C.WALLS : C.WALL);
-      var h = isFar ? H : 0.4;
-      spans(a, b, (w[5] || []).map(function (g) { return [g[0], g[1]]; })).forEach(function (s) { seg(axis, line + off, s[0], s[1], 0, h, isFar ? col : C.LOW, T); });
+      var h = isFar ? (low || H) : 0.4, L = line + off;
+      spans(a, b, (w[5] || []).map(function (g) { return [g[0], g[1]]; })).forEach(function (sp) { seg(axis, L, sp[0], sp[1], 0, h, isFar && !low ? col : C.LOW, T); });
       (w[5] || []).forEach(function (g) {
-        var kind = g[2];
-        if (kind === 'w') {
-          seg(axis, line + off, g[0], g[1], 0, isFar ? 0.9 : 0.4, isFar ? col : C.LOW, T);
-          if (isFar) {
-            seg(axis, line + off, g[0], g[1], 2.4, H - 2.4, col, T);
-            seg(axis, line + off, g[0], g[1], 0.9, 1.5, C.GLASS, 0.04, 0.05);
-          }
-        } else if (kind === 'g') {
-          if (isFar) { seg(axis, line + off, g[0], g[1], 2.5, H - 2.5, col, T); seg(axis, line + off, g[0], g[1], 0, 2.5, C.GLASS, 0.04, 0.05); }
-        } else if (isFar) {
-          seg(axis, line + off, g[0], g[1], 2.15, H - 2.15, col, T);
+        var kind = g[2], sill = g[3] != null ? g[3] : (kind === 'w' ? 0.9 : 0), top = g[4] != null ? g[4] : (kind === 'w' ? 2.4 : kind === 'g' ? 2.5 : 2.15);
+        var solid = isFar && !low, frame = C.WHITE;
+        if (sill > 0) seg(axis, L, g[0], g[1], 0, Math.min(sill, h), solid ? col : C.LOW, T);
+        if (solid && top < H) seg(axis, L, g[0], g[1], top, H - top, col, T);
+        if (kind === 'w' || kind === 'g') {
+          // üveg: távoli falon telt, közeli/alacsony falon áttetsző, hogy belássunk
+          seg(axis, L, g[0], g[1], sill, top - sill, C.GLASS, 0.04, 0.05, solid ? 0 : 0.42);
+        }
+        if (!solid) {
+          // keret: két oldaltok és a szemöldök, hogy a közeli falon is látsszon az ablak / ajtó
+          seg(axis, L, g[0], g[0] + 0.07, sill, top - sill, frame, 0.1, 0.06, 0.92);
+          seg(axis, L, g[1] - 0.07, g[1], sill, top - sill, frame, 0.1, 0.06, 0.92);
+          seg(axis, L, g[0], g[1], top, 0.08, frame, 0.1, 0.06, 0.92);
+          if (kind === 'w') seg(axis, L, (g[0] + g[1]) / 2 - 0.03, (g[0] + g[1]) / 2 + 0.03, sill, top - sill, frame, 0.06, 0.07, 0.92);
+        }
+        if (kind === 'd' && g[5] === 'double') {
+          // kétszárnyú, befelé nyíló régi ajtó (nyitva), fölötte felülvilágító
+          var inw = INWARD[side], half = (g[1] - g[0]) / 2, D = 0.05;
+          [[g[0], 1], [g[1], -1]].forEach(function (q) {
+            var x0, y0, ww, dd;
+            if (axis === 'x') { x0 = q[1] > 0 ? q[0] : q[0] - D; y0 = inw[1] > 0 ? L : L - half; ww = D; dd = half; }
+            else { y0 = q[1] > 0 ? q[0] : q[0] - D; x0 = inw[0] > 0 ? L : L - half; ww = half; dd = D; }
+            var bx = box(pj, x0, y0, ww, dd, 0, top - 0.02, C.WHITE, 0.1); out.push(bx);
+          });
+          seg(axis, L, g[0], g[1], top + 0.08, 0.5, C.GLASS, 0.04, 0.05, solid ? 0 : 0.5);
         }
       });
     });
@@ -404,17 +454,22 @@
         items.forEach(function (it) { it.key = it.boxes[0].key; });
       }
       if (f === 'lo') {
-        var bc = F.balcony;
-        // áttört díszes mellvéd az erkély szélein
-        items.push({ kind: 'wall', key: 0, boxes: [box(pj, bc.x, bc.y - 0.04, bc.w, 0.05, 0, 1.0, C.BLACK, 1)] });
-        items.push({ kind: 'wall', key: 0, boxes: [box(pj, bc.x - 0.04, bc.y, 0.05, bc.d, 0, 1.0, C.BLACK, 1)] });
-        items.push({ kind: 'wall', key: 0, boxes: [box(pj, bc.x + bc.w, bc.y, 0.05, bc.d, 0, 1.0, C.BLACK, 1)] });
+        var bc = F.balcony, rail = [];
+        // áttört díszes mellvéd: korlátpálcák, felső korlát, rajta a LED-füzér (C8)
+        for (var bxp = bc.x; bxp <= bc.x + bc.w + 0.01; bxp += 0.17) rail.push(box(pj, bxp - 0.02, bc.y - 0.04, 0.04, 0.04, 0, 0.95, C.BLACK, 1));
+        for (var byp = bc.y + 0.17; byp < bc.y + bc.d; byp += 0.17) { rail.push(box(pj, bc.x - 0.06, byp - 0.02, 0.04, 0.04, 0, 0.95, C.BLACK, 1)); rail.push(box(pj, bc.x + bc.w + 0.02, byp - 0.02, 0.04, 0.04, 0, 0.95, C.BLACK, 1)); }
+        rail.push(box(pj, bc.x - 0.06, bc.y - 0.06, bc.w + 0.12, 0.07, 0.95, 0.06, C.BLACK, 1.2));
+        rail.push(box(pj, bc.x - 0.07, bc.y - 0.06, 0.07, bc.d + 0.06, 0.95, 0.06, C.BLACK, 1.2));
+        rail.push(box(pj, bc.x + bc.w, bc.y - 0.06, 0.07, bc.d + 0.06, 0.95, 0.06, C.BLACK, 1.2));
+        rail.push(box(pj, bc.x, bc.y - 0.05, bc.w, 0.05, 0.42, 0.05, C.BLACK, 1.1));
+        for (var lx = bc.x + 0.1; lx < bc.x + bc.w; lx += 0.3) rail.push(box(pj, lx, bc.y - 0.05, 0.07, 0.07, 1.02, 0.07, C.LAMP, 1.3));
+        rail.forEach(function (bx) { items.push({ kind: 'wall', key: bx.key, boxes: [bx] }); });
         items.forEach(function (it) { it.key = it.boxes[0].key; });
       }
       PIECES.forEach(function (p) {
         if (p.fl !== f) return;
         var o = offs[p.id] || [0, 0];
-        var bxs = p.boxes.map(function (q) { return box(pj, q[0] + o[0], q[1] + o[1], q[2], q[3], q[4], q[5], q[6]); });
+        var bxs = p.boxes.map(function (q) { return Array.isArray(q) ? box(pj, q[0] + o[0], q[1] + o[1], q[2], q[3], q[4], q[5], q[6]) : cyl(pj, q.cyl[0] + o[0], q.cyl[1] + o[1], q.cyl[2], q.cyl[3], q.cyl[4], q.c); });
         var key = bxs.reduce(function (m, q) { return Math.max(m, q.key); }, -1e9);
         // a doboz-csoporton belül a kirajzolás a saját mélység szerint
         bxs.sort(function (a, c) { return a.key - c.key; });

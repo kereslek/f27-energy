@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=Baloo+2:wght@800&amp;family=Lilita+One&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">
 <style>
-:root{--ink:#1e2a44;--thermo:#2f6fe4;--ac:#26a5c9;--plug:#ff8a3d;--boil:#c0399f;--pir:#7a6fb0;--off:#8a8f9c}
+:root{--pw:clamp(236px,25vw,328px);--ink:#1e2a44;--thermo:#2f6fe4;--ac:#26a5c9;--plug:#ff8a3d;--boil:#c0399f;--pir:#7a6fb0;--off:#8a8f9c}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#1e2a44;font-family:"Nunito",system-ui,sans-serif;color:var(--ink);-webkit-text-size-adjust:100%;overscroll-behavior:none}
 body{position:fixed;inset:0;touch-action:none}
@@ -69,8 +69,24 @@ body{position:fixed;inset:0;touch-action:none}
 #cat.walk .lB{animation:legB .42s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0}
 #cat .tail{animation:tail 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:0% 100%}
 #cat .pose{display:none}
-#cat.walk .p-walk,#cat.sit .p-sit,#cat.sleep .p-sleep{display:inline}
-#cat.sit .body,#cat.sleep .body{animation:none}
+#cat.walk .p-walk,#cat.stretch .p-walk,#cat.sit .p-sit,#cat.groom .p-sit,#cat.meow .p-sit,#cat.yarn .p-sit,#cat.sleep .p-sleep{display:inline}
+#cat.sit .body,#cat.sleep .body,#cat.stretch .body{animation:none}
+@keyframes stretchy{0%,100%{transform:scale(1,1)}35%,65%{transform:scale(1.28,.78)}}
+@keyframes lick{0%,100%{transform:translate(0,0) rotate(0)}50%{transform:translate(-6px,-14px) rotate(-20deg)}}
+@keyframes roll{0%,100%{transform:translateX(30px) rotate(0)}50%{transform:translateX(52px) rotate(240deg)}}
+@keyframes pounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px)}}
+@keyframes pop2{0%{transform:scale(.6);opacity:0}15%{transform:scale(1.05);opacity:1}85%{opacity:1}100%{opacity:0}}
+#cat .stretchw{transform-box:fill-box;transform-origin:50% 100%}
+#cat.stretch .stretchw{animation:stretchy 2.3s ease-in-out}
+#cat .gpaw,#cat .yarn,#cat .bubble{display:none}
+#cat.groom .gpaw{display:inline}
+#cat.groom .gpaw ellipse{transform-box:fill-box;transform-origin:50% 100%;animation:lick .7s ease-in-out infinite}
+#cat.groom .p-sit .eyes{transform:scaleY(.15)}
+#cat.yarn .yarn{display:inline}
+#cat.yarn .yb{transform-box:fill-box;transform-origin:center;animation:roll 1.3s ease-in-out infinite}
+#cat.yarn .p-sit{animation:pounce .65s ease-in-out infinite}
+#cat.meow .bubble{display:inline;transform-box:fill-box;transform-origin:50% 100%;animation:pop2 2.6s ease-out}
+.gpaw{display:none}
 #cat .zz{animation:zz 2.4s ease-out infinite}
 #cat .zz.b{animation-delay:1.2s}
 #cat .alert{display:none}
@@ -172,14 +188,14 @@ ul.tips{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:col
 .tipc.red{background:#ffefe9}.tipc.blue{background:#eaf5ff}.tipc.green{background:#e7f8ec}
 .tipc .tx{flex:1 1 auto;min-width:0}
 .tipc .tbtn{min-height:30px;padding:0 10px;font-size:11.5px;border-width:2.5px;box-shadow:0 2px 0 #1e2a44}
-body.wide #pam{top:96px;bottom:12px;width:328px;display:flex;flex-direction:column}
+body.wide #pam{top:96px;bottom:12px;width:var(--pw);display:flex;flex-direction:column}
 body.wide #pam #say{flex:1 1 auto;max-height:none}
 body.wide #pam .min{display:none}
-body.wide #ov{display:flex;flex-direction:column;position:absolute;right:12px;top:96px;bottom:12px;width:328px;z-index:5;padding:10px 12px;border-radius:22px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44;overflow:hidden}
+body.wide #ov{display:flex;flex-direction:column;position:absolute;right:12px;top:96px;bottom:12px;width:var(--pw);z-index:5;padding:10px 12px;border-radius:22px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44;overflow:hidden}
 body.wide #ovbody{overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px;overscroll-behavior:contain}
-body.wide #tools{left:356px;right:356px;max-width:none;justify-content:center}
+body.wide #tools{left:calc(var(--pw) + 28px);right:calc(var(--pw) + 28px);max-width:none;justify-content:center}
 body.wide #info{right:auto;left:50%;transform:translateX(-50%);top:100px}
-body.wide .sheet,body.wide #logincard{right:356px}
+body.wide .sheet,body.wide #logincard{right:calc(var(--pw) + 28px)}
 .ovtitle{font-family:"Fraunces",serif;font-weight:800;font-size:22px;color:#3b2a14;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .ovs{background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;padding:8px 9px;box-shadow:0 2px 0 #1e2a44}
 .ovh{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;margin-bottom:6px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
@@ -217,7 +233,7 @@ body.wide .sheet,body.wide #logincard{right:356px}
 .bell{transform-box:fill-box;transform-origin:50% 0;animation:bellj 1.4s ease-in-out infinite}
 #pamhero{display:none;cursor:pointer}
 body.wide #pamhero{display:flex;justify-content:center;align-items:flex-end;margin-top:6px;flex:0 0 auto}
-body.wide #pamhero svg{width:210px;height:210px;overflow:visible}
+body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:visible}
 
 @media (min-width: 761px) and (max-width: 1560px){
   #chips{flex-wrap:nowrap;gap:7px}
@@ -227,7 +243,7 @@ body.wide #pamhero svg{width:210px;height:210px;overflow:visible}
   #acts .btn{padding:0 12px;min-height:40px}
 }
 
-@media (min-width: 761px) and (max-width: 1099px){
+@media (min-width: 761px) and (max-width: 899px){
   #chips{overflow-x:auto;scrollbar-width:none;padding-bottom:6px;min-width:0;flex:1 1 auto}
   #chips::-webkit-scrollbar{display:none}
   .chip{flex:0 0 auto}

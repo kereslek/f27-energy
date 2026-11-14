@@ -3241,6 +3241,23 @@
     window.MiniDC.mount(document.getElementById('stage'), document.getElementById('g3-template'), app);
     window.MiniDC.mountExtra(document.getElementById('devlayer'), document.getElementById('dev-template'), app);
     initViewControls(app);
+    // a zöld szék (Energiaőr) sétál a lakásban, mint az O2B-ben Pamutka (web/js/walker.js)
+    var noWalk = window.F27_NO_WALKER || /[?&]walker=0\b/.test(window.location.search);
+    if (window.F27Walker && !noWalk) {
+      window.__walker = window.F27Walker.start({
+        stage: document.getElementById('stage'),
+        project: function (x, y) { var q = app.P(x, y, 0); return [WX0 + WS * q[0], WY0 + WS * q[1]]; },
+        href: function () { var v = app.state.advVariant; return '#adv-v' + (v === 1 || v === 2 ? v : 3); },
+        // alaprajzi pontok: nagy szoba, a kétszárnyú ajtón át a kis szoba, előszoba, konyha (a privát tároló kimarad)
+        route: [[400, 150, 'sleep'], [445, 95], [330, 110], [310, 230, 'sleep'], [380, 290], [387, 318], [387, 345], [410, 420], [440, 500, 'sleep'],
+          [420, 566], [372, 568], [345, 568], [305, 560], [268, 540], [225, 525], [212, 570, 'sleep'], [232, 545], [268, 540], [305, 560],
+          [345, 568], [395, 520], [387, 360], [387, 318], [430, 220]],
+        hidden: function () { var s = app.state; return !!(s.calOpen || s.alOpen || s.devOpen || s.drawer || s.ovSheet || s.wxOpen || s.advOpen); },
+        onClick: function () { if (app.advNext) app.advNext(); },
+        name: 'Energiaőr',
+        lines: ['Hahó, itt vagyok!', 'Csak körbenézek.', 'Fűt a kályha?', 'Ablak zárva?', 'Spóroljunk!', 'Zöld szék, zöld energia!', 'Leülök egy kicsit.']
+      });
+    }
     try {                                          // ?kor=k5 (az esti e-mail körök-táblázatából): a kör kártyája
       var km = /[?&]kor=(k5|k7|k8|k9)\b/.exec(window.location.search);
       if (km) app.setState({ devOpen: true, devFilter: 'all', devOpenId: km[1], sel: 'd' + km[1] });

@@ -205,6 +205,12 @@
     if (!st.vb) fit(); else applyVB();
   }
   function drawBox(bx, g) {
+    if (bx.cyl) {
+      el('path', { d: bx.cyl.side, fill: bx.c[1], stroke: INK, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }, g);
+      el('ellipse', { cx: bx.cyl.tx, cy: bx.cyl.ty, rx: bx.cyl.rx, ry: bx.cyl.ry, fill: bx.c[0], stroke: INK, 'stroke-width': 1.8 }, g);
+      return;
+    }
+    if (bx.alpha) g = el('g', { opacity: bx.alpha }, g);
     if (bx.left) el('polygon', { points: bx.left, fill: bx.c[1], stroke: INK, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }, g);
     if (bx.right) el('polygon', { points: bx.right, fill: bx.c[2], stroke: INK, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }, g);
     el('polygon', { points: bx.top, fill: bx.c[0], stroke: INK, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }, g);
@@ -350,7 +356,7 @@
   function fit() {
     var b = contentBox(), W = world.clientWidth || 1440, H = world.clientHeight || 900, phone = W < 760;
     // hely a felső csempéknek és az alsó Pamutka-kártyának
-    var wide = W >= 1100, top = phone ? 70 : (wide ? 100 : 90), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? 352 : 20), right = wide ? 352 : 20;
+    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, top = phone ? 70 : (wide ? 100 : 90), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
     var aw = Math.max(200, W - left - right), ah = Math.max(200, H - top - bottom);
     var cw = b.x1 - b.x0 + 60, ch = b.y1 - b.y0 + 60, s = Math.min(aw / cw * (phone ? 1.45 : 1), ah / ch);
     var vw = W / s, vh = H / s, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -659,7 +665,7 @@
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
-  var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sit', wait: 2500, goal: null, face: 1, last: 0, fade: 1 };
+  var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sleep', wait: 4000, goal: null, face: 1, last: 0, fade: 1, dir: 1 };
   // Pamutka, a világ legcukibb macskája: ezüst cirmos, nagy fej, csillogó sárgászöld szem, pirospozsgás
   // pofi, fekete nyakörv aranycsengővel, csíkos farok. Három póz: ül (szemből), sétál (oldalt), alszik.
   var PAM = { fur: '#e3e7ea', fur2: '#c9cfd4', stripe: '#6b7179', belly: '#fbfcfd', pink: '#f6a9bf', eye: '#c3d84a' };
@@ -681,15 +687,13 @@
       o += '<path d="M' + X(-22) + ',' + Y(-3) + ' Q' + X(-15) + ',' + Y(3) + ' ' + X(-8) + ',' + Y(-3) + ' M' + X(8) + ',' + Y(-3) + ' Q' + X(15) + ',' + Y(3) + ' ' + X(22) + ',' + Y(-3) + '" fill="none" stroke="#1e2a44" stroke-width="' + f(2.6) + '" stroke-linecap="round"/>';
     } else {
       o += '<g class="eyes">';
-      [-15, 15].forEach(function (ex) {
-        o += '<ellipse cx="' + X(ex) + '" cy="' + Y(-3) + '" rx="' + f(10) + '" ry="' + f(11.5) + '" fill="' + P.eye + '" stroke="#1e2a44" stroke-width="' + f(2.4) + '"/>' +
-          '<ellipse cx="' + X(ex) + '" cy="' + Y(-2) + '" rx="' + f(6.8) + '" ry="' + f(9) + '" fill="#1e2a44"/>' +
-          '<circle cx="' + X(ex + 3.4) + '" cy="' + Y(-7) + '" r="' + f(3.6) + '" fill="#fff"/>' +
-          '<circle cx="' + X(ex - 3) + '" cy="' + Y(2.5) + '" r="' + f(1.7) + '" fill="#fff"/>';
+      [-14, 14].forEach(function (ex) {
+        o += '<ellipse cx="' + X(ex) + '" cy="' + Y(-2) + '" rx="' + f(5.6) + '" ry="' + f(6.6) + '" fill="#1e2a44"/>' +
+          '<circle cx="' + X(ex + 1.9) + '" cy="' + Y(-4.6) + '" r="' + f(1.9) + '" fill="#fff"/>';
       });
       o += '</g>';
     }
-    o += '<ellipse cx="' + X(-27) + '" cy="' + Y(9) + '" rx="' + f(7.5) + '" ry="' + f(4.2) + '" fill="#ff9fb4" opacity=".55"/><ellipse cx="' + X(27) + '" cy="' + Y(9) + '" rx="' + f(7.5) + '" ry="' + f(4.2) + '" fill="#ff9fb4" opacity=".55"/>';
+    o += '<ellipse cx="' + X(-25) + '" cy="' + Y(9) + '" rx="' + f(6) + '" ry="' + f(3.4) + '" fill="#ff9fb4" opacity=".35"/><ellipse cx="' + X(25) + '" cy="' + Y(9) + '" rx="' + f(6) + '" ry="' + f(3.4) + '" fill="#ff9fb4" opacity=".35"/>';
     o += '<path d="M' + X(-4) + ',' + Y(6) + ' Q' + X(0) + ',' + Y(4) + ' ' + X(4) + ',' + Y(6) + ' Q' + X(2) + ',' + Y(10) + ' ' + X(0) + ',' + Y(10.5) + ' Q' + X(-2) + ',' + Y(10) + ' ' + X(-4) + ',' + Y(6) + ' Z" fill="#f2849f" stroke="#1e2a44" stroke-width="' + f(1.6) + '" stroke-linejoin="round"/>';
     o += '<path d="M' + X(0) + ',' + Y(10.5) + ' Q' + X(-3) + ',' + Y(15) + ' ' + X(-7) + ',' + Y(13) + ' M' + X(0) + ',' + Y(10.5) + ' Q' + X(3) + ',' + Y(15) + ' ' + X(7) + ',' + Y(13) + '" fill="none" stroke="#1e2a44" stroke-width="' + f(1.8) + '" stroke-linecap="round"/>';
     o += '<path d="M' + X(-16) + ',' + Y(9) + ' L' + X(-44) + ',' + Y(5) + ' M' + X(-16) + ',' + Y(12) + ' L' + X(-43) + ',' + Y(14) + ' M' + X(16) + ',' + Y(9) + ' L' + X(44) + ',' + Y(5) + ' M' + X(16) + ',' + Y(12) + ' L' + X(43) + ',' + Y(14) + '" stroke="#1e2a44" stroke-width="' + f(1.1) + '" stroke-linecap="round" opacity=".75"/>';
@@ -712,17 +716,18 @@
       '<path d="M-26,-36 L-18,-34 M-28,-24 L-19,-23 M26,-36 L18,-34 M28,-24 L19,-23" stroke="' + PAM.stripe + '" stroke-width="2.6" stroke-linecap="round"/></g>';
     o += '<ellipse cx="-11" cy="-3" rx="10" ry="7" fill="' + PAM.belly + '" stroke="#1e2a44" stroke-width="2.6"/><ellipse cx="11" cy="-3" rx="10" ry="7" fill="' + PAM.belly + '" stroke="#1e2a44" stroke-width="2.6"/>' +
       '<path d="M-14,-5 L-14,-1 M-9,-5 L-9,-1 M9,-5 L9,-1 M14,-5 L14,-1" stroke="#1e2a44" stroke-width="1.4" stroke-linecap="round"/>';
-    o += '<g class="head">' + pamHead(0, -84, 1) + pamCollar(0, -54, 20) + '</g>';
+    o += '<g class="gpaw"><ellipse cx="14" cy="-58" rx="8" ry="6" fill="' + PAM.belly + '" stroke="#1e2a44" stroke-width="2.4"/></g>';
+    o += '<g class="head">' + pamHead(0, -84, 1) + '</g>';
     return o;
   }
   // sétál, oldalt (jobbra néz; a tükrözést a menetirány adja)
   function pamWalk() {
-    var o = pamTail('M-24,-24 C-42,-30 -46,-54 -34,-64 C-30,-67 -26,-63 -29,-59', 8);
+    var o = '<g class="stretchw">' + pamTail('M-24,-24 C-42,-30 -46,-54 -34,-64 C-30,-67 -26,-63 -29,-59', 8);
     o += '<g class="body">';
     [['lB', -17], ['lA', -8], ['lA', 9], ['lB', 18]].forEach(function (l) { o += '<rect class="' + l[0] + '" x="' + (l[1] - 4) + '" y="-14" width="8.5" height="15" rx="4" fill="' + PAM.fur + '" stroke="#1e2a44" stroke-width="2.4"/>'; });
     o += '<path d="M-28,-14 Q-30,-34 -6,-35 L14,-35 Q32,-34 30,-14 Q0,-6 -28,-14 Z" fill="' + PAM.fur + '" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"/>' +
       '<path d="M-16,-34 Q-14,-26 -16,-17 M-6,-35 Q-4,-26 -6,-15 M4,-35 Q6,-26 4,-15" fill="none" stroke="' + PAM.stripe + '" stroke-width="2.6" stroke-linecap="round"/>' +
-      '<g class="head">' + pamHead(24, -52, 0.62) + pamCollar(24, -36, 12) + '</g></g>';
+      '<g class="head">' + pamHead(24, -52, 0.62) + '</g></g></g>';
     return o;
   }
   // alszik: összegömbölyödve, a farka körbeér, Zzz
@@ -736,6 +741,8 @@
   }
   function buildCat(g) {
     g.innerHTML = '<g class="pose p-walk">' + pamWalk() + '</g><g class="pose p-sit">' + pamSit() + '</g><g class="pose p-sleep">' + pamSleep() + '</g>' +
+      '<g class="yarn"><g class="yb"><circle cx="0" cy="-9" r="9" fill="#ff7aa8" stroke="#1e2a44" stroke-width="2.4"/><path d="M-7,-13 Q0,-6 7,-14 M-8,-7 Q0,-1 8,-8 M-3,-17 Q2,-9 -2,-1" fill="none" stroke="#c94f7c" stroke-width="1.6"/></g><path class="ythr" d="M-8,-4 Q-24,4 -40,-2" fill="none" stroke="#ff7aa8" stroke-width="2"/></g>' +
+      '<g class="bubble"><rect x="-58" y="-188" width="116" height="34" rx="14" fill="#fffdf7" stroke="#1e2a44" stroke-width="3"/><path d="M-6,-155 L0,-144 L8,-155" fill="#fffdf7" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"/><text class="bt" x="0" y="-165" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="17" fill="#1e2a44">Miaú?</text></g>' +
       '<g class="alert"><g><circle cx="0" cy="-142" r="14" fill="#ffe066" stroke="#1e2a44" stroke-width="3"/><text x="0" y="-135" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="20" fill="#1e2a44">!</text></g></g>' +
       '<text x="0" y="22" text-anchor="middle" class="slab-t" style="font-size:15px">Pamutka</text>';
   }
@@ -752,24 +759,46 @@
     S.FLOORS[fl].rooms.forEach(function (r) { if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.d) id = r.id; });
     return id;
   }
+  // Pamutka viselkedése: sétál (az útvonalon előre vagy visszafelé), és útközben véletlenszerűen elalszik
+  // (sokat és bárhol), mosakszik, nyújtózkodik, a pamutgombolyagával játszik, vagy nyávog egyet.
+  var MEOWS = ['Miaú?', 'Nyaú!', 'Éhes vagyok…', 'Simogass meg!', 'Hol a pamutom?', 'Miaú, miaú!', 'Nem én voltam!', 'Ez az én helyem.', 'Nyííí…'];
+  function pickAction(here, tag) {
+    if (cat.goal && here === cat.goal) return ['sit', 9000];
+    var r = Math.random();
+    if (tag === 'sleep' && r < 0.7) return ['sleep', 12000 + Math.random() * 16000];
+    if (r > 0.42) return null;                                      // továbbmegy
+    r = Math.random();
+    if (r < 0.45) return ['sleep', 8000 + Math.random() * 16000];   // sokat alszik, bárhol
+    if (r < 0.58) return ['groom', 3600];
+    if (r < 0.7) return ['stretch', 2300];
+    if (r < 0.84) return ['yarn', 5200];
+    return ['meow', 2600];
+  }
+  function startAction(a) {
+    cat.mode = a[0]; cat.wait = a[1];
+    if (a[0] === 'meow' && layer.cat) {
+      var tg = target(), cold = st.devs.some(function (d) { var r = st.latest[d.pink]; var t = r && r.online !== false && d.role === 'thermo' && d.room !== 'erkely' ? temp(r.status) : null; return t != null && t < tg - 1.5; });
+      var txt = cold && Math.random() < 0.5 ? 'Fázom, fűts be!' : MEOWS[Math.floor(Math.random() * MEOWS.length)];
+      var bt = layer.cat.querySelector('.bt'); if (bt) bt.textContent = txt;
+    }
+    if (Math.random() < 0.3) cat.dir = -cat.dir;                    // néha visszafordul
+  }
   function catStep(ts) {
     var dt = Math.min(100, ts - (cat.last || ts)); cat.last = ts;
-    var R = S.CAT_ROUTE;
+    var R = S.CAT_ROUTE, n = R.length;
     if (cat.wait > 0) {
       cat.wait -= dt;
+      if (cat.wait <= 0 && cat.mode !== 'walk') cat.mode = 'walk';
     } else {
-      var nx = R[(cat.i + 1) % R.length];
+      var ni = (cat.i + cat.dir + n) % n, nx = R[ni];
       if (nx[0] !== cat.fl) {                         // lépcső: átugrik a másik szintre
-        cat.i = (cat.i + 1) % R.length; cat.fl = nx[0]; cat.x = nx[1]; cat.y = nx[2]; cat.fade = 0;
+        cat.i = ni; cat.fl = nx[0]; cat.x = nx[1]; cat.y = nx[2]; cat.fade = 0;
       } else {
-        var dx = nx[1] - cat.x, dy = nx[2] - cat.y, d = Math.hypot(dx, dy), sp = 0.75 * dt / 1000;
+        var dx = nx[1] - cat.x, dy = nx[2] - cat.y, d = Math.hypot(dx, dy), sp = 0.7 * dt / 1000;
         if (d <= sp) {
-          cat.x = nx[1]; cat.y = nx[2]; cat.i = (cat.i + 1) % R.length;
-          var here = catRoomAt(cat.fl, cat.x, cat.y);
-          if (cat.goal && here === cat.goal) { cat.mode = 'sit'; cat.wait = 9000; }
-          else if (nx[3] === 'sleep' && !cat.goal) { cat.mode = 'sleep'; cat.wait = 9000; }
-          else if (nx[3] === 'sit') { cat.mode = 'sit'; cat.wait = 3500; }
-          else cat.mode = 'walk';
+          cat.x = nx[1]; cat.y = nx[2]; cat.i = ni;
+          var act = pickAction(catRoomAt(cat.fl, cat.x, cat.y), nx[3]);
+          if (act) startAction(act); else cat.mode = 'walk';
         } else {
           cat.x += dx / d * sp; cat.y += dy / d * sp; cat.mode = 'walk';
           var a = scene.floors[cat.fl].proj.P(cat.x, cat.y, 0), b = scene.floors[cat.fl].proj.P(nx[1], nx[2], 0);
@@ -782,7 +811,7 @@
       var p = scene.floors[cat.fl].proj.P(cat.x, cat.y, 0), g = layer.cat;
       g.setAttribute('transform', 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ') scale(' + r1(0.62 * uiK() * 100) / 100 + ')');
       g.setAttribute('opacity', r1(cat.fade));
-      var cls = (cat.mode === 'walk' ? 'walk' : cat.mode) + (cat.goal ? ' has-tip' : '');
+      var cls = cat.mode + (cat.goal ? ' has-tip' : '');
       if (g.getAttribute('class') !== cls) g.setAttribute('class', cls);
       var walkPose = g.querySelector('.p-walk');
       if (walkPose) walkPose.setAttribute('transform', 'scale(' + cat.face + ',1)');
@@ -879,7 +908,7 @@
   on('b-zin', 'click', function () { zoom(1.25); }); on('b-zout', 'click', function () { zoom(1 / 1.25); }); on('b-fit', 'click', fit);
   on('b-save', 'click', save); on('b-saveas', 'click', saveAs); on('b-def', 'click', makeDefault);
   on('layouts', 'change', function (e) { var row = st.layouts.filter(function (l) { return l.id === e.target.value; })[0]; if (row) applyLayout(row); });
-  on('b-pmin', 'click', function () { var p = $('pam'); p.classList.toggle('mini'); $('b-pmin').textContent = p.classList.contains('mini') ? '+' : '−'; if ((world.clientWidth || 1440) < 1100) fit(); });
+  on('b-pmin', 'click', function () { var p = $('pam'); p.classList.toggle('mini'); $('b-pmin').textContent = p.classList.contains('mini') ? '+' : '−'; if ((world.clientWidth || 1440) < 900) fit(); });
   on('b-dev', 'click', function () { var s = $('devsheet'); s.hidden = !s.hidden; $('b-dev').setAttribute('aria-expanded', s.hidden ? 'false' : 'true'); if (!s.hidden) { $('logincard').hidden = true; list(); } });
   on('b-devx', 'click', function () { $('devsheet').hidden = true; $('b-dev').setAttribute('aria-expanded', 'false'); });
   on('b-login', 'click', function () {
@@ -913,9 +942,9 @@
     try { sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'o2b-auth' } }); } catch (e) { sb = null; }
   }
   if (sb) sb.auth.onAuthStateChange(function (ev, ses) { setTimeout(function () { setUser(ses && ses.user ? ses.user : null); }, 0); });
-  function layoutMode() { document.body.classList.toggle('wide', (window.innerWidth || 1440) >= 1100); }
+  function layoutMode() { document.body.classList.toggle('wide', (window.innerWidth || 1440) >= 900); }
   layoutMode();
-  if ((world.clientWidth || 1440) < 1100) { $('pam').classList.add('mini'); $('b-pmin').textContent = '+'; }
+  if ((world.clientWidth || 1440) < 900) { $('pam').classList.add('mini'); $('b-pmin').textContent = '+'; }
   demo(); drawSky(); drawWorld(); render(); fetchDaily(); pamHero();
   requestAnimationFrame(catStep);
   setInterval(load, 5 * 60000);
