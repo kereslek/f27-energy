@@ -545,8 +545,12 @@
   // ---- Időjárás: Open-Meteo (kulcs nélkül, a böngészőből; csak memóriában) ----------------------
   var WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=47.48&longitude=19.07' +
     '&current=temperature_2m,apparent_temperature,weather_code,is_day,cloud_cover' +
-    '&hourly=temperature_2m,weather_code,cloud_cover,shortwave_radiation,is_day&forecast_hours=24&timezone=Europe%2FBudapest';
+    '&hourly=temperature_2m,weather_code,cloud_cover,shortwave_radiation,is_day&forecast_hours=24' +
+    '&daily=temperature_2m_min,temperature_2m_max,weather_code&forecast_days=2&timezone=Europe%2FBudapest';
   var WX_REFRESH_MS = 15 * 60000;
+  var SUN_LAT = 47.48, SUN_LON = 19.07;                // IX. kerület, kerületi pontossággal
+  var DAILY_URL = 'https://api.open-meteo.com/v1/forecast?latitude=47.48&longitude=19.07' +
+    '&daily=temperature_2m_min,temperature_2m_max,weather_code&forecast_days=2&timezone=Europe%2FBudapest';
   var WX_SRC = 'Időjárás: Open-Meteo';
   // budapesti helyi idő 'ÉÉÉÉ-HH-NNTÓÓ:PP' alakban (ugyanaz, mint az API timezone=Europe/Budapest ideje)
   var BUD_KEY = null;
@@ -1081,7 +1085,7 @@
       this.state = {
         pos: {}, sel: null, drag: null,
         drawer: false, drawerAuto: false, drawerFade: false, phone: window.innerWidth <= 700, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
-        weather: null, wxOpen: false, wxAt: null, hist: null, histAt: 0, ovVariant: ovVariantFromUrl(), ovTab: 'power', ovSheet: false,
+        weather: null, daily: null, wxOpen: false, wxAt: null, hist: null, histAt: 0, ovVariant: ovVariantFromUrl(), ovTab: 'power', ovSheet: false,
         advIdx: 0, advHover: false, advOpen: false, advTalk: false, advMute: sGet(LOCAL, ADV_MUTE_KEY) === '1', advVariant: advVariantFromUrl(),
         user: null, role: null, layouts: [], current: null,
         savedKey: '{}', savedAt: null, live: null, toasts: [],
@@ -1224,6 +1228,7 @@
       v.ui.devWarnCls = 'wdot ' + (dv.red ? 'red' : 'orange');
       v.ui.devAria = 'Eszközök: ' + dv.online + '/' + dv.total + ' online' + (dv.warnCount ? ', ' + dv.warnCount + ' figyelmeztetés' : '');
       v.wx = this.wxVals(v);
+      v.sun = this.sunVals();
       v.bk = this.bkVals(v);
       v.cal = this.calVals(v.bk);
       v.al = this.alVals(v, dv);
@@ -1371,6 +1376,45 @@
 
     // Belépve (listán szereplő szerepkörrel) a Supabase-ből olvas (az adatgyűjtő óránként tölti);
     // ha ott nincs friss adat, vagy nincs belépés, közvetlenül az Open-Meteótól kér.
+    // Holnapi minimum és maximum (Open-Meteo napi előrejelzés, a böngészőből; csak memóriában).
+    fetchDaily() {
+      var self = this, dl = this.state.daily;
+      if (!window.fetch || (dl && Date.now() - dl.at < 3 * 3600000)) return;   // a napi előrejelzés lassan változik
+      fetch(DAILY_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { self.takeDaily(j); }, function () {});
+    }
+
+    takeDaily(j) {
+      var d = j && j.daily, t = d && d.time;
+      if (!t || t.length < 2 || !d.temperature_2m_min) return;
+      this.setState({ daily: { tmin: wxNum(d.temperature_2m_min[1]), tmax: wxNum(d.temperature_2m_max[1]), code: wxNum((d.weather_code || [])[1]), day: t[1], at: Date.now() } });
+    }
+
+    // NAP · HOLNAP csempe és a nap íve az iránytűn (web/js/sun.js, hálózat nélkül számolva).
+    sunVals() {
+      var now = Date.now(), S = window.F27Sun;
+      if (!S) return { rise: '--', set: '--', sub: '', tip: '', arc: '', up: false };
+      var t = S.times(now, SUN_LAT, SUN_LON), p = S.pos(now, SUN_LAT, SUN_LON), dl = this.state.daily;
+      // az iránytű síkbeli koordinátái: azimut (É=0, K=90) -> az ellipszis pontja (É a jobb felső irány)
+      var pt = function (az, r) { var f = (az - 45) * Math.PI / 180; return [Math.round(r * Math.cos(f) * 10) / 10, Math.round(r / 2 * Math.sin(f) * 10) / 10]; };
+      var o = { rise: t.rise ? S.hm(t.rise) : '--', set: t.set ? S.hm(t.set) : '--', arc: '', up: p.alt > 0 };
+      if (t.rise) {
+        var pts = [];
+        for (var i = 0; i <= 16; i++) pts.push(pt(t.riseAz + (t.setAz - t.riseAz) * i / 16, 42));
+        o.arc = 'M' + pts.map(function (q) { return q.join(','); }).join(' L');
+        var a = pt(t.riseAz, 42), b = pt(t.setAz, 42), c = pt(p.az, 42);
+        o.riseX = a[0]; o.riseY = a[1]; o.setX = b[0]; o.setY = b[1]; o.nowX = c[0]; o.nowY = c[1];
+      }
+      var tom = dl && dl.tmin != null && dl.tmax != null ? 'holnap ' + fmtNum(dl.tmin, 0) + '…' + fmtNum(dl.tmax, 0) + ' °C' : 'holnap: --';
+      o.sub = tom;
+      o.tip = 'Napkelte ' + o.rise + ' (' + Math.round(t.riseAz || 0) + '°), napnyugta ' + o.set + ' (' + Math.round(t.setAz || 0) + '°). ' +
+        (t.dayLen ? 'A nappal ' + Math.floor(t.dayLen / 60) + ' óra ' + (t.dayLen % 60) + ' perc. ' : '') +
+        (o.up ? 'A nap most ' + Math.round(p.az) + '° irányban, ' + Math.round(p.alt) + '° magasan. ' : 'A nap most a horizont alatt. ') +
+        (dl && dl.tmin != null ? 'Holnap ' + fmtNum(dl.tmin, 0) + '…' + fmtNum(dl.tmax, 0) + ' °C várható. ' : '') +
+        'Az iránytűn a sárga ív a nap mai útja. Napkelte és -nyugta számítva; holnapi hőmérséklet: Open-Meteo.';
+      return o;
+    }
+
     fetchWeather() {
       var self = this;
       var done = function (data) {
@@ -1379,7 +1423,7 @@
       var direct = function () {
         if (!window.fetch) { done(null); return; }
         fetch(WX_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (j) { var d = parseWeather(j); if (d) d.src = 'api'; done(d); }, function () { done(null); });
+          .then(function (j) { var d = parseWeather(j); if (d) d.src = 'api'; self.takeDaily(j); done(d); }, function () { done(null); });
       };
       if (this.sb && this.state.role) {
         var now = Date.now();
@@ -1387,7 +1431,7 @@
           .gte('ts', new Date(now - 3 * 3600000).toISOString()).order('ts', { ascending: true }).limit(48)
           .then(function (res) {
             var d = res && !res.error ? weatherFromRows(res.data, Date.now()) : null;
-            if (d) done(d); else direct();
+            if (d) { done(d); self.fetchDaily(); } else direct();
           }, direct);
         return;
       }

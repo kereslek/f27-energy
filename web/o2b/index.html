@@ -125,6 +125,7 @@ svg text{font-family:var(--f-body)}
   </div>
   <div class="foot" id="foot">Első változat: a fotóhű, bútorozott térkép ezután jön.</div>
 </div>
+<script src="../js/sun.js"></script>
 <script src="../vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script>
@@ -174,9 +175,14 @@ svg text{font-family:var(--f-body)}
     kamra: 'Kamra', konyha: 'Konyha', kagylo: 'Kagyló szoba', gyerek: 'Gyerekszoba', eloter: 'Előtér (fent)', furdo_fent: 'Fürdő (fent)', lepcso_fent: 'Lépcső teteje' };
   var ROLE_COL = { thermo: '--thermo', ac_ir: '--ac', plug: '--plug', breaker: '--boil', pir: '--pir', ir_hub: '--ac' };
   var TARGET_DAY = 22, TARGET_NIGHT = 20;
+  // Tájolás: a hirdetés alaprajzának északi nyila a rajz jobb felső felé mutat. PLAN_NORTH = hány fokkal
+  // van az észak a rajz "fel" irányától (az erkély felé) az óramutató járása szerint. Az erkély így kb. ÉNy-ra néz.
+  var PLAN_NORTH = 55, LAT = 47.48, LON = 19.04;
+  var DAILY_URL = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+    '&daily=temperature_2m_min,temperature_2m_max&forecast_days=2&timezone=Europe%2FBudapest';
   var FLOOR = { oak: ['--oak', '--oak2'], lam: ['--lam', '--lam2'], tile: ['--tile', '--tile2'], balc: ['--balc', '--balc'] };
 
-  var st = { level: 'lo', live: false, devs: DEFAULT_DEVS, latest: {}, bat: [], wx: null, motion: null, sel: null, user: null };
+  var st = { level: 'lo', daily: null, live: false, devs: DEFAULT_DEVS, latest: {}, bat: [], wx: null, motion: null, sel: null, user: null };
 
   // ---- demó adat (belépés nélkül) ---------------------------------------------------------------
   function demo() {
@@ -227,6 +233,7 @@ svg text{font-family:var(--f-body)}
     var L = LEVELS[st.level], svg = document.getElementById('plan'); svg.innerHTML = '';
     var xs = [], ys = [];
     L.rooms.forEach(function (r) { [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.d], [r.x + r.w, r.y + r.d]].forEach(function (q) { var a = P(q[0], q[1]), b = P(q[0], q[1], 3.2); xs.push(a[0]); ys.push(a[1], b[1]); }); });
+    var cc = P(st.level === 'lo' ? 12.6 : 8.6, st.level === 'lo' ? 10.4 : 8.4, 0); xs.push(cc[0] - 95, cc[0] + 95); ys.push(cc[1] - 60, cc[1] + 105);
     var pad = 40, mx = Math.min.apply(0, xs) - pad, Mx = Math.max.apply(0, xs) + pad, my = Math.min.apply(0, ys) - pad, My = Math.max.apply(0, ys) + pad;
     svg.setAttribute('viewBox', mx + ' ' + my + ' ' + (Mx - mx) + ' ' + (My - my));
     var g = el('g', {}, svg), order = L.rooms.slice().sort(function (a, b) { return (a.x + a.y) - (b.x + b.y); });
@@ -254,6 +261,7 @@ svg text{font-family:var(--f-body)}
       cat.innerHTML = document.querySelector('.cat svg').innerHTML;
       var lab = el('text', { x: pc[0] + 3, y: pc[1] + 16, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 900, fill: '#fff', stroke: '#1e2a44', 'stroke-width': 3, 'paint-order': 'stroke' }, g); lab.textContent = 'Pamutka';
     }
+    compass(g, mx, My);
     st.devs.forEach(function (d) {
       var p = PINS[d.pink]; if (!p || p[0] !== st.level) return;
       var s = devState(d), a = P(p[1], p[2], p[3]), b = P(p[1], p[2], 0), col = cssv(s.col);
@@ -271,6 +279,48 @@ svg text{font-family:var(--f-body)}
       pg.addEventListener('click', function () { select(d.pink); });
       pg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(d.pink); } });
     });
+  }
+  // Iránytű a talajon, a nap mai útjával (napkelte, napnyugta, a nap most) és a holnapi hőmérséklettel.
+  function compass(g, mx, My) {
+    var cx = st.level === 'lo' ? 12.6 : 8.6, cy = st.level === 'lo' ? 10.4 : 8.4, R = 1.4, S0 = window.F27Sun;
+    var dir = function (az) {                          // azimut (É=0, K=90) -> síkbeli egységvektor (x jobbra, y le)
+      var a = (az + PLAN_NORTH - 90) * Math.PI / 180; return [Math.cos(a), Math.sin(a)];
+    };
+    var at = function (az, r) { var v = dir(az); return P(cx + v[0] * r, cy + v[1] * r, 0); };
+    var cg = el('g', { class: 'compass' }, g), ring = [];
+    for (var i = 0; i <= 36; i++) ring.push(at(i * 10, R));
+    el('polygon', { points: pts(ring), fill: '#fff7e6', 'fill-opacity': .92, stroke: '#1e2a44', 'stroke-width': 2.5 }, cg);
+    var n0 = at(0, R * 0.8), s0 = at(180, R * 0.8), c0 = P(cx, cy, 0), e0 = at(90, R * 0.18), w0 = at(270, R * 0.18);
+    el('polygon', { points: pts([e0, n0, w0]), fill: '#e8432f', stroke: '#1e2a44', 'stroke-width': 1.4 }, cg);
+    el('polygon', { points: pts([e0, s0, w0]), fill: '#ffffff', stroke: '#1e2a44', 'stroke-width': 1.4 }, cg);
+    var lbl = function (az, t, col) { var q = at(az, R * 1.28); var x = el('text', { x: q[0], y: q[1] + 5, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 900, fill: col, stroke: '#1e2a44', 'stroke-width': 3, 'paint-order': 'stroke' }, cg); x.textContent = t; };
+    lbl(0, 'É', '#ff6b52'); lbl(90, 'K', '#fff'); lbl(180, 'D', '#fff'); lbl(270, 'NY', '#fff');
+    if (!S0) return;
+    var now = Date.now(), t = S0.times(now, LAT, LON), sp = S0.pos(now, LAT, LON), tip = '';
+    if (t.rise) {
+      var arc = []; for (var k = 0; k <= 16; k++) arc.push(at(t.riseAz + (t.setAz - t.riseAz) * k / 16, R * 0.95));
+      el('polyline', { points: pts(arc), fill: 'none', stroke: '#ffd23f', 'stroke-width': 5, 'stroke-linecap': 'round', opacity: .95 }, cg);
+      var r0 = at(t.riseAz, R * 0.95), s1 = at(t.setAz, R * 0.95);
+      el('circle', { cx: r0[0], cy: r0[1], r: 4, fill: '#ff9f1c', stroke: '#1e2a44', 'stroke-width': 1.4 }, cg);
+      el('circle', { cx: s1[0], cy: s1[1], r: 4, fill: '#c8321f', stroke: '#1e2a44', 'stroke-width': 1.4 }, cg);
+      if (sp.alt > 0) { var q = at(sp.az, R * 0.95); el('circle', { cx: q[0], cy: q[1], r: 7, fill: '#ffd23f', stroke: '#1e2a44', 'stroke-width': 2 }, cg); }
+      tip = 'Napkelte ' + S0.hm(t.rise) + ' (' + Math.round(t.riseAz) + '°), napnyugta ' + S0.hm(t.set) + ' (' + Math.round(t.setAz) + '°). ';
+    }
+    var dl = st.daily, base = P(cx, cy + R * 1.05, 0);
+    var t1 = el('text', { x: base[0], y: base[1] + 36, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 900, fill: '#ffd23f', stroke: '#1e2a44', 'stroke-width': 3, 'paint-order': 'stroke' }, cg);
+    t1.textContent = t.rise ? '↑' + S0.hm(t.rise) + ' · ↓' + S0.hm(t.set) : '';
+    var t2 = el('text', { x: base[0], y: base[1] + 52, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 900, fill: '#fff', stroke: '#1e2a44', 'stroke-width': 3, 'paint-order': 'stroke' }, cg);
+    t2.textContent = dl && dl.tmin != null ? 'holnap ' + fmt(dl.tmin, 0) + '…' + fmt(dl.tmax, 0) + ' °C' : 'holnap: --';
+    var ti = el('title', {}, cg);
+    ti.textContent = tip + (dl && dl.tmin != null ? 'Holnap ' + fmt(dl.tmin, 0) + '…' + fmt(dl.tmax, 0) + ' °C várható (Open-Meteo). ' : '') +
+      'A sárga ív a nap mai útja: délután és este az erkélyes (ÉNy-i) homlokzat kapja a napot, délelőtt a túloldal.';
+  }
+  function fetchDaily() {
+    if (!window.fetch) return;
+    fetch(DAILY_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      var d = j && j.daily; if (!d || !d.time || d.time.length < 2) return;
+      st.daily = { tmin: d.temperature_2m_min[1], tmax: d.temperature_2m_max[1] }; draw();
+    }, function () {});
   }
   function select(pink) {
     st.sel = st.sel === pink ? null : pink;
@@ -405,7 +455,8 @@ svg text{font-family:var(--f-body)}
   document.getElementById('l-lo').addEventListener('click', function () { setLevel('lo'); });
   document.getElementById('l-up').addEventListener('click', function () { setLevel('up'); });
   setInterval(load, 5 * 60000);
-  demo(); render();
+  setInterval(fetchDaily, 3 * 3600000); setInterval(draw, 10 * 60000);
+  demo(); render(); fetchDaily();
 })();
 </script>
 </body>

@@ -492,6 +492,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .mvchip:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .wxchip{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .wxchip:hover{background:#fff1c9}
+
 .wxchip:focus-visible{outline:4px solid #ff4fa3;outline-offset:3px}
 .wxchip .ck{white-space:nowrap}
 .wxchip .wxf{letter-spacing:.3px;color:#1e2a44}
@@ -1074,11 +1075,15 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 </sc-for>
 </sc-if>
 
-<g class="compass" transform="{{sc.fx.compass}}" style="pointer-events: none" aria-label="Iránytű: észak a Ferenc körút felé">
+<g class="compass" transform="{{sc.fx.compass}}" aria-label="Iránytű: észak a Ferenc körút felé; sárga ív: a nap útja ma, napkeltétől napnyugtáig">
 <ellipse cx="0" cy="3" rx="50" ry="25" fill="#1e2a44" opacity="0.18"></ellipse>
 <ellipse cx="0" cy="0" rx="50" ry="25" fill="#fff7e6" fill-opacity="0.92" stroke="#1e2a44" stroke-width="3"></ellipse>
 <ellipse cx="0" cy="0" rx="36" ry="18" fill="none" stroke="#d9c9a6" stroke-width="1.5"></ellipse>
 <g transform="{{sc.compassM}}">
+<path d="{{sun.arc}}" fill="none" stroke="#ffd23f" stroke-width="4" stroke-linecap="round" opacity="0.9"></path>
+<circle cx="{{sun.riseX}}" cy="{{sun.riseY}}" r="3.2" fill="#ff9f1c" stroke="#1e2a44" stroke-width="1.2"></circle>
+<circle cx="{{sun.setX}}" cy="{{sun.setY}}" r="3.2" fill="#c8321f" stroke="#1e2a44" stroke-width="1.2"></circle>
+<sc-if value="{{sun.up}}"><circle cx="{{sun.nowX}}" cy="{{sun.nowY}}" r="6" fill="#ffd23f" stroke="#1e2a44" stroke-width="2"></circle></sc-if>
 <polygon points="-2.7,-5.4 32,-16 2.7,5.4" fill="#e8432f" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
 <polygon points="-2.7,-5.4 -32,16 2.7,5.4" fill="#ffffff" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
 <polygon points="2.7,-5.4 32,16 -2.7,5.4" fill="#45507a" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
@@ -1090,6 +1095,11 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <text x="{{sc.compassL.k.x}}" y="{{sc.compassL.k.y}}" fill="#ffffff">K</text>
 <text x="{{sc.compassL.d.x}}" y="{{sc.compassL.d.y}}" fill="#ffffff">D</text>
 <text x="{{sc.compassL.ny.x}}" y="{{sc.compassL.ny.y}}" fill="#ffffff">NY</text>
+</g>
+<g class="sunlbl" font-family="'Nunito', sans-serif" font-weight="900" text-anchor="middle" stroke="#1e2a44" stroke-width="3" paint-order="stroke" stroke-linejoin="round">
+<title>{{sun.tip}}</title>
+<text x="0" y="54" font-size="12" fill="#ffd23f">↑{{sun.rise}} · ↓{{sun.set}}</text>
+<text x="0" y="69" font-size="11" fill="#ffffff">{{sun.sub}}</text>
 </g>
 </g>
 <g transform="{{sc.fx.priv}}" style="pointer-events: none">
@@ -1764,6 +1774,7 @@ Kilépés (kijelentkezés)</button>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script src="js/minidc.js"></script>
+<script src="js/sun.js"></script>
 <script src="js/g3-scene.js"></script>
 <script src="js/app.js"></script>
 </body>

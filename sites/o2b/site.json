@@ -9,6 +9,8 @@
   "timezone": "Europe/Budapest",
   "location": {"lat": 47.48, "lon": 19.04, "label": "Budapest XI. kerület"},
   "map_url": "https://kereslek.github.io/f27-energy/o2b/",
+  "plan_north_deg": 55,
+  "_plan_north": "Az alaprajz északi nyila (hirdetés) a rajz jobb felső felé mutat: az észak 55 fokkal van a rajz fel irányától (az erkély felől) az óramutató szerint. Az erkély (utcafront) így kb. ÉNy-ra néz: délután és este kapja a napot.",
   "devices_config": "sites/o2b/devices.json",
   "data_dir": "data/o2b",
   "advisor": {"name": "Pamutka", "figure": "cat", "place": "balcony",
