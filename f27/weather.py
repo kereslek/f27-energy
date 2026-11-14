@@ -18,9 +18,10 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from .site import SITE
 from .supa import SupabaseError, SupabaseRest
 
-LAT, LON = 47.48, 19.07            # IX. kerület, kerületi pontossággal (nem a pontos cím)
+LAT, LON = SITE.lat, SITE.lon      # kerületi pontossággal (nem a pontos cím), config/site.json
 API = "https://api.open-meteo.com/v1/forecast"
 HOURLY = {                          # Open-Meteo változó -> oszlop
     "temperature_2m": "temp",
@@ -60,7 +61,7 @@ def archive_daily(start: str, end: str, fetcher=None, timeout: float = 20) -> di
     """Múltbeli napi középhőmérséklet (Open-Meteo archív, Budapest napjai): {'YYYY-MM-DD': °C}.
     Az esti e-mail YoY összevetéséhez (tavaly ugyanekkor milyen hideg volt)."""
     q = {"latitude": LAT, "longitude": LON, "start_date": start, "end_date": end,
-         "daily": "temperature_2m_mean", "timezone": "Europe/Budapest"}
+         "daily": "temperature_2m_mean", "timezone": SITE.tz.key}
     u = ARCHIVE + "?" + urllib.parse.urlencode(q)
     if fetcher:
         j = fetcher(u)

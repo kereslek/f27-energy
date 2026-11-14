@@ -18,15 +18,15 @@ import json
 import re
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
-BUDAPEST = ZoneInfo("Europe/Budapest")
+from .site import SITE
+
+BUDAPEST = SITE.tz
 W = 44                                        # a dobozok külső szélessége (karakter)
 # kör, név, Ft/kWh alsó és felső (B keret felett 60,9; A1 36,2-70,1), mérő
-CIRCUITS = (("X5", "KÁLYHA", 60.9, 60.9, "B"), ("X7", "BOJLER", 60.9, 60.9, "B"),
-            ("X8", "KONYHA", 36.2, 70.1, "A1"), ("X9", "KLÍMA", 36.2, 70.1, "A1"))
-THERMOS = (("1", "Kis szoba"), ("2", "Nagy szoba"), ("3", "Kályha mögött"), ("4", "Fürdő"))
-B_QUOTA_DAY = 2523 / 365                      # kedvezményes keret mérőnként (kWh/nap, a számlák szerint)
+CIRCUITS = tuple((c["pink"], c["name"], c["ft_low"], c["ft_high"], c["meter"]) for c in SITE.circuits)
+THERMOS = tuple((t["pink"], t["name"]) for t in SITE.thermometers)
+B_QUOTA_DAY = SITE.quota_kwh_year / 365                      # kedvezményes keret mérőnként (kWh/nap, a számlák szerint)
 DAYS = ("H", "K", "Sze", "Cs", "P", "Szo", "V")
 METERS = Path(__file__).resolve().parent.parent / "config" / "meter_readings.json"
 
@@ -119,7 +119,7 @@ def banner(now: datetime, kwh: float | None, ft: float | None, guest: str, kwh_y
         center("p r e s e n t s"),
         "",
         "╔" + "═" * (W - 2) + "╗",
-        "║" + "F27 ENERGY CREW proudly presents:".center(W - 2) + "║",
+        "║" + f"{SITE.brand} CREW proudly presents:".center(W - 2) + "║",
         "║" + f'"Napi jelentés" {loc:%Y.%m.%d}'.center(W - 2) + "║",
         "║" + "(p) 2026, csak olvas, semmit nem kapcsol".center(W - 2)[:W - 2] + "║",
         "╠" + "═" * half + "╤" + "═" * (W - 3 - half) + "╣",
@@ -139,11 +139,11 @@ def footer() -> list[str]:
         row = (row + " · " if row else "") + name
     rows.append(row)
     t = ["   /\\", "  /__\\", " /\\  /\\", "/__\\/__\\"]
-    side = ["", "F27 ENERGY", "Since 2024", ""]
+    side = ["", SITE.brand, f"Since {SITE.since}", ""]
     blk = [a.ljust(9) + "  " + b for a, b in zip(t, side)]
     pad = " " * ((W - max(len(x) for x in blk)) // 2)
     tri = [(pad + x).rstrip() for x in blk]
-    out = ["", center("<-- F27 ENERGY CREW greetz -->"), ""] + [center(r) for r in rows] + [
+    out = ["", center(f"<-- {SITE.brand} CREW greetz -->"), ""] + [center(r) for r in rows] + [
         "",
         *tri,
         "",
@@ -324,7 +324,7 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
             wl.append(line)
             if effs and hdd > 0:
                 k = sum(effs) / len(effs) * hdd
-                wl.append(f"          kályha várhatóan ~{_f(k, 0)} kWh, ~{_ft(k * 60.9)} Ft")
+                wl.append(f"          kályha várhatóan ~{_f(k, 0)} kWh, ~{_ft(k * SITE.price("B"))} Ft")
     if wl:
         out += box("KiNT · iDŐJÁRÁS", wl)
 
@@ -382,7 +382,7 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
 
 GADGETS = [
     "van még bekötendő kütyü? (heti memó)",
-    "- 6 párosítatlan eszköz az F27 otthon-",
+    f"- 6 párosítatlan eszköz az {SITE.tag} otthon-",
     "ban (Tuya, 11.08): mi ez? nézzük át!",
     "- robotporszívó: takarítás, távozás",
     "- konnektor: hűtő, mosógép, TV",
@@ -391,7 +391,7 @@ GADGETS = [
     "- CO- és füstérzékelő (gázkonvektor!)",
     "- vízszivárgás: mosógép, bojler",
     "- jelenlét, okos kulcsszéf, fürdőpanel",
-    "bekötés: Smart Life, Ferenc krt. otthon",
+    f"bekötés: Smart Life, {SITE.smartlife_home} otthon",
     "utána Actions > Eszközfelderítés",
 ]
 
@@ -473,7 +473,7 @@ def subject_line(now: datetime, head: dict, alerts: int = 0) -> str:
     """Rövid, warez-hangulatú tárgysor (iPhone-on kb. 60 karakter fér ki):
     ▓▒░ F27·NRG ░▒▓ 11.13 P » 26,4 kWh » ~1 620 Ft » ▼8% DoD"""
     loc = now.astimezone(BUDAPEST)
-    parts = [f"▓▒░ F27·NRG ░▒▓ {loc:%m.%d} {DAYS[loc.weekday()]}"]
+    parts = [f"▓▒░ {SITE.tag}·NRG ░▒▓ {loc:%m.%d} {DAYS[loc.weekday()]}"]
     kwh, ky = head.get("kwh"), head.get("kwh_y")
     if kwh:
         parts.append(f"{_f(kwh)} kWh")

@@ -29,6 +29,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from .alerts import (BUDAPEST, MAP_URL, MIGRATION, MISSING_TABLE, OPENINGS, battery_of, context_lines,
                      email_ready, fmt_num, last_report, merge_config, parse_ts, send_email, snapshot,
                      fmt_w, stove_state)
+from .site import SITE
 from .report_stats import banner, build_stats, footer, notes, stripe, subject_line, to_html
 from .supa import SupabaseError, SupabaseRest
 
@@ -170,7 +171,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     # 5. Érzékelők most + link
     out += [""] + stripe("ÉRZÉKELŐK MOST") + [f"- {x}" for x in context_lines(snap, now)]
     out += footer() + ["", f"Térkép: {MAP_URL}", "",
-            f"Ezt az F27 adatgyűjtő küldte {loc.strftime('%H:%M')}-kor (csak jelez, semmit nem kapcsol). "
+            f"Ezt az {SITE.tag} adatgyűjtő küldte {loc.strftime('%H:%M')}-kor (csak jelez, semmit nem kapcsol). "
             "Naponta legfeljebb egy ilyen levél jön; az azonnali riasztások pushon (ntfy) mennek. "
             "Beállítás: a térkép Riasztások panelje."]
     top = banner(now, head["kwh"], head["ft"], head["guest"], head.get("kwh_y")) + ["", f">> DASHBOARD: {MAP_URL}", ""]
@@ -188,7 +189,8 @@ def _dur(sec: float) -> str:
 
 def _short(text: str) -> str:
     t = (text or "").strip()
-    for pre in ("F27 riasztás (még fennáll): ", "F27 riasztás: ", "F27 (még fennáll): ", "F27: "):
+    T = SITE.tag
+    for pre in (f"{T} riasztás (még fennáll): ", f"{T} riasztás: ", f"{T} (még fennáll): ", f"{T}: "):
         if t.startswith(pre):
             t = t[len(pre):]
     return t.rstrip(".")
@@ -274,7 +276,7 @@ def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date) -
         todo1 = "csukd be: " + (m.group(1) if m else "a nyitott ablakot")
     elif empty and (ss["heating"] or ss["idle_on"]):
         kday = head.get("stove_y") or (ss["stage"] or 1) * 24
-        day_ft = kday * 60.9
+        day_ft = kday * SITE.price((SITE.circuit("X5") or {}).get("meter", "B"))
         waste = f"kályha BE, üres lakás"
         price = f"~{int(round(day_ft, -1)):,} Ft/nap".replace(",", " ")
         todo1 = "kályha LE" + (f", vissza {nxt:%m.%d.} 12h" if nxt else "")

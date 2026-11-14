@@ -28,9 +28,10 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .site import SITE
 from .supa import SupabaseError, SupabaseRest
 
-BUDAPEST = ZoneInfo("Europe/Budapest")
+BUDAPEST = SITE.tz
 SOURCES = (("airbnb", "AIRBNB_ICAL_URL"), ("booking", "BOOKING_ICAL_URL"))
 EVERY = timedelta(minutes=55)
 PAST_DAYS, FUTURE_DAYS = 30, 400

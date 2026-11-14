@@ -47,12 +47,13 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from email.utils import formatdate
-from zoneinfo import ZoneInfo
 
+from .site import SITE
 from .supa import SupabaseError, SupabaseRest
 
-BUDAPEST = ZoneInfo("Europe/Budapest")
-MAP_URL = "https://kereslek.github.io/f27-energy/"
+BUDAPEST = SITE.tz
+MAP_URL = SITE.map_url
+TAG = SITE.tag
 MIGRATION = "supabase/migrations/006_alerts.sql"
 MISSING_TABLE = ("PGRST205", "42P01", "PGRST204", "42703")
 CALLMEBOT_URL = "https://api.callmebot.com/whatsapp.php"
@@ -333,9 +334,9 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
             short = f"{name} {fmt_num(v, 1)} °C"
             limit = f"(határ {fmt_thr(thr)} °C)" if kind == "hi" else f"(alsó határ {fmt_thr(thr)} °C)"
             conds[key] = {
-                "on": on, "short": short, "title": f"F27 riasztás: {short}",
-                "text": (lambda age, s=short, lm=limit: f"F27 riasztás: {s} {lm}."),
-                "rtext": f"F27: megszűnt: {short} {limit}.",
+                "on": on, "short": short, "title": f"{TAG} riasztás: {short}",
+                "text": (lambda age, s=short, lm=limit: f"{TAG} riasztás: {s} {lm}."),
+                "rtext": f"{TAG}: megszűnt: {short} {limit}.",
                 "minutes": mins,
             }
     skip = cfg["skipDeadContacts"]
@@ -356,15 +357,15 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
             verb = "fűtés" if stove else "klímázás"
             heat = " és ".join(descs) if descs else "a fűtés áll"
             if o:
-                rtext = f"F27: megszűnt: a fűtés és a klíma leállt ({name} még nyitva)."
+                rtext = f"{TAG}: megszűnt: a fűtés és a klíma leállt ({name} még nyitva)."
             elif o is None:
-                rtext = "F27: megszűnt: a fűtés és a klíma leállt."
+                rtext = f"{TAG}: megszűnt: a fűtés és a klíma leállt."
             else:
-                rtext = f"F27: megszűnt: {name} becsukva."
+                rtext = f"{TAG}: megszűnt: {name} becsukva."
             conds[key] = {
-                "on": on, "short": f"{name} nyitva", "title": f"F27: {what} nyitva {verb} közben",
+                "on": on, "short": f"{name} nyitva", "title": f"{TAG}: {what} nyitva {verb} közben",
                 "text": (lambda age, w=what, vb=verb, n=name, h=heat:
-                         f"F27: {w} nyitva {vb} közben: {n} {age} perce, közben {h}."),
+                         f"{TAG}: {w} nyitva {vb} közben: {n} {age} perce, közben {h}."),
                 "rtext": rtext, "minutes": cfg["openHeat"]["minutes"],
             }
     if cfg["acMaxOpen"]["on"]:
@@ -381,12 +382,12 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
             on = w9 > limit and bool(opened)
             where = ", ".join(opened)
             conds[key] = {
-                "on": on, "short": f"klíma {fmt_w(w9)}, ablak nyitva", "title": "F27: a klíma nagy teljesítményen, ablak nyitva",
+                "on": on, "short": f"klíma {fmt_w(w9)}, ablak nyitva", "title": f"{TAG}: a klíma nagy teljesítményen, ablak nyitva",
                 "text": (lambda age, w=w9, lm=limit, wh=where:
-                         f"F27: a klíma nagy teljesítményen megy ({fmt_w(w)}, határ {lm} W), és nyitva: {wh}."),
-                "rtext": (f"F27: megszűnt: a klíma már nem megy nagy teljesítményen ({fmt_w(w9)})." if w9 <= limit
-                          else "F27: megszűnt: csak a konyhaablak van nyitva, azt nem figyeljük." if kitchen_open
-                          else "F27: megszűnt: az ablakok zárva."),
+                         f"{TAG}: a klíma nagy teljesítményen megy ({fmt_w(w)}, határ {lm} W), és nyitva: {wh}."),
+                "rtext": (f"{TAG}: megszűnt: a klíma már nem megy nagy teljesítményen ({fmt_w(w9)})." if w9 <= limit
+                          else f"{TAG}: megszűnt: csak a konyhaablak van nyitva, azt nem figyeljük." if kitchen_open
+                          else f"{TAG}: megszűnt: az ablakok zárva."),
                 "minutes": mins,
             }
     return conds, unknown
@@ -415,8 +416,8 @@ def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime) -> tu
                 notified = last is not None and last >= since
                 kind = "reminder" if notified else "fired"
                 if kind == "reminder":
-                    text = (text.replace("F27 riasztás:", "F27 riasztás (még fennáll):", 1) if text.startswith("F27 riasztás:")
-                            else text.replace("F27:", "F27 (még fennáll):", 1))
+                    text = (text.replace(f"{TAG} riasztás:", f"{TAG} riasztás (még fennáll):", 1) if text.startswith(f"{TAG} riasztás:")
+                            else text.replace(f"{TAG}:", f"{TAG} (még fennáll):", 1))
                 ev = {"key": key, "kind": kind, "title": c["title"], "short": c["short"], "text": text,
                       "send": False, "reason": ""}
                 if last is not None and now - last < cool:
@@ -428,7 +429,7 @@ def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime) -> tu
         elif since is not None or row.get("active"):
             notified = bool(row.get("active")) and last is not None and since is not None and last >= since
             if notified and cfg["resolvedMsg"]:
-                ev = {"key": key, "kind": "resolved", "title": "F27: megszűnt", "short": c["short"],
+                ev = {"key": key, "kind": "resolved", "title": f"{TAG}: megszűnt", "short": c["short"],
                       "text": c["rtext"], "send": True, "reason": ""}
                 events.append(ev)
             row.update(active=False, since=None, last_text=c["rtext"])
@@ -531,12 +532,12 @@ def compose(events: list[dict], snap: dict, now: datetime, test: bool = False) -
     """Egy kör eseményei egyetlen push-értesítésben (csatornánként egy üzenet)."""
     lines = [e["text"] for e in events]
     if test:
-        title = "F27 próba-értesítés"
+        title = f"{TAG} próba-értesítés"
     elif len(events) == 1:
         e = events[0]
-        title = e["title"] if e["kind"] != "resolved" else f"F27: megszűnt: {e['short']}"
+        title = e["title"] if e["kind"] != "resolved" else f"{TAG}: megszűnt: {e['short']}"
     else:
-        title = f"F27 riasztás: {len(events)} esemény"
+        title = f"{TAG} riasztás: {len(events)} esemény"
     fired = any(e["kind"] in ("fired", "reminder") for e in events)
     body = "\n".join(lines) + "\n\nTérkép: " + MAP_URL
     return {"title": title, "body": body, "plain": title + "\n" + body, "priority": "high" if fired else "default",
@@ -626,7 +627,7 @@ def run_alerts(sb: SupabaseRest, now: datetime | None = None, environ=None, send
         lt = parse_ts(last[0]["ts"]) if last else None
         if lt is None or req > lt:
             n = rules_on(cfg)
-            text = f"F27 próba-értesítés: a riasztás működik ({n} szabály bekapcsolva). Ez csak próba, nincs teendő."
+            text = f"{TAG} próba-értesítés: a riasztás működik ({n} szabály bekapcsolva). Ez csak próba, nincs teendő."
             ch = "nincs beállított csatorna"
             if channels:
                 ok = dispatch(compose([{"text": text, "kind": "test", "title": "", "short": ""}], snap, now, test=True),

@@ -32,13 +32,13 @@ import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
+from .site import SITE
 from .crypto import password_from_env, write_encrypted_json
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError, err_text, fetch_logs  # noqa: F401 (a tesztek innen is elérik)
 
-BUDAPEST = ZoneInfo("Europe/Budapest")
+BUDAPEST = SITE.tz
 DATA = Path(__file__).resolve().parent.parent / "data"
 CONTACTS = ("5", "6", "7", "8", "9", "10")
 BREAKERS = ("X5", "X7", "X8", "X9")

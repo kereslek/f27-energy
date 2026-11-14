@@ -33,8 +33,8 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 
+from .site import SITE
 from .supa import SupabaseError, SupabaseRest
 from .tuya import TuyaClient, TuyaError, fetch_logs
 from .alerts import run_alerts
@@ -42,7 +42,7 @@ from .bookings import collect_bookings
 from .digest import run_digest
 from .weather import collect_weather
 
-BUDAPEST = ZoneInfo("Europe/Budapest")
+BUDAPEST = SITE.tz
 HEARTBEAT = timedelta(minutes=60)
 POWER_DELTA_W = 25
 # Halmozott (kumulatív) fogyasztásszámlálók. Az add_ele NEM ilyen: a Tuya-napló szerint jelentésenkénti

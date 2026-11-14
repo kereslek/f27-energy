@@ -1,0 +1,31 @@
+{
+  "_comment": "A telephely (lakás) adatai, amitől a motor kódja független. Publikus repó: pontos cím, név, számlaszám, mérőszám NEM kerül ide; a hely csak kerületi pontosságú. Másik telephelyhez: saját site.json (F27_SITE_CONFIG környezeti változó mutat rá). A tarifák bruttó Ft/kWh, rendszerhasználati díjjal (CLAUDE.md 5. fejezet).",
+  "id": "f27",
+  "tag": "F27",
+  "brand": "F27 ENERGY",
+  "since": 2024,
+  "name": "Ferenc krt. lakás",
+  "smartlife_home": "Ferenc krt.",
+  "timezone": "Europe/Budapest",
+  "location": {"lat": 47.48, "lon": 19.07, "label": "Budapest IX. kerület"},
+  "map_url": "https://kereslek.github.io/f27-energy/",
+  "tariff": {
+    "quota_kwh_year": 2523,
+    "meters": {
+      "A1": {"label": "A1 általános", "in_quota": 36.2, "over_quota": 70.1},
+      "B":  {"label": "B vezérelt",   "in_quota": 23.2, "over_quota": 60.9}
+    }
+  },
+  "circuits": [
+    {"pink": "X5", "name": "KÁLYHA", "meter": "B",  "ft_low": 60.9, "ft_high": 60.9, "_why": "a bojler a B keretet eleve elviszi"},
+    {"pink": "X7", "name": "BOJLER", "meter": "B",  "ft_low": 60.9, "ft_high": 60.9},
+    {"pink": "X8", "name": "KONYHA", "meter": "A1", "ft_low": 36.2, "ft_high": 70.1},
+    {"pink": "X9", "name": "KLÍMA",  "meter": "A1", "ft_low": 36.2, "ft_high": 70.1}
+  ],
+  "thermometers": [
+    {"pink": "1", "name": "Kis szoba"},
+    {"pink": "2", "name": "Nagy szoba"},
+    {"pink": "3", "name": "Kályha mögött"},
+    {"pink": "4", "name": "Fürdő"}
+  ]
+}
