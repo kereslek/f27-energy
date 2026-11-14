@@ -503,7 +503,7 @@ class G3Scene extends MiniDC.Component {
     piece('ac', 'Gree klíma beltéri egység (11)');
     add(336, 472, 8, 44, 86, 12, WHITE, { bias: 30, lines: seg(P(344.3, 475, 89), P(344.3, 513, 89)), lc: '#9aa3ab', f1: faceX(344.4, 508, 511, 93, 95), f1c: '#5fd6a0', f1f: 'url(#glowF2)' });
 
-    piece('gas', 'Gázkonvektor (Lampart Gála 50): krém doboz, fekete rács és kémlelőablak');
+    piece('gas', 'Gázkonvektor (Lampart Gála 50): az ALAP és legolcsóbb fűtés (kb. 12-15 Ft/kWh hő), a kis szoba ablaka alatt; nincs okos vezérlése, nem mérjük');
     add(384, 580, 40, 9, 0, 18, ['#fbf6e8', '#e8dfc8', '#d8ceb4']);
     var grille = '';
     for (var gx = 388; gx < 421; gx += 2.4) grille += seg(P(gx, 581.8, 18.9), P(gx, 587.2, 18.9));
@@ -744,7 +744,7 @@ class G3Scene extends MiniDC.Component {
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
         stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), ch1: tr(377, 190, 96), ch2: tr(404, 470, 96),
-        ghosts: tr(414, 552, 34), compass: 'translate(170,555)', gw: tr(460, 568, 60), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
+        ghosts: tr(414, 552, 34), compass: 'translate(170,555)', gw: tr(460, 568, 60), gas: tr(404, 585, 30), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };
     this._scs[K] = sc;

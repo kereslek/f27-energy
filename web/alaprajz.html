@@ -217,7 +217,7 @@ function draw(data) {
     const g = el("g", { class: "fixed" }, svg);
     if (f.id === "W") el("rect", { x: f.pos[0] - 22, y: f.pos[1] - 16, width: 44, height: 22, rx: 3 }, g);
     const t = el("text", { x: f.pos[0], y: f.pos[1], "text-anchor": "middle" }, g);
-    t.textContent = { W: "kályha", GAS: "gáz", BOJ: "bojler", FT: "fűtőtest" }[f.id] || f.id;
+    t.textContent = { W: "kályha", GAS: "gáz · alapfűtés", BOJ: "bojler", FT: "fűtőtest" }[f.id] || f.id;
     const ti = el("title", {}, g); ti.textContent = f.label;
   }
 
