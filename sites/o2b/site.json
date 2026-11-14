@@ -19,7 +19,22 @@
   "presence": {"sources": ["pir", "consumption"], "pir_alerts": false, "_pir": "A mozgásérzékelő a lépcső tetején, a legfelső foknál. Pamutka is mozgást jelez, ezért csak a jelenlét-becsléshez kell, riasztást nem küld (a tulaj döntése, 2026.11.14).", "_comment": "Nincs foglalási naptár: a jelenlétet a mozgásérzékelő és az eszközhasználat (fogyasztás) mutatja; később további érzékelők."},
   "heating": {"base": "gas_boiler", "boiler": "Savio Acta NOx 24 kombi (2021), nem kondenzációs, a lenti fürdőben",
               "hot_water": "lent a gázkombi (átfolyós), fent a villanybojler (okos konnektoron)",
-              "ac_heating": false},
+              "ac_heating": false,
+              "thermostat": {"brand": "Computherm Wi-Fi (nem Tuya, saját app)", "sensor_room": "etkezo",
+                             "receiver": "a gázkazán alatt, a lenti fürdőben", "setpoint_c": 22.0,
+                             "integrated": false,
+                             "_note": "Szobaegység (érintőpanel) az étkező sarkában, ott mér; a vevő kapcsolja a kazánt. 2026.11.14: 21,6 °C mért, 22,0 °C beállítva, fűtött. A referencia-szoba radiátora 0-ra van véve."},
+              "radiators": [
+                {"room": "konyha", "where": "ablak alatt"},
+                {"room": "etkezo", "where": "falon, jelenleg 0-ra véve"},
+                {"room": "haloszoba", "where": "ablak alatt"},
+                {"room": "nappali", "where": "ablak alatt", "count": 2},
+                {"room": "kagyloszoba", "where": "a kagyló alatt"},
+                {"room": "gyerekszoba", "where": "ablak alatt, az íróasztal alatt"},
+                {"room": "furdo_lent", "where": "törölközőszárító, a mosógép mellett", "towel": true},
+                {"room": "furdo_fent", "where": "törölközőszárító a falon", "towel": true}
+              ],
+              "_heads": "A radiátorok kézi termosztátfejesek; a régi fejek szelepe néha beragad (kézzel teljesen nyit-zár-nyit oldja). Hosszú távon okos fejek (TRV) tervben; kiegyenlítő szelep és iszapleválasztó helye ismeretlen."},
   "email": {"daily_at": "20:00"},
   "tariff": {
     "quota_kwh_year": 2523,
