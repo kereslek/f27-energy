@@ -29,9 +29,12 @@ MAX_FILE = 25 * 1024 * 1024
 
 
 def _password() -> str:
-    pw = os.environ.get("F27_DATA_PASSWORD", "")
-    if not pw:
-        pw = getpass.getpass("F27_DATA_PASSWORD (nem jelenik meg): ")
+    pw = os.environ.get("F27_DATA_PASSWORD", "").strip("\r\n")
+    if pw:
+        print(f"Jelszó a környezeti változóból: {len(pw)} karakter.")
+    else:
+        pw = getpass.getpass("F27_DATA_PASSWORD (nem jelenik meg): ").strip("\r\n")
+        print(f"Beolvasva: {len(pw)} karakter.")
     if len(pw) < MIN_PASSWORD_LEN:
         sys.exit(f"A jelszó túl rövid (min. {MIN_PASSWORD_LEN} karakter).")
     return pw
@@ -48,8 +51,9 @@ def _check(pw: str) -> None:
     try:
         decrypt_bytes(json.loads(REF.read_text(encoding="utf-8")), pw)
     except Exception:
-        sys.exit("A jelszó nem egyezik a repó jelszavával (data/latest.json.enc nem nyílik vele). "
-                 "Valószínűleg elütés: futtasd újra, és figyelj a kis- és nagybetűkre.")
+        sys.exit(f"A jelszó ({len(pw)} karakter) nem egyezik a repó jelszavával (data/latest.json.enc nem nyílik "
+                 "vele). Ha a hossz sem stimmel, a beillesztés nem sikerült; próbáld a vágólapról "
+                 "($env:F27_DATA_PASSWORD = (Get-Clipboard -Raw).Trim()).")
 
 
 def pack(src: Path, out: Path) -> None:
