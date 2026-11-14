@@ -544,7 +544,7 @@
     var v = ($('streetin').value || '').trim().slice(0, 60);
     sb.from('site_info').upsert({ key: 'street', value: v }).then(function (res) {
       if (res.error) { toast('Nem sikerült menteni (fut már a 009-es séma?).', 'err'); return; }
-      st.street = v || null; drawWorld(); toast(v ? 'Az utca felirata: ' + v : 'Az utca felirata törölve.', 'ok');
+      st.street = v || null; drawWorld(); streetBox(); toast(v ? 'Az utca felirata: ' + v : 'Az utca felirata törölve.', 'ok');
     });
   }
 
@@ -863,10 +863,16 @@
       BAT.fetchHistory(sb, pinks, 30).then(function (h) { batHist = h; if (!st.user) return; st.bat = BAT.merge(st.batTable || [], BAT.build(st.devs, st.latest, h, Date.now())); render(); });
     }
   }
-  function streetBox() {
+  // Fiók kártya: az utca felirata. Alapból a Smart Life otthon nevéből jön (a felderítés tölti ki);
+  // ha van, csak kiírjuk, a mezőt a Módosítás gomb nyitja.
+  function streetBox(editing) {
     var box = $('streetbox'); if (!box) return;
     box.hidden = !(st.user && st.role === 'owner');
-    if (!box.hidden && document.activeElement !== $('streetin')) $('streetin').value = st.street || '';
+    if (box.hidden) return;
+    var has = !!st.street, ed = editing === true || (!has && st.live);
+    $('streetshow').hidden = !has || ed; $('streetval').textContent = st.street || '';
+    $('streetedit').hidden = !ed;
+    if (document.activeElement !== $('streetin')) $('streetin').value = st.street || '';
   }
   function setUser(u) {
     var was = st.user && st.user.id;
@@ -917,6 +923,7 @@
   });
   on('b-logout', 'click', function () { if (sb) sb.auth.signOut(); $('logincard').hidden = true; });
   on('streetform', 'submit', function (e) { e.preventDefault(); editStreet(); });
+  on('b-stedit', 'click', function () { streetBox(true); $('streetin').focus(); });
   on('loginform', 'submit', function (e) {
     e.preventDefault();
     var err = $('lerr');

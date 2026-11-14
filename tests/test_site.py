@@ -100,3 +100,32 @@ class O2BSiteTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StreetFromHomeTest(unittest.TestCase):
+    def test_label(self):
+        from f27.discover import street_label
+        self.assertEqual(street_label("Minta"), "Minta utca")
+        self.assertEqual(street_label("Ferenc krt."), "Ferenc krt.")
+        self.assertEqual(street_label("Petőfi  tér"), "Petőfi tér")
+        self.assertEqual(street_label(""), "")
+
+    def test_push_only_when_empty(self):
+        from f27.discover import push_street
+
+        class SB:
+            def __init__(self, rows):
+                self.rows, self.written = rows, []
+
+            def select(self, table, cols, **kw):
+                return self.rows
+
+            def upsert(self, table, rows, on_conflict=None):
+                self.written += rows
+        sb = SB([])
+        msg = push_street(sb, "Minta utca")
+        self.assertEqual(sb.written, [{"key": "street", "value": "Minta utca"}])
+        self.assertNotIn("Minta", msg)                      # a publikus naplóba nem kerül érték
+        sb2 = SB([{"key": "street", "value": "Kézzel írt"}])
+        push_street(sb2, "Minta utca")
+        self.assertEqual(sb2.written, [])

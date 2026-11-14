@@ -38,6 +38,7 @@ class Site:
     meters: dict = field(default_factory=dict)
     circuits: tuple = ()
     thermometers: tuple = ()
+    street_from_home: bool = False      # a térkép utcafelirata a Smart Life otthon nevéből (privát site_info)
 
     def price(self, meter: str, over: bool = True) -> float:
         """Bruttó Ft/kWh a mérő tarifájából (alapból a keret feletti, a drágább)."""
@@ -68,6 +69,7 @@ def load(path: str | os.PathLike | None = None) -> Site:
         meters=tar.get("meters") or {},
         circuits=tuple(c for c in j.get("circuits") or [] if isinstance(c, dict)),
         thermometers=tuple(t for t in j.get("thermometers") or [] if isinstance(t, dict)),
+        street_from_home=bool(j.get("street_from_home")),
     )
 
 

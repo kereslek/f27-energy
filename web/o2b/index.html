@@ -174,7 +174,7 @@ select.lay[hidden]{display:none}
 #lerr{color:#c43f1f;font-weight:900;font-size:12px;min-height:16px;margin-top:6px}
 #who{font-size:12px;font-weight:900;margin-top:8px;color:#45507a}
 #streetbox{margin-top:12px;padding-top:10px;border-top:2px dashed #c9b48a}
-#streetbox[hidden]{display:none}
+#streetbox[hidden],#streetshow[hidden],#streetedit[hidden]{display:none}
 .hint{font-size:11px;font-weight:800;color:#7a5a2e;margin-top:4px}
 #toast{position:absolute;left:50%;top:96px;transform:translateX(-50%);z-index:9;padding:8px 14px;border-radius:14px;border:3px solid #1e2a44;background:#1e2a44;color:#fff7e6;font:900 13px "Nunito",sans-serif;box-shadow:0 4px 0 rgba(0,0,0,.25)}
 #toast[hidden]{display:none}
@@ -343,10 +343,13 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
     <button class="btn sm" id="b-logout" type="button" hidden style="margin-top:8px">Kilépés</button>
     <form id="streetform">
       <div id="streetbox" hidden>
-        <label for="streetin">Az utca felirata a térképen</label>
-        <input id="streetin" type="text" maxlength="60" placeholder="pl. az utca neve" autocomplete="off">
-        <div class="hint">Csak belépve látszik, a nyilvános oldalon és a repóban nem. Egyszer kell megadni.</div>
-        <button class="btn sm" type="submit" style="margin-top:6px">Felirat mentése</button>
+        <div id="streetshow">Utca a térképen: <b id="streetval"></b> <button class="btn sm" id="b-stedit" type="button" style="margin-left:6px">Módosítás</button>
+          <div class="hint">A Smart Life otthon nevéből jön, és csak belépve látszik (a nyilvános oldalon és a repóban nem).</div></div>
+        <div id="streetedit" hidden>
+          <label for="streetin">Az utca felirata a térképen</label>
+          <input id="streetin" type="text" maxlength="60" autocomplete="off">
+          <button class="btn sm" type="submit" style="margin-top:6px">Mentés</button>
+        </div>
       </div>
     </form>
   </div>

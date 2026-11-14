@@ -21,6 +21,7 @@ Futtatás:  python -m f27.discover
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 import unicodedata
@@ -195,6 +196,44 @@ def push_devices(sb: SupabaseRest, config: list[dict], res: MatchResult, specs: 
             "(hiányzik a devices.meta oszlop: futtasd a supabase/migrations/002_device_meta.sql-t).")
 
 
+# A térkép utcafelirata (O2B): a Smart Life otthon neve maga az utcanév. A felderítés a párosított
+# eszközök otthon-azonosítójából lekéri a nevet, és a privát site_info táblába írja (csak ha még üres),
+# így az utcanév sem a repóba, sem a publikus naplóba nem kerül; a térkép csak belépve mutatja.
+STREET_WORDS = re.compile(r"\b(utca|út|útja|tér|tere|körút|krt|köz|sor|fasor|sétány|rakpart|lejtő|lépcső|dűlő|park)\b", re.I)
+
+
+def street_label(home_name: str) -> str:
+    n = " ".join((home_name or "").split())
+    if not n:
+        return ""
+    return n if STREET_WORDS.search(n) else n + " utca"
+
+
+def home_name(client, res) -> str | None:
+    homes = {home_of(d) for d in res.mapping.values() if home_of(d)}
+    if len(homes) != 1:
+        return None
+    try:
+        h = client.get(f"/v1.0/homes/{homes.pop()}") or {}
+    except TuyaError:
+        return None
+    return (h.get("name") or "").strip() or None
+
+
+def push_street(sb, label: str) -> str:
+    """A site_info 'street' kulcsa, ha még nincs kitöltve. A visszaadott szöveg értéket nem tartalmaz."""
+    if not label:
+        return "Utcafelirat: az otthon neve nem érhető el, kihagyva."
+    try:
+        rows = sb.select("site_info", "key,value", key="eq.street")
+    except SupabaseError as e:
+        return "Utcafelirat: kihagyva (nincs site_info tábla: futtasd a Supabase séma futtatását)." if e.code in ("PGRST205", "42P01") else f"Utcafelirat: HIBA ({e})."
+    if rows and (rows[0].get("value") or "").strip():
+        return "Utcafelirat: már be van állítva, nem írtam felül."
+    sb.upsert("site_info", [{"key": "street", "value": label}], on_conflict="key")
+    return "Utcafelirat: beállítva a Smart Life otthon nevéből (az érték csak belépve látszik a térképen)."
+
+
 def main() -> int:
     password = password_from_env()
     client = TuyaClient.from_env()
@@ -255,6 +294,8 @@ def main() -> int:
     else:
         try:
             lines.append(push_devices(sb, config, res, specs))
+            if SITE.street_from_home:
+                lines.append(push_street(sb, street_label(home_name(client, res) or "")))
         except SupabaseError as e:
             lines.append(f"Supabase eszközlista: HIBA ({e}).")
             print(f"::error::{e}")

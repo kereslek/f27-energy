@@ -6,6 +6,7 @@
   "since": 2026,
   "name": "O2B otthon",
   "smartlife_home": "O2B (a Smart Life-ban saját otthon)",
+  "street_from_home": true,
   "timezone": "Europe/Budapest",
   "location": {"lat": 47.48, "lon": 19.04, "label": "Budapest XI. kerület"},
   "map_url": "https://kereslek.github.io/f27-energy/o2b/",
