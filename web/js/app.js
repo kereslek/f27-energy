@@ -2334,10 +2334,18 @@
 
     // Élő módban az ég, a nap/hold, az ablakok és a lámpák a valódi budapesti időt követik;
     // a szint-gombok előbeállítások maradnak.
+    // az észak iránya a képernyő tetejétől, óramutató szerint (fok); a F27 alaprajzán észak = Ferenc krt. (fel)
+    northScreenAngle() {
+      var u = 0, v = -1, t, k = this.rotK();
+      for (var i = 0; i < k; i++) { t = u; u = -v; v = t; }
+      return Math.atan2(u - v, -(u + v) / 2) * 180 / Math.PI;
+    }
+
     applySky(v) {
       var self = this, st = this.state, now = st.now || Date.now();
       var LV = super.levels();
       v.L = Object.assign({}, v.L);
+      v.sky = { sunX: 452, sunY: v.L.sunY, track: '', trackOp: 0, moonUp: false };
       if (st.liveSky) {
         var sky = liveSky(LV, now), look = sky.look;
         Object.keys(look).forEach(function (k) { v.L[k] = look[k]; });
@@ -2348,6 +2356,18 @@
         v.titleTip = 'A napszak a valódi budapesti időt követi.' +
           (tt.rise ? ' Napkelte ' + budTime(tt.rise) + ', napnyugta ' + budTime(tt.set) + '.' : '');
         v.skyPhase = sky.phase;
+        // a nap és a hold a valódi helyén (web/js/sky.js): a nap bejárja az eget, éjjel a hold a fázisával
+        if (window.F27Sky) {
+          var B = window.F27Sky.bodies(now, BUD_LAT, BUD_LON, window.F27Sky.viewAzFromNorth(this.northScreenAngle()), { x0: 370, x1: 1080, horizon: 165, altK: 1.3 });
+          var su = B.sun, mo = B.moon, r1s = function (n) { return Math.round(n * 10) / 10; };
+          v.sky = { sunX: r1s(su.x), sunY: r1s(su.y), track: B.track, trackOp: su.up ? 0.7 : 0.35,
+            moonUp: mo.up, moonX: r1s(mo.x), moonY: r1s(mo.y), moonLY: r1s(mo.y + 40), moonLit: mo.lit, moonOp: su.up ? 0.75 : 1,
+            moonLabel: mo.name + ' · ' + Math.round(mo.fraction * 100) + '%',
+            moonTip: 'Hold: ' + mo.name + ', ' + Math.round(mo.fraction * 100) + '% megvilágított, ' + Math.round(mo.alt) + '° magasan.' };
+          v.L.sunOp = su.up ? Math.round(Math.min(1, (su.alt + 1) / 3) * 100) / 100 : 0;
+          v.L.sunHalo = Math.round(v.L.sunOp * 0.8 * 100) / 100;
+          if (su.up) v.L.sunC = LV[0].sunC;
+        }
       } else {
         v.L.sunOp = 1; v.L.sunHalo = 0.8;
         v.titleLine = 'VILÁG ' + v.L.code + ': ' + v.L.name;

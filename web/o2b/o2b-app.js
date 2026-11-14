@@ -6,7 +6,7 @@
    Az utcanév csak belépve látszik (site_info tábla, a publikus repóban nincs benne).            */
 (function () {
   'use strict';
-  var S = window.O2BScene, SUN = window.F27Sun, BAT = window.F27Battery;
+  var S = window.O2BScene, SUN = window.F27Sun, SKY = window.F27Sky, BAT = window.F27Battery;
   var NS = 'http://www.w3.org/2000/svg', INK = '#1e2a44';
   var LAT = 47.48, LON = 19.04, PLAN_NORTH = S.PLAN_NORTH, TARGET_DAY = 22, TARGET_NIGHT = 20;
   var DAILY_URL = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
@@ -112,16 +112,8 @@
     var seed = 7; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
     var stars = el('g', { opacity: pal.stars }, sky);
     for (var i = 0; i < 60; i++) el('circle', { class: 'tw', cx: r1(rnd() * 1440), cy: r1(20 + rnd() * 380), r: r1(0.8 + rnd() * 1.6), fill: '#fff6dc', style: 'animation-delay:' + r1(rnd() * 3) + 's' }, stars);
-    // nap vagy hold: vízszintesen az irány a nézethez képest, függőlegesen a magasság
-    var rel = ((sp.az - (PLAN_NORTH + northScreenAngle() * 0)) + 540) % 360 - 180;
-    var dirN = northScreenAngle(), azRel = ((sp.az - 0) + dirN + 540) % 360 - 180;
-    var sx = 720 + Math.max(-1.2, Math.min(1.2, azRel / 90)) * 520, syy = 470 - Math.max(-10, sp.alt) * 7;
-    if (sp.alt > -4) { el('circle', { cx: sx, cy: syy, r: 80, fill: 'url(#halo)', opacity: 0.85 }, sky); el('circle', { cx: sx, cy: syy, r: 30, fill: pal.sunC, stroke: INK, 'stroke-width': 3 }, sky); }
-    else {
-      el('circle', { cx: 1180, cy: 150, r: 26, fill: '#fff6dc', stroke: INK, 'stroke-width': 3 }, sky);
-      el('circle', { cx: 1192, cy: 142, r: 22, fill: pal.s0 }, sky);
-    }
-    void rel;
+    // a nap és a hold a valódi helyén: vízszintesen az égtáj a nézet irányához képest, függőlegesen a magasság
+    if (SKY) celestial(sky, SKY.bodies(now, LAT, LON, SKY.viewAzFromNorth(northScreenAngle())), pal);
     [[380, 140, 0.8, 'cloud'], [700, 110, 0.65, 'cloud2'], [1050, 170, 0.75, 'cloud']].forEach(function (c) {
       var cg = el('g', { class: c[3] }, sky), gg = el('g', { transform: 'translate(' + c[0] + ' ' + c[1] + ') scale(' + c[2] + ')', opacity: pal.night ? 0.55 : 1 }, cg);
       [[0, 0, 46, 20], [-22, -12, 24, 18], [18, -16, 26, 20]].forEach(function (e) { el('ellipse', { cx: e[0], cy: e[1], rx: e[2], ry: e[3], fill: '#ffffff', stroke: INK, 'stroke-width': 3 }, gg); });
@@ -149,6 +141,26 @@
     lab.textContent = (behind ? '↓ ' : '') + 'Gellért-hegy';
     // közeli fű
     el('path', { d: 'M-200,720 Q360,690 720,712 T1640,700 L1640,1100 L-200,1100 Z', fill: pal.hill2, opacity: 0.9 }, sky);
+  }
+
+  // a nap útja (szaggatott ív), a nap korongja, és a hold a fázisával (közös: web/js/sky.js)
+  function celestial(svg, B, pal) {
+    if (B.track) el('path', { d: B.track, fill: 'none', stroke: '#fff3c4', 'stroke-width': 3, 'stroke-dasharray': '2 9', 'stroke-linecap': 'round', opacity: pal.night ? 0.35 : 0.7 }, svg);
+    var s = B.sun;
+    if (s.up) {
+      el('circle', { cx: r1(s.x), cy: r1(s.y), r: 80, fill: 'url(#halo)', opacity: 0.85 }, svg);
+      el('circle', { cx: r1(s.x), cy: r1(s.y), r: 30, fill: pal.sunC, stroke: INK, 'stroke-width': 3 }, svg);
+    }
+    var m = B.moon;
+    if (m.up) {
+      var mg = el('g', { opacity: s.up ? 0.75 : 1 }, svg);
+      if (!s.up) el('circle', { cx: r1(m.x), cy: r1(m.y), r: m.r * 2.4, fill: 'url(#halo)', opacity: 0.25 }, mg);
+      el('circle', { cx: r1(m.x), cy: r1(m.y), r: m.r, fill: '#3d4677', opacity: 0.85 }, mg);
+      el('path', { d: m.lit, fill: '#fff6dc' }, mg);
+      el('circle', { cx: r1(m.x), cy: r1(m.y), r: m.r, fill: 'none', stroke: INK, 'stroke-width': 3 }, mg);
+      var lt = el('text', { x: r1(m.x), y: r1(m.y + m.r + 20), 'text-anchor': 'middle', class: 'slab-t', style: 'font-size:13px' }, mg);
+      lt.textContent = m.name + ' · ' + Math.round(m.fraction * 100) + '%';
+    }
   }
 
   // ---- a világ (babaház) ------------------------------------------------------------------------
@@ -522,6 +534,7 @@
     chip('c-mot', st.motion ? ago(st.motion) : '--', st.motion ? 'lépcső teteje' : 'még nem volt');
     if (SUN) {
       var t = SUN.times(Date.now(), LAT, LON), dl = st.daily;
+      if (SKY) { var mi = SKY.moonIllum(Date.now()); $('c-sun').title = 'Napkelte, napnyugta (a nap útja szaggatott ívként az égen). Hold: ' + SKY.phaseName(mi.phase) + ', ' + Math.round(mi.fraction * 100) + '% megvilágított.'; }
       chip('c-sun', t.rise ? '↑' + SUN.hm(t.rise) + ' ↓' + SUN.hm(t.set) : '--', dl && dl.tmin != null ? 'holnap ' + fmt(dl.tmin, 0) + '…' + fmt(dl.tmax, 0) + ' °C' : 'napkelte · napnyugta');
     }
     var due = BAT ? BAT.due(st.bat) : [];

@@ -825,8 +825,19 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <circle class="tw" cx="{{s.x}}" cy="{{s.y}}" r="{{s.r}}" fill="#fff6dc" style="animation-delay: {{s.d}}"></circle>
 </sc-for>
 </g>
-<circle cx="452" cy="{{L.sunY}}" r="80" fill="url(#halo2)" opacity="{{L.sunHalo}}"></circle>
-<circle cx="452" cy="{{L.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3" opacity="{{L.sunOp}}"></circle>
+<path d="{{sky.track}}" fill="none" stroke="#fff3c4" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity="{{sky.trackOp}}"></path>
+<circle cx="{{sky.sunX}}" cy="{{sky.sunY}}" r="80" fill="url(#halo2)" opacity="{{L.sunHalo}}"></circle>
+<circle cx="{{sky.sunX}}" cy="{{sky.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3" opacity="{{L.sunOp}}"></circle>
+<sc-if value="{{sky.moonUp}}">
+<g class="moon" opacity="{{sky.moonOp}}">
+<circle cx="{{sky.moonX}}" cy="{{sky.moonY}}" r="58" fill="url(#halo2)" opacity="0.25"></circle>
+<circle cx="{{sky.moonX}}" cy="{{sky.moonY}}" r="24" fill="#3d4677" opacity="0.85"></circle>
+<path d="{{sky.moonLit}}" fill="#fff6dc"></path>
+<circle cx="{{sky.moonX}}" cy="{{sky.moonY}}" r="24" fill="none" stroke="#1e2a44" stroke-width="3"></circle>
+<text x="{{sky.moonX}}" y="{{sky.moonLY}}" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="0.8">{{sky.moonLabel}}</text>
+<title>{{sky.moonTip}}</title>
+</g>
+</sc-if>
 <g class="cloud">
 <g transform="translate(400 132) scale(.8)"><ellipse cx="0" cy="0" rx="46" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="-22" cy="-12" rx="24" ry="18" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><ellipse cx="18" cy="-16" rx="26" ry="20" fill="#ffffff" stroke="#1e2a44" stroke-width="3" opacity="{{L.cloudOp}}"></ellipse><rect x="-44" y="-4" width="88" height="20" fill="#ffffff" opacity="{{L.cloudOp}}"></rect></g>
 </g>
@@ -1775,6 +1786,7 @@ Kilépés (kijelentkezés)</button>
 <script src="config.js"></script>
 <script src="js/minidc.js"></script>
 <script src="js/sun.js"></script>
+<script src="js/sky.js"></script>
 <script src="js/battery.js"></script>
 <script src="js/g3-scene.js"></script>
 <script src="js/app.js"></script>
