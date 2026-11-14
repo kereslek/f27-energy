@@ -14,7 +14,7 @@
   "advisor": {"name": "Pamutka", "figure": "cat", "place": "balcony",
               "_comment": "A tanácsadó a ház ezüst cirmos macskája (a tulaj döntése, 2026.11.14). Az erkélyen ül, ahol napozni szokott."},
   "comfort": {"heat_day_c": 22, "heat_night_c": 20, "_comment": "A tulaj kívánsága télre (2026.11.14). Ehhez méri a túlfűtést."},
-  "presence": {"sources": ["pir", "consumption"], "_comment": "Nincs foglalási naptár: a jelenlétet a mozgásérzékelő és az eszközhasználat (fogyasztás) mutatja; később további érzékelők."},
+  "presence": {"sources": ["pir", "consumption"], "pir_alerts": false, "_pir": "A mozgásérzékelő a lépcső tetején, a legfelső foknál. Pamutka is mozgást jelez, ezért csak a jelenlét-becsléshez kell, riasztást nem küld (a tulaj döntése, 2026.11.14).", "_comment": "Nincs foglalási naptár: a jelenlétet a mozgásérzékelő és az eszközhasználat (fogyasztás) mutatja; később további érzékelők."},
   "heating": {"base": "gas_boiler", "boiler": "Savio Acta NOx 24 kombi (2021), nem kondenzációs, a lenti fürdőben",
               "hot_water": "lent a gázkombi (átfolyós), fent a villanybojler (okos konnektoron)",
               "ac_heating": false},
@@ -36,6 +36,7 @@
     {"pink": "T4", "name": "Konyha"},
     {"pink": "T5", "name": "Kagyló szoba"},
     {"pink": "T6", "name": "Gyerekszoba"},
-    {"pink": "T7", "name": "Télikert"}
+    {"pink": "T7", "name": "Erkély (kint)"},
+    {"pink": "T8", "name": "Nappali 2."}
   ]
 }
