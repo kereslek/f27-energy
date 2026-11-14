@@ -2345,7 +2345,7 @@
       var self = this, st = this.state, now = st.now || Date.now();
       var LV = super.levels();
       v.L = Object.assign({}, v.L);
-      v.sky = { sunX: 452, sunY: v.L.sunY, track: '', trackOp: 0, moonUp: false };
+      v.sky = { sunX: 452, sunY: v.L.sunY, track: '', trackOp: 0, moonUp: false, riseUp: false };
       if (st.liveSky) {
         var sky = liveSky(LV, now), look = sky.look;
         Object.keys(look).forEach(function (k) { v.L[k] = look[k]; });
@@ -2364,6 +2364,10 @@
             moonUp: mo.up, moonX: r1s(mo.x), moonY: r1s(mo.y), moonLY: r1s(mo.y + 40), moonLit: mo.lit, moonOp: su.up ? 0.75 : 1,
             moonLabel: mo.name + ' · ' + Math.round(mo.fraction * 100) + '%',
             moonTip: 'Hold: ' + mo.name + ', ' + Math.round(mo.fraction * 100) + '% megvilágított, ' + Math.round(mo.alt) + '° magasan.' };
+          var nr = B.nextRise;
+          v.sky.riseUp = !!nr;
+          if (nr) { v.sky.riseX = r1s(nr.x); v.sky.riseLY = r1s(nr.y + 22); v.sky.riseLabel = 'napkelte ' + nr.label;
+            v.sky.riseD = 'M' + r1s(nr.x - 18) + ',' + r1s(nr.y) + ' A18,18 0 0 1 ' + r1s(nr.x + 18) + ',' + r1s(nr.y) + ' Z'; }
           v.L.sunOp = su.up ? Math.round(Math.min(1, (su.alt + 1) / 3) * 100) / 100 : 0;
           v.L.sunHalo = Math.round(v.L.sunOp * 0.8 * 100) / 100;
           if (su.up) v.L.sunC = LV[0].sunC;

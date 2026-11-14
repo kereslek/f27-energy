@@ -828,6 +828,10 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <path d="{{sky.track}}" fill="none" stroke="#fff3c4" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" opacity="{{sky.trackOp}}"></path>
 <circle cx="{{sky.sunX}}" cy="{{sky.sunY}}" r="80" fill="url(#halo2)" opacity="{{L.sunHalo}}"></circle>
 <circle cx="{{sky.sunX}}" cy="{{sky.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3" opacity="{{L.sunOp}}"></circle>
+<sc-if value="{{sky.riseUp}}">
+<g class="nextrise" opacity="0.9"><path d="{{sky.riseD}}" fill="#ffd27a" stroke="#1e2a44" stroke-width="3"></path>
+<text x="{{sky.riseX}}" y="{{sky.riseLY}}" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="0.8">{{sky.riseLabel}}</text></g>
+</sc-if>
 <sc-if value="{{sky.moonUp}}">
 <g class="moon" opacity="{{sky.moonOp}}">
 <circle cx="{{sky.moonX}}" cy="{{sky.moonY}}" r="58" fill="url(#halo2)" opacity="0.25"></circle>

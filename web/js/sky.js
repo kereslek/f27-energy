@@ -88,6 +88,12 @@
       out.rise = t.rise; out.set = t.set;
     }
     out.track = d;
+    // éjjel: a következő napkelte helye a látóhatáron (ott kandikál ki a nap), és az ideje
+    if (SUN && !out.sun.up) {
+      var nt = SUN.times(ms, lat, lon);
+      if (!nt.rise || ms > nt.rise) nt = SUN.times(ms + DAY, lat, lon);
+      if (nt.rise) { var rp = project(nt.riseAz, 0, viewAz, box); out.nextRise = { x: rp.x, y: rp.y, at: nt.rise, label: '↑ ' + SUN.hm(nt.rise) }; }
+    }
     return out;
   }
   // a képernyő "fel" iránya melyik égtáj: northAng = az észak iránya a képernyő tetejétől, óramutató szerint

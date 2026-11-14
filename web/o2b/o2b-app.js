@@ -151,6 +151,12 @@
       el('circle', { cx: r1(s.x), cy: r1(s.y), r: 80, fill: 'url(#halo)', opacity: 0.85 }, svg);
       el('circle', { cx: r1(s.x), cy: r1(s.y), r: 30, fill: pal.sunC, stroke: INK, 'stroke-width': 3 }, svg);
     }
+    if (B.nextRise) {
+      var nr = B.nextRise, ng = el('g', { opacity: 0.9 }, svg);
+      el('path', { d: 'M' + r1(nr.x - 22) + ',' + r1(nr.y) + ' A22,22 0 0 1 ' + r1(nr.x + 22) + ',' + r1(nr.y) + ' Z', fill: '#ffd27a', stroke: INK, 'stroke-width': 3 }, ng);
+      var nt = el('text', { x: r1(nr.x), y: r1(nr.y - 30), 'text-anchor': 'middle', class: 'slab-t', style: 'font-size:13px' }, ng);
+      nt.textContent = 'napkelte ' + nr.label;
+    }
     var m = B.moon;
     if (m.up) {
       var mg = el('g', { opacity: s.up ? 0.75 : 1 }, svg);
