@@ -33,7 +33,7 @@
     {"pink": "IR2", "role": "ir_hub", "room": "halo",       "label": "IR-távirányító, hálószoba",   "match": ["smart ir - hálószoba"], "exact": "Smart IR - Hálószoba"},
     {"pink": "IR3", "role": "ir_hub", "room": "kagylo",     "label": "IR-távirányító, kagyló szoba", "match": ["smart ir - kagyló"],   "exact": "Smart IR - Kagyló"},
     {"pink": "IR4", "role": "ir_hub", "room": "gyerek",     "label": "IR-távirányító, gyerekszoba", "match": ["smart ir - gyermeki szoba", "smart ir - gyerekszoba"]},
-    {"pink": "M1", "role": "pir",    "room": "?",           "label": "Mozgásérzékelő",       "match": ["infrared detector", "mozgás"]}
+    {"pink": "M1", "role": "pir",    "room": "lepcso_fent", "label": "Mozgásérzékelő (lépcső teteje, a legfelső foknál)",       "match": ["infrared detector", "mozgás"]}
   ],
   "fixed": [
     {"id": "GAS",  "label": "Gázkazán, Savio Acta NOx 24 kombi (2021): fűtés + lenti meleg víz, a lenti fürdőben", "room": "furdo_lent"},
