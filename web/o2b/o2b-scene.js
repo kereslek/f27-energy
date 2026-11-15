@@ -55,8 +55,8 @@
         [8.1, 8.45, 9.55, 8.45, 'N', []],
         [9.55, 8.45, 9.55, 11.05, 'E', [[9.1, 10.3, 'w']]],
         [4.45, 11.05, 9.55, 11.05, 'S', [[5.35, 6.4, 'd', 0, 2.2, 'double'], [7.6, 8.8, 'w']]],   // bejárati ajtó (kétszárnyú, felülvilágítóval)
-        [4.45, 11.05, 4.45, 14.4, 'E', []],
-        [0, 14.4, 4.45, 14.4, 'S', [[1.35, 2.95, 'w', 0.45, 2.75]]],         // a háló magas ablaka
+        [4.45, 11.05, 4.45, 14.4, 'E', [[12.0, 13.6, 'w', 0.45, 2.75]]],   // a háló magas ablaka (ÉK felé néz)
+        [0, 14.4, 4.45, 14.4, 'S', []],
         [0, 0, 0, 14.4, 'W', []]
       ],
       inner: [
@@ -157,7 +157,7 @@
 
   // Hálószoba
   piece('ac_bd', 'Klíma beltéri egysége az ajtó fölött (IR-távirányítóval)', 'lo', [[3.0, 11.2, 0.9, 0.24, 2.38, 0.3, C.WHITE]], false);
-  piece('bd_curtain', 'Fehér függöny a magas ablakon', 'lo', [[1.15, 14.16, 0.25, 0.1, 0.1, 2.65, C.LINEN], [2.95, 14.16, 0.25, 0.1, 0.1, 2.65, C.LINEN]], false);
+  piece('bd_curtain', 'Fehér függöny a magas ablakon (ÉK-i fal)', 'lo', [[4.24, 11.75, 0.1, 0.25, 0.1, 2.65, C.LINEN], [4.24, 13.6, 0.1, 0.25, 0.1, 2.65, C.LINEN], [4.3, 11.7, 0.05, 2.2, 2.75, 0.05, C.BLACK]], false);
   // szimmetrikus beépített szekrényfal a teljes nyugati falon: két szekrénytorony, középen a zsályazöld
   // fülke az ággyal, fölötte áthidaló felső szekrény
   piece('bd_wardrobe', 'Beépített szekrényfal a teljes falon, középen fülke az ággyal (szimmetrikus)', 'lo', [
@@ -166,7 +166,7 @@
     [0.66, 11.6, 0.03, 0.04, 1.0, 0.25, C.BLACK], [0.66, 13.96, 0.03, 0.04, 1.0, 0.25, C.BLACK]], false);
   piece('bd_bed', 'Franciaágy a szekrényfal fülkéjében', 'lo', [[0.12, 12.05, 2.0, 1.5, 0, 0.45, C.WALNUT], [0.14, 12.07, 1.96, 1.46, 0.45, 0.14, C.LINEN], [1.0, 12.05, 1.1, 1.5, 0.58, 0.05, C.SAGE], [0.22, 12.17, 0.38, 0.55, 0.59, 0.14, C.WHITE], [0.22, 12.88, 0.38, 0.55, 0.59, 0.14, C.WHITE]]);
   piece('bd_desk', 'Állítható íróasztal LG monitorral', 'lo', [].concat([[3.3, 13.4, 1.0, 0.6, 0.72, 0.04, C.OAK], [3.35, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [4.2, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [3.55, 13.85, 0.55, 0.06, 0.95, 0.35, C.BLACK]], [[3.6, 12.95, 0.45, 0.45, 0, 0.5, C.BLACK], [3.62, 12.9, 0.42, 0.08, 0.5, 0.5, C.BLACK]]));
-  piece('bd_radiator', 'Radiátor az ablak alatt', 'lo', [[1.5, 14.22, 1.3, 0.1, 0.12, 0.55, C.WHITE]], false);
+  piece('bd_radiator', 'Radiátor az ablak alatt', 'lo', [[4.22, 12.15, 0.1, 1.3, 0.12, 0.55, C.WHITE]], false);
   piece('bd_iron', 'Vasalódeszka', 'lo', [[3.0, 11.45, 1.1, 0.32, 0.85, 0.04, C.BLUEC], [3.4, 11.55, 0.04, 0.1, 0, 0.85, C.STEEL]]);
 
   // Előszoba, fürdő, kamra, konyha
