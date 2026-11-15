@@ -70,13 +70,13 @@ def auth_put(sb: SupabaseRest, key: str, data: dict) -> None:
 # ---- Roborock --------------------------------------------------------------------------------------
 async def rr_request_code(email: str) -> None:
     from roborock.web_api import RoborockApiClient
-    await RoborockApiClient(email).request_code()
+    await RoborockApiClient(email).request_code_v4()
 
 
 async def rr_login(email: str, password: str = "", code: str = "") -> dict:
     from roborock.web_api import RoborockApiClient
     client = RoborockApiClient(email)
-    ud = await (client.pass_login(password) if password else client.code_login(code))
+    ud = await (client.pass_login(password) if password else client.code_login_v4(code))
     return {"email": email, "user_data": ud.as_dict()}
 
 

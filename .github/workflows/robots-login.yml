@@ -45,16 +45,19 @@ jobs:
           TARGET: o2b
           SQL_FILE: supabase/migrations/012_robots.sql
         run: python -m f27.migrate
+      - name: Kód maszkolása
+        # A kódot az esemény JSON-ből olvassuk, így a lépés fejléce sem írja ki; utána minden logban ***.
+        run: |
+          KOD=$(jq -r '.inputs.kod // ""' "$GITHUB_EVENT_PATH" | tr -d '[:space:]')
+          if [ -n "$KOD" ]; then echo "::add-mask::$KOD"; echo "ROBOROCK_CODE=$KOD" >> "$GITHUB_ENV"; fi
       - name: Belépés
         env:
           SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
           ROBOROCK_EMAIL: ${{ secrets.ROBOROCK_EMAIL }}
           ROBOROCK_PASSWORD: ${{ secrets.ROBOROCK_PASSWORD }}
-          ROBOROCK_CODE: ${{ inputs.kod }}
           XIAOMI_USERNAME: ${{ secrets.XIAOMI_USERNAME }}
           XIAOMI_PASSWORD: ${{ secrets.XIAOMI_PASSWORD }}
           LEPES: ${{ inputs.lepes }}
         run: |
-          [ -n "$ROBOROCK_CODE" ] && echo "::add-mask::$ROBOROCK_CODE"
           python -m f27.robots "$LEPES" | tee -a "$GITHUB_STEP_SUMMARY"; exit ${PIPESTATUS[0]}
