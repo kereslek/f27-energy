@@ -50,7 +50,8 @@ async function whoIs(req: Request): Promise<{ id: string; role: string } | null>
   if (!u?.id) return null;
   const rows = await rest("GET", `app_users?select=role&user_id=eq.${u.id}`);
   const role = rows?.[0]?.role;
-  return role && ["owner", "cleaner", "viewer"].includes(role) ? { id: u.id, role } : null;
+  // kapcsolni csak a tulaj és a családtag tud; a megtekintő, a takarító és a bemutató link nem
+  return role && ["owner", "member"].includes(role) ? { id: u.id, role } : null;
 }
 
 // ---- Tuya ----------------------------------------------------------------------------------------
@@ -160,7 +161,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, done: (await tick()).length });
     }
     const who = await whoIs(req);
-    if (!who) return json({ ok: false, error: "Jelentkezz be (vagy nincs hozzáférésed)." }, 401);
+    if (!who) return json({ ok: false, error: "Kapcsolni csak a tulaj és a családtag tud (lépj be)." }, 401);
     if (b.action === "switch") {
       await doSwitch(String(b.pink), !!b.on, "user", who.id, !!b.confirm);
       return json({ ok: true, pink: b.pink, on: !!b.on });

@@ -1,0 +1,78 @@
+name: Hozzáférés telepítése
+
+# Kézzel indítható, mindkét projektben (F27, O2B):
+#   1. adatbázis: supabase/migrations/011_access.sql (szerepkörök, név, ideiglenes bemutató linkek),
+#   2. a "users" Supabase-függvény (felhasználók kezelése a térképről) és a titkos kulcsa,
+#   3. O2B: a "control" függvény újratelepítése (kapcsolni csak a tulaj és a családtag tud).
+# A log publikus: kulcs, e-mail, név nem kerül bele.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migrate
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: 1. Adatbázis (011_access.sql, mindkét projekt)
+        env:
+          TARGET: mindketto
+          SQL_FILE: supabase/migrations/011_access.sql
+        run: python -m f27.migrate | tee -a "$GITHUB_STEP_SUMMARY"; exit ${PIPESTATUS[0]}
+      - name: 2. users függvény (F27)
+        env:
+          KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          REF=$(echo "$SUPABASE_URL" | sed -E 's#^https://([a-z0-9]{20})\.supabase\.co/?$#\1#')
+          [ ${#REF} -eq 20 ] || { echo "::error::A SUPABASE_URL nem https://<ref>.supabase.co alakú"; exit 1; }
+          F=$(mktemp); echo "USERS_SECRET=$KEY" > "$F"
+          supabase secrets set --project-ref "$REF" --env-file "$F" --yes > /dev/null; rm -f "$F"
+          supabase functions deploy users --project-ref "$REF" --no-verify-jwt --use-api --yes
+          echo "F27: users függvény telepítve." >> "$GITHUB_STEP_SUMMARY"
+      - name: 3. users és control függvény (O2B)
+        env:
+          KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
+        run: |
+          REF=$(echo "$O2B_SUPABASE_URL" | sed -E 's#^https://([a-z0-9]{20})\.supabase\.co/?$#\1#')
+          [ ${#REF} -eq 20 ] || { echo "::error::Az O2B_SUPABASE_URL nem https://<ref>.supabase.co alakú"; exit 1; }
+          F=$(mktemp); echo "USERS_SECRET=$KEY" > "$F"
+          supabase secrets set --project-ref "$REF" --env-file "$F" --yes > /dev/null; rm -f "$F"
+          supabase functions deploy users --project-ref "$REF" --no-verify-jwt --use-api --yes
+          supabase functions deploy control --project-ref "$REF" --no-verify-jwt --use-api --yes
+          echo "O2B: users és control függvény telepítve." >> "$GITHUB_STEP_SUMMARY"
+      - name: 4. Ellenőrzés (névtelenül a függvény elutasít, a link-függvények megvannak)
+        run: |
+          python - <<'PY'
+          import os, json, urllib.request, urllib.error
+          from f27.migrate import run_sql, project_ref
+          tok = os.environ["SUPABASE_ACCESS_TOKEN"]
+          for tag, url in (("F27", os.environ["SUPABASE_URL"]), ("O2B", os.environ["O2B_SUPABASE_URL"])):
+              ref = project_ref(url)
+              n = run_sql(ref, tok, "select count(*) as n from pg_proc where proname in ('share_open','share_create','share_list','share_revoke','share_ok')")[0]["n"]
+              req = urllib.request.Request(f"https://{ref}.supabase.co/functions/v1/users", data=b'{"action":"list"}',
+                                           headers={"Content-Type": "application/json"}, method="POST")
+              try:
+                  code = urllib.request.urlopen(req, timeout=30).status
+              except urllib.error.HTTPError as e:
+                  code = e.code
+              print(f"{tag}: link-függvények {n}/5, users függvény belépés nélkül: {code} (401 a jó)")
+              if n != 5 or code != 401:
+                  raise SystemExit(f"{tag}: valami nincs rendben")
+          PY

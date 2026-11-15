@@ -7,6 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#3fae6a">
+<meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="F27 Energy Quest: a lakás izometrikus térképe, húzható bútorokkal és eszközökkel, mentett elrendezésekkel.">
 <title>F27 Energy Quest</title>
@@ -166,7 +167,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .drawer .dauto i{position:absolute;left:0;bottom:0;height:3px;width:100%;background:#2f6fdb;transform-origin:left;animation:dauto 10s linear forwards}
 @keyframes dauto{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 @media (prefers-reduced-motion:reduce){.drawer{transition:none}.drawer .dauto i{animation:none}}
-.drawer .logout{align-self:flex-start;display:inline-flex;align-items:center;gap:6px}
+.drawer .logout,.drawer .accessbtn{align-self:flex-start;display:inline-flex;align-items:center;gap:6px}
 .drawer .who{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:800}
 .drawer .who .em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawer .sect{margin-top:4px;font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;border-top:2px dashed #e3cfa6;padding-top:10px}
@@ -1484,7 +1485,8 @@ Elrendezés visszaállítása
 <div class="who"><span class="em">{{ui.email}}</span><span class="tag" style="background: {{ui.roleColor}}">{{ui.roleLabel}}</span></div>
 <button class="btn sm logout" type="button" onClick="{{ui.logout}}" title="Kijelentkezés: a térkép demó módba vált">
 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-Kilépés (kijelentkezés)</button>
+{{ui.logoutLabel}}</button>
+<sc-if value="{{ui.canAccess}}"><button class="btn sm accessbtn" type="button" onClick="{{ui.openAccess}}"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7a4 4 0 1 1-4 4M11 11l-7 7v2h3l1-1v-2h2l1-1v-2" fill="none" stroke="#1e2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>{{ui.accessLabel}}</button></sc-if>
 </sc-if>
 <div class="sect">ELRENDEZÉS</div>
 <div class="cur">Jelenlegi: <b>{{ui.currentName}}</b><br><span class="{{ui.chipCls}} mini"><span class="sd" aria-hidden="true"></span>{{ui.chip}}</span></div>
@@ -1793,6 +1795,7 @@ Kilépés (kijelentkezés)</button>
 <script src="js/sky.js"></script>
 <script src="js/walker.js"></script>
 <script src="js/battery.js"></script>
+<script src="js/access.js"></script>
 <script src="js/g3-scene.js"></script>
 <script src="js/app.js"></script>
 </body>

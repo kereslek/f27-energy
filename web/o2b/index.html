@@ -4,8 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#3fae6a">
-<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#5aa9e6">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="referrer" content="no-referrer">
 <title>O2B Energy Quest</title>
 <meta name="description" content="O2B Energy Quest: a kétszintes lakás izometrikus babaháza bútorokkal, élő eszközökkel és Pamutkával, a tanácsadó macskával.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -311,6 +314,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 /* kapcsolás: áttekinthető kártya (2026.11.15, a tulaj auditja) */
 .nowst{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:18px;letter-spacing:.6px;color:#6b7280}
 .nowst.on{color:#2f8a3a}
+.cro{font:900 12px "Nunito",sans-serif;letter-spacing:.5px;border-radius:999px;padding:3px 9px;background:#e9e6df;color:#6b7280;flex:none}.cro.on{background:#dff3e2;color:#2f8a3a}
 .nxt{padding:7px 9px;border-radius:10px;border:2px solid #1e2a44;background:#e7f8ec;font-size:12.5px;margin:4px 0 2px}
 .nxt b{font-size:14px}.nxt small{display:block;color:#45507a;font-weight:800;font-size:11px}
 .sec{margin-top:10px;padding-top:8px;border-top:2px dashed #e3d6bd}
@@ -429,6 +433,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
       <button class="btn primary" type="submit" style="width:100%;margin-top:4px">Belépés</button>
     </form>
     <div id="who">Nem vagy belépve</div>
+    <button class="btn sm" id="b-access" type="button" hidden style="margin-top:8px">Hozzáférések</button>
     <button class="btn sm" id="b-logout" type="button" hidden style="margin-top:8px">Kilépés</button>
     <form id="streetform">
       <div id="streetbox" hidden>
@@ -468,6 +473,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 <script src="../js/sun.js"></script>
 <script src="../js/sky.js"></script>
 <script src="../js/battery.js"></script>
+<script src="../js/access.js"></script>
 <script src="../vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script src="o2b-scene.js"></script>

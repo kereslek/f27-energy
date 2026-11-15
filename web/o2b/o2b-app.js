@@ -50,6 +50,9 @@
   function ago(ms) { var m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'most' : m < 60 ? m + ' p' : m < 1440 ? Math.floor(m / 60) + ' ó ' + (m % 60) + ' p' : Math.floor(m / 1440) + ' nap'; }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function canEdit() { return !st.user || st.role === 'owner'; }
+  // kapcsolni a tulaj és a családtag tud (belépés nélkül demóban bárki próbálgathatja); a megtekintő és a bemutató link csak néz
+  function canCtl() { return !st.user || st.role === 'owner' || st.role === 'member'; }
+  function roClause() { return st.role === 'share' ? 'Bemutató: itt csak nézelődni lehet, kapcsolni nem.' : 'Kapcsolni a tulaj és a családtag tud; neked megtekintő hozzáférésed van.'; }
   function offsKey(o) { var ks = Object.keys(o || {}).filter(function (k) { var v = o[k]; return v && (Math.abs(v[0]) > 1e-6 || Math.abs(v[1]) > 1e-6); }).sort(); return JSON.stringify(ks.map(function (k) { return [k, o[k]]; })); }
   var toastT = 0;
   function toast(t, kind) { var e = $('toast'); e.textContent = t; e.className = kind || ''; e.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 3200); }
@@ -952,7 +955,7 @@
   function ruleMinute(r) { return r.kind === 'time' ? r.minute : sunMin(r.kind) + r.minute; }
 
   function loadControl() {
-    if (!sb || !st.user) return;
+    if (!sb || !st.user || st.role === 'share') return;
     var miss = function (e) { return e && (e.code === 'PGRST205' || e.code === '42P01'); };
     Promise.all([
       sb.from('control_rules').select('id,pink,action,kind,minute,days,enabled').order('created_at', { ascending: true }),
@@ -1089,6 +1092,7 @@
 
   function swHtml(p, big) {
     var on = plugOn(p), busy = st.ctl.busy[p], off = !plugOnline(p) && st.live;
+    if (!canCtl()) return '<span class="cro' + (on ? ' on' : '') + '">' + (on ? 'BE' : 'KI') + '</span>';
     return '<button class="csw' + (big ? ' big' : '') + (busy ? ' busy' : '') + '" role="switch" aria-checked="' + on + '" data-ctl="sw" data-p="' + p + '"' + (off ? ' disabled title="Az eszköz offline"' : '') + ' aria-label="' + esc(shortName(p)) + ' kapcsoló"></button>';
   }
   function askHtml(p) {
@@ -1122,6 +1126,9 @@
     if (CTL_PINKS.indexOf(d.pink) < 0) return '';
     var p = d.pink, timers = st.ctl.timers.filter(function (t) { return t.pink === p && new Date(t.due_at) > new Date(Date.now() - 60000); }).sort(function (a, b) { return new Date(a.due_at) - new Date(b.due_at); });
     var rules = st.ctl.rules.filter(function (r) { return r.pink === p; }), pres = presetsFor(p);
+    if (!canCtl()) return '<div class="ctl"><div class="ctlrow"><span class="nowst ' + (plugOn(p) ? 'on' : '') + '">' + (plugOn(p) ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span></div>' +
+      (st.role === 'share' ? '' : nextHtml(p) + (rules.length ? '<div class="sec"><div class="sub">Ütemezés <small>minden héten ismétlődik</small></div><ul class="rl">' + rules.map(function (r) { return '<li class="' + (r.enabled ? '' : 'dis') + '"><span class="t">' + esc(ruleSentence(r)) + '<small>' + (r.enabled ? '' : 'szünetel') + '</small></span></li>'; }).join('') + '</ul></div>' : '')) +
+      '<div class="ctln">' + roClause() + '</div></div>';
     return '<div class="ctl">' + (st.ctl.missing ? '<div class="ctln"><span class="soon">MÉG NINCS TELEPÍTVE</span></div>' : '') +
       '<div class="ctlrow"><span class="nowst ' + (plugOn(p) ? 'on' : '') + '">' + (st.ctl.busy[p] ? 'Kapcsol…' : plugOn(p) ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) + nextHtml(p) +
       '<div class="sec"><div class="sub">Egyszeri <small>csak egyszer fut le</small></div>' +
@@ -1135,10 +1142,11 @@
   }
   // B: Kapcsolók blokk
   function switchesHtml() {
-    return '<div class="ovs swb"><div class="ovh">KAPCSOLÓK <button class="mini lnk" data-ctl="sched">Heti időzítő</button></div>' +
-      (st.ctl.missing ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
-      '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>' +
-      CTL_PINKS.map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + '</div>';
+    var ro = !canCtl();
+    return '<div class="ovs swb"><div class="ovh">' + (ro ? 'LÁMPÁK ÉS KONNEKTOROK' : 'KAPCSOLÓK <button class="mini lnk" data-ctl="sched">Heti időzítő</button>') + '</div>' +
+      (st.ctl.missing && !ro ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
+      (ro ? '' : '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>') +
+      CTL_PINKS.map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = st.role === 'share' ? null : nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + (ro ? '<div class="ctln">' + roClause() + '</div>' : '') + '</div>';
   }
   // C: heti időzítő lap
   function schedRender() {
@@ -1164,6 +1172,7 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-ctl]') : null; if (!b || b.tagName === 'FORM') return;
     var k = b.getAttribute('data-ctl'), p = b.getAttribute('data-p');
+    if (k !== 'open' && !canCtl()) { e.stopPropagation(); toast(roClause(), ''); return; }
     if (k === 'sw') switchPlug(p, b.getAttribute('aria-checked') !== 'true');
     else if (k === 'yes' && st.ctl.ask) switchPlug(st.ctl.ask.p, st.ctl.ask.on, true);
     else if (k === 'no') { st.ctl.ask = null; ctlRender(); }
@@ -1240,16 +1249,24 @@
   function setUser(u) {
     var was = st.user && st.user.id;
     st.user = u;
-    $('who').textContent = u ? 'Belépve: ' + (u.email || '') : 'Nem vagy belépve';
-    $('b-login').textContent = u ? 'Fiók' : 'Belépés';
+    var share = !!(u && u.share);
+    $('who').textContent = share ? 'Bemutató link: csak nézelődés, kapcsolni nem lehet.' : u ? 'Belépve: ' + (u.email || '') : 'Nem vagy belépve';
+    $('b-login').textContent = share ? 'Bemutató' : u ? 'Fiók' : 'Belépés';
     $('logincard').hidden = true; $('loginform').hidden = !!u; $('b-logout').hidden = !u;
+    $('b-logout').textContent = share ? 'Kilépés a bemutatóból' : 'Kilépés';
+    $('b-access').hidden = true;
     if (u) {
       if (was === u.id) { load(); return; }
+      if (share) { st.role = 'share'; st.edit = false; toolbar(); drawWorld(); loadLayouts(true); load(); return; }
       st.role = null;
-      sb.from('app_users').select('role').eq('user_id', u.id).maybeSingle().then(function (res) {
+      sb.from('app_users').select('*').eq('user_id', u.id).maybeSingle().then(function (res) {
         st.role = res && res.data ? res.data.role : null;
+        var nm = res && res.data && res.data.name, rl = window.F27Access && F27Access.ROLE_TXT[st.role];
+        $('who').textContent = 'Belépve: ' + (nm ? nm + ' · ' : '') + (u.email || '') + (rl ? ' (' + rl[0].toLowerCase() + ')' : st.role ? '' : ' · nincs jogosultság');
+        $('b-access').hidden = !st.role || !window.F27Access;
+        $('b-access').textContent = st.role === 'owner' ? 'Hozzáférések (link, felhasználók)' : 'Jelszavam';
         if (st.role !== 'owner') st.edit = false;
-        toolbar(); drawWorld(); loadLayouts(true); streetBox();
+        toolbar(); drawWorld(); loadLayouts(true); streetBox(); ctlRender();
       });
       load();
     } else {
@@ -1285,7 +1302,14 @@
     var c = $('logincard'); c.hidden = !c.hidden;
     if (!c.hidden) { $('devsheet').hidden = true; streetBox(); if (!st.user) $('em').focus(); }
   });
-  on('b-logout', 'click', function () { if (sb) sb.auth.signOut(); $('logincard').hidden = true; });
+  on('b-logout', 'click', function () { if (shareRun) { shareRun.end('left'); return; } if (sb) sb.auth.signOut(); $('logincard').hidden = true; });
+  on('b-access', 'click', function () {
+    if (!sb || !st.role || !window.F27Access) return;
+    $('logincard').hidden = true;
+    F27Access.openPanel({ sb: sb, cfg: cfg, site: 'O2B', role: st.role, userId: st.user && st.user.id, roles: ['member', 'viewer'],
+      roleText: { member: 'mindent lát, és kapcsolhatja, időzítheti a lámpákat, a bojlert', viewer: 'csak lát, semmit nem kapcsol' },
+      link: location.origin + location.pathname });
+  });
   on('streetform', 'submit', function (e) { e.preventDefault(); editStreet(); });
   on('b-stedit', 'click', function () { streetBox(true); $('streetin').focus(); });
   on('loginform', 'submit', function (e) {
@@ -1309,10 +1333,20 @@
   window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { layoutMode(); fit(); drawSky(); }, 120); });
 
   // ---- indulás ---------------------------------------------------------------------------------------
+  // Ideiglenes bemutató link (#s=…): munkamenet nélküli, csak olvasó kliens; a jogot és a lejáratot
+  // az adatbázis dönti el (011_access.sql), a visszaszámlálót és a lejárt képernyőt a közös modul adja.
+  var shareTok = window.F27Access ? F27Access.shareToken('o2b') : null, shareRun = null;
   if (cfg.supabaseUrl && cfg.supabaseKey && window.supabase && window.supabase.createClient) {
-    try { sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'o2b-auth' } }); } catch (e) { sb = null; }
+    try {
+      sb = shareTok ? F27Access.shareClient(cfg, shareTok)
+        : window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'o2b-auth' } });
+    } catch (e) { sb = null; }
   }
-  if (sb) sb.auth.onAuthStateChange(function (ev, ses) { setTimeout(function () { setUser(ses && ses.user ? ses.user : null); }, 0); });
+  if (sb && shareTok) {
+    shareRun = F27Access.startShare({ sb: sb, site: 'O2B', key: 'o2b', phoneTop: 16, phoneLeft: 80,
+      onReady: function () { setUser({ id: 'share', email: '', share: true }); },
+      onExpire: function () { sb = null; shareRun = null; setUser(null); $('b-login').hidden = true; } });
+  } else if (sb) sb.auth.onAuthStateChange(function (ev, ses) { setTimeout(function () { setUser(ses && ses.user ? ses.user : null); }, 0); });
   function layoutMode() { document.body.classList.toggle('wide', (window.innerWidth || 1440) >= 900); }
   layoutMode();
   if ((world.clientWidth || 1440) < 900) { $('pam').classList.add('mini'); $('b-pmin').textContent = '+'; }

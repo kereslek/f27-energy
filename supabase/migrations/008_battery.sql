@@ -35,7 +35,7 @@ alter table public.battery_status enable row level security;
 drop policy if exists battery_status_select on public.battery_status;
 create policy battery_status_select on public.battery_status
   for select to authenticated
-  using ((select public.my_role()) in ('owner', 'cleaner', 'viewer'));
+  using ((select public.my_role()) in ('owner', 'member', 'cleaner', 'viewer'));
 
 revoke all on public.battery_status from anon;
 grant select on public.battery_status to authenticated;

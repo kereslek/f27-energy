@@ -8,7 +8,7 @@ A dashboardon a konnektoros lámpák (és megerősítéssel az emeleti bojler) k
   (Esti hangulat, Filmezés, Ünnep, Minden le).
 - **Heti időzítő** lap: a szabályok heti idővonalon, és új szabály bármelyik eszközhöz.
 
-Ki kapcsolhat: minden tag, akinek a tulaj hozzáférést ad (owner, cleaner, viewer az O2B Supabase-projektben).
+Ki kapcsolhat: a tulaj és a családtag (owner, member). A megtekintő (viewer) és az ideiglenes bemutató link csak látja az állapotot. Felhasználót a térképen, a Fiók > Hozzáférések panelen lehet felvenni (`docs/terkep.md`).
 
 ## Működés
 

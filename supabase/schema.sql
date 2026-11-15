@@ -15,7 +15,7 @@
 -- ---------------------------------------------------------------------------
 create table if not exists public.app_users (
   user_id    uuid primary key references auth.users (id) on delete cascade,
-  role       text not null check (role in ('owner', 'cleaner', 'viewer')),
+  role       text not null check (role in ('owner', 'member', 'cleaner', 'viewer')),
   created_at timestamptz not null default now()
 );
 

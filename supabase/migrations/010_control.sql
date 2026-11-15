@@ -4,7 +4,7 @@
 -- Itt csak az adatok vannak: heti szabályok, egyszeri időzítők, napló, és a kapcsolási zár.
 -- Kapcsolási szabály (CLAUDE.md 9. fejezet): egyszerre egy parancs, két kapcsolás között legalább 3 mp:
 -- ezt a control_slot() függvény érvényesíti adatbázis-szinten (sorzár), akárhány kérés jön egyszerre.
--- Olvasni és szabályt írni minden tag tud (owner, cleaner, viewer: akinek a tulaj hozzáférést ad).
+-- Olvasni minden tag tud; szabályt, időzítőt írni és kapcsolni csak a tulaj és a családtag (member).
 
 create table if not exists public.control_rules (
   id          uuid primary key default gen_random_uuid(),
@@ -68,17 +68,24 @@ alter table public.control_timers enable row level security;
 alter table public.control_log    enable row level security;
 alter table public.control_lock   enable row level security;
 
+-- olvasni minden tag tud; szabályt, időzítőt írni csak a tulaj és a családtag (011_access.sql)
+drop policy if exists control_rules_read on public.control_rules;
+create policy control_rules_read on public.control_rules for select to authenticated
+  using ((select public.my_role()) in ('owner', 'member', 'cleaner', 'viewer'));
 drop policy if exists control_rules_rw on public.control_rules;
 create policy control_rules_rw on public.control_rules for all to authenticated
-  using ((select public.my_role()) in ('owner', 'cleaner', 'viewer'))
-  with check ((select public.my_role()) in ('owner', 'cleaner', 'viewer'));
+  using ((select public.my_role()) in ('owner', 'member'))
+  with check ((select public.my_role()) in ('owner', 'member'));
+drop policy if exists control_timers_read on public.control_timers;
+create policy control_timers_read on public.control_timers for select to authenticated
+  using ((select public.my_role()) in ('owner', 'member', 'cleaner', 'viewer'));
 drop policy if exists control_timers_rw on public.control_timers;
 create policy control_timers_rw on public.control_timers for all to authenticated
-  using ((select public.my_role()) in ('owner', 'cleaner', 'viewer'))
-  with check ((select public.my_role()) in ('owner', 'cleaner', 'viewer'));
+  using ((select public.my_role()) in ('owner', 'member'))
+  with check ((select public.my_role()) in ('owner', 'member'));
 drop policy if exists control_log_select on public.control_log;
 create policy control_log_select on public.control_log for select to authenticated
-  using ((select public.my_role()) in ('owner', 'cleaner', 'viewer'));
+  using ((select public.my_role()) in ('owner', 'member', 'cleaner', 'viewer'));
 
 revoke all on public.control_rules, public.control_timers, public.control_log, public.control_lock from anon;
 grant select, insert, update, delete on public.control_rules, public.control_timers to authenticated;

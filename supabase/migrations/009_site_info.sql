@@ -13,7 +13,7 @@ alter table public.site_info enable row level security;
 drop policy if exists site_info_select on public.site_info;
 create policy site_info_select on public.site_info
   for select to authenticated
-  using ((select public.my_role()) in ('owner', 'cleaner', 'viewer'));
+  using ((select public.my_role()) in ('owner', 'member', 'cleaner', 'viewer'));
 
 drop policy if exists site_info_write on public.site_info;
 create policy site_info_write on public.site_info

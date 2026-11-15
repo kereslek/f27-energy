@@ -329,23 +329,40 @@ a húzás a térképet mozgatja, és a sávban lila **CSAK MEGTEKINTÉS** jelzé
 az RLS: írni (elrendezés, riasztás-beállítás) eddig is csak az owner tudott; a megtekintő a
 foglalásokat, a mérési előzményt (`energy_daily`, `metrics_hourly`, `tuya_log`) és a riasztásokat sem látja.
 
-### Megtekintő fiók létrehozása (a tulajnak, egyszer)
+### Felhasználók és bemutató link (Hozzáférések panel)
 
-1. Supabase > **Authentication > Users > Add user > Create new user**: e-mail (pl. a saját
-   címed `+f27nezo` toldalékkal, így a levelek hozzád jönnek), jelszó, és pipáld be az
-   **Auto Confirm User** opciót.
-2. Supabase > **SQL Editor > New query**, az e-mail címet írd át, majd Run:
+Egyszer kell telepíteni: Actions > **Hozzáférés telepítése** > Run workflow (mindkét projektben
+lefuttatja a `supabase/migrations/011_access.sql`-t, és telepíti a `users` Supabase-függvényt).
+Utána minden a térképről megy, SQL nélkül: belépve **Fiók > Hozzáférések**.
 
-   ```sql
-   insert into public.app_users (user_id, role)
-   select id, 'viewer' from auth.users where email = 'IDE-AZ-EMAIL-CIM'
-   on conflict (user_id) do update set role = excluded.role;
-   ```
-3. Próba: a térképen Fiók > Belépés ezzel az e-maillel és jelszóval. A fejlécben "Belépve:
-   megtekintő (csak megtekintés)." jelenik meg.
+**Szerepkörök**
 
-Visszavonás: `delete from public.app_users where user_id = (select id from auth.users where email = '...');`
-(vagy a felhasználó törlése az Authentication > Users listában).
+| Szerepkör | Lát | Foglalások (F27) | Kapcsol, időzít (O2B) | Elrendezést ment, felhasználót kezel |
+|---|---|---|---|---|
+| Tulaj | igen | igen | igen | igen |
+| Családtag | igen | igen | igen | nem |
+| Takarító (F27) | igen | igen | nem | nem |
+| Megtekintő | igen | nem | nem | nem |
+| Bemutató link | igen, 59:59-ig | igen (F27) | nem | nem |
+
+**Új felhasználó:** Hozzáférések > Felhasználók > Új felhasználó: név, e-mail, szerepkör. A kezdő
+jelszót a panel generálja, add át személyesen vagy üzenetben. Belépve mindenki megváltoztathatja:
+Fiók > Jelszavam. Szerepkört váltani, új jelszót adni és fiókot törölni ugyanitt lehet.
+
+**Ideiglenes bemutató link (59:59)** külsős barátoknak, rokonoknak: Hozzáférések > Bemutató link >
+(Kinek?) > Új bemutató link. A címet csak ekkor látod (az adatbázis csak a lenyomatát őrzi),
+másold vagy oszd meg.
+
+- Az első megnyitástól 59 perc 59 másodpercig él; ha 24 órán belül nem nyitják meg, akkor is lejár.
+- A néző üdvözlő ablakot és alul (telefonon felül) visszaszámlálót lát, a végén „Vége a bemutatónak”.
+- Csak nézni tud: kapcsoló, időzítő, szerkesztés nincs; Pamutka és a zöld szék ugyanúgy él.
+- Látja: hőmérséklet, fogyasztás, ajtók és ablakok, elemek, időjárás, az alapértelmezett elrendezés,
+  az F27-nél a foglalási naptár (csak a dátumok). Nem látja: utcanév, felhasználók, riasztási
+  beállítások, kapcsolási szabályok és napló, Tuya-azonosítók.
+- A listában látszik, megnyitották-e, hányszor, és mennyi van hátra; **Visszavonás** azonnal hat
+  (a nyitott oldal legkésőbb 2 percen belül lezárul, az adatbázis pedig már a következő kérésnél nem ad adatot).
+- Vigyázz: aki a linket megkapja, továbbküldheti. A link alatt látszik, hogy a lakás üres-e és mikor
+  jön vendég: csak olyannak küldd, akiben megbízol, és ne tedd ki nyilvánosan.
 
 ## Élő értékek
 

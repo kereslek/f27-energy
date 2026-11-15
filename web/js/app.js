@@ -13,7 +13,9 @@
   var CONTACTS = ['5', '6', '7', '8', '9', '10'];
   var ROLE = {
     owner: { label: 'TULAJ', color: '#2f6fe4' },
+    member: { label: 'CSALÁDTAG', color: '#2f8a5a' },
     cleaner: { label: 'TAKARÍTÓ', color: '#3fae6a' },
+    share: { label: 'BEMUTATÓ', color: '#e0569b' },
     viewer: { label: 'MEGTEKINTŐ', color: '#7a6fb0' }
   };
   var HISTORY_MAX = 60;
@@ -1512,7 +1514,7 @@
     loadBookings() {
       var self = this, st = this.state;
       if (!this.sb || !st.user || !st.role) return;
-      if (st.role !== 'owner' && st.role !== 'cleaner') { this.setState({ bk: { rows: [], err: 'role' } }); return; }
+      if (['owner', 'member', 'cleaner', 'share'].indexOf(st.role) < 0) { this.setState({ bk: { rows: [], err: 'role' } }); return; }
       var from = dayAdd(budDayKey(Date.now()), -31);
       this.sb.from('bookings').select('source,kind,start_date,end_date,seen_at').gte('end_date', from)
         .order('start_date', { ascending: true }).limit(400)
@@ -1533,7 +1535,7 @@
       var demo = !st.user, rows = null, why = '', stale = '';
       if (demo) rows = demoBookings(now);
       else if (!st.role) why = 'a fiókod nincs a jogosultsági listán';
-      else if (st.role !== 'owner' && st.role !== 'cleaner') why = 'a foglaltságot a tulaj és a takarító látja';
+      else if (['owner', 'member', 'cleaner', 'share'].indexOf(st.role) < 0) why = 'a foglaltságot a tulaj, a családtag és a takarító látja';
       else if (!st.bk) why = 'betöltés...';
       else if (st.bk.err === 'missing') why = 'hiányzik a bookings tábla: futtasd a 004-es migrációt';
       else if (st.bk.err) why = 'a foglalások most nem érhetők el';
@@ -2456,8 +2458,12 @@
         noConfig: !this.sb,
         showLogin: !!this.sb && !loggedIn,
         loggedIn: loggedIn,
-        email: st.user ? st.user.email : '',
+        email: st.user ? (st.user.name ? st.user.name + ' · ' : '') + st.user.email : '',
         roleLabel: role.label, roleColor: role.color,
+        canAccess: !!(loggedIn && st.role && st.role !== 'share' && window.F27Access),
+        accessLabel: owner ? 'Hozzáférések (bemutató link, felhasználók)' : 'Jelszavam',
+        openAccess: function () { self.openAccess(); },
+        logoutLabel: st.role === 'share' ? 'Kilépés a bemutatóból' : 'Kilépés (kijelentkezés)',
         busy: st.busy,
         login: function (e) { e.preventDefault(); self.login(); },
         passType: st.peek ? 'text' : 'password',
@@ -2565,12 +2571,21 @@
       var cfg = window.F27_CONFIG || {};
       if (!cfg.supabaseUrl || !cfg.supabaseKey || !window.supabase || !window.supabase.createClient) return;
       var self = this;
+      // Ideiglenes bemutató link (#s=…): munkamenet nélküli, csak olvasó kliens; a jogot és a lejáratot
+      // az adatbázis dönti el (011_access.sql), a visszaszámlálót a közös modul (web/js/access.js) adja.
+      var shareTok = window.F27Access ? window.F27Access.shareToken('f27') : null;
       try {
-        this.sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+        this.sb = shareTok ? window.F27Access.shareClient(cfg, shareTok) : window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
           auth: { storage: authStore, persistSession: true, autoRefreshToken: true }
         });
       } catch (e) {
         this.sb = null;
+        return;
+      }
+      if (shareTok) {
+        this._share = window.F27Access.startShare({ sb: this.sb, site: 'F27', key: 'f27', calendar: true, phoneTop: 74,
+          onReady: function () { self.startShareView(); },
+          onExpire: function () { self._share = null; self.afterLogout(true); self.sb = null; self.setState({ drawer: false }); } });
         return;
       }
       this.sb.auth.onAuthStateChange(function (event, session) {
@@ -2640,15 +2655,43 @@
     logout() {
       var self = this;
       this.drawerStay();
+      if (this._share) { this._share.end('left'); return; }
       this.sb.auth.signOut().then(function () { authStore.clearAuth(); self.afterLogout(); }, function (err) { authStore.clearAuth(); self.toast(self.errText(err, 'Sikertelen kilépés.'), 'err'); });
+    }
+
+    // Bemutató link: ugyanaz a nézet, mint belépve, csak olvasva (a riasztások, tippek és a mentés nélkül).
+    startShareView() {
+      var self = this;
+      this.setState({ user: { id: 'share', email: 'Ideiglenes bemutató link', name: null }, role: 'share', editMode: false, drag: null, layouts: [], live: null, bk: null });
+      syncEditAllowed(false); syncEditBtn(false);
+      this.refreshLayouts(true);
+      this.refreshLive();
+      this.loadHistory();
+      this.fetchWeather();
+      this.loadBookings();
+      clearInterval(this.bkTimer);
+      this.bkTimer = setInterval(function () { self.loadBookings(); }, BK_REFRESH_MS);
+      clearInterval(this.liveTimer);
+      this.liveTimer = setInterval(function () { self.refreshLive(); }, LIVE_REFRESH_MS);
+    }
+
+    openAccess() {
+      var st = this.state;
+      if (!this.sb || !st.role || st.role === 'share' || !window.F27Access) return;
+      this.setState({ drawer: false });
+      window.F27Access.openPanel({ sb: this.sb, cfg: window.F27_CONFIG || {}, site: 'F27', role: st.role, userId: st.user && st.user.id,
+        roles: ['member', 'viewer', 'cleaner'],
+        roleText: { member: 'mindent lát, a foglalásokat is (családtag)', viewer: 'a térképet és az élő adatokat látja, a foglalásokat nem', cleaner: 'lát, és a foglalásokat is látja (érkezés előtti beállítás)' },
+        link: location.origin + location.pathname });
     }
 
     afterLogin(user) {
       var self = this;
       this.setState({ user: { id: user.id, email: user.email || '' }, role: null, layouts: [], live: null, bk: null });
-      this.sb.from('app_users').select('role').eq('user_id', user.id).maybeSingle().then(function (res) {
+      this.sb.from('app_users').select('*').eq('user_id', user.id).maybeSingle().then(function (res) {
         if (res.error) { self.toast(self.errText(res.error, 'A jogosultság lekérése nem sikerült.'), 'err'); return; }
         var role = res.data ? res.data.role : null;
+        if (res.data && res.data.name) self.setState({ user: Object.assign({}, self.state.user, { name: res.data.name }) });
         var ro = !!role && role !== 'owner';
         self.setState(ro ? { role: role, editMode: false, drag: null } : { role: role });
         syncEditAllowed(!ro);
@@ -2671,14 +2714,14 @@
       }, function (err) { self.toast(self.errText(err, 'A jogosultság lekérése nem sikerült.'), 'err'); });
     }
 
-    afterLogout() {
+    afterLogout(quiet) {
       clearInterval(this.liveTimer);
       clearInterval(this.bkTimer);
       clearInterval(this.alTimer);
       this.setState({ bk: null, calSel: null, dism: {}, dismLoaded: false, dismRemote: null, dismMenu: null, al: null, alLogOpen: false });
       this.setState({ user: null, role: null, layouts: [], current: null, live: null, saveAs: false, confirmId: null, savedAt: null, savedKey: '{}' });
       syncEditAllowed(true);
-      this.toast('Kiléptél. A térkép demó módban fut.', 'info');
+      if (!quiet) this.toast('Kiléptél. A térkép demó módban fut.', 'info');
     }
 
     refreshLayouts(autoLoadDefault) {
