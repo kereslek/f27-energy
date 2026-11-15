@@ -86,22 +86,43 @@
     if (m) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* nem baj */ } }
     return t && TOKEN_RE.test(t) ? t : null;
   }
-  function forget(key) { try { sessionStorage.removeItem('f27-share:' + (key || location.pathname)); } catch (e) { /* nem baj */ } }
-  function shareClient(cfg, token) {
-    return root.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+  function sessKey(key) { return 'f27-share-sess:' + (key || location.pathname); }
+  function forget(key) { try { sessionStorage.removeItem('f27-share:' + (key || location.pathname)); sessionStorage.removeItem(sessKey(key)); } catch (e) { /* nem baj */ } }
+  // Munkamenet nélküli kliens. A fejléceket (x-share-token, indítás után az x-share-session) egy saját
+  // fetch teszi minden kérésre, mert a munkamenet-titok csak a "Nézzük!" gomb után születik meg.
+  function shareClient(cfg, token, key) {
+    var hs = { token: token, sess: null };
+    try { hs.sess = sessionStorage.getItem(sessKey(key)); } catch (e) { /* nincs tároló */ }
+    var c = root.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'f27-share-' + Math.random().toString(36).slice(2) },
-      global: { headers: { 'x-share-token': token } }
+      global: {
+        fetch: function (url, opts) {
+          opts = opts || {};
+          var h = new Headers(opts.headers || {});
+          h.set('x-share-token', hs.token);
+          if (hs.sess && TOKEN_RE.test(hs.sess)) h.set('x-share-session', hs.sess);
+          return root.fetch(url, Object.assign({}, opts, { headers: h }));
+        }
+      }
     });
+    c.__share = hs; c.__shareKey = key;
+    return c;
   }
 
   function startShare(o) {
-    var site = o.site || 'a lakás', key = o.key, ended = false, off = 0, exp = 0, bar = null, timer = 0, ping = 0;
+    var site = o.site || 'a lakás', key = o.key, ended = false, off = 0, exp = 0, bar = null, timer = 0, ping = 0, hs = o.sb.__share || {};
     function end(reason) {
       if (ended) return; ended = true;
-      clearInterval(timer); clearInterval(ping); forget(key);
+      clearInterval(timer); clearInterval(ping);
+      // a néző kilépése lezárja a linket (az indító eszközről); a tárolt tokent mindenképp elfelejtjük
+      forget(key);
+      if (reason === 'left' && hs.sess) o.sb.rpc('share_close').then(function () { hs.sess = null; }, function () { hs.sess = null; });
+      else hs.sess = null;
       if (bar) bar.remove();
       [].forEach.call(document.querySelectorAll('.f27a-ov'), function (x) { x.remove(); });
       var txt = reason === 'revoked' ? 'A tulaj lezárta ezt a bemutatót.' :
+        reason === 'left' ? 'Kiléptél, a link lezárult.' :
+        reason === 'taken' ? 'Ezt a bemutatót már elindították egy másik eszközön. Egy link csak egy eszközön működik.' :
         reason === 'invalid' ? 'Ez a link érvénytelen. Lehet, hogy elírás van benne, vagy már nem él.' :
         'Lejárt az 59 perc 59 másodperc, a hozzáférés megszűnt.';
       overlay('<div class="f27a-end"><div class="e" aria-hidden="true">⏰</div><h2>Vége a bemutatónak</h2><p>' + esc(txt) + '</p>' +
@@ -117,7 +138,6 @@
         bar.querySelector('i').style.width = (100 * l / 3599000).toFixed(2) + '%';
         bar.classList.toggle('low', l < 5 * 60000);
       }
-      var w = document.querySelector('.f27a-hi .f27a-big'); if (w) w.textContent = mmss(l);
     }
     function showBar() {
       css();
@@ -129,28 +149,39 @@
       bar.querySelector('button').addEventListener('click', function () { end('left'); });
       document.body.appendChild(bar);
     }
-    o.sb.rpc('share_open').then(function (res) {
-      var d = res && res.data;
-      if (res.error || !d || !d.ok) { end(d && d.reason ? d.reason : 'invalid'); return; }
+    function run(d) {
       off = Date.parse(d.now) - Date.now(); exp = Date.parse(d.expires_at);
-      var fresh = Date.now() + off - Date.parse(d.started) < 60000;
       showBar(); tick();
       timer = setInterval(tick, 1000);
       // a tulaj bármikor visszavonhatja: kétpercenként rákérdezünk (nem számít új megnyitásnak)
       ping = setInterval(function () {
         o.sb.rpc('share_open', { p_ping: true }).then(function (r) { var x = r && r.data; if (!r.error && x && !x.ok) end(x.reason); }, function () {});
       }, 120000);
-      if (fresh) {
-        var ov = overlay('<div class="f27a-hi"><h2>Szia! Körbenézel ' + esc(site) + '-ben?</h2>' +
-          '<p>Ez egy <b>ideiglenes bemutató link</b>. Ennyi időd van:</p><div class="f27a-big">' + mmss(left()) + '</div>' +
-          '<ul><li>Élőben látod, mi történik: hőmérséklet, fogyasztás, ajtók, ablakok' + (o.calendar ? ', a foglalási naptár' : '') + '.</li>' +
-          '<li>Csak nézni tudsz: semmit nem kapcsolsz és nem állítasz át.</li>' +
-          '<li>A visszaszámláló végén a link magától lejár.</li></ul>' +
-          '<button class="f27a-btn" type="button">Nézzük!</button></div>');
-        ov.querySelector('button').addEventListener('click', function () { ov.remove(); });
-        ov.querySelector('button').focus();
-      }
       if (o.onReady) o.onReady(d);
+    }
+    // 1. állapot (nem indít). 2. ha még nem indult: üdvözlő, az időt a "Nézzük!" gomb indítja.
+    o.sb.rpc('share_open', { p_ping: true }).then(function (res) {
+      var d = res && res.data;
+      if (res.error || !d || !d.ok) { end(d && d.reason ? d.reason : 'invalid'); return; }
+      if (!d.pending) { run(d); return; }
+      var ov = overlay('<div class="f27a-hi"><h2>Szia! Körbenézel ' + esc(site) + '-ben?</h2>' +
+        '<p>Ez egy <b>ideiglenes bemutató link</b>. Ha elindítod, ennyi időd lesz:</p><div class="f27a-big">59:59</div>' +
+        '<ul><li>Élőben látod, mi történik: hőmérséklet, fogyasztás, ajtók, ablakok' + (o.calendar ? ', a foglalási naptár' : '') + '.</li>' +
+        '<li>Csak nézni tudsz: semmit nem kapcsolsz és nem állítasz át.</li>' +
+        '<li>A link csak ezen az eszközön működik, és a visszaszámláló végén magától lejár.</li></ul>' +
+        '<button class="f27a-btn" type="button">Nézzük! (indul az idő)</button><div class="f27a-err"></div></div>');
+      var btn = ov.querySelector('button');
+      btn.focus();
+      btn.addEventListener('click', function () {
+        btn.disabled = true;
+        o.sb.rpc('share_open', { p_ping: false }).then(function (r) {
+          var x = r && r.data;
+          if (r.error || !x || !x.ok || !x.session) { ov.remove(); end(x && x.reason ? x.reason : 'invalid'); return; }
+          hs.sess = x.session;
+          try { sessionStorage.setItem(sessKey(key), x.session); } catch (e) { /* a fül frissítéséig így is megy */ }
+          ov.remove(); run(x);
+        }, function () { btn.disabled = false; ov.querySelector('.f27a-err').textContent = 'Nem sikerült, próbáld újra.'; });
+      });
     }, function () { end('invalid'); });
     return { end: end, left: left };
   }

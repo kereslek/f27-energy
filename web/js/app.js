@@ -2575,7 +2575,7 @@
       // az adatbázis dönti el (011_access.sql), a visszaszámlálót a közös modul (web/js/access.js) adja.
       var shareTok = window.F27Access ? window.F27Access.shareToken('f27') : null;
       try {
-        this.sb = shareTok ? window.F27Access.shareClient(cfg, shareTok) : window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+        this.sb = shareTok ? window.F27Access.shareClient(cfg, shareTok, 'f27') : window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
           auth: { storage: authStore, persistSession: true, autoRefreshToken: true }
         });
       } catch (e) {

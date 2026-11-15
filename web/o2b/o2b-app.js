@@ -205,7 +205,10 @@
     layer.pins = el('g', { id: 'pins' }, world);
     layer.cat = el('g', { id: 'cat', class: 'walk', role: 'button', tabindex: 0, 'aria-label': 'Pamutka, a tanácsadó macska' }, world);
     buildCat(layer.cat);
-    layer.cat.addEventListener('click', function (e) { e.stopPropagation(); catClick(); });
+    layer.cat.addEventListener('pointerdown', catDown);
+    layer.cat.addEventListener('click', function (e) { e.stopPropagation(); if (catDrag.justDropped) { catDrag.justDropped = false; return; } catClick(); });
+    layer.drop = el('ellipse', { id: 'catdrop', rx: 30, ry: 9, fill: '#1e2a44', opacity: 0 }, world);
+    world.insertBefore(layer.drop, layer.cat);
     if (!st.vb) fit(); else applyVB();
   }
   function drawBox(bx, g) {
@@ -742,7 +745,7 @@
   })();
   function saveCat() {
     var J = cat.jump, sv = J ? { i: J.ni, fl: J.f1, x: J.x1, y: J.y1 } : { i: cat.i, fl: cat.fl, x: cat.x, y: cat.y };
-    sv.dir = cat.dir; sv.face = cat.face; sv.mode = cat.mode === 'jump' || cat.mode === 'land' ? 'walk' : cat.mode; sv.wait = cat.wait; sv.ts = Date.now();
+    sv.dir = cat.dir; sv.face = cat.face; sv.mode = ['jump', 'land', 'held', 'thud', 'wake'].indexOf(cat.mode) >= 0 ? 'walk' : cat.mode; sv.wait = cat.wait; sv.ts = Date.now();
     try { localStorage.setItem(CAT_KEY, JSON.stringify(sv)); } catch (e) { /* tiltott tároló: nem baj */ }
   }
   setInterval(saveCat, 1000);
@@ -822,6 +825,7 @@
       '<g class="yarn"><g class="yb"><circle cx="0" cy="-9" r="9" fill="#ff7aa8" stroke="#1e2a44" stroke-width="2.4"/><path d="M-7,-13 Q0,-6 7,-14 M-8,-7 Q0,-1 8,-8 M-3,-17 Q2,-9 -2,-1" fill="none" stroke="#c94f7c" stroke-width="1.6"/></g><path class="ythr" d="M-8,-4 Q-24,4 -40,-2" fill="none" stroke="#ff7aa8" stroke-width="2"/></g>' +
       '<g class="bubble"><rect x="-58" y="-188" width="116" height="34" rx="14" fill="#fffdf7" stroke="#1e2a44" stroke-width="3"/><path d="M-6,-155 L0,-144 L8,-155" fill="#fffdf7" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"/><text class="bt" x="0" y="-165" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="17" fill="#1e2a44">Miaú?</text></g>' +
       '<g class="alert"><g><circle cx="0" cy="-142" r="14" fill="#ffe066" stroke="#1e2a44" stroke-width="3"/><text x="0" y="-135" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="20" fill="#1e2a44">!</text></g></g>' +
+      '<g class="dust"><ellipse cx="-34" cy="-4" rx="12" ry="7"/><ellipse cx="34" cy="-4" rx="12" ry="7"/><ellipse cx="-18" cy="2" rx="9" ry="5"/><ellipse cx="20" cy="2" rx="9" ry="5"/></g>' +
       '<text x="0" y="22" text-anchor="middle" class="slab-t" style="font-size:15px">Pamutka</text>';
   }
   // a panel nagy képe
@@ -854,11 +858,11 @@
   }
   function startAction(a, text) {
     cat.mode = a[0]; cat.wait = a[1];
-    if (text && layer.cat) { var b0 = layer.cat.querySelector('.bt'); if (b0) b0.textContent = text; if (a[0] === 'meow') { cat.mode = a[0]; return; } }
+    if (text && layer.cat) { setBubble(text); if (a[0] === 'meow' || a[0] === 'sit') { cat.mode = a[0]; if (a[0] === 'sit') showBubble(); return; } }
     if (a[0] === 'meow' && layer.cat) {
       var tg = target(), cold = st.devs.some(function (d) { var r = st.latest[d.pink]; var t = r && r.online !== false && d.role === 'thermo' && d.room !== 'erkely' ? temp(r.status) : null; return t != null && t < tg - 1.5; });
       var txt = cold && Math.random() < 0.5 ? 'Fázom, fűts be!' : MEOWS[Math.floor(Math.random() * MEOWS.length)];
-      var bt = layer.cat.querySelector('.bt'); if (bt) bt.textContent = txt;
+      setBubble(txt);
     }
     if (Math.random() < 0.3) cat.dir = -cat.dir;                    // néha visszafordul
   }
@@ -869,7 +873,13 @@
   function catStep(ts) {
     var dt = Math.min(100, ts - (cat.last || ts)); cat.last = ts;
     var R = S.CAT_ROUTE, n = R.length, k = uiK();
-    if (cat.jump) {                                   // ugrás két szint között (képernyő-ív)
+    if (catDrag.on) {                                  // kézben: a mutató alatt lóg, az árnyéka a padlón
+      var hp = catDrag.p; cat.sp = [hp[0], hp[1] + 26 * k]; cat.mode = 'held'; cat.tilt = Math.sin(ts / 160) * 8;
+    } else if (cat.drop) {                             // elengedve: leesik és huppan
+      var D = cat.drop; D.t = Math.min(1, D.t + dt / D.dur); var ee = D.t * D.t;
+      cat.sp = [D.a[0] + (D.b[0] - D.a[0]) * ee, D.a[1] + (D.b[1] - D.a[1]) * ee]; cat.mode = 'held'; cat.tilt = 0;
+      if (D.t >= 1) { cat.drop = null; cat.sp = null; cat.v = 0; cat.mode = 'thud'; cat.wait = 650; cat.next = [['sit', 2200], LANDS[Math.floor(Math.random() * LANDS.length)]]; saveCat(); }
+    } else if (cat.jump) {                                   // ugrás két szint között (képernyő-ív)
       var J = cat.jump; J.t = Math.min(1, J.t + dt / J.dur);
       var a = catScreen(J.f0, J.x0, J.y0), b = catScreen(J.f1, J.x1, J.y1), e = J.t;
       var px = a[0] + (b[0] - a[0]) * e, py = a[1] + (b[1] - a[1]) * e - Math.sin(Math.PI * e) * (60 + Math.abs(b[1] - a[1]) * 0.15) * k;
@@ -878,7 +888,7 @@
       if (J.t >= 1) { cat.jump = null; cat.fl = J.f1; cat.x = J.x1; cat.y = J.y1; cat.i = J.ni; cat.v = 0; cat.mode = 'land'; cat.wait = 260; cat.tilt = 0; cat.sp = null; }
     } else if (cat.wait > 0) {
       cat.wait -= dt;
-      if (cat.wait <= 0 && cat.next) { var nx0 = cat.next; cat.next = null; startAction(nx0[0], nx0[1]); }
+      if (cat.wait <= 0 && cat.next) { var nx0 = cat.next; cat.next = cat.after || null; cat.after = null; startAction(nx0[0], nx0[1]); }
       else if (cat.wait <= 0 && cat.mode !== 'walk') { cat.mode = 'walk'; cat.v = 0; }
     } else {
       var ni = (cat.i + cat.dir + n) % n, nx = R[ni];
@@ -908,7 +918,8 @@
       var p = cat.sp || catScreen(cat.fl, cat.x, cat.y), g = layer.cat;
       g.setAttribute('transform', 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ') scale(' + r1(0.62 * k * 100) / 100 + ')');
       g.setAttribute('opacity', r1(cat.fade));
-      var cls = (cat.mode === 'jump' || cat.mode === 'land' ? 'walk ' + cat.mode : cat.mode) + (cat.goal ? ' has-tip' : '');
+      var cls = (cat.mode === 'jump' || cat.mode === 'land' ? 'walk ' + cat.mode : cat.mode) + (cat.goal && cat.mode !== 'held' && cat.mode !== 'wake' ? ' has-tip' : '') + (cat.talkUntil > Date.now() ? ' talk' : '');
+      if (layer.drop) { var sh = catDrag.on && catDrag.land; layer.drop.setAttribute('opacity', sh ? '0.22' : '0'); if (sh) { layer.drop.setAttribute('cx', r1(catDrag.land.s[0])); layer.drop.setAttribute('cy', r1(catDrag.land.s[1])); layer.drop.setAttribute('rx', r1(26 * k)); layer.drop.setAttribute('ry', r1(8 * k)); } }
       if (g.getAttribute('class') !== cls) g.setAttribute('class', cls);
       var walkPose = g.querySelector('.p-walk');
       var fsx = Math.abs(cat.fs) < 0.08 ? (cat.fs < 0 ? -0.08 : 0.08) : cat.fs;
@@ -916,11 +927,81 @@
     }
     requestAnimationFrame(catStep);
   }
+  // A szövegbuborék a szöveghez méreteződik (hosszabbnál két sorba tör), így semmi nem lóg ki belőle.
+  var measCtx = null;
+  function textW(t) {
+    try { measCtx = measCtx || document.createElement('canvas').getContext('2d'); measCtx.font = '900 17px Nunito, sans-serif'; return measCtx.measureText(t).width; }
+    catch (e) { return t.length * 9.6; }
+  }
+  function setBubble(text) {
+    var g = layer.cat && layer.cat.querySelector('.bubble'); if (!g) return;
+    var bt = g.querySelector('.bt'), rc = g.querySelector('rect'), lines = [text], w = textW(text);
+    if (w > 230) {                                    // két sor, a szóközök mentén a közepéhez legközelebb
+      var best = -1, half = text.length / 2;
+      text.replace(/ /g, function (m, i) { if (best < 0 || Math.abs(i - half) < Math.abs(best - half)) best = i; return m; });
+      if (best > 0) lines = [text.slice(0, best), text.slice(best + 1)];
+    }
+    w = Math.max.apply(null, lines.map(textW));
+    var W = Math.max(84, Math.ceil(w) + 30), H = 16 + lines.length * 20;
+    rc.setAttribute('x', -W / 2); rc.setAttribute('width', W); rc.setAttribute('y', -154 - H); rc.setAttribute('height', H);
+    bt.textContent = '';
+    lines.forEach(function (ln, i) { var ts = document.createElementNS('http://www.w3.org/2000/svg', 'tspan'); ts.setAttribute('x', 0); ts.setAttribute('y', -154 - H + 23 + i * 20); ts.textContent = ln; bt.appendChild(ts); });
+  }
+  function showBubble() { cat.talkUntil = Date.now() + 2600; }
+  var LANDS = ['Hopp!', 'Huh, megvagyok!', 'Ez jó hely lesz.', 'Miaú! Legközelebb szólj!', 'Puff!'];
+  // Megfogás: ha útban van (egy eszköz vagy bútor előtt), fogd meg és tedd arrébb. Lóg a kezedben,
+  // elengedve leesik, huppan, összeszedi magát, aztán onnan sétál tovább.
+  var catDrag = { on: false, p: null, land: null, start: null, id: null, justDropped: false };
+  function toWorld(cx, cy) {
+    var m = world.getScreenCTM(); if (!m) return null;
+    var pt = world.createSVGPoint(); pt.x = cx; pt.y = cy; var q = pt.matrixTransform(m.inverse()); return [q.x, q.y];
+  }
+  function planAt(fl, sx, sy) { var pr = scene.floors[fl].proj, o = pr.P(0, 0, 0); return pr.unproject(sx - o[0], sy - o[1]); }
+  // hová huppanna: előbb a felső szint szobái (ott rajzolódik felül), aztán a lenti; különben a legközelebbi útpont
+  function landingAt(sx, sy) {
+    var fls = ['up', 'lo'];
+    for (var i = 0; i < fls.length; i++) {
+      var m = planAt(fls[i], sx, sy);
+      if (catRoomAt(fls[i], m[0], m[1])) return { fl: fls[i], x: m[0], y: m[1], s: catScreen(fls[i], m[0], m[1]) };
+    }
+    var R = S.CAT_ROUTE, best = null;
+    R.forEach(function (r) { var q = catScreen(r[0], r[1], r[2]), d = Math.hypot(q[0] - sx, q[1] - sy); if (!best || d < best.d) best = { d: d, fl: r[0], x: r[1], y: r[2], s: q }; });
+    return best;
+  }
+  function catDown(e) {
+    if (e.button != null && e.button > 0) return;
+    e.stopPropagation();                               // ne a térkép mozduljon
+    catDrag.start = [e.clientX, e.clientY]; catDrag.id = e.pointerId; catDrag.on = false;
+    window.addEventListener('pointermove', catMove); window.addEventListener('pointerup', catUp); window.addEventListener('pointercancel', catUp);
+  }
+  function catMove(e) {
+    if (e.pointerId !== catDrag.id || !catDrag.start) return;
+    if (!catDrag.on && Math.hypot(e.clientX - catDrag.start[0], e.clientY - catDrag.start[1]) < 7) return;
+    if (!catDrag.on) { catDrag.on = true; cat.jump = null; cat.drop = null; cat.next = null; cat.after = null; cat.wait = 0; setBubble(['Miaú! Tegyél le!', 'Hé! Hová viszel?', 'Nyaú, magasan vagyok!'][Math.floor(Math.random() * 3)]); world.classList.add('catgrab'); }
+    e.preventDefault();
+    var p = toWorld(e.clientX, e.clientY); if (!p) return;
+    var k = uiK(); catDrag.p = p; catDrag.land = landingAt(p[0], p[1] + 56 * k);
+  }
+  function catUp(e) {
+    if (e.pointerId !== catDrag.id) return;
+    window.removeEventListener('pointermove', catMove); window.removeEventListener('pointerup', catUp); window.removeEventListener('pointercancel', catUp);
+    var was = catDrag.on; catDrag.on = false; catDrag.start = null; world.classList.remove('catgrab');
+    if (!was) return;                                  // sima koppintás: a click esemény intézi (ébresztés)
+    catDrag.justDropped = true; setTimeout(function () { catDrag.justDropped = false; }, 400);
+    var L = catDrag.land || landingAt(catDrag.p[0], catDrag.p[1] + 56 * uiK()), k = uiK();
+    cat.fl = L.fl; cat.x = L.x; cat.y = L.y; cat.v = 0;
+    // a legközelebbi útpont felé megy tovább (onnan, ahol letetted)
+    var R = S.CAT_ROUTE, n = R.length, bi = 0, bd = 1e9;
+    R.forEach(function (r, i) { if (r[0] !== L.fl) return; var d = Math.hypot(r[1] - L.x, r[2] - L.y); if (d < bd) { bd = d; bi = i; } });
+    cat.i = (bi - cat.dir + n) % n;
+    cat.drop = { a: [catDrag.p[0], catDrag.p[1] + 26 * k], b: catScreen(L.fl, L.x, L.y), t: 0, dur: 260 };
+  }
   function catClick() {
     if (cat.mode === 'sleep') {                           // koppintásra felébred: nyújtózik, aztán nyávog egyet
       cat.jump = null; cat.sp = null; cat.v = 0;
-      startAction(['stretch', 1500]);
-      cat.next = [['meow', 2600], 'Mrrr… ébren vagyok!'];
+      startAction(['wake', 1500]);                      // felriad: kinyitja a szemét, felpattan, megrázza magát
+      cat.next = [['stretch', 1700], null];
+      cat.after = [['meow', 2600], 'Mrrr… ébren vagyok!'];
       return;
     }
     var t = tips();
@@ -1338,7 +1419,7 @@
   var shareTok = window.F27Access ? F27Access.shareToken('o2b') : null, shareRun = null;
   if (cfg.supabaseUrl && cfg.supabaseKey && window.supabase && window.supabase.createClient) {
     try {
-      sb = shareTok ? F27Access.shareClient(cfg, shareTok)
+      sb = shareTok ? F27Access.shareClient(cfg, shareTok, 'o2b')
         : window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'o2b-auth' } });
     } catch (e) { sb = null; }
   }

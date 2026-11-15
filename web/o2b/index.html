@@ -66,13 +66,35 @@ body{position:fixed;inset:0;touch-action:none}
 
 /* Pamutka */
 #cat{cursor:pointer}
-#app.editing #cat{pointer-events:none;opacity:.55}
+#app.editing #cat{opacity:.6}
+#cat{touch-action:none}
+#world.catgrab,#world.catgrab #cat{cursor:grabbing}
+/* kézben lóg: a lábak lógnak, kicsit megnyúlik, kalimpál */
+#cat.held .body,#cat.held .lA,#cat.held .lB{animation:none}
+#cat.held .lA{transform:rotate(8deg)}#cat.held .lB{transform:rotate(-6deg)}
+#cat.held .stretchw{transform:scale(.92,1.12)}
+#cat.held .tail{animation:tail .5s ease-in-out infinite}
+#cat.held .bubble,#cat.talk .bubble{display:inline}
+/* huppanás: lapul, visszapattan, porfelhő */
+@keyframes thud{0%{transform:scale(1.28,.58)}35%{transform:scale(.9,1.14) translateY(-7px)}60%{transform:scale(1.07,.93)}80%{transform:scale(.98,1.02)}100%{transform:none}}
+@keyframes puff{0%{transform:scale(.3);opacity:.8}100%{transform:scale(1.6) translateY(-6px);opacity:0}}
+#cat.thud .p-sit{transform-box:fill-box;transform-origin:50% 100%;animation:thud .65s ease-out}
+#cat .dust{display:none}
+#cat.thud .dust{display:inline}
+#cat .dust ellipse{fill:#fffdf7;stroke:#1e2a44;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:puff .6s ease-out forwards}
+/* ébredés: összegömbölyödve kinyitja a szemét, felpattan, megrázza magát */
+@keyframes wakeup{0%,22%{transform:scale(1.14,.6) translateY(3px)}40%{transform:scale(.86,1.24) translateY(-16px)}55%{transform:scale(1.08,.92)}66%{transform:rotate(-7deg)}76%{transform:rotate(7deg)}86%{transform:rotate(-3deg)}100%{transform:none}}
+@keyframes eyesopen{0%,15%{transform:scaleY(.1)}30%{transform:scaleY(1.25)}40%,100%{transform:scaleY(1)}}
+#cat.wake .p-sit{transform-box:fill-box;transform-origin:50% 100%;animation:wakeup 1.5s ease-out}
+#cat.wake .p-sit .eyes{transform-box:fill-box;transform-origin:center;animation:eyesopen 1.5s ease-out}
+#cat.wake .alert{display:inline}
+#cat.wake .alert g{animation:pop2 1.5s ease-out}
 #cat .body{animation:bob .42s ease-in-out infinite}
 #cat.walk .lA{animation:legA .42s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0}
 #cat.walk .lB{animation:legB .42s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0}
 #cat .tail{animation:tail 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:0% 100%}
 #cat .pose{display:none}
-#cat.walk .p-walk,#cat.stretch .p-walk,#cat.sit .p-sit,#cat.groom .p-sit,#cat.meow .p-sit,#cat.yarn .p-sit,#cat.sleep .p-sleep{display:inline}
+#cat.walk .p-walk,#cat.stretch .p-walk,#cat.held .p-walk,#cat.sit .p-sit,#cat.groom .p-sit,#cat.meow .p-sit,#cat.yarn .p-sit,#cat.thud .p-sit,#cat.wake .p-sit,#cat.sleep .p-sleep{display:inline}
 #cat.sit .body,#cat.sleep .body,#cat.stretch .body{animation:none}
 @keyframes stretchy{0%,100%{transform:scale(1,1)}35%,65%{transform:scale(1.28,.78)}}
 @keyframes lick{0%,100%{transform:translate(0,0) rotate(0)}50%{transform:translate(-6px,-14px) rotate(-20deg)}}

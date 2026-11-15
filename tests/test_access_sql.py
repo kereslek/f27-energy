@@ -27,7 +27,7 @@ class AccessSqlTest(unittest.TestCase):
         for what, obj in grants:
             if obj.startswith("share_"):
                 self.assertEqual(what.strip(), "execute", obj)
-                self.assertIn(obj.split("(")[0], {"share_ok", "share_open"}, obj)
+                self.assertIn(obj.split("(")[0], {"share_ok", "share_open", "share_close"}, obj)
                 continue
             self.assertTrue(what.startswith("select"), (what, obj))
             self.assertIn(obj, ALLOWED_ANON_TABLES, obj)
@@ -57,6 +57,16 @@ class AccessSqlTest(unittest.TestCase):
             head = m.group(0)
             if "security definer" in head:
                 self.assertIn("set search_path = ''", head, m.group(1))
+
+    def test_link_bound_to_first_device_and_narrow_history(self):
+        ok = SQL[SQL.index("function public.share_ok()"):]
+        self.assertIn("l.session_hash = public.share_sess()", ok[:ok.index("$$;")])
+        op = SQL[SQL.index("function public.share_open(p_ping"):]
+        op = op[:op.index("end $$;")]
+        self.assertLess(op.index("if p_ping then return"), op.index("activated_at = now()"))   # a ping soha nem indít
+        self.assertIn("'taken'", op)
+        self.assertIn("interval '48 hours' and pink <> 'M1'", SQL)
+        self.assertNotRegex(SQL, r"grant select on public\.(battery_status|energy_daily) to anon")
 
     def test_control_function_allows_only_owner_and_member(self):
         ts = (ROOT / "supabase/functions/control/index.ts").read_text(encoding="utf-8")

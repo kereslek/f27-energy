@@ -8,6 +8,9 @@
 --    A felhasználót a tulaj a térképről veszi fel (Hozzáférések panel, "users" Supabase-függvény).
 --
 -- 2. Ideiglenes bemutató link (59:59): a tulaj generálja, bárki megnyithatja, aki megkapja.
+--    * Az időt csak a néző gombnyomása indítja ("Nézzük!"), nem a betöltés: egy levelezőprogram
+--      linkszkennere így nem tudja elhasználni. Indításkor a link az első megnyitó eszközhöz kötődik
+--      (munkamenet-titok, x-share-session fejléc): a továbbküldött link máshol már nem működik.
 --    * A link egy 256 bites véletlen token (43 karakter, a címben # után, így a szerver és a
 --      Referer nem látja). Az adatbázis csak a SHA-256 lenyomatát tárolja: ha a tábla kiszivárogna,
 --      abból sem lehet linket csinálni. A tokent csak a létrehozáskor látja a tulaj.
@@ -40,7 +43,8 @@ do $$ begin
   end if;
 end $$;
 
--- a családtag mindent lát, amit a tulaj (módosítani nem tud): a régi, felsorolt szerepkörű szabályok bővítése
+-- a családtag látja a tulaj nézetét (eszközök, fogyasztás, riasztások állapota, elemek); beállítást nem: a régi,
+-- felsorolt szerepkörű szabályok bővítése
 do $$ begin
   if to_regclass('public.devices') is not null then
     drop policy if exists devices_select on public.devices;
@@ -112,6 +116,8 @@ create table if not exists public.share_links (
   opens        integer not null default 0,
   last_seen    timestamptz
 );
+-- az első megnyitó eszköz munkamenet-titkának lenyomata (indításkor jön létre)
+alter table public.share_links add column if not exists session_hash text check (session_hash is null or session_hash ~ '^[0-9a-f]{64}$');
 alter table public.share_links enable row level security;
 -- közvetlenül senki nem éri el, csak a lenti függvényeken át
 revoke all on public.share_links from public, anon, authenticated;
@@ -124,23 +130,35 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.share_hash() from public, anon, authenticated;
 
--- Érvényes, már megnyitott, le nem járt és vissza nem vont linkkel jött-e a kérés.
+-- Az x-share-session fejléc (az indításkor kapott munkamenet-titok) lenyomata.
+create or replace function public.share_sess() returns text
+language sql stable security definer set search_path = '' as $$
+  select case when s.t ~ '^[A-Za-z0-9_-]{43}$' then encode(extensions.digest(s.t, 'sha256'), 'hex') end
+  from (select coalesce(nullif(current_setting('request.headers', true), '')::json ->> 'x-share-session', '') as t) s
+$$;
+revoke all on function public.share_sess() from public, anon, authenticated;
+
+-- Érvényes, elindított, le nem járt, vissza nem vont link, az első megnyitó eszközéről.
 create or replace function public.share_ok() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.share_links l
     where l.token_hash = public.share_hash()
-      and l.revoked_at is null and l.expires_at is not null and now() < l.expires_at)
+      and l.revoked_at is null and l.expires_at is not null and now() < l.expires_at
+      and l.session_hash is not null and l.session_hash = public.share_sess())
 $$;
 revoke all on function public.share_ok() from public, authenticated;
 grant execute on function public.share_ok() to anon;
 
--- A link megnyitása: az első alkalommal elindítja az 59:59-et. Választ ad a lejáratról.
--- p_ping: a nyitott oldal kétpercenkénti ellenőrzése (visszavonták-e), nem számít megnyitásnak.
+-- A link állapota és indítása.
+--   p_ping = true:  csak állapot (betöltéskor és kétpercenként), soha nem indít; el nem indított linknél
+--                   {ok, pending} a válasz, a néző ekkor a "Nézzük!" gombbal indít.
+--   p_ping = false: indítás (59:59), a válaszban egyszer a munkamenet-titok; már futó linknél csak
+--                   ugyanarról az eszközről (x-share-session) ad választ, máshonnan "taken".
 drop function if exists public.share_open();
 create or replace function public.share_open(p_ping boolean default false) returns jsonb
 language plpgsql volatile security definer set search_path = '' as $$
-declare h text := public.share_hash(); l public.share_links%rowtype;
+declare h text := public.share_hash(); l public.share_links%rowtype; sess text;
 begin
   if h is null then return jsonb_build_object('ok', false, 'reason', 'invalid'); end if;
   select * into l from public.share_links where token_hash = h for update;
@@ -148,15 +166,31 @@ begin
   if l.revoked_at is not null then return jsonb_build_object('ok', false, 'reason', 'revoked'); end if;
   if l.activated_at is null then
     if now() > l.open_by then return jsonb_build_object('ok', false, 'reason', 'expired'); end if;
-    update public.share_links set activated_at = now(), expires_at = now() + interval '59 minutes 59 seconds'
+    if p_ping then return jsonb_build_object('ok', true, 'pending', true, 'open_by', l.open_by, 'now', now()); end if;
+    sess := translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/=', '-_');
+    update public.share_links set activated_at = now(), expires_at = now() + interval '59 minutes 59 seconds',
+      session_hash = encode(extensions.digest(sess, 'sha256'), 'hex'), opens = opens + 1, last_seen = now()
       where id = l.id returning * into l;
+    return jsonb_build_object('ok', true, 'started', l.activated_at, 'expires_at', l.expires_at, 'now', now(), 'session', sess);
   end if;
   if now() >= l.expires_at then return jsonb_build_object('ok', false, 'reason', 'expired'); end if;
+  if l.session_hash is distinct from public.share_sess() then return jsonb_build_object('ok', false, 'reason', 'taken'); end if;
   update public.share_links set opens = opens + (case when p_ping then 0 else 1 end), last_seen = now() where id = l.id;
   return jsonb_build_object('ok', true, 'started', l.activated_at, 'expires_at', l.expires_at, 'now', now());
 end $$;
 revoke all on function public.share_open(boolean) from public, authenticated;
 grant execute on function public.share_open(boolean) to anon;
+
+-- A néző Kilépés gombja: a link azonnal lezárul (csak az indító eszközről).
+create or replace function public.share_close() returns boolean
+language sql volatile security definer set search_path = '' as $$
+  update public.share_links set revoked_at = now()
+  where token_hash = public.share_hash() and revoked_at is null
+    and session_hash is not null and session_hash = public.share_sess()
+  returning true
+$$;
+revoke all on function public.share_close() from public, authenticated;
+grant execute on function public.share_close() to anon;
 
 -- Új link (csak a tulaj). A tokent csak most adja vissza, a tábla a lenyomatát őrzi.
 create or replace function public.share_create(p_note text default null) returns jsonb
@@ -218,8 +252,9 @@ do $$ begin
     revoke all on public.device_status from anon;
     grant select (ts, pink, online, status) on public.device_status to anon;
     drop policy if exists device_status_share on public.device_status;
+    -- csak 48 óra, és a mozgásérzékelő (O2B M1) soha: abból kiderülne, ki mikor van otthon
     create policy device_status_share on public.device_status for select to anon
-      using ((select public.share_ok()) and ts > now() - interval '35 days');
+      using ((select public.share_ok()) and ts > now() - interval '48 hours' and pink <> 'M1');
   end if;
   if to_regclass('public.device_latest') is not null then
     revoke all on public.device_latest from anon;
@@ -233,13 +268,13 @@ do $$ begin
   end if;
   if to_regclass('public.battery_status') is not null then
     revoke all on public.battery_status from anon;
-    grant select on public.battery_status to anon;
+    grant select (pink, label, level, eta_lo, eta_hi, value, basis) on public.battery_status to anon;
     drop policy if exists battery_status_share on public.battery_status;
     create policy battery_status_share on public.battery_status for select to anon using ((select public.share_ok()));
   end if;
   if to_regclass('public.energy_daily') is not null then
     revoke all on public.energy_daily from anon;
-    grant select on public.energy_daily to anon;
+    grant select (day, pink, kwh, source) on public.energy_daily to anon;
     drop policy if exists energy_daily_share on public.energy_daily;
     create policy energy_daily_share on public.energy_daily for select to anon
       using ((select public.share_ok()) and day > current_date - 40);
@@ -250,13 +285,36 @@ do $$ begin
     grant select (source, kind, start_date, end_date, seen_at) on public.bookings to anon;
     drop policy if exists bookings_share on public.bookings;
     create policy bookings_share on public.bookings for select to anon
-      using ((select public.share_ok()) and end_date >= current_date - 40);
+      using ((select public.share_ok()) and end_date >= current_date - 3 and start_date <= current_date + 120);
   end if;
   if to_regclass('public.layouts') is not null then
     revoke all on public.layouts from anon;
     grant select (id, name, data, is_default, updated_at) on public.layouts to anon;
     drop policy if exists layouts_share on public.layouts;
     create policy layouts_share on public.layouts for select to anon using ((select public.share_ok()) and is_default);
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 4. Jelszócsere után a felhasználó többi eszköze is kilép (a "users" függvény hívja, titkos kulccsal)
+-- ---------------------------------------------------------------------------
+create or replace function public.admin_end_sessions(p_user uuid) returns integer
+language plpgsql volatile security definer set search_path = '' as $$
+declare n integer := 0;
+begin
+  if to_regclass('auth.refresh_tokens') is not null then
+    execute 'delete from auth.refresh_tokens where user_id = $1::text' using p_user;
+  end if;
+  if to_regclass('auth.sessions') is not null then
+    execute 'delete from auth.sessions where user_id = $1' using p_user;
+    get diagnostics n = row_count;
+  end if;
+  return n;
+end $$;
+revoke all on function public.admin_end_sessions(uuid) from public, anon, authenticated;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.admin_end_sessions(uuid) to service_role;
   end if;
 end $$;
 

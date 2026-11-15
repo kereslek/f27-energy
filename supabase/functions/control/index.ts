@@ -135,7 +135,9 @@ async function tick() {
   const now = new Date(), L = local(now), done: string[] = [];
   const timers = await rest("GET", `control_timers?select=id,pink,action&due_at=lte.${now.toISOString()}&order=due_at.asc&limit=20`) || [];
   for (const t of timers) {
-    await rest("DELETE", `control_timers?id=eq.${t.id}`).catch(() => {});
+    // atomikus lefoglalás: csak az kapcsol, aki ténylegesen törölte (két egymásra futó ütemezés ne kapcsoljon kétszer)
+    const got = await rest("DELETE", `control_timers?id=eq.${t.id}`, undefined, "return=representation").catch(() => []);
+    if (!got || !got.length) continue;
     try { await doSwitch(t.pink, t.action === "on", "timer", null); done.push(t.pink); } catch (_) { /* naplózva */ }
   }
   const rules = await rest("GET", "control_rules?select=id,pink,action,kind,minute,days,last_fired&enabled=is.true") || [];
@@ -144,7 +146,8 @@ async function tick() {
     let target = r.minute;
     if (r.kind !== "time") { const s = sunMinutes(now, r.kind); if (s == null) continue; target = s + r.minute; }
     if (L.min < target || L.min - target > 15) continue;           // 15 perces türelmi ablak (kimaradt perc)
-    await rest("PATCH", `control_rules?id=eq.${r.id}`, { last_fired: L.date }, "return=minimal");
+    const got = await rest("PATCH", `control_rules?id=eq.${r.id}&or=(last_fired.is.null,last_fired.neq.${L.date})`, { last_fired: L.date }, "return=representation").catch(() => []);
+    if (!got || !got.length) continue;                             // egy párhuzamos futás már elsütötte
     try { await doSwitch(r.pink, r.action === "on", "rule", null); done.push(r.pink); } catch (_) { /* naplózva */ }
   }
   return done;

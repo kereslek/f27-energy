@@ -149,6 +149,8 @@ Deno.serve(async (req) => {
         if (pe) return fail(pe);
         const p = await admin("PUT", `users/${body.user_id}`, { password: body.password });
         if (!p.ok) return fail("A jelszót nem sikerült beállítani.", 502);
+        // a régi jelszóval nyitott munkamenetek (más eszközök) is záruljanak le
+        await rest("POST", "rpc/admin_end_sessions", { p_user: body.user_id }).catch(() => null);
       }
       if (Object.keys(patch).length) {
         if (t.role) await rest("PATCH", `app_users?user_id=eq.${body.user_id}`, patch, "return=minimal");
