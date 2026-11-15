@@ -264,7 +264,11 @@ def check(sb: SupabaseRest, now: datetime | None = None, expect_closed_until: da
     match = None
     if expect_closed_until is not None:
         match = bool(a and b and until and until >= expect_closed_until)
-    return {"text": text, "match": match, "today": a is not None, "tomorrow": b is not None}
+    # a részletes lista (csak a privát e-mailbe): a következő 60 nap eseményei, hogy összevethető legyen az Airbnb-naptárral
+    horizon = (today + timedelta(days=60)).isoformat()
+    events = [f"{r['start_date']} -> {r['end_date']}  {'Airbnb-foglalás' if r['kind'] == 'reservation' else 'zárt (Booking vagy karbantartás)'}"
+              for r in rows if r["start_date"] <= horizon]
+    return {"text": text, "match": match, "today": a is not None, "tomorrow": b is not None, "events": events}
 
 
 if __name__ == "__main__":                         # python -m f27.bookings check [ÉÉÉÉ-HH-NN]
@@ -273,10 +277,18 @@ if __name__ == "__main__":                         # python -m f27.bookings chec
     sb = SupabaseRest.from_env()
     exp = date.fromisoformat(sys.argv[2]) if len(sys.argv) > 2 else None
     r = check(sb, expect_closed_until=exp)
-    sent = "nincs NTFY_TOPIC"
+    from .alerts import email_ready, send_email
+    sent = []
     if (os.environ.get("NTFY_TOPIC") or "").strip():
-        send_ntfy({"title": f"{SITE.tag} foglaltság-ellenőrzés", "body": r["text"], "priority": "default", "tags": "calendar"}, os.environ)
-        sent = "push elküldve"
+        send_ntfy({"title": f"{SITE.tag} foglaltság-ellenőrzés", "body": r["text"], "priority": "high", "tags": "calendar"}, os.environ)
+        sent.append("push")
+    if email_ready(os.environ):
+        body = (r["text"] + "\n\nA naptárban (a következő 60 nap; érkezés napja -> távozás napja):\n"
+                + ("\n".join("- " + e for e in r["events"]) or "- nincs esemény")
+                + "\n\nA zárt szakaszon belül az egymás utáni Booking-foglalások egy eseménynek látszanak.")
+        send_email({"subject": f"{SITE.tag} foglaltság-ellenőrzés", "email_body": body}, os.environ)
+        sent.append("e-mail")
+    sent = " és ".join(sent) + " elküldve" if sent else "nincs beállított csatorna"
     # a publikus logba csak ennyi: foglalási adat nem
     print(f"Foglaltság-ellenőrzés: {sent}." + ("" if r["match"] is None else
           f" A tulaj leírásával (ma és holnap zárt, foglalható legkorábban {exp:%m.%d}.) egyezik: {'igen' if r['match'] else 'NEM'}."))
