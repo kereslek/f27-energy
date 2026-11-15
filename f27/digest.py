@@ -353,7 +353,13 @@ def run_digest(sb: SupabaseRest, now: datetime | None = None, environ=None, send
         if not due(cfg, now) or sb.select("alert_log", "id", rule_key=f"eq.{key}", limit="1"):
             res["note"] = "Napi összefoglaló: nem kellett."
             return res
-        msg = build(sb, cfg, now)
+        if SITE.id == "f27":
+            msg = build(sb, cfg, now)
+        else:                                           # O2B és a további telephelyek saját tartalma
+            from . import digest_o2b
+            m = digest_o2b.build(sb, cfg, now, _safe, alert_items)
+            msg = {"subject": m["subject"], "email_body": m["email_body"],
+                   "email_html": to_html(m["marked"], MAP_URL, rows=m.get("links"))}
     except SupabaseError as e:
         res["note"], res["error"] = f"Napi összefoglaló: hiba ({e}).", True
         return res

@@ -8,55 +8,166 @@
   "smartlife_home": "O2B (a Smart Life-ban saját otthon)",
   "street_from_home": true,
   "timezone": "Europe/Budapest",
-  "location": {"lat": 47.48, "lon": 19.04, "label": "Budapest XI. kerület"},
+  "location": {
+    "lat": 47.48,
+    "lon": 19.04,
+    "label": "Budapest XI. kerület"
+  },
   "map_url": "https://kereslek.github.io/f27-energy/o2b/",
   "plan_north_deg": 55,
   "_plan_north": "Az alaprajz északi nyila (hirdetés) a rajz jobb felső felé mutat: az észak 55 fokkal van a rajz fel irányától (az erkély felől) az óramutató szerint. Az erkély (utcafront) így kb. ÉNy-ra néz: délután és este kapja a napot.",
   "devices_config": "sites/o2b/devices.json",
   "data_dir": "data/o2b",
-  "advisor": {"name": "Pamutka", "figure": "cat", "place": "balcony",
-              "_comment": "A tanácsadó a ház ezüst cirmos macskája (a tulaj döntése, 2026.11.14). Az erkélyen ül, ahol napozni szokott."},
-  "comfort": {"heat_day_c": 22, "heat_night_c": 20, "_comment": "A tulaj kívánsága télre (2026.11.14). Ehhez méri a túlfűtést."},
-  "presence": {"sources": ["pir", "consumption"], "pir_alerts": false, "_pir": "A mozgásérzékelő a lépcső tetején, a legfelső foknál. Pamutka is mozgást jelez, ezért csak a jelenlét-becsléshez kell, riasztást nem küld (a tulaj döntése, 2026.11.14).", "_comment": "Nincs foglalási naptár: a jelenlétet a mozgásérzékelő és az eszközhasználat (fogyasztás) mutatja; később további érzékelők."},
-  "heating": {"base": "gas_boiler", "boiler": "Savio Acta NOx 24 kombi (2021), nem kondenzációs, a lenti fürdőben",
-              "hot_water": "lent a gázkombi (átfolyós), fent a villanybojler (okos konnektoron)",
-              "ac_heating": false,
-              "thermostat": {"brand": "Computherm Wi-Fi (nem Tuya, saját app)", "sensor_room": "etkezo",
-                             "receiver": "a gázkazán alatt, a lenti fürdőben", "setpoint_c": 22.0,
-                             "integrated": false,
-                             "_note": "Szobaegység (érintőpanel) az étkező sarkában, ott mér; a vevő kapcsolja a kazánt. 2026.11.14: 21,6 °C mért, 22,0 °C beállítva, fűtött. A referencia-szoba radiátora 0-ra van véve."},
-              "radiators": [
-                {"room": "konyha", "where": "ablak alatt"},
-                {"room": "etkezo", "where": "falon, jelenleg 0-ra véve"},
-                {"room": "haloszoba", "where": "ablak alatt"},
-                {"room": "nappali", "where": "ablak alatt", "count": 2},
-                {"room": "kagyloszoba", "where": "a kagyló alatt"},
-                {"room": "gyerekszoba", "where": "ablak alatt, az íróasztal alatt"},
-                {"room": "furdo_lent", "where": "törölközőszárító, a mosógép mellett", "towel": true},
-                {"room": "furdo_fent", "where": "törölközőszárító a falon", "towel": true}
-              ],
-              "_heads": "A radiátorok kézi termosztátfejesek; a régi fejek szelepe néha beragad (kézzel teljesen nyit-zár-nyit oldja). Hosszú távon okos fejek (TRV) tervben; kiegyenlítő szelep és iszapleválasztó helye ismeretlen."},
-  "email": {"daily_at": "20:00"},
-  "control": {"pinks": ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"], "confirm": ["C1"],
-              "_comment": "Távkapcsolható konnektorok (supabase/functions/control). C1 a bojler: csak megerősítéssel. Ki kapcsolhat: minden tag (owner, cleaner, viewer)."},
+  "advisor": {
+    "name": "Pamutka",
+    "figure": "cat",
+    "place": "balcony",
+    "_comment": "A tanácsadó a ház ezüst cirmos macskája (a tulaj döntése, 2026.11.14). Az erkélyen ül, ahol napozni szokott."
+  },
+  "comfort": {
+    "heat_day_c": 22,
+    "heat_night_c": 20,
+    "_comment": "A tulaj kívánsága télre (2026.11.14). Ehhez méri a túlfűtést."
+  },
+  "presence": {
+    "sources": [
+      "pir",
+      "consumption"
+    ],
+    "pir_alerts": false,
+    "_pir": "A mozgásérzékelő a lépcső tetején, a legfelső foknál. Pamutka is mozgást jelez, ezért csak a jelenlét-becsléshez kell, riasztást nem küld (a tulaj döntése, 2026.11.14).",
+    "_comment": "Nincs foglalási naptár: a jelenlétet a mozgásérzékelő és az eszközhasználat (fogyasztás) mutatja; később további érzékelők."
+  },
+  "heating": {
+    "base": "gas_boiler",
+    "boiler": "Savio Acta NOx 24 kombi (2021), nem kondenzációs, a lenti fürdőben",
+    "hot_water": "lent a gázkombi (átfolyós), fent a villanybojler (okos konnektoron)",
+    "ac_heating": false,
+    "thermostat": {
+      "brand": "Computherm Wi-Fi (nem Tuya, saját app)",
+      "sensor_room": "etkezo",
+      "receiver": "a gázkazán alatt, a lenti fürdőben",
+      "setpoint_c": 22.0,
+      "integrated": false,
+      "_note": "Szobaegység (érintőpanel) az étkező sarkában, ott mér; a vevő kapcsolja a kazánt. 2026.11.14: 21,6 °C mért, 22,0 °C beállítva, fűtött. A referencia-szoba radiátora 0-ra van véve."
+    },
+    "radiators": [
+      {
+        "room": "konyha",
+        "where": "ablak alatt"
+      },
+      {
+        "room": "etkezo",
+        "where": "falon, jelenleg 0-ra véve"
+      },
+      {
+        "room": "haloszoba",
+        "where": "ablak alatt"
+      },
+      {
+        "room": "nappali",
+        "where": "ablak alatt",
+        "count": 2
+      },
+      {
+        "room": "kagyloszoba",
+        "where": "a kagyló alatt"
+      },
+      {
+        "room": "gyerekszoba",
+        "where": "ablak alatt, az íróasztal alatt"
+      },
+      {
+        "room": "furdo_lent",
+        "where": "törölközőszárító, a mosógép mellett",
+        "towel": true
+      },
+      {
+        "room": "furdo_fent",
+        "where": "törölközőszárító a falon",
+        "towel": true
+      }
+    ],
+    "_heads": "A radiátorok kézi termosztátfejesek; a régi fejek szelepe néha beragad (kézzel teljesen nyit-zár-nyit oldja). Hosszú távon okos fejek (TRV) tervben; kiegyenlítő szelep és iszapleválasztó helye ismeretlen."
+  },
+  "email": {
+    "daily_at": "20:00"
+  },
+  "control": {
+    "pinks": [
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6",
+      "C7",
+      "C8"
+    ],
+    "confirm": [
+      "C1"
+    ],
+    "_comment": "Távkapcsolható konnektorok (supabase/functions/control). C1 a bojler: csak megerősítéssel. Ki kapcsolhat: minden tag (owner, cleaner, viewer)."
+  },
   "tariff": {
     "quota_kwh_year": 2523,
     "meters": {
-      "A1": {"label": "A1 általános (egy mérő)", "in_quota": 36.2, "over_quota": 70.1}
+      "A1": {
+        "label": "A1 általános (egy mérő)",
+        "in_quota": 36.2,
+        "over_quota": 70.1
+      }
     },
-    "_comment": "Egyetlen villanymérő, A1. A fogyasztás tartósan a kedvezményes keret kétszerese fölött van, ezért a határköltség a keret feletti ár."
+    "_comment": "Egyetlen villanymérő, A1. A fogyasztás tartósan a kedvezményes keret kétszerese fölött van, ezért a határköltség a keret feletti ár.",
+    "gas": {
+      "ft_per_mj": 2.87,
+      "mj_per_m3": 34.5,
+      "base_ft_month": 973,
+      "_comment": "rezsicsökkentett lakossági (kb., bruttó, mint az F27-nél); a gáz nincs mérve, a levél ebből és a valós mérőállásokból becsül"
+    }
   },
   "circuits": [
-    {"pink": "C1", "name": "BOJLER", "meter": "A1", "ft_low": 70.1, "ft_high": 70.1, "_why": "emeleti villanybojler okos konnektoron; mér-e, az első felderítés mutatja"}
+    {
+      "pink": "C1",
+      "name": "BOJLER",
+      "meter": "A1",
+      "ft_low": 70.1,
+      "ft_high": 70.1,
+      "_why": "emeleti villanybojler okos konnektoron; mér-e, az első felderítés mutatja"
+    }
   ],
   "thermometers": [
-    {"pink": "T1", "name": "Nappali"},
-    {"pink": "T2", "name": "Étkező"},
-    {"pink": "T3", "name": "Hálószoba"},
-    {"pink": "T4", "name": "Konyha"},
-    {"pink": "T5", "name": "Kagyló szoba"},
-    {"pink": "T6", "name": "Gyerekszoba"},
-    {"pink": "T7", "name": "Erkély (kint)"},
-    {"pink": "T8", "name": "Nappali 2."}
+    {
+      "pink": "T1",
+      "name": "Nappali"
+    },
+    {
+      "pink": "T2",
+      "name": "Étkező"
+    },
+    {
+      "pink": "T3",
+      "name": "Hálószoba"
+    },
+    {
+      "pink": "T4",
+      "name": "Konyha"
+    },
+    {
+      "pink": "T5",
+      "name": "Kagyló szoba"
+    },
+    {
+      "pink": "T6",
+      "name": "Gyerekszoba"
+    },
+    {
+      "pink": "T7",
+      "name": "Erkély (kint)"
+    },
+    {
+      "pink": "T8",
+      "name": "Nappali 2."
+    }
   ]
 }

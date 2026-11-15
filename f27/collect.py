@@ -614,9 +614,8 @@ def main() -> int:
             bm = {"error": True, "note": f"Elem-levél: HIBA ({type(e).__name__})."}
         text += "\n" + bm["note"]
     try:
-        # Az esti levél és a riasztási szabályok egyelőre az F27-re szabottak (kályha, foglalások);
-        # a többi telephely levele külön készül (O2B: Pamutka), addig nem küldünk félrevezetőt.
-        dg = run_digest(sb) if SITE.id == "f27" else {"error": False, "note": f"Napi összefoglaló: {SITE.tag}-nél még nincs."}
+        # Az esti levél: az F27 és az O2B saját tartalommal (f27.digest, f27.digest_o2b), közös küldéssel.
+        dg = run_digest(sb)
     except Exception as e:
         dg = {"error": True, "note": f"Napi összefoglaló: hiba ({type(e).__name__})."}
     if dg["error"]:

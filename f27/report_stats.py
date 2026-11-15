@@ -500,7 +500,7 @@ LEGEND = [
 ]
 
 
-def to_html(text: str, url: str) -> str:
+def to_html(text: str, url: str, rows: dict | None = None) -> str:
     """A szöveges levél "terminál" HTML-ben: fix szélességű betű, zöld a feketén; a hosszú
     szöveges sorok tördelődnek (pre-wrap), a dobozok W karakteresek, így telefonon sem esnek szét.
     Felül és alul kattintható gomb a dashboardra."""
@@ -514,9 +514,13 @@ def to_html(text: str, url: str) -> str:
     bt = ('style="color:#0b0f0b;background:#39ff14;text-decoration:none;padding:1px 6px;border-radius:3px;'
           'font-weight:bold"')
     body = []
+    row_re = re.compile(r"^│ (" + "|".join(re.escape(html.escape(k)) for k in rows) + r") .*›\s*│$") if rows else None
     for line in html.escape(text).split("\n"):
-        m = CIRC_ROW.match(line)
-        if m:                                               # a körök sorai: a dashboardon a kör részletei
+        m = CIRC_ROW.match(line) if rows is None else None
+        r = row_re.match(line) if row_re else None
+        if r:                                               # más telephely: a sor az eszköz kártyájára visz (?dev=C1)
+            line = f'<a href="{html.escape(url)}?dev={html.escape(rows[html.unescape(r.group(1))])}" {lk}>{line}</a>'
+        elif m:                                               # a körök sorai: a dashboardon a kör részletei
             line = f'<a href="{html.escape(url)}?kor={CIRC_LINK[m.group(1)]}" {lk}>{line}</a>'
         elif line == CIRC_HINT:                            # külön, jól látható gombok is (nem minden levelező jelzi a sor-linket)
             line = "› részletek: " + " ".join(

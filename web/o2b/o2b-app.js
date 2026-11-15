@@ -1620,5 +1620,8 @@
   setInterval(load, 5 * 60000);
   setInterval(function () { drawSky(); chips(); }, 10 * 60000);
   setInterval(fetchDaily, 3 * 3600000);
+  // az esti levél sorai ide visznek: ?dev=C1 -> az eszköz kártyája nyitva
+  (function () { var q = null; try { q = new URLSearchParams(location.search).get('dev'); } catch (e) {}
+    if (q && /^[A-Z]{1,2}\d{1,2}$/.test(q)) setTimeout(function () { select(q); }, 1200); })();
   window.__o2b = { st: st, cat: cat, fit: fit, rotate: rotate, say: function (t) { setBubble(t); showBubble(); } };
 })();
