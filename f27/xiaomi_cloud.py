@@ -18,6 +18,7 @@ import json
 import random
 import string
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -45,38 +46,136 @@ def _json(text: str) -> dict:
     return json.loads(text.replace("&&&START&&&", ""))
 
 
-def login(username: str, password: str) -> dict:
-    """Belépés: {user_id, service_token, ssecurity}. Kétlépcsős azonosításnál XiaomiError."""
-    jar = http.cookiejar.CookieJar()
-    op = _opener(jar)
-    ua = UA.format(_rand("ABCDEF", 13))
-    _cookie(jar, "sdkVersion", "3.8.6", ".xiaomi.com"); _cookie(jar, "deviceId", _rand(string.ascii_lowercase, 6), ".xiaomi.com")
-    _cookie(jar, "userId", username, ".xiaomi.com")
+ACC = "https://account.xiaomi.com"
+FLAGS = {8: "Email", 4: "Phone"}                    # a Xiaomi azonosítási csatornái: 8 e-mail, 4 SMS
 
-    def get(url):
-        return op.open(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=30)
 
-    r1 = _json(get("https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true").read().decode())
-    sign = r1.get("_sign", "")
-    data = {"sid": "xiaomiio", "hash": hashlib.md5(password.encode()).hexdigest().upper(),
-            "callback": "https://sts.api.io.mi.com/sts", "qs": "%3Fsid%3Dxiaomiio%26_json%3Dtrue", "user": username, "_json": "true"}
-    if sign:
-        data["_sign"] = sign
-    req = urllib.request.Request("https://account.xiaomi.com/pass/serviceLoginAuth2", data=urllib.parse.urlencode(data).encode(),
-                                 headers={"User-Agent": ua, "Content-Type": "application/x-www-form-urlencoded"})
-    r2 = _json(op.open(req, timeout=30).read().decode())
-    if r2.get("result") != "ok" or not r2.get("ssecurity"):
-        if r2.get("notificationUrl") or r2.get("captchaUrl"):
-            raise XiaomiError("a Xiaomi jóváhagyást kér (kétlépcsős azonosítás vagy captcha): lépj be egyszer a Xiaomi Home appba, aztán próbáld újra")
-        raise XiaomiError("hibás felhasználónév vagy jelszó")
-    location = r2.get("location")
-    if not location:
-        raise XiaomiError("a Xiaomi nem adott belépési címet (jóváhagyás kell?)")
-    get(location).read()
-    token = next((c.value for c in jar if c.name == "serviceToken"), None)
+class NeedVerify(XiaomiError):
+    """A Xiaomi kétlépcsős azonosítást kér: kódot küldtünk, a `pending` állapottal folytatható."""
+
+    def __init__(self, pending: dict, channel: str):
+        super().__init__("a Xiaomi kódot küldött")
+        self.pending, self.channel = pending, channel
+
+
+class _Sess:
+    """Sütik + stabil eszközazonosító és UA (a felhasználónévből): a Xiaomi a jóváhagyást ehhez köti."""
+
+    def __init__(self, username: str, state: dict | None = None):
+        h = hashlib.sha256(("f27-o2b-mi:" + username.strip()).encode()).hexdigest()
+        self.username, self.ua = username, UA.format(h[:13].upper())
+        self.jar = http.cookiejar.CookieJar()
+        self.op = _opener(self.jar)
+        for name, value, domain in (state or {}).get("cookies") or []:
+            _cookie(self.jar, name, value, domain)
+        _cookie(self.jar, "sdkVersion", "3.8.6", ".xiaomi.com")
+        _cookie(self.jar, "deviceId", "an_" + h[13:29], ".xiaomi.com")
+        _cookie(self.jar, "userId", username, ".xiaomi.com")
+
+    def cookie(self, name: str) -> str | None:
+        return next((c.value for c in self.jar if c.name == name), None)
+
+    def dump(self) -> list:
+        keep = {"sdkVersion", "deviceId"}
+        return [[c.name, c.value, c.domain] for c in self.jar if c.name not in keep and "xiaomi.com" in c.domain]
+
+    def open(self, url: str, data: dict | None = None, params: dict | None = None) -> str:
+        if params:
+            url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+        headers = {"User-Agent": self.ua}
+        body = None
+        if data is not None:
+            body = urllib.parse.urlencode(data).encode()
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+        try:
+            return self.op.open(urllib.request.Request(url, data=body, headers=headers), timeout=30).read().decode(errors="replace")
+        except urllib.error.HTTPError as e:
+            raise XiaomiError(f"Xiaomi HTTP {e.code}") from None
+
+    def j(self, url: str, data: dict | None = None, params: dict | None = None) -> dict:
+        txt = self.open(url, data, params)
+        try:
+            return _json(txt)
+        except ValueError:
+            return {}
+
+
+def _finish(s: _Sess, r: dict) -> dict:
+    """A sikeres belépési válaszból (ssecurity + location) service token."""
+    s.open(r["location"])
+    token = s.cookie("serviceToken")
     if not token:
         raise XiaomiError("nincs service token (a Xiaomi jóváhagyást kérhet)")
-    return {"user_id": str(r2["userId"]), "service_token": token, "ssecurity": r2["ssecurity"]}
+    return {"user_id": str(r.get("userId") or s.cookie("userId") or s.username), "service_token": token, "ssecurity": r["ssecurity"]}
+
+
+def _ok(r: dict) -> bool:
+    return bool(r.get("ssecurity")) and bool(r.get("location"))
+
+
+def _start_verify(s: _Sess, notification_url: str) -> None:
+    """Kódküldés a jóváhagyáshoz (e-mail, ha van, különben SMS); NeedVerify-t dob a folytatáshoz."""
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(notification_url).query)
+    context = (q.get("context") or [""])[0]
+    if not context:
+        raise XiaomiError("a Xiaomi jóváhagyást kér, de nem adott azonosítási környezetet (captcha?)")
+    s.open(notification_url)
+    lst = s.j(ACC + "/identity/list", params={"sid": "xiaomiio", "context": context, "_locale": "en_US"})
+    opts = [int(o) for o in (lst.get("options") or []) if str(o).isdigit()] or ([int(lst["flag"])] if str(lst.get("flag", "")).isdigit() else [])
+    order = [f for f in (8, 4) if f in opts] or [8, 4]
+    common = {"sid": "xiaomiio", "context": context, "mask": "0", "_locale": "en_US"}
+    last = None
+    for flag in order:
+        kind = FLAGS[flag]
+        s.j(ACC + f"/identity/auth/verify{kind}", params={"_flag": flag, "_json": "true", **common})
+        r = s.j(ACC + f"/identity/auth/send{kind}Ticket", params={"_dc": int(time.time() * 1000), **common},
+                data={"retry": "0", "icode": "", "_json": "true", "ick": s.cookie("ick") or ""})
+        if r.get("code") == 0:
+            raise NeedVerify({"cookies": s.dump(), "context": context, "flag": flag}, "e-mail" if flag == 8 else "SMS")
+        last = r.get("code")
+    raise XiaomiError(f"a Xiaomi nem küldött kódot (hibakód {last}; ha captcha kell, várj egy órát és próbáld újra)")
+
+
+def login(username: str, password: str, state: dict | None = None) -> tuple[dict, dict]:
+    """Belépés: ({user_id, service_token, ssecurity}, session). Kétlépcsős azonosításnál NeedVerify.
+
+    `state` a korábbi sikeres belépés munkamenete (passToken sütik): ha még él, nem kell jelszó és kód sem.
+    """
+    s = _Sess(username, state)
+    r1 = s.j(ACC + "/pass/serviceLogin", params={"sid": "xiaomiio", "_json": "true"})
+    if _ok(r1):                                         # a mentett munkamenet még érvényes
+        return _finish(s, r1), {"cookies": s.dump()}
+    data = {"sid": "xiaomiio", "hash": hashlib.md5(password.encode()).hexdigest().upper(),
+            "callback": "https://sts.api.io.mi.com/sts", "qs": "%3Fsid%3Dxiaomiio%26_json%3Dtrue", "user": username, "_json": "true"}
+    if r1.get("_sign"):
+        data["_sign"] = r1["_sign"]
+    r2 = s.j(ACC + "/pass/serviceLoginAuth2", data=data)
+    if _ok(r2):
+        return _finish(s, r2), {"cookies": s.dump()}
+    if r2.get("notificationUrl"):
+        _start_verify(s, r2["notificationUrl"])
+    if r2.get("captchaUrl"):
+        raise XiaomiError("a Xiaomi captchát kér: lépj be egyszer a Xiaomi Home appba ugyanezzel a fiókkal, várj egy órát, és próbáld újra")
+    raise XiaomiError("hibás felhasználónév vagy jelszó")
+
+
+def verify(username: str, password: str, pending: dict, code: str) -> tuple[dict, dict]:
+    """A kapott kóddal befejezi a jóváhagyást (megbízható eszköz), és belép."""
+    s = _Sess(username, pending)
+    flag, context = int(pending["flag"]), pending["context"]
+    kind = FLAGS[flag]
+    r = s.j(ACC + f"/identity/auth/verify{kind}",
+            params={"_flag": flag, "_json": "true", "sid": "xiaomiio", "context": context, "mask": "0", "_locale": "en_US"},
+            data={"_flag": flag, "ticket": code.strip(), "trust": "true", "_json": "true", "ick": s.cookie("ick") or ""})
+    if r.get("code") != 0:
+        raise XiaomiError("hibás vagy lejárt Xiaomi-kód" if r.get("code") in (70014, 70016, 87001) or r.get("code") is None
+                          else f"a Xiaomi nem fogadta el a kódot (hibakód {r.get('code')})")
+    if r.get("location"):
+        s.open(r["location"])                          # a jóváhagyás vége: passToken sütik
+    try:
+        return login(username, password, {"cookies": s.dump()})
+    except NeedVerify:
+        raise XiaomiError("a kód elfogadva, de a Xiaomi újra jóváhagyást kér; futtasd újra a xiaomi lépést") from None
 
 
 # ---- titkosított kérés (RC4), a micloud miutils szerint ----------------------------------------

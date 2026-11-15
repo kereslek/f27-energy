@@ -90,3 +90,97 @@ class XiaomiCryptoTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class XiaomiTwoStepTest(unittest.TestCase):
+    """Kétlépcsős Xiaomi-belépés: kódküldés, függő állapot, kóddal befejezés (hálózat nélkül)."""
+
+    NOTIF = "https://account.xiaomi.com/identity/authStart?sid=xiaomiio&context=CTX123&_locale=en_US"
+
+    def fake(self, routes, calls):
+        def j(sess, url, data=None, params=None):
+            calls.append((url, dict(params or {}), dict(data or {})))
+            for key, val in routes.items():
+                if url.endswith(key):
+                    return val(sess, params, data) if callable(val) else val
+            return {}
+
+        def op(sess, url, data=None, params=None):
+            calls.append((url, dict(params or {}), dict(data or {})))
+            if "sts" in url:
+                xiaomi_cloud._cookie(sess.jar, "serviceToken", "TOK", ".api.io.mi.com")
+            if "result/check" in url:
+                xiaomi_cloud._cookie(sess.jar, "passToken", "PT", "account.xiaomi.com")
+            return ""
+        return mock.patch.multiple(xiaomi_cloud._Sess, j=j, open=op)
+
+    def test_login_needing_2fa_sends_email_code(self):
+        calls = []
+        routes = {"/pass/serviceLogin": {"_sign": "S"},
+                  "/pass/serviceLoginAuth2": {"code": 0, "notificationUrl": self.NOTIF},
+                  "/identity/list": {"options": [4, 8]},
+                  "/identity/auth/sendEmailTicket": {"code": 0}}
+        with self.fake(routes, calls), self.assertRaises(xiaomi_cloud.NeedVerify) as cm:
+            xiaomi_cloud.login("8297", "pw")
+        self.assertEqual(cm.exception.channel, "e-mail")
+        self.assertEqual(cm.exception.pending["context"], "CTX123")
+        self.assertEqual(cm.exception.pending["flag"], 8)
+        self.assertNotIn("pw", str(calls))                               # a jelszó csak MD5-ként megy át
+
+    def test_sms_when_only_phone(self):
+        calls = []
+        routes = {"/pass/serviceLoginAuth2": {"notificationUrl": self.NOTIF}, "/identity/list": {"flag": 4},
+                  "/identity/auth/sendPhoneTicket": {"code": 0}}
+        with self.fake(routes, calls), self.assertRaises(xiaomi_cloud.NeedVerify) as cm:
+            xiaomi_cloud.login("8297", "pw")
+        self.assertEqual(cm.exception.channel, "SMS")
+
+    def test_verify_with_code_then_login(self):
+        calls = []
+        def service_login(sess, params, data):
+            return ({"code": 0, "ssecurity": "SS", "location": "https://sts.api.io.mi.com/sts?x", "userId": 42}
+                    if sess.cookie("passToken") else {"_sign": "S"})
+        routes = {"/identity/auth/verifyEmail": {"code": 0, "location": "https://account.xiaomi.com/identity/result/check?x"},
+                  "/pass/serviceLogin": service_login}
+        with self.fake(routes, calls):
+            auth, sess = xiaomi_cloud.verify("8297", "pw", {"cookies": [], "context": "CTX123", "flag": 8}, " 123456 ")
+        self.assertEqual(auth, {"user_id": "42", "service_token": "TOK", "ssecurity": "SS"})
+        self.assertIn("passToken", [c[0] for c in sess["cookies"]])     # legközelebb kód nélkül
+        ticket = [d for u, p, d in calls if u.endswith("verifyEmail") and d.get("ticket")]
+        self.assertEqual(ticket[0]["ticket"], "123456"); self.assertEqual(ticket[0]["trust"], "true")
+
+    def test_bad_code(self):
+        with self.fake({"/identity/auth/verifyEmail": {"code": 70014}}, []), self.assertRaises(xiaomi_cloud.XiaomiError) as cm:
+            xiaomi_cloud.verify("8297", "pw", {"cookies": [], "context": "C", "flag": 8}, "1")
+        self.assertIn("hibás", str(cm.exception))
+
+    def test_stable_device_id(self):
+        a, b = xiaomi_cloud._Sess("8297"), xiaomi_cloud._Sess("8297")
+        self.assertEqual(a.cookie("deviceId"), b.cookie("deviceId")); self.assertEqual(a.ua, b.ua)
+
+    def test_main_stores_pending_and_collect_skips_it(self):
+        sb = FakeSb()
+        buf = io.StringIO()
+        nv = xiaomi_cloud.NeedVerify({"cookies": [], "context": "C", "flag": 8}, "e-mail")
+        with mock.patch.object(robots.SupabaseRest, "from_env", return_value=sb), mock.patch.object(robots, "mi_login", side_effect=nv), \
+                mock.patch.dict(os.environ, {"XIAOMI_USERNAME": "u", "XIAOMI_PASSWORD": "p"}), redirect_stdout(buf):
+            self.assertEqual(robots.main(["xiaomi"]), 0)
+        self.assertIn("xiaomi-kod", buf.getvalue())
+        table, rows = sb.upserts[0]
+        self.assertEqual(rows[0]["id"], "xiaomi"); self.assertIn("pending", rows[0]["data"])
+        sb2 = FakeSb({"xiaomi": rows[0]["data"]})
+        with mock.patch.object(robots, "mi_status", side_effect=AssertionError("nem hívható")):
+            self.assertEqual(robots.collect(sb2), 0)
+
+    def test_main_code_step(self):
+        sb = FakeSb({"xiaomi": {"pending": {"cookies": [], "context": "C", "flag": 8}}})
+        buf = io.StringIO()
+        with mock.patch.object(robots.SupabaseRest, "from_env", return_value=sb), \
+                mock.patch.object(robots, "mi_verify", return_value=({"user_id": "1", "service_token": "t", "ssecurity": "s"}, {"cookies": []})) as mv, \
+                mock.patch.object(robots, "mi_status", return_value=[{}]), \
+                mock.patch.dict(os.environ, {"XIAOMI_USERNAME": "u", "XIAOMI_PASSWORD": "p", "ROBOT_CODE": "654321"}), redirect_stdout(buf):
+            self.assertEqual(robots.main(["xiaomi-kod"]), 0)
+        self.assertEqual(mv.call_args.args[3], "654321")
+        data = sb.upserts[0][1][0]["data"]
+        self.assertNotIn("pending", data); self.assertIn("session", data)
+        self.assertIn("Xiaomi: OK, 1", buf.getvalue())

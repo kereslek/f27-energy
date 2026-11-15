@@ -10,7 +10,10 @@ ezt a modult kell igazítani.
 Belépés (egyszer; Actions > "Robotok bejelentkezése"):
     roborock-kod     a Roborock e-mailt küld egy kóddal (ROBOROCK_EMAIL secret)
     roborock         belépés a kóddal (a workflow inputja) vagy jelszóval (ROBOROCK_PASSWORD secret)
-    xiaomi           belépés felhasználónévvel és jelszóval (XIAOMI_USERNAME, XIAOMI_PASSWORD secret)
+    xiaomi           belépés felhasználónévvel és jelszóval (XIAOMI_USERNAME, XIAOMI_PASSWORD secret); ha a Xiaomi
+                     kétlépcsős jóváhagyást kér, kódot küld (e-mail vagy SMS), a függő állapot a robot_auth-ba kerül
+    xiaomi-kod       a kapott kóddal befejezi a jóváhagyást; a megbízható munkamenetet (passToken) eltesszük,
+                     így a következő xiaomi lépéshez már nem kell kód
 A kapott tokeneket a Supabase `robot_auth` táblájába írjuk (012_robots.sql): ehhez csak a titkos
 kulcs fér hozzá, a böngésző és a bemutató link soha. Jelszót nem tárolunk.
 
@@ -136,9 +139,14 @@ async def rr_command(auth: dict, cmd: str) -> None:
 
 
 # ---- Xiaomi (Dreame) ---------------------------------------------------------------------------------
-def mi_login(username: str, password: str) -> dict:
+def mi_login(username: str, password: str, state: dict | None = None) -> tuple[dict, dict]:
     from . import xiaomi_cloud
-    return xiaomi_cloud.login(username, password)
+    return xiaomi_cloud.login(username, password, state)
+
+
+def mi_verify(username: str, password: str, pending: dict, code: str) -> tuple[dict, dict]:
+    from . import xiaomi_cloud
+    return xiaomi_cloud.verify(username, password, pending, code)
 
 
 def mi_vacuums(auth: dict) -> list[dict]:
@@ -184,7 +192,7 @@ def collect(sb: SupabaseRest) -> int:
                 got["R2"] = st[0]
         except Exception as e:                       # noqa: BLE001 (a log publikus: csak a hiba fajtája)
             print(f"Roborock: HIBA ({type(e).__name__})")
-    if mi:
+    if mi and mi.get("service_token"):               # függő jóváhagyásnál még nincs token
         try:
             st = mi_status(mi)
             if st:
@@ -230,7 +238,7 @@ def main(argv: list[str]) -> int:
             asyncio.run(rr_request_code(env["ROBOROCK_EMAIL"]))
             print("Roborock: a kódot elküldtük e-mailben. Írd be a „Robotok bejelentkezése” workflow-ba (roborock, kód).")
         elif what == "roborock":
-            pw, code = env.get("ROBOROCK_PASSWORD", ""), env.get("ROBOROCK_CODE", "").strip()
+            pw, code = env.get("ROBOROCK_PASSWORD", ""), (env.get("ROBOT_CODE") or env.get("ROBOROCK_CODE") or "").strip()
             if not pw and not code:
                 print("HIBA: kell a ROBOROCK_PASSWORD secret vagy a kód (előbb: roborock-kod)")
                 return 1
@@ -239,9 +247,27 @@ def main(argv: list[str]) -> int:
             auth_put(sb, "roborock", auth)
             print(f"Roborock: OK, {n} robot")
         elif what == "xiaomi":
-            auth = mi_login(env["XIAOMI_USERNAME"], env["XIAOMI_PASSWORD"])
+            from .xiaomi_cloud import NeedVerify
+            stored = auth_get(sb, "xiaomi") or {}
+            try:
+                auth, sess = mi_login(env["XIAOMI_USERNAME"], env["XIAOMI_PASSWORD"], stored.get("session"))
+            except NeedVerify as nv:
+                auth_put(sb, "xiaomi", {**{k: v for k, v in stored.items() if k != "pending"}, "pending": nv.pending})
+                print(f"Xiaomi: jóváhagyás kell, a kódot elküldtük ({nv.channel}). "
+                      "Írd be a „Robotok bejelentkezése” workflow-ba (xiaomi-kod, kód).")
+                return 0
             n = len(mi_status(auth))
-            auth_put(sb, "xiaomi", auth)
+            auth_put(sb, "xiaomi", {**auth, "session": sess})
+            print(f"Xiaomi: OK, {n} Dreame robot")
+        elif what == "xiaomi-kod":
+            stored = auth_get(sb, "xiaomi") or {}
+            code = (env.get("ROBOT_CODE") or env.get("ROBOROCK_CODE") or "").strip()
+            if not stored.get("pending") or not code:
+                print("HIBA: előbb a xiaomi lépés (az küldi a kódot), utána ide a kapott kód")
+                return 1
+            auth, sess = mi_verify(env["XIAOMI_USERNAME"], env["XIAOMI_PASSWORD"], stored["pending"], code)
+            n = len(mi_status(auth))
+            auth_put(sb, "xiaomi", {**auth, "session": sess})
             print(f"Xiaomi: OK, {n} Dreame robot")
         elif what == "status":
             print(f"Robotok: {collect(sb)} jelentett")
@@ -249,7 +275,7 @@ def main(argv: list[str]) -> int:
             command(sb, argv[1], argv[2])
             print("Parancs elküldve.")
         else:
-            print("Használat: roborock-kod | roborock | xiaomi | status | cmd R1|R2 start|pause|dock")
+            print("Használat: roborock-kod | roborock | xiaomi | xiaomi-kod | status | cmd R1|R2 start|pause|dock")
             return 2
     except KeyError as e:
         print(f"HIBA: hiányzó secret: {e.args[0]}")

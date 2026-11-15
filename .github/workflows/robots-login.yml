@@ -4,7 +4,9 @@ name: Robotok bejelentkezése (O2B)
 # Supabase `robot_auth` táblájába írja (012_robots.sql; csak a titkos kulcs éri el). Jelszót nem tárol.
 #   roborock-kod  a Roborock e-mailt küld egy kóddal (ROBOROCK_EMAIL secret)
 #   roborock      belépés: a kapott kód ide a "kod" mezőbe, VAGY ROBOROCK_PASSWORD secret
-#   xiaomi        belépés: XIAOMI_USERNAME + XIAOMI_PASSWORD secret (a Dreame a Xiaomi Home-ban van)
+#   xiaomi        belépés: XIAOMI_USERNAME + XIAOMI_PASSWORD secret (a Dreame a Xiaomi Home-ban van);
+#                 ha a Xiaomi jóváhagyást kér, kódot küld (e-mail vagy SMS)
+#   xiaomi-kod    a Xiaomi kódja ide a "kod" mezőbe
 # A log publikus: csak OK / HIBA és a robotok száma kerül bele (e-mail, név, azonosító, token nem).
 
 on:
@@ -13,10 +15,10 @@ on:
       lepes:
         description: "Mit csináljon"
         type: choice
-        options: [roborock-kod, roborock, xiaomi]
+        options: [roborock-kod, roborock, xiaomi, xiaomi-kod]
         default: roborock-kod
       kod:
-        description: "Roborock e-mailben kapott kód (csak a roborock lépéshez, ha nincs jelszó)"
+        description: "A kapott kód (roborock vagy xiaomi-kod lépéshez)"
         required: false
         default: ""
 
@@ -49,7 +51,7 @@ jobs:
         # A kódot az esemény JSON-ből olvassuk, így a lépés fejléce sem írja ki; utána minden logban ***.
         run: |
           KOD=$(jq -r '.inputs.kod // ""' "$GITHUB_EVENT_PATH" | tr -d '[:space:]')
-          if [ -n "$KOD" ]; then echo "::add-mask::$KOD"; echo "ROBOROCK_CODE=$KOD" >> "$GITHUB_ENV"; fi
+          if [ -n "$KOD" ]; then echo "::add-mask::$KOD"; echo "ROBOT_CODE=$KOD" >> "$GITHUB_ENV"; fi
       - name: Belépés
         env:
           SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}

@@ -24,13 +24,15 @@ ezt kell igazítani.
    - Roborock jelszó nélkül: először `roborock-kod` (e-mailt kapsz egy kóddal), utána `roborock`
      a kóddal a „kod” mezőben (a kód néhány percig érvényes).
    - Roborock jelszóval: rögtön `roborock`.
-   - Xiaomi: `xiaomi`. Ha a Xiaomi jóváhagyást kér (SMS vagy e-mail), lépj be egyszer a Xiaomi Home
-     appba, hagyd jóvá, és futtasd újra.
+   - Xiaomi: `xiaomi`. Ha a Xiaomi kétlépcsős jóváhagyást kér, a lépés kódot küld (e-mailben, ha a
+     fiókhoz van e-mail, különben SMS-ben), a log ezt írja: „jóváhagyás kell, a kódot elküldtük”.
+     Utána `xiaomi-kod` a kóddal a „kod” mezőben. A jóváhagyott munkamenetet eltesszük (stabil
+     eszközazonosítóval), így a következő `xiaomi` lépéshez már nem kell kód.
 3. A log csak annyit ír: „OK, 1 robot”. Utána a következő adatgyűjtő körben megjelennek az élő adatok.
 
 A belépési tokenek a Supabase `robot_auth` táblájában vannak (`supabase/migrations/012_robots.sql`),
 ahhoz csak a titkos kulcs fér hozzá: a böngésző, a családtag és a bemutató link nem. Jelszót nem
-tárolunk. Ha egy belépés lejár, a kártya „nincs adat”-ot mutat: futtasd újra a 2. lépést.
+tárolunk (a Xiaomi jóváhagyott munkamenete, a passToken, ugyanitt van). Ha egy belépés lejár, a kártya „nincs adat”-ot mutat: futtasd újra a 2. lépést.
 
 ## Vezérlés (következő lépés)
 
