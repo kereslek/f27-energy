@@ -1,0 +1,75 @@
+name: Kapcsolás telepítése (O2B)
+
+# Kézzel indítható. Az O2B távkapcsolását és időzítését telepíti:
+#   1. adatbázis: supabase/migrations/010_control.sql (szabályok, időzítők, napló, 3 mp-es zár),
+#   2. a "control" Supabase-függvény titkai a GitHub Secretsből (Tuya-kulcs, a projekt titkos kulcsa),
+#   3. a függvény telepítése (supabase/functions/control),
+#   4. percenkénti időzítő (pg_cron) a szabályokhoz és egyszeri időzítőkhöz.
+# A log publikus: kulcs, érték nem kerül bele (a GitHub maszkolja, és mi sem írjuk ki).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Projekt azonosító
+        run: |
+          REF=$(echo "$O2B_SUPABASE_URL" | sed -E 's#^https://([a-z0-9]{20})\.supabase\.co/?$#\1#')
+          [ ${#REF} -eq 20 ] || { echo "::error::Az O2B_SUPABASE_URL nem https://<ref>.supabase.co alakú"; exit 1; }
+          echo "REF=$REF" >> "$GITHUB_ENV"
+      - name: 1. Adatbázis (010_control.sql)
+        env:
+          TARGET: o2b
+          SQL_FILE: supabase/migrations/010_control.sql
+        run: python -m f27.migrate
+      - name: 2. Titkok a függvénynek
+        env:
+          TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
+          TUYA_ACCESS_SECRET: ${{ secrets.TUYA_ACCESS_SECRET }}
+          TUYA_ENDPOINT: ${{ secrets.TUYA_ENDPOINT }}
+          O2B_SECRET: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
+        run: |
+          KEY=$(openssl rand -hex 24); echo "::add-mask::$KEY"; echo "CRON_KEY=$KEY" >> "$GITHUB_ENV"
+          PINKS=$(python -c "import json;c=json.load(open('sites/o2b/site.json',encoding='utf-8'))['control'];print(json.dumps(c['pinks']))")
+          CONF=$(python -c "import json;c=json.load(open('sites/o2b/site.json',encoding='utf-8'))['control'];print(json.dumps(c['confirm']))")
+          F=$(mktemp)
+          {
+            echo "TUYA_ACCESS_ID=$TUYA_ACCESS_ID"; echo "TUYA_ACCESS_SECRET=$TUYA_ACCESS_SECRET"
+            echo "TUYA_ENDPOINT=${TUYA_ENDPOINT:-https://openapi.tuyaeu.com}"; echo "O2B_SECRET=$O2B_SECRET"
+            echo "CONTROL_CRON_KEY=$KEY"; echo "CONTROL_PINKS=$PINKS"; echo "CONTROL_CONFIRM=$CONF"
+            echo "SITE_LAT=47.48"; echo "SITE_LON=19.04"
+          } > "$F"
+          supabase secrets set --project-ref "$REF" --env-file "$F" > /dev/null
+          rm -f "$F"; echo "Titkok beállítva."
+      - name: 3. Függvény telepítése
+        run: supabase functions deploy control --project-ref "$REF" --no-verify-jwt --use-api
+      - name: 4. Percenkénti időzítő
+        run: |
+          F=supabase/_cron_tmp.sql
+          cat > "$F" <<SQL
+          create extension if not exists pg_cron;
+          create extension if not exists pg_net with schema extensions;
+          select cron.schedule('o2b-control-tick', '* * * * *', \$cron\$
+            select net.http_post(
+              url := 'https://${REF}.supabase.co/functions/v1/control',
+              headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-key', '${CRON_KEY}'),
+              body := '{"action":"tick"}'::jsonb)
+          \$cron\$);
+          SQL
+          TARGET=o2b SQL_FILE="$F" python -m f27.migrate
+          rm -f "$F"

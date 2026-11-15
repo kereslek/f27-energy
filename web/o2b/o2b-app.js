@@ -85,6 +85,7 @@
     L.M1 = { online: true, status: { pir: 'none', battery_percentage: 100 } };
     st.latest = L; st.wx = st.wx || { temp: 6.1 }; st.motion = now - 12 * 60000;
     st.bat = [{ pink: 'T3', label: 'Hőmérő, hálószoba', level: 'due14', eta_lo: 0, eta_hi: 14 }];
+    if (st.ctl) { st.ctl.timers = []; st.ctl.rules = [{ id: 'd1', pink: 'C3', action: 'on', kind: 'sunset', minute: -15, days: 127, enabled: true }, { id: 'd2', pink: 'C3', action: 'off', kind: 'time', minute: 1410, days: 31, enabled: true }, { id: 'd3', pink: 'C3', action: 'off', kind: 'time', minute: 1439, days: 96, enabled: true }, { id: 'd4', pink: 'C2', action: 'on', kind: 'time', minute: 1050, days: 127, enabled: true }, { id: 'd5', pink: 'C2', action: 'off', kind: 'time', minute: 1350, days: 127, enabled: true }]; }
   }
 
   // ---- égbolt: napszak, felhők, a budai hegyek és a Gellért-hegy ------------------------------------
@@ -511,24 +512,6 @@
     st.sel = st.sel === 'p:' + id ? null : 'p:' + id;
     drawItems('lo'); drawItems('up'); showInfo();
   }
-  // Kapcsolás és időzítés a konnektoros lámpáknál: a felület már látszik, de amíg a távkapcsolás nincs
-  // bekötve (a tulaj döntésére vár), a gombok tiltottak, és a kártya ezt ki is mondja.
-  var CTL_PLAN = {
-    C2: ['Napnyugtakor BE', 'Minden nap 22:30 KI'], C3: ['Napnyugta előtt 15 perccel BE', '23:30 KI (hétvégén 0:30)'],
-    C4: ['Ha mozgás van a lépcsőn este, BE 10 percre'], C5: ['Napnyugtakor BE', '22:30 KI'],
-    C6: ['Advent idején 16:30 BE', '22:00 KI'], C7: ['Advent idején 16:30 BE', '22:00 KI'], C8: ['Napnyugtakor BE', '23:00 KI'],
-    C1: ['Csak megerősítéssel kapcsolható (meleg víz)']
-  };
-  var CTL_MOCK = 'https://claude.ai/artifact/GGsjdkiNfYqbxvrunumHMX';
-  function controlPreview(d, r) {
-    if (d.role !== 'plug') return '';
-    var on = r && r.online !== false && isOn(r.status), dis = ' disabled title="A távkapcsolás még nincs bekötve"';
-    return '<div class="ctl"><div class="ctlh">KAPCSOLÁS ÉS IDŐZÍTÉS <span class="soon">HAMAROSAN</span></div>' +
-      '<div class="ctlrow"><span>' + (on ? 'Most BE' : 'Most KI') + '</span><button class="csw" role="switch" aria-checked="' + on + '"' + dis + ' aria-label="Kapcsoló"></button></div>' +
-      '<div class="ctlq"><button class="btn sm"' + dis + '>BE 1 órára</button><button class="btn sm"' + dis + '>KI 23:00-kor</button><button class="btn sm"' + dis + '>Napnyugtakor BE</button></div>' +
-      '<div class="ctlr">Javasolt szabályok:<ul>' + (CTL_PLAN[d.pink] || ['Napnyugtakor BE', '23:00 KI']).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' +
-      '<div class="ctln">A gombok a távkapcsolás bekötése után élnek. <a href="' + CTL_MOCK + '" target="_blank" rel="noopener">Minták és működés</a></div></div>';
-  }
   function infoOpen(box) {
     box.insertAdjacentHTML('beforeend', '<button class="btn ib sm ix" type="button" aria-label="Bezárás">✕</button>');
     box.querySelector('.ix').addEventListener('click', function () { st.sel = null; box.hidden = true; drawItems('lo'); drawItems('up'); drawOverlay(); list(); });
@@ -548,7 +531,7 @@
     var s = devState(d), r = st.latest[d.pink], b = (st.bat || []).filter(function (x) { return x.pink === d.pink; })[0];
     box.innerHTML = '<b>' + esc(d.label) + '</b><br>' + esc(ROOM_NAMES[d.room] || '') + ' · ' + esc(ROLE_NAME[d.role] || d.role) +
       '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>' + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
-      (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') + controlPreview(d, r);
+      (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') + controlCard(d);
     infoOpen(box);
   }
 
@@ -652,7 +635,7 @@
     $('dh').textContent = 'Eszközök · ' + on + ' online';
   }
   function list() {
-    var by = {}, box = $('rooms'); box.innerHTML = '';
+    var by = {}, box = $('rooms'); box.innerHTML = (typeof switchesHtml === 'function' && (window.innerWidth || 1440) < 900) ? switchesHtml() : '';
     st.devs.filter(function (d) { return d.role !== 'ir_hub'; }).forEach(function (d) { (by[d.room] = by[d.room] || []).push(d); });
     Object.keys(ROOM_NAMES).forEach(function (rid) {
       if (!by[rid]) return;
@@ -725,7 +708,7 @@
     var due = BAT ? BAT.due(st.bat) : [];
     var bats = due.length ? due.map(function (r) { return '<div class="br ' + r.level + '"><b>' + esc(r.label || r.pink) + '</b><span>' + esc(BAT.when(r)) + '</span></div>'; }).join('')
       : '<div class="br ok">Minden elem rendben.</div>';
-    box.innerHTML = '<div class="ovs"><div class="ovh">HŐMÉRSÉKLETEK <small>cél: ' + target() + ' °C</small></div><div class="tiles">' + tiles + '</div></div>' +
+    box.innerHTML = switchesHtml() + '<div class="ovs"><div class="ovh">HŐMÉRSÉKLETEK <small>cél: ' + target() + ' °C</small></div><div class="tiles">' + tiles + '</div></div>' +
       '<div class="ovs"><div class="ovh">FOGYASZTÁS MOST <b>' + fmt(tot, 0) + ' W</b></div>' + rows + '</div>' +
       '<div class="ovs"><div class="ovh">ELEMEK</div>' + bats + '</div>' +
       '<div class="ovs"><div class="ovh">FŰTÉS</div><div class="br ok">Gázkazán (Savio), Computherm termosztát az étkezőben: még nincs bekötve, a hőmérők mutatják a hatását.</div></div>';
@@ -942,6 +925,197 @@
     $('pam').classList.remove('mini');
   }
 
+  // ---- Kapcsolás és időzítés (supabase/functions/control, 010_control.sql) ----------------------------
+  // A: az eszköz kártyáján kapcsoló, gyors időzítők, szabályok; B: Kapcsolók blokk jelenetekkel (Áttekintés
+  // panel, telefonon az Eszközök lap teteje); C: heti időzítő lap. Belépés nélkül demó: csak a térkép változik.
+  var CTL_PINKS = ['C2', 'C3', 'C5', 'C4', 'C6', 'C7', 'C8', 'C1'], CTL_CONFIRM = { C1: true };
+  var SCENES = [
+    { id: 'esti', n: 'Esti hangulat', d: 'TV led, dupla lámpa, tükör', set: [['C3', true], ['C2', true], ['C5', true]] },
+    { id: 'film', n: 'Filmezés', d: 'csak a TV led', set: [['C3', true], ['C2', false], ['C5', false]] },
+    { id: 'unnep', n: 'Ünnep', d: 'karácsonyfa, szarvas, erkély', set: [['C6', true], ['C7', true], ['C8', true]] },
+    { id: 'le', n: 'Minden le', d: 'minden lámpa KI', set: [['C3', false], ['C2', false], ['C5', false], ['C4', false], ['C6', false], ['C7', false], ['C8', false]] }
+  ];
+  var DAYS = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
+  st.ctl = { rules: [], timers: [], missing: false, busy: {}, ask: null };
+  function devOf(p) { return st.devs.filter(function (d) { return d.pink === p; })[0] || DEFAULT_DEVS.filter(function (d) { return d.pink === p; })[0] || { pink: p, label: p }; }
+  function shortName(p) { return devOf(p).label.replace(/ \(.*\)$/, ''); }
+  function plugOn(p) { var r = st.latest[p]; return !!(r && r.online !== false && isOn(r.status)); }
+  function plugOnline(p) { var r = st.latest[p]; return !!(r && r.online !== false); }
+  function hm(min) { min = ((min % 1440) + 1440) % 1440; return ('0' + Math.floor(min / 60)).slice(-2) + ':' + ('0' + (min % 60)).slice(-2); }
+  function sunMin(kind) { if (!SUN) return kind === 'sunset' ? 16 * 60 : 7 * 60; var t = SUN.times(Date.now(), LAT, LON), d = new Date(kind === 'sunset' ? t.set : t.rise); return d.getHours() * 60 + d.getMinutes(); }
+  function ruleWhen(r) {
+    if (r.kind === 'time') return hm(r.minute) + '-kor';
+    var base = r.kind === 'sunset' ? 'napnyugta' : 'napkelte', m = r.minute;
+    return m === 0 ? base + 'kor' : base + (m < 0 ? ' előtt ' + (-m) : ' után ' + m) + ' perccel';
+  }
+  function ruleDays(d) { if (d === 127) return 'minden nap'; if (d === 31) return 'hétköznap'; if (d === 96) return 'hétvégén'; return DAYS.filter(function (x, i) { return d & (1 << i); }).join(', '); }
+  function ruleMinute(r) { return r.kind === 'time' ? r.minute : sunMin(r.kind) + r.minute; }
+
+  function loadControl() {
+    if (!sb || !st.user) return;
+    var miss = function (e) { return e && (e.code === 'PGRST205' || e.code === '42P01'); };
+    Promise.all([
+      sb.from('control_rules').select('id,pink,action,kind,minute,days,enabled').order('created_at', { ascending: true }),
+      sb.from('control_timers').select('id,pink,action,due_at,label').order('due_at', { ascending: true })
+    ]).then(function (r) {
+      st.ctl.missing = miss(r[0].error) || miss(r[1].error);
+      st.ctl.rules = r[0].error ? [] : r[0].data || []; st.ctl.timers = r[1].error ? [] : r[1].data || [];
+      ctlRender();
+    }, function () {});
+  }
+  function ctlRender() { showInfo(); overview(); schedRender(); if (!$('devsheet').hidden) list(); }
+
+  function callControl(body) {
+    if (!sb || !st.user) return Promise.resolve({ ok: true, demo: true });
+    return sb.auth.getSession().then(function (r) {
+      var tok = r && r.data && r.data.session && r.data.session.access_token;
+      return fetch(cfg.supabaseUrl.replace(/\/$/, '') + '/functions/v1/control', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + tok }, body: JSON.stringify(body)
+      }).then(function (x) { return x.json().catch(function () { return { ok: false, error: 'HTTP ' + x.status }; }); });
+    }).catch(function () { return { ok: false, error: 'a kapcsolás nem érhető el (hálózat)' }; });
+  }
+  function setLocal(p, on) {
+    var r = st.latest[p] = st.latest[p] || { online: true, status: {} }, s = r.status = Object.assign({}, r.status || {});
+    if ('switch' in s && !('switch_1' in s)) s.switch = on; else s.switch_1 = on;
+    if (!on) s.cur_power = 0;
+  }
+  function switchPlug(p, on, confirmed) {
+    if (CTL_CONFIRM[p] && !confirmed) { st.ctl.ask = { p: p, on: on }; ctlRender(); return; }
+    st.ctl.ask = null; st.ctl.busy[p] = true; ctlRender();
+    callControl({ action: 'switch', pink: p, on: on, confirm: !!confirmed }).then(function (res) {
+      st.ctl.busy[p] = false;
+      if (res && res.ok) { setLocal(p, on); toast(shortName(p) + (on ? ' bekapcsolva' : ' kikapcsolva') + (res.demo ? ' (demó: belépve tényleg kapcsol)' : ''), 'ok'); }
+      else toast(shortName(p) + ': ' + ((res && res.error) || 'nem sikerült') + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err');
+      render(); drawOverlay();
+    });
+  }
+  function runScene(sc) {
+    st.ctl.busy.scene = sc.id; overview(); list();
+    toast(sc.n + ': ' + sc.set.length + ' eszköz, egyenként 3 mp-es szünettel…', '');
+    if (!sb || !st.user) { sc.set.forEach(function (x) { setLocal(x[0], x[1]); }); st.ctl.busy.scene = null; render(); drawOverlay(); toast(sc.n + ' kész (demó)', 'ok'); return; }
+    callControl({ action: 'scene', items: sc.set }).then(function (res) {
+      st.ctl.busy.scene = null;
+      var good = (res && res.results || []).filter(function (x) { return x[1]; });
+      good.forEach(function (x) { var w = sc.set.filter(function (y) { return y[0] === x[0]; })[0]; if (w) setLocal(w[0], w[1]); });
+      toast(res && res.ok ? sc.n + ': ' + good.length + '/' + sc.set.length + ' kész' : sc.n + ': ' + ((res && res.error) || 'nem sikerült'), res && res.ok && good.length === sc.set.length ? 'ok' : 'err');
+      render(); drawOverlay();
+    });
+  }
+  function addTimer(p, action, due, label) {
+    if (!sb || !st.user) { st.ctl.timers.push({ id: 'demo' + Date.now(), pink: p, action: action, due_at: due.toISOString(), label: label }); ctlRender(); toast('Időzítő beállítva (demó)', 'ok'); return Promise.resolve(); }
+    return sb.from('control_timers').insert({ pink: p, action: action, due_at: due.toISOString(), label: label }).then(function (r) {
+      if (r.error) toast('Az időzítő nem menthető' + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err'); else toast('Időzítő: ' + label, 'ok');
+      loadControl();
+    });
+  }
+  function quick(p, kind) {
+    var now = new Date();
+    if (kind === 'on1h') { switchPlug(p, true, CTL_CONFIRM[p] ? true : false); addTimer(p, 'off', new Date(now.getTime() + 3600e3), 'KI ' + hm(now.getHours() * 60 + now.getMinutes() + 60) + '-kor'); }
+    else if (kind === 'off23') { var t = new Date(now); t.setHours(23, 0, 0, 0); if (t <= now) t.setDate(t.getDate() + 1); addTimer(p, 'off', t, 'KI 23:00-kor'); }
+    else if (kind === 'onsunset') { var s = SUN ? new Date(SUN.times(Date.now(), LAT, LON).set) : new Date(now.getTime() + 3600e3); if (s <= now) s = new Date(s.getTime() + 864e5); addTimer(p, 'on', s, 'BE napnyugtakor (' + hm(s.getHours() * 60 + s.getMinutes()) + ')'); }
+  }
+  function addRule(p, action, whenKey, days, timeStr) {
+    var r = { pink: p, action: action, kind: 'time', minute: 0, days: days, enabled: true };
+    if (whenKey === 'sunset') r.kind = 'sunset'; else if (whenKey === 'sunset-15') { r.kind = 'sunset'; r.minute = -15; } else if (whenKey === 'sunrise') r.kind = 'sunrise';
+    else { var m = /^(\d{1,2}):(\d{2})$/.exec(timeStr || ''); if (!m) { toast('Adj meg időpontot (ÓÓ:PP).', 'err'); return; } r.minute = Math.min(1439, +m[1] * 60 + +m[2]); }
+    if (!sb || !st.user) { r.id = 'demo' + Date.now(); st.ctl.rules.push(r); ctlRender(); toast('Szabály hozzáadva (demó)', 'ok'); return; }
+    sb.from('control_rules').insert(r).then(function (x) { if (x.error) toast('A szabály nem menthető' + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err'); else toast('Szabály mentve: ' + shortName(p) + ' ' + (action === 'on' ? 'BE' : 'KI') + ', ' + ruleWhen(r), 'ok'); loadControl(); });
+  }
+  function ruleOp(id, op) {
+    var r = st.ctl.rules.filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    if (!sb || !st.user) { if (op === 'del') st.ctl.rules = st.ctl.rules.filter(function (x) { return x !== r; }); else r.enabled = !r.enabled; ctlRender(); return; }
+    var q = op === 'del' ? sb.from('control_rules').delete().eq('id', id) : sb.from('control_rules').update({ enabled: !r.enabled }).eq('id', id);
+    q.then(function () { loadControl(); });
+  }
+  function timerDel(id) {
+    if (!sb || !st.user) { st.ctl.timers = st.ctl.timers.filter(function (x) { return x.id !== id; }); ctlRender(); return; }
+    sb.from('control_timers').delete().eq('id', id).then(function () { loadControl(); });
+  }
+
+  function swHtml(p, big) {
+    var on = plugOn(p), busy = st.ctl.busy[p], off = !plugOnline(p) && st.live;
+    return '<button class="csw' + (big ? ' big' : '') + (busy ? ' busy' : '') + '" role="switch" aria-checked="' + on + '" data-ctl="sw" data-p="' + p + '"' + (off ? ' disabled title="Az eszköz offline"' : '') + ' aria-label="' + esc(shortName(p)) + ' kapcsoló"></button>';
+  }
+  function askHtml(p) {
+    var a = st.ctl.ask; if (!a || a.p !== p) return '';
+    return '<div class="ask">Biztos? A bojler adja a fenti meleg vizet. <button class="btn sm y" data-ctl="yes">Igen, ' + (a.on ? 'BE' : 'KI') + '</button><button class="btn sm" data-ctl="no">Mégse</button></div>';
+  }
+  function rulesHtml(rules, withName) {
+    if (!rules.length) return '<div class="none">Még nincs szabály.</div>';
+    return '<ul class="rl">' + rules.map(function (r) {
+      return '<li class="' + (r.enabled ? '' : 'dis') + '"><span class="t">' + (withName ? '<b>' + esc(shortName(r.pink)) + '</b> ' : '') + (r.action === 'on' ? 'BE' : 'KI') + ' ' + esc(ruleWhen(r)) + ', ' + esc(ruleDays(r.days)) + '</span>' +
+        '<button class="mini" data-ctl="rtog" data-id="' + r.id + '">' + (r.enabled ? 'szünet' : 'aktív') + '</button><button class="mini" data-ctl="rdel" data-id="' + r.id + '" aria-label="Szabály törlése">✕</button></li>';
+    }).join('') + '</ul>';
+  }
+  function addFormHtml(p, withDev) {
+    return '<form class="radd" data-ctl="radd"' + (p ? ' data-p="' + p + '"' : '') + '>' +
+      (withDev ? '<select name="p" aria-label="Eszköz">' + CTL_PINKS.map(function (x) { return '<option value="' + x + '">' + esc(shortName(x)) + '</option>'; }).join('') + '</select>' : '') +
+      '<select name="a" aria-label="Mit"><option value="on">BE</option><option value="off">KI</option></select>' +
+      '<select name="w" aria-label="Mikor"><option value="time">időpontban</option><option value="sunset-15">napnyugta előtt 15 p</option><option value="sunset">napnyugtakor</option><option value="sunrise">napkeltekor</option></select>' +
+      '<input name="t" type="time" value="22:30" aria-label="Időpont">' +
+      '<select name="d" aria-label="Napok"><option value="127">minden nap</option><option value="31">hétköznap</option><option value="96">hétvégén</option></select>' +
+      '<button class="btn sm y" type="submit">Hozzáadás</button></form>';
+  }
+  // A: az eszköz kártyáján
+  function controlCard(d) {
+    if (CTL_PINKS.indexOf(d.pink) < 0) return '';
+    var p = d.pink, timers = st.ctl.timers.filter(function (t) { return t.pink === p; }), rules = st.ctl.rules.filter(function (r) { return r.pink === p; });
+    return '<div class="ctl"><div class="ctlh">KAPCSOLÁS ÉS IDŐZÍTÉS' + (st.ctl.missing ? ' <span class="soon">MÉG NINCS TELEPÍTVE</span>' : '') + '</div>' +
+      '<div class="ctlrow"><span>' + (plugOn(p) ? 'Most BE' : 'Most KI') + (st.ctl.busy[p] ? ' · kapcsol…' : '') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) +
+      '<div class="ctlq"><button class="btn sm" data-ctl="q" data-k="on1h" data-p="' + p + '">BE 1 órára</button><button class="btn sm" data-ctl="q" data-k="off23" data-p="' + p + '">KI 23:00-kor</button><button class="btn sm" data-ctl="q" data-k="onsunset" data-p="' + p + '">BE napnyugtakor</button></div>' +
+      (timers.length ? '<div class="sub">Időzítők</div><ul class="rl">' + timers.map(function (t) { return '<li><span class="t">' + esc(t.label || (t.action === 'on' ? 'BE' : 'KI')) + '</span><button class="mini" data-ctl="tdel" data-id="' + t.id + '" aria-label="Időzítő törlése">✕</button></li>'; }).join('') + '</ul>' : '') +
+      '<div class="sub">Szabályok (minden héten)</div>' + rulesHtml(rules) + addFormHtml(p) +
+      (CTL_CONFIRM[p] ? '<div class="ctln">A bojlert csak megerősítéssel lehet kapcsolni.</div>' : '') + '</div>';
+  }
+  // B: Kapcsolók blokk
+  function switchesHtml() {
+    return '<div class="ovs swb"><div class="ovh">KAPCSOLÓK <button class="mini lnk" data-ctl="sched">Heti időzítő</button></div>' +
+      (st.ctl.missing ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
+      '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>' +
+      CTL_PINKS.map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + p + (plugOnline(p) || !st.live ? '' : ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + '</div>';
+  }
+  // C: heti időzítő lap
+  function schedRender() {
+    var box = $('schedbody'); if (!box || $('schedsheet').hidden) return;
+    var pinks = CTL_PINKS.filter(function (p) { return st.ctl.rules.some(function (r) { return r.pink === p && r.enabled; }); });
+    var grid = '<div class="wk"><span></span>' + DAYS.map(function (d) { return '<span class="h">' + d + '</span>'; }).join('');
+    pinks.forEach(function (p) {
+      grid += '<span class="dn">' + esc(shortName(p)) + '</span>';
+      DAYS.forEach(function (dn, i) {
+        var ev = st.ctl.rules.filter(function (r) { return r.pink === p && r.enabled && (r.days & (1 << i)); }).map(function (r) { return [ruleMinute(r), r.action]; }).sort(function (a, b) { return a[0] - b[0]; });
+        var bars = '', onAt = null;
+        ev.forEach(function (e) { if (e[1] === 'on' && onAt == null) onAt = e[0]; else if (e[1] === 'off' && onAt != null) { bars += '<i style="left:' + (onAt / 14.4) + '%;width:' + ((e[0] - onAt) / 14.4) + '%"></i>'; onAt = null; } });
+        if (onAt != null) bars += '<i style="left:' + (onAt / 14.4) + '%;width:' + ((1440 - onAt) / 14.4) + '%"></i>';
+        grid += '<span class="cell" title="' + esc(shortName(p)) + ', ' + dn + '">' + bars + '</span>';
+      });
+    });
+    grid += '</div><div class="ax"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>';
+    box.innerHTML = (pinks.length ? grid : '<div class="none">Még nincs aktív szabály. Adj hozzá egyet lent, vagy egy lámpa kártyáján.</div>') +
+      '<div class="sub">Minden szabály</div>' + rulesHtml(st.ctl.rules, true) + addFormHtml(null, true) +
+      '<div class="ctln">A napnyugtához kötött szabály naponta magától igazodik (ma ' + hm(sunMin('sunset')) + '). A kapcsolások egymás után, 3 mp-es szünettel mennek.</div>';
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-ctl]') : null; if (!b || b.tagName === 'FORM') return;
+    var k = b.getAttribute('data-ctl'), p = b.getAttribute('data-p');
+    if (k === 'sw') switchPlug(p, b.getAttribute('aria-checked') !== 'true');
+    else if (k === 'yes' && st.ctl.ask) switchPlug(st.ctl.ask.p, st.ctl.ask.on, true);
+    else if (k === 'no') { st.ctl.ask = null; ctlRender(); }
+    else if (k === 'q') quick(p, b.getAttribute('data-k'));
+    else if (k === 'rdel' || k === 'rtog') ruleOp(b.getAttribute('data-id'), k === 'rdel' ? 'del' : 'tog');
+    else if (k === 'tdel') timerDel(b.getAttribute('data-id'));
+    else if (k === 'scene') { var sc = SCENES.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0]; if (sc && !st.ctl.busy.scene) runScene(sc); }
+    else if (k === 'open') select(p);
+    else if (k === 'sched') { st.sel = null; showInfo(); drawOverlay(); $('schedsheet').hidden = false; $('devsheet').hidden = true; schedRender(); }
+    else return;
+    e.stopPropagation();
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target; if (!f.getAttribute || f.getAttribute('data-ctl') !== 'radd') return;
+    e.preventDefault();
+    addRule(f.getAttribute('data-p') || f.elements.p.value, f.elements.a.value, f.elements.w.value, +f.elements.d.value, f.elements.t.value);
+  });
+
   // ---- Supabase ------------------------------------------------------------------------------------
   function load() {
     if (!sb || !st.user) return;
@@ -967,7 +1141,7 @@
       var street = (r[5].data || []).filter(function (x) { return x.key === 'street'; })[0];
       var hadStreet = st.street;
       st.street = r[5].error ? null : (street && street.value) || null;
-      st.live = true; batCalc(); render(); streetBox();
+      st.live = true; batCalc(); render(); streetBox(); loadControl();
       if (hadStreet !== st.street) drawWorld();
     });
   }
@@ -1034,6 +1208,7 @@
   on('layouts', 'change', function (e) { var row = st.layouts.filter(function (l) { return l.id === e.target.value; })[0]; if (row) applyLayout(row); });
   on('b-pmin', 'click', function () { var p = $('pam'); p.classList.toggle('mini'); $('b-pmin').textContent = p.classList.contains('mini') ? '+' : '−'; if ((world.clientWidth || 1440) < 900) fit(); });
   on('b-dev', 'click', function () { var s = $('devsheet'); s.hidden = !s.hidden; $('b-dev').setAttribute('aria-expanded', s.hidden ? 'false' : 'true'); if (!s.hidden) { $('logincard').hidden = true; list(); } });
+  on('b-schedx', 'click', function () { $('schedsheet').hidden = true; });
   on('b-devx', 'click', function () { $('devsheet').hidden = true; $('b-dev').setAttribute('aria-expanded', 'false'); });
   on('b-login', 'click', function () {
     var c = $('logincard'); c.hidden = !c.hidden;
@@ -1057,7 +1232,7 @@
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
     if (e.key === 'r' || e.key === 'R') { rotate(e.shiftKey ? -1 : 1); return; }
-    if (e.key === 'Escape') { $('devsheet').hidden = true; $('logincard').hidden = true; st.sel = null; showInfo(); drawPins(); }
+    if (e.key === 'Escape') { $('schedsheet').hidden = true; $('devsheet').hidden = true; $('logincard').hidden = true; st.sel = null; showInfo(); drawPins(); }
   });
   var rsT = 0;
   window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { layoutMode(); fit(); drawSky(); }, 120); });

@@ -261,17 +261,51 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 .rotbtn #rotdeg{font-variant-numeric:tabular-nums;min-width:26px}
 #info .ix{position:absolute;right:8px;top:8px}
 
-/* kapcsolás és időzítés előnézete az eszköz kártyáján */
+/* kapcsolás és időzítés */
 .ctl{margin-top:10px;padding:9px;border-radius:12px;border:2.5px solid #1e2a44;background:#fff6e0}
-.ctlh{font-size:10.5px;font-weight:900;letter-spacing:1px;color:#45507a;display:flex;align-items:center;gap:6px}
+.ctlh{font-size:10.5px;font-weight:900;letter-spacing:1px;color:#45507a;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .soon{font-size:9.5px;padding:1px 7px;border-radius:999px;border:2px solid #1e2a44;background:#ffe066;color:#1e2a44}
-.ctlrow{display:flex;align-items:center;justify-content:space-between;margin:7px 0}
-.csw{all:unset;box-sizing:border-box;width:52px;height:28px;border-radius:999px;border:3px solid #1e2a44;background:#d9dde3;position:relative;opacity:.6;cursor:not-allowed}
-.csw::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;border:2px solid #1e2a44}
+.ctlrow{display:flex;align-items:center;justify-content:space-between;margin:7px 0;font-weight:900}
+.csw{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 auto;width:52px;height:28px;border-radius:999px;border:3px solid #1e2a44;background:#d9dde3;position:relative;box-shadow:0 2px 0 #1e2a44;transition:background .15s}
+.csw::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;border:2px solid #1e2a44;transition:left .15s}
 .csw[aria-checked="true"]{background:#3fae6a}.csw[aria-checked="true"]::after{left:25px}
+.csw.big{width:66px;height:36px}.csw.big::after{width:26px;height:26px}.csw.big[aria-checked="true"]::after{left:32px}
+.csw:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.csw[disabled]{opacity:.45;cursor:not-allowed}
+.csw.busy{animation:breathe 1s ease-in-out infinite}
 .ctlq{display:flex;gap:6px;flex-wrap:wrap}.ctlq .btn{min-height:30px;font-size:11.5px;padding:0 9px}
-.ctlr{font-size:12px;margin-top:7px}.ctlr ul{margin:2px 0 0;padding-left:18px}
-.ctln{font-size:11px;color:#7a5a2e;margin-top:6px}.ctln a{color:#2f6fe4}
+.sub{font-size:10.5px;font-weight:900;letter-spacing:.8px;color:#45507a;margin:9px 0 4px;text-transform:uppercase}
+.rl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.rl li{display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:9px;border:2px solid #1e2a44;background:#fff;font-size:12px}
+.rl li.dis{opacity:.5}.rl .t{flex:1 1 auto;min-width:0}
+.mini{all:unset;cursor:pointer;font:900 11px "Nunito",sans-serif;padding:1px 7px;border-radius:999px;border:2px solid #1e2a44;background:#fff;white-space:nowrap}
+.mini:hover{background:#fff1c9}.mini:focus-visible{outline:3px solid #ff4fa3}
+.mini.lnk{background:#d6ecff}
+.radd{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.radd select,.radd input{height:30px;border-radius:9px;border:2px solid #1e2a44;background:#fff;font:800 11.5px "Nunito",sans-serif;color:#1e2a44;padding:0 4px;min-width:0}
+.radd .btn{min-height:30px;font-size:11.5px;padding:0 9px}
+.ask{margin:6px 0;padding:7px;border-radius:10px;border:2px solid #1e2a44;background:#ffefe9;font-size:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ask .btn{min-height:28px;font-size:11.5px;padding:0 9px}.btn.y{background:#ffe066}
+.ctln{font-size:11px;color:#7a5a2e;margin-top:6px}
+.none{font-size:12px;color:#6b7280;padding:4px 0}
+.swb .ovh{align-items:center}
+.scn{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px}
+.scb{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;padding:5px 7px;border-radius:10px;border:2.5px solid #1e2a44;background:#fff;box-shadow:0 2px 0 #1e2a44}
+.scb b{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:13.5px;letter-spacing:.3px}.scb small{font-size:10px;color:#6b7280;font-weight:800}
+.scb:hover{background:#fff1c9}.scb.busy{animation:breathe 1s ease-in-out infinite}.scb:focus-visible{outline:3px solid #ff4fa3}
+.swr{display:flex;align-items:center;gap:7px;padding:3px 0;border-top:1.5px dashed #e3d6bd}
+.swr.off{opacity:.55}
+.swr .dot{width:11px;height:11px;border-radius:50%;border:2px solid #1e2a44;background:#d9dde3;flex:0 0 auto}
+.swr .dot.on{background:#ffb547;box-shadow:0 0 0 3px rgba(255,181,71,.35)}
+.swr .nm{all:unset;cursor:pointer;flex:1 1 auto;min-width:0;font:900 12px "Nunito",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swr .nm small{font-size:10px;color:#6b7280;margin-left:5px}
+.wk{display:grid;grid-template-columns:96px repeat(7,minmax(26px,1fr));gap:3px;font-size:11px}
+.wk .h{text-align:center;font-weight:900;color:#45507a}.wk .dn{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk .cell{position:relative;height:22px;border-radius:6px;border:2px solid #1e2a44;background:#eef1f5;overflow:hidden}
+.wk .cell i{position:absolute;top:0;bottom:0;background:#ffb547}
+.ax{display:flex;justify-content:space-between;margin-left:99px;font-size:9.5px;color:#6b7280}
+#schedbody{overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+#info{max-width:380px}
 #info{max-height:calc(100% - 120px);overflow-y:auto}
 
 /* telefon */
@@ -360,6 +394,10 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
     <button class="btn ib sm" id="b-fit" type="button" aria-label="Teljes nézet" title="Teljes nézet"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="#1e2a44" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
 
+  <div class="sheet" id="schedsheet" hidden role="dialog" aria-label="Heti időzítő">
+    <h2>Heti időzítő <button class="btn ib sm x" id="b-schedx" type="button" aria-label="Bezárás">✕</button></h2>
+    <div id="schedbody"></div>
+  </div>
   <div class="sheet" id="devsheet" hidden role="dialog" aria-label="Eszközök szobánként">
     <h2>Eszközök <button class="btn ib sm x" id="b-devx" type="button" aria-label="Bezárás">✕</button></h2>
     <div id="rooms"></div>

@@ -37,6 +37,8 @@
               ],
               "_heads": "A radiátorok kézi termosztátfejesek; a régi fejek szelepe néha beragad (kézzel teljesen nyit-zár-nyit oldja). Hosszú távon okos fejek (TRV) tervben; kiegyenlítő szelep és iszapleválasztó helye ismeretlen."},
   "email": {"daily_at": "20:00"},
+  "control": {"pinks": ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"], "confirm": ["C1"],
+              "_comment": "Távkapcsolható konnektorok (supabase/functions/control). C1 a bojler: csak megerősítéssel. Ki kapcsolhat: minden tag (owner, cleaner, viewer)."},
   "tariff": {
     "quota_kwh_year": 2523,
     "meters": {
