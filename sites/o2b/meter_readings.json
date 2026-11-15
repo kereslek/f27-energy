@@ -1,0 +1,77 @@
+{
+  "_comment": "O2B valós mérőállásai: Leol (hálózati engedélyes), Dikt (diktált) és Foto (a tulaj mérőfotója, dátummal; ez is valós pont). A becsült (Becs) számlaállások és az 'utolsó elszámolt' értékek nem kerülnek ide, kivéve ha ellentmondásmentesek (lásd megjegyzés). Publikus repó: a gyári számnak csak az utolsó 4 jegye, cím nincs. A fotók nem kerülnek a repóba.",
+  "electricity": {
+    "meter": {
+      "last4": "2744",
+      "tariff": "A1",
+      "type": "PAFAL 6A8d, indukciós, 2008",
+      "unit": "kWh",
+      "rev_per_kwh": 375
+    },
+    "readings": [
+      {"date": "2023-03-26", "kwh": 49812, "mode": "kezdő"},
+      {"date": "2023-06-27", "kwh": 50937, "mode": "Dikt"},
+      {
+        "date": "2024-09-01",
+        "kwh": 56470,
+        "mode": "elszámolt",
+        "note": "utolsó elszámolt, ellentmondásmentes"
+      },
+      {
+        "date": "2025-09-01",
+        "kwh": 61145,
+        "mode": "elszámolt",
+        "note": "a 2025.07.22-i hibás diktálás (61 214) sztornója után"
+      },
+      {"date": "2025-11-27", "kwh": 62983, "mode": "Dikt"},
+      {"date": "2026-02-26", "kwh": 64513, "mode": "Dikt"},
+      {"date": "2026-09-23", "kwh": 67797, "mode": "Leol"},
+      {
+        "date": "2026-11-15",
+        "kwh": 68517,
+        "mode": "Foto",
+        "note": "a dob 68 516,9 és 68 517,0 között fordul; 13,6 kWh/nap 09.23 óta. A 2026.11.05-i részszámla 2026.11.01-re 68 470-et becsült, a valós kb. 68 327 volt (kb. 140 kWh túlbecslés)."
+      }
+    ]
+  },
+  "gas": {
+    "meter": {
+      "last4": "2558",
+      "type": "Flogiston G4 RF1, 2013, hitelesítve 2024",
+      "unit": "m3",
+      "since": "2024-03-21",
+      "index_offset": 12011,
+      "_index": "a régi (…7588) mérő záró 12 012 m³ volt, az új 1 m³-ről indult: halmozott index = állás + 12 011"
+    },
+    "readings": [
+      {"date": "2024-03-21", "m3": 1, "mode": "kezdő"},
+      {"date": "2024-04-05", "m3": 40, "mode": "Dikt"},
+      {"date": "2024-05-05", "m3": 105, "mode": "Dikt"},
+      {"date": "2024-06-05", "m3": 113, "mode": "Dikt"},
+      {"date": "2024-08-04", "m3": 123, "mode": "Dikt"},
+      {"date": "2024-09-04", "m3": 129, "mode": "Dikt"},
+      {"date": "2024-10-01", "m3": 134, "mode": "Leol"},
+      {"date": "2024-11-02", "m3": 205, "mode": "Dikt"},
+      {"date": "2024-11-04", "m3": 215, "mode": "Dikt"},
+      {"date": "2024-12-08", "m3": 444, "mode": "Dikt"},
+      {"date": "2025-01-06", "m3": 630, "mode": "Dikt"},
+      {"date": "2025-01-19", "m3": 700, "mode": "Dikt"},
+      {"date": "2025-03-06", "m3": 991, "mode": "Dikt"},
+      {"date": "2025-04-06", "m3": 1053, "mode": "Dikt"},
+      {"date": "2025-05-05", "m3": 1084, "mode": "Dikt"},
+      {"date": "2025-09-06", "m3": 1125, "mode": "Dikt"},
+      {"date": "2025-10-07", "m3": 1156, "mode": "Leol"},
+      {"date": "2026-01-07", "m3": 1631, "mode": "Dikt"},
+      {"date": "2026-01-18", "m3": 1750, "mode": "Dikt"},
+      {"date": "2026-01-30", "m3": 1849, "mode": "Dikt"},
+      {"date": "2026-03-06", "m3": 2047, "mode": "Dikt"},
+      {"date": "2026-09-24", "m3": 2184, "mode": "Leol"},
+      {
+        "date": "2026-11-15",
+        "m3": 2303.63,
+        "mode": "Foto",
+        "note": "az utolsó dob a 4 és 5 között (2 303,634 körül); 2,3 m³/nap 09.24 óta, a fűtési szezon eleje"
+      }
+    ]
+  }
+}
