@@ -341,6 +341,26 @@ def main(argv: list[str]) -> int:
             print("Parancs elküldve.")
         elif what == "queue":
             print(f"Robot-parancsok: {run_queue(sb)} végrehajtva")
+        elif what == "teszt":                      # a teljes sor-útvonal próbája: parancs a sorba, a gyűjtő hajtja végre
+            pink, cmd = (argv[1] if len(argv) > 1 else "R2"), (argv[2] if len(argv) > 2 else "find")
+            if pink not in ROBOTS or cmd not in COMMANDS:
+                print("HIBA: ismeretlen robot vagy parancs"); return 2
+            sb.insert("robot_cmd", [{"pink": pink, "cmd": cmd}])
+            print(f"Teszt: {pink} {cmd} a sorban, várom az adatgyűjtőt (legfeljebb 3 perc)...")
+            t0, st = time.time(), "queued"
+            while time.time() - t0 < 180:
+                time.sleep(5)
+                rows = sb.select("robot_cmd", "status,note,created_at", pink=f"eq.{pink}", order="id.desc", limit="1")
+                st = rows[0]["status"] if rows else "?"
+                if st not in ("queued", "running"):
+                    break
+            secs = int(time.time() - t0)
+            note = (rows[0].get("note") or "").split(":")[0] if rows else ""
+            print(f"Teszt: {pink} {cmd} -> {st} ({secs} mp){' · ' + note if note else ''}")
+            r = sb.select("device_latest", "status", pink=f"eq.{pink}")
+            s0 = (r[0].get("status") or {}) if r else {}
+            print(f"Robot most: {s0.get('state', '--')}, akku {s0.get('battery', '--')}%")
+            return 0 if st == "done" else 1
         elif what == "watch":
             watch(sb, float(argv[1]) if len(argv) > 1 else 600)
         else:
