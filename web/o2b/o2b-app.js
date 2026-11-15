@@ -1355,6 +1355,7 @@
     var share = !!(u && u.share);
     $('who').textContent = share ? 'Bemutató link: csak nézelődés, kapcsolni nem lehet.' : u ? 'Belépve: ' + (u.email || '') : 'Nem vagy belépve';
     $('b-login').textContent = share ? 'Bemutató' : u ? 'Fiók' : 'Belépés';
+    $('lctitle').textContent = share ? 'Bemutató' : u ? 'Fiók' : 'Belépés';
     $('logincard').hidden = true; $('loginform').hidden = !!u; $('b-logout').hidden = !u;
     $('b-logout').textContent = share ? 'Kilépés a bemutatóból' : 'Kilépés';
     $('b-access').hidden = true;
@@ -1407,6 +1408,9 @@
     var c = $('logincard'); c.hidden = !c.hidden;
     if (!c.hidden) { $('devsheet').hidden = true; streetBox(); if (!st.user) $('em').focus(); }
   });
+  on('b-loginx', 'click', function () { $('logincard').hidden = true; $('b-login').focus(); });
+  // a Fiók kártya a térképre koppintva is bezárul (minden felugró ablak bezárható: ✕, Esc, mellékattintás)
+  world.addEventListener('pointerdown', function () { if (!$('logincard').hidden) $('logincard').hidden = true; }, true);
   on('b-logout', 'click', function () { if (shareRun) { shareRun.end('left'); return; } if (sb) sb.auth.signOut(); $('logincard').hidden = true; });
   on('b-access', 'click', function () {
     if (!sb || !st.role || !window.F27Access) return;
@@ -1428,6 +1432,7 @@
   });
   document.addEventListener('keydown', function (e) {
     var tag = (e.target && e.target.tagName) || '';
+    if (e.key === 'Escape' && !$('logincard').hidden) { $('logincard').hidden = true; $('b-login').focus(); return; }   // gépelés közben is
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }

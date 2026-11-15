@@ -288,6 +288,10 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 - **Ellenőrizendő a tulajjal:** robotporszívó (a takarítás idejét és a vendég távozását is jelezheti), okos konnektor a hűtőre, mosógépre, TV-re, mosogatóra; teljes lakásos mérőbilincs (Tuya clamp) az A1 és a B mérőre (a mért 4 körön kívüli fogyasztás is látszana); gázmérő-leolvasó (impulzus vagy kamera; a gáz most nincs mérve); szén-monoxid- és füstérzékelő (a gázkonvektor miatt biztonsági tétel); vízszivárgás-érzékelő (mosógép, bojler); jelenlét- vagy mozgásérzékelő (foglaltság); okos kulcsszéf vagy zár (érkezés); a 3 tartalék RightSitu IR-távirányító; a fürdő fűtőpanel köre (okos kismegszakító vagy konnektor).
 - **Hol emlékeztet a rendszer:** az esti e-mail vasárnaponként egy "OKOS ESZKÖZÖK" dobozzal; a munkamenetek ezzel a fejezettel. Új eszköz bekötése: Smart Life appban az "Ferenc krt." otthonba, utána Eszközfelderítés workflow, `config/devices.json` bővítése.
 
+## 17. ÁLLANDÓ SZABÁLY: minden felugró ablak bezárható (a tulaj kérése, 2026.11.15)
+
+Minden dashboardon (F27, O2B és minden jövőbeli lakás) **minden felnyíló ablak, kártya, lap és képernyő bezárható**: jól látható ✕ gomb (`aria-label="Bezárás…"`), Esc (gépelés közben is), és ahol értelmes, a térképre koppintás is bezárja. Ez a bemutató link képernyőire is igaz (üdvözlő: ✕ után alul „Indítás” gomb; lejárt: ✕). Új ablaknál a tesztben ellenőrizni kell: minden látható `role="dialog"` elemben van bezárógomb.
+
 ## 15. Állapot
 
 - 2026.11.01: repó váz kész: Tuya kliens, felderítő workflow, titkosítás, Pages térkép (sematikus alaprajz, demo adat). Következő: a tulaj végigmegy a `docs/tuya-setup.md`-n, lefuttatja az Eszközfelderítés workflow-t, utána a párosítás ellenőrzése és a pink számok véglegesítése.

@@ -125,8 +125,12 @@
         reason === 'taken' ? 'Ezt a bemutatót már elindították egy másik eszközön. Egy link csak egy eszközön működik.' :
         reason === 'invalid' ? 'Ez a link érvénytelen. Lehet, hogy elírás van benne, vagy már nem él.' :
         'Lejárt az 59 perc 59 másodperc, a hozzáférés megszűnt.';
-      overlay('<div class="f27a-end"><div class="e" aria-hidden="true">⏰</div><h2>Vége a bemutatónak</h2><p>' + esc(txt) + '</p>' +
+      var dead = overlay('<button class="f27a-x" type="button" aria-label="Bezárás">✕</button><div class="f27a-end"><div class="e" aria-hidden="true">⏰</div><h2>Vége a bemutatónak</h2><p>' + esc(txt) + '</p>' +
         '<p class="f27a-note">Köszönjük, hogy benéztél ' + esc(site) + ' életébe! Ha még kíváncsi vagy, kérj új linket.</p></div>', 'f27a-dead');
+      // ez is bezárható (az élő adat már nem látszik alatta, csak a bemutató térkép)
+      var closeDead = function () { dead.remove(); document.removeEventListener('keydown', escDead); };
+      var escDead = function (e) { if (e.key === 'Escape') closeDead(); };
+      dead.querySelector('.f27a-x').addEventListener('click', closeDead); document.addEventListener('keydown', escDead);
       if (o.onExpire) o.onExpire(reason || 'expired');
     }
     function left() { return exp - (Date.now() + off); }
@@ -139,11 +143,13 @@
         bar.classList.toggle('low', l < 5 * 60000);
       }
     }
+    function place(el) {
+      if (o.phoneTop != null) el.style.setProperty('--f27a-top', o.phoneTop + 'px');
+      if (o.phoneLeft != null) { el.classList.add('left'); el.style.setProperty('--f27a-left', o.phoneLeft + 'px'); }
+    }
     function showBar() {
       css();
-      bar = document.createElement('div'); bar.id = 'f27a-bar';
-      if (o.phoneTop != null) bar.style.setProperty('--f27a-top', o.phoneTop + 'px');
-      if (o.phoneLeft != null) { bar.classList.add('left'); bar.style.setProperty('--f27a-left', o.phoneLeft + 'px'); } bar.setAttribute('role', 'timer'); bar.setAttribute('aria-live', 'off');
+      bar = document.createElement('div'); bar.id = 'f27a-bar'; place(bar); bar.setAttribute('role', 'timer'); bar.setAttribute('aria-live', 'off');
       bar.innerHTML = '<span aria-hidden="true">👀</span><span class="lbl">BEMUTATÓ</span><span class="t">--:--</span>' +
         '<span class="txt">csak nézelődés, kapcsolni nem lehet</span><button type="button">Kilépés</button><i></i>';
       bar.querySelector('button').addEventListener('click', function () { end('left'); });
@@ -164,24 +170,39 @@
       var d = res && res.data;
       if (res.error || !d || !d.ok) { end(d && d.reason ? d.reason : 'invalid'); return; }
       if (!d.pending) { run(d); return; }
-      var ov = overlay('<div class="f27a-hi"><h2>Szia! Körbenézel ' + esc(site) + '-ben?</h2>' +
-        '<p>Ez egy <b>ideiglenes bemutató link</b>. Ha elindítod, ennyi időd lesz:</p><div class="f27a-big">59:59</div>' +
-        '<ul><li>Élőben látod, mi történik: hőmérséklet, fogyasztás, ajtók, ablakok' + (o.calendar ? ', a foglalási naptár' : '') + '.</li>' +
-        '<li>Csak nézni tudsz: semmit nem kapcsolsz és nem állítasz át.</li>' +
-        '<li>A link csak ezen az eszközön működik, és a visszaszámláló végén magától lejár.</li></ul>' +
-        '<button class="f27a-btn" type="button">Nézzük! (indul az idő)</button><div class="f27a-err"></div></div>');
-      var btn = ov.querySelector('button');
-      btn.focus();
-      btn.addEventListener('click', function () {
-        btn.disabled = true;
-        o.sb.rpc('share_open', { p_ping: false }).then(function (r) {
-          var x = r && r.data;
-          if (r.error || !x || !x.ok || !x.session) { ov.remove(); end(x && x.reason ? x.reason : 'invalid'); return; }
-          hs.sess = x.session;
-          try { sessionStorage.setItem(sessKey(key), x.session); } catch (e) { /* a fül frissítéséig így is megy */ }
-          ov.remove(); run(x);
-        }, function () { btn.disabled = false; ov.querySelector('.f27a-err').textContent = 'Nem sikerült, próbáld újra.'; });
-      });
+      function welcome() {
+        var ov = overlay('<button class="f27a-x" type="button" aria-label="Bezárás (még nem indul az idő)">✕</button><div class="f27a-hi"><h2>Szia! Körbenézel ' + esc(site) + '-ben?</h2>' +
+          '<p>Ez egy <b>ideiglenes bemutató link</b>. Ha elindítod, ennyi időd lesz:</p><div class="f27a-big">59:59</div>' +
+          '<ul><li>Élőben látod, mi történik: hőmérséklet, fogyasztás, ajtók, ablakok' + (o.calendar ? ', a foglalási naptár' : '') + '.</li>' +
+          '<li>Csak nézni tudsz: semmit nem kapcsolsz és nem állítasz át.</li>' +
+          '<li>A link csak ezen az eszközön működik, és a visszaszámláló végén magától lejár.</li></ul>' +
+          '<button class="f27a-btn" type="button">Nézzük! (indul az idő)</button><div class="f27a-err"></div></div>');
+        var btn = ov.querySelector('.f27a-btn');
+        btn.focus();
+        function later() { ov.remove(); document.removeEventListener('keydown', esc1); laterBtn(); }
+        function esc1(e) { if (e.key === 'Escape') later(); }
+        ov.querySelector('.f27a-x').addEventListener('click', later); document.addEventListener('keydown', esc1);
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          o.sb.rpc('share_open', { p_ping: false }).then(function (r) {
+            var x = r && r.data;
+            document.removeEventListener('keydown', esc1);
+            if (r.error || !x || !x.ok || !x.session) { ov.remove(); end(x && x.reason ? x.reason : 'invalid'); return; }
+            hs.sess = x.session;
+            try { sessionStorage.setItem(sessKey(key), x.session); } catch (e) { /* a fül frissítéséig így is megy */ }
+            ov.remove(); run(x);
+          }, function () { btn.disabled = false; ov.querySelector('.f27a-err').textContent = 'Nem sikerült, próbáld újra.'; });
+        });
+      }
+      // bezárva sem indul az idő: alul egy gomb hívja vissza az üdvözlőt
+      function laterBtn() {
+        css();
+        var lb = document.createElement('div'); lb.id = 'f27a-bar'; place(lb);
+        lb.innerHTML = '<span aria-hidden="true">👀</span><span class="txt">Bemutató: még nem indult el</span><button type="button">Indítás (59:59)</button>';
+        lb.querySelector('button').addEventListener('click', function () { lb.remove(); welcome(); });
+        document.body.appendChild(lb);
+      }
+      welcome();
     }, function () { end('invalid'); });
     return { end: end, left: left };
   }
