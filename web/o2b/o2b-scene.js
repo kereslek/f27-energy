@@ -256,12 +256,15 @@
     return { c: c, d: d, e: e, len: 5.2 };
   }
 
+  // az iránytű a talajon (méterben, a lenti szint rendszerében): a lakástól keletre, szabad helyen
+  var COMPASS = [10.2, 1.4];
+
   // ---- vetítés ------------------------------------------------------------------------------------
   function bounds(f) {
     var xs = [], ys = [];
     FLOORS[f].rooms.forEach(function (r) { xs.push(r.x, r.x + r.w); ys.push(r.y, r.y + r.d); });
-    if (f === 'lo') {                                               // a fák és az utca is férjenek el
-      ys.push(-3.2);
+    if (f === 'lo') {                                               // a fák, az utca és az iránytű is férjenek el
+      ys.push(-3.2); xs.push(COMPASS[0] + 2.2); ys.push(COMPASS[1] - 2.0, COMPASS[1] + 3.2);
       var g = streetGeom();
       [-1, 1].forEach(function (t) { [-1.6, 0.8].forEach(function (o) { xs.push(g.c[0] + g.d[0] * g.len * t + g.e[0] * o); ys.push(g.c[1] + g.d[1] * g.len * t + g.e[1] * o); }); });
     }
@@ -526,6 +529,6 @@
 
   root.O2BScene = {
     U: U, INK: INK, FLOORS: FLOORS, PIECES: PIECES, PINS: PINS, CAT_ROUTE: CAT_ROUTE,
-    build: build, Proj: Proj, stairZ: stairZ, OFF: OFF, LIFT: LIFT, PLAN_NORTH: PLAN_NORTH, roomCenter: roomCenter, far: far
+    build: build, Proj: Proj, COMPASS: COMPASS, stairZ: stairZ, OFF: OFF, LIFT: LIFT, PLAN_NORTH: PLAN_NORTH, roomCenter: roomCenter, far: far
   };
 })(typeof window !== 'undefined' ? window : this);

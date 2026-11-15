@@ -255,7 +255,7 @@
 
   // iránytű a talajon (a F27 mintájára), a nap mai útjával, napkeltével, napnyugtával, holnapi min/max-szal
   function drawCompass(g) {
-    var P = scene.floors.lo.proj.P, cx = 7.4, cy = 2.4, R = 1.45;
+    var P = scene.floors.lo.proj.P, cx = S.COMPASS[0], cy = S.COMPASS[1], R = 1.45;
     var dir = function (az) { var a = (az + PLAN_NORTH - 90) * Math.PI / 180; return [Math.cos(a), Math.sin(a)]; };
     var at = function (az, r) { var v = dir(az); return P(cx + v[0] * r, cy + v[1] * r, 0); };
     var cg = el('g', { class: 'compass' }, g), ring = [], i;
@@ -279,7 +279,9 @@
       if (sp.alt > 0) { var q = at(sp.az, R * 0.95); el('circle', { cx: r1(q[0]), cy: r1(q[1]), r: 7, fill: '#ffd23f', stroke: INK, 'stroke-width': 2 }, cg); }
       tip = 'Napkelte ' + SUN.hm(t.rise) + ', napnyugta ' + SUN.hm(t.set) + '. ';
     }
-    var base = P(cx, cy + R * 1.05, 0);
+    // a feliratok mindig a kör (és az égtájbetűk) alá, képernyő-irányban, hogy forgatva se csússzanak rá
+    var cen = P(cx, cy, 0), lowY = -1e9; for (var li = 0; li <= 36; li++) { var lq = at(li * 10, R * 1.3); if (lq[1] > lowY) lowY = lq[1]; }
+    var base = [cen[0], lowY - 12];
     var t1 = el('text', { x: r1(base[0]), y: r1(base[1] + 34), 'text-anchor': 'middle', class: 'slab-t', style: 'fill:#ffd23f' }, cg);
     t1.textContent = t.rise ? '↑' + SUN.hm(t.rise) + ' · ↓' + SUN.hm(t.set) : '';
     var dl = st.daily, t2 = el('text', { x: r1(base[0]), y: r1(base[1] + 51), 'text-anchor': 'middle', class: 'slab-t' }, cg);
@@ -291,58 +293,105 @@
   // ---- feliratok és tűk állandó képernyőméretben (mint a F27 HTML-tűi): nagyítva sem nőnek, kicsinyítve sem tűnnek el
   // a tűk és feliratok a házzal együtt nőnek, de kicsinyítéskor egy olvasható méret alá nem mennek
   function uiK() { var s = scaleNow() || 1; return Math.max(1, Math.min(2.4, 0.72 / s)); }
+  // Feliratok és tűk egy menetben, ütközésfigyeléssel (audit, 2026.11.15: több helyen egymásra csúsztak).
+  // Sorrend: szintfeliratok, tűk (egymástól széttolva, a vonaluk a helyükre mutat), értékbuborékok
+  // (jobbra, balra, fölé, alá), jelölők (Savio, Computherm), végül a szobanevek; ami sehová nem fér,
+  // az a szobanév, és azt elrejtjük (a szobák az Eszközök listában is megvannak).
   function drawOverlay() {
-    if (!scene || !layer.labels) return;
-    var k = uiK(), g = layer.labels;
-    g.innerHTML = '';
+    if (!scene || !layer.labels || !layer.pins) return;
+    var k = uiK(), gl = layer.labels, gp = layer.pins, obst = [], pad = 2 * k;
+    gl.innerHTML = ''; gp.innerHTML = '';
+    function hits(b) { for (var i = 0; i < obst.length; i++) { var o = obst[i]; if (b[0] < o[2] + pad && b[2] > o[0] - pad && b[1] < o[3] + pad && b[3] > o[1] - pad) return true; } return false; }
+    function take(b) { obst.push(b); return b; }
+    function cost(b) { var c = 0; obst.forEach(function (o) { var ox = Math.min(b[2], o[2] + pad) - Math.max(b[0], o[0] - pad), oy = Math.min(b[3], o[3] + pad) - Math.max(b[1], o[1] - pad); if (ox > 0 && oy > 0) c += ox * oy; }); return c; }
+    // a jelöltek közül az első ütközésmentes, ha nincs ilyen, a legkisebb átfedésű; mk(c) -> doboz
+    function best(cands, mk) { var bi = 0, bc = Infinity; for (var n = 0; n < cands.length; n++) { var c = cost(mk(cands[n])); if (c === 0) return cands[n]; if (c < bc) { bc = c; bi = n; } } return cands[bi]; }
+    function tw(t, fs) { return t.length * fs * 0.58; }
+    // 1. szintfeliratok
     ['lo', 'up'].forEach(function (f) {
-      var F = scene.floors[f], b = F.bbox;
-      F.floors.forEach(function (fp) {
-        if (!fp.n || fp.id === 'erkely' || fp.id === 'lepcsohaz') return;
-        var t = el('text', { x: r1(fp.label[0]), y: r1(fp.label[1] + 5 * k), 'text-anchor': 'middle', class: 'rlabel', style: 'font-size:' + r1(14 * k) + 'px;stroke-width:' + r1(3.6 * k) + 'px' }, g);
-        t.textContent = fp.n;
-      });
-      var lv = el('text', { x: r1(b.x0 + 6 * k), y: r1((b.y0 + b.y1) / 2 + (f === 'up' ? -10 : 40) * k), class: 'lvlab', style: 'font-size:' + r1(24 * k) + 'px;stroke-width:' + r1(5 * k) + 'px' }, g);
-      lv.textContent = f === 'up' ? 'FENT · tetőtér' : 'LENT';
-      F.marks.forEach(function (m) {
-        var mg = el('g', {}, g), w = (m.t.length * 6.2 + 12) * k, h = 16 * k, mx = m.a[0] + (m.p[0] - m.a[0]) * Math.min(1.6, k), my = m.p[1];
-        el('line', { x1: r1(m.a[0]), y1: r1(m.a[1]), x2: r1(mx), y2: r1(my - h), stroke: INK, 'stroke-width': r1(1.6 * k) }, mg);
-        el('circle', { cx: r1(m.a[0]), cy: r1(m.a[1]), r: r1(3 * k), fill: m.c, stroke: INK, 'stroke-width': r1(1.4 * k) }, mg);
-        el('rect', { x: r1(mx - w / 2), y: r1(my - h - 6 * k), width: r1(w), height: r1(h), rx: r1(h / 2), fill: m.c, stroke: INK, 'stroke-width': r1(2 * k) }, mg);
-        var t = el('text', { x: r1(mx), y: r1(my - 6 * k - h / 2 + 4 * k), 'text-anchor': 'middle', class: 'mark', style: 'font-size:' + r1(11 * k) + 'px' }, mg); t.textContent = m.t;
-      });
+      var b = scene.floors[f].bbox, fs = 24 * k, t = f === 'up' ? 'FENT · tetőtér' : 'LENT', x = b.x0 + 6 * k, y = (b.y0 + b.y1) / 2 + (f === 'up' ? -10 : 40) * k;
+      var lv = el('text', { x: r1(x), y: r1(y), class: 'lvlab', style: 'font-size:' + r1(fs) + 'px;stroke-width:' + r1(5 * k) + 'px' }, gl);
+      lv.textContent = t; take([x, y - fs, x + tw(t, fs), y + 4 * k]);
     });
-    drawPins();
-  }
-
-  // ---- tűk -----------------------------------------------------------------------------------------
-  function drawPins() {
-    var g = layer.pins; if (!g) return;
-    g.innerHTML = '';
+    // 2. tűk: széttolás
     var byPink = {}; st.devs.forEach(function (d) { byPink[d.pink] = d; });
+    var R = 15 * k, P = [];
     ['lo', 'up'].forEach(function (f) {
       scene.floors[f].pins.forEach(function (pn) {
         var d = byPink[pn.id] || DEFAULT_DEVS.filter(function (x) { return x.pink === pn.id; })[0];
         if (!d || d.role === 'ir_hub') return;
-        var s = devState(d), col = s.cls === 'off' ? '#8a8f9c' : ROLE_COL[d.role] || '#26a5c9', k = uiK();
-        var alert = s.cls === 'hot' || s.cls === 'cold';
-        var pg = el('g', { class: 'pin' + (st.sel === pn.id ? ' sel' : ''), tabindex: 0, role: 'button', 'data-pink': pn.id, 'aria-label': d.label + ': ' + s.txt }, g);
-        el('line', { x1: r1(pn.p[0]), y1: r1(pn.p[1]), x2: r1(pn.base[0]), y2: r1(pn.base[1]), stroke: col, 'stroke-width': r1(2 * k), 'stroke-dasharray': r1(2 * k) + ' ' + r1(3 * k), opacity: 0.8 }, pg);
-        if (alert) el('circle', { class: 'ring', cx: r1(pn.p[0]), cy: r1(pn.p[1]), r: r1(15 * k), style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
-        el('circle', { class: 'dot', cx: r1(pn.p[0]), cy: r1(pn.p[1] + 2.5 * k), r: r1(15 * k), fill: INK }, pg);
-        el('circle', { class: 'dot', cx: r1(pn.p[0]), cy: r1(pn.p[1]), r: r1(15 * k), fill: alert ? (s.cls === 'hot' ? '#ff5a3c' : '#2f6fe4') : col, style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
-        var gl = el('text', { x: r1(pn.p[0]), y: r1(pn.p[1] + 4.5 * k), 'text-anchor': 'middle', 'font-size': r1((pn.id.length > 2 ? 10.5 : 12.5) * k), fill: '#ffffff' }, pg); gl.textContent = pn.id;
-        if (s.big) {
-          var w = (s.big.length * 7.4 + 16) * k, x = pn.p[0] + 18 * k, y = pn.p[1] - 10 * k;
-          el('rect', { class: 'vbg', x: r1(x), y: r1(y), width: r1(w), height: r1(20 * k), rx: r1(10 * k), fill: s.cls === 'hot' ? '#ffd9cc' : s.cls === 'cold' ? '#d6e6ff' : s.cls === 'off' ? '#e4e6ea' : '#ffffff', style: 'stroke-width:' + r1(2 * k) + 'px' }, pg);
-          var vt = el('text', { class: 'vt', x: r1(x + w / 2), y: r1(y + 14.5 * k), 'text-anchor': 'middle', fill: INK, style: 'font-size:' + r1(12.5 * k) + 'px' }, pg); vt.textContent = s.big;
-        }
-        var ti = el('title', {}, pg); ti.textContent = d.label + ': ' + s.txt;
-        pg.addEventListener('click', function (e) { e.stopPropagation(); select(pn.id); });
-        pg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(pn.id); } });
+        P.push({ pn: pn, d: d, s: devState(d), x: pn.p[0], y: pn.p[1] });
       });
     });
+    for (var it = 0; it < 40; it++) {
+      var moved = false;
+      for (var i = 0; i < P.length; i++) for (var j = i + 1; j < P.length; j++) {
+        var A = P[i], B = P[j], dx = B.x - A.x, dy = B.y - A.y, dd = Math.hypot(dx, dy), need = 2 * R + 4 * k;
+        if (dd < need) {
+          if (dd < 0.01) { dx = 1; dy = 0; dd = 1; }
+          var push = (need - dd) / 2 + 0.1;
+          A.x -= dx / dd * push; A.y -= dy / dd * push; B.x += dx / dd * push; B.y += dy / dd * push; moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    P.forEach(function (q) { take([q.x - R, q.y - R, q.x + R, q.y + R + 2.5 * k]); });
+    // 3. értékbuborékok
+    P.forEach(function (q) {
+      if (!q.s.big) return;
+      var w = (q.s.big.length * 7.4 + 16) * k, h = 20 * k, c = [[q.x + R + 3 * k, q.y - h / 2], [q.x - R - 3 * k - w, q.y - h / 2], [q.x - w / 2, q.y - R - h - 3 * k], [q.x - w / 2, q.y + R + 5 * k],
+        [q.x + R + 3 * k, q.y - h - 8 * k], [q.x + R + 3 * k, q.y + 8 * k], [q.x - R - 3 * k - w, q.y - h - 8 * k], [q.x - R - 3 * k - w, q.y + 8 * k]];
+      var pick = best(c, function (z) { return [z[0], z[1], z[0] + w, z[1] + h]; });
+      q.vb = take([pick[0], pick[1], pick[0] + w, pick[1] + h]);
+    });
+    // 4. jelölők
+    ['lo', 'up'].forEach(function (f) {
+      scene.floors[f].marks.forEach(function (m) {
+        var fs = 11 * k, w = (m.t.length * 6.2 + 12) * k, h = 16 * k, ax = m.a[0], ay = m.a[1];
+        var c = [[m.p[0], m.p[1] - h / 2 - 6 * k]];
+        [26, 44, 64, 86].forEach(function (r) { [-90, -45, -135, 0, 180, 45, 135, 90].forEach(function (a) { var t = a * Math.PI / 180; c.push([ax + Math.cos(t) * (r + w / 2) * k / k, ay + Math.sin(t) * r * k]); }); });
+        var pick = best(c, function (z) { return [z[0] - w / 2, z[1] - h / 2, z[0] + w / 2, z[1] + h / 2]; });
+        take([pick[0] - w / 2, pick[1] - h / 2, pick[0] + w / 2, pick[1] + h / 2]);
+        var mg = el('g', {}, gl);
+        el('line', { x1: r1(ax), y1: r1(ay), x2: r1(pick[0]), y2: r1(pick[1]), stroke: INK, 'stroke-width': r1(1.6 * k) }, mg);
+        el('circle', { cx: r1(ax), cy: r1(ay), r: r1(3 * k), fill: m.c, stroke: INK, 'stroke-width': r1(1.4 * k) }, mg);
+        el('rect', { x: r1(pick[0] - w / 2), y: r1(pick[1] - h / 2), width: r1(w), height: r1(h), rx: r1(h / 2), fill: m.c, stroke: INK, 'stroke-width': r1(2 * k) }, mg);
+        var t = el('text', { x: r1(pick[0]), y: r1(pick[1] + 4 * k), 'text-anchor': 'middle', class: 'mark', style: 'font-size:' + r1(fs) + 'px' }, mg); t.textContent = m.t;
+      });
+    });
+    // 5. szobanevek
+    ['lo', 'up'].forEach(function (f) {
+      scene.floors[f].floors.forEach(function (fp) {
+        if (!fp.n || fp.id === 'erkely' || fp.id === 'lepcsohaz') return;
+        var fs = 14 * k, w = tw(fp.n, fs), h = fs * 1.05, lx = fp.label[0], ly = fp.label[1];
+        var c = [[0, 0], [0, -18], [0, 18], [-34, 0], [34, 0], [0, -34], [0, 34], [-30, -22], [30, 22], [30, -22], [-30, 22]], pick = null;
+        for (var n = 0; n < c.length; n++) { var x = lx + c[n][0] * k, y = ly + c[n][1] * k, b = [x - w / 2, y - h / 2, x + w / 2, y + h / 2]; if (!hits(b)) { pick = [x, y, b]; break; } }
+        if (!pick) return;
+        take(pick[2]);
+        var t = el('text', { x: r1(pick[0]), y: r1(pick[1] + fs * 0.36), 'text-anchor': 'middle', class: 'rlabel', style: 'font-size:' + r1(fs) + 'px;stroke-width:' + r1(3.6 * k) + 'px' }, gl);
+        t.textContent = fp.n;
+      });
+    });
+    // 6. tűk kirajzolása (a feliratok fölött)
+    P.forEach(function (q) {
+      var pn = q.pn, d = q.d, s = q.s, col = s.cls === 'off' ? '#8a8f9c' : ROLE_COL[d.role] || '#26a5c9', alert = s.cls === 'hot' || s.cls === 'cold';
+      var pg = el('g', { class: 'pin' + (st.sel === pn.id ? ' sel' : ''), tabindex: 0, role: 'button', 'data-pink': pn.id, 'aria-label': d.label + ': ' + s.txt }, gp);
+      el('line', { x1: r1(q.x), y1: r1(q.y), x2: r1(pn.base[0]), y2: r1(pn.base[1]), stroke: col, 'stroke-width': r1(2 * k), 'stroke-dasharray': r1(2 * k) + ' ' + r1(3 * k), opacity: 0.8 }, pg);
+      if (alert) el('circle', { class: 'ring', cx: r1(q.x), cy: r1(q.y), r: r1(R), style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
+      el('circle', { class: 'dot', cx: r1(q.x), cy: r1(q.y + 2.5 * k), r: r1(R), fill: INK }, pg);
+      el('circle', { class: 'dot', cx: r1(q.x), cy: r1(q.y), r: r1(R), fill: alert ? (s.cls === 'hot' ? '#ff5a3c' : '#2f6fe4') : col, style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
+      var gt = el('text', { x: r1(q.x), y: r1(q.y + 4.5 * k), 'text-anchor': 'middle', 'font-size': r1((pn.id.length > 2 ? 10.5 : 12.5) * k), fill: '#ffffff' }, pg); gt.textContent = pn.id;
+      if (q.vb) {
+        var b = q.vb, w = b[2] - b[0];
+        el('rect', { class: 'vbg', x: r1(b[0]), y: r1(b[1]), width: r1(w), height: r1(b[3] - b[1]), rx: r1(10 * k), fill: s.cls === 'hot' ? '#ffd9cc' : s.cls === 'cold' ? '#d6e6ff' : s.cls === 'off' ? '#e4e6ea' : '#ffffff', style: 'stroke-width:' + r1(2 * k) + 'px' }, pg);
+        var vt = el('text', { class: 'vt', x: r1(b[0] + w / 2), y: r1(b[1] + 14.5 * k), 'text-anchor': 'middle', fill: INK, style: 'font-size:' + r1(12.5 * k) + 'px' }, pg); vt.textContent = s.big;
+      }
+      var ti = el('title', {}, pg); ti.textContent = d.label + ': ' + s.txt;
+      pg.addEventListener('click', function (e) { e.stopPropagation(); select(pn.id); });
+      pg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(pn.id); } });
+    });
   }
+  function drawPins() { drawOverlay(); }
 
   // ---- nézet: illesztés, nagyítás, mozgatás -------------------------------------------------------------
   function contentBox() {
@@ -354,9 +403,10 @@
     return b;
   }
   function fit() {
+    document.documentElement.style.setProperty('--toph', (($('top').offsetHeight || 60) + 16) + 'px');
     var b = contentBox(), W = world.clientWidth || 1440, H = world.clientHeight || 900, phone = W < 760;
     // hely a felső csempéknek és az alsó Pamutka-kártyának
-    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, top = phone ? 70 : (wide ? 100 : 90), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
+    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, topH = ($('top').offsetHeight || 60) + 14, top = phone ? topH : (wide ? 100 : 90), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
     var aw = Math.max(200, W - left - right), ah = Math.max(200, H - top - bottom);
     var cw = b.x1 - b.x0 + 60, ch = b.y1 - b.y0 + 60, s = Math.min(aw / cw * (phone ? 1.45 : 1), ah / ch);
     var vw = W / s, vh = H / s, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -461,6 +511,11 @@
     st.sel = st.sel === 'p:' + id ? null : 'p:' + id;
     drawItems('lo'); drawItems('up'); showInfo();
   }
+  function infoOpen(box) {
+    box.insertAdjacentHTML('beforeend', '<button class="btn ib sm ix" type="button" aria-label="Bezárás">✕</button>');
+    box.querySelector('.ix').addEventListener('click', function () { st.sel = null; box.hidden = true; drawItems('lo'); drawItems('up'); drawOverlay(); list(); });
+    box.hidden = false;
+  }
   function showInfo() {
     var box = $('info');
     if (!st.sel) { box.hidden = true; return; }
@@ -469,14 +524,14 @@
       if (!p) { box.hidden = true; return; }
       box.innerHTML = '<b>' + esc(p.name) + '</b><br>' + (p.fl === 'up' ? 'Fent, a tetőtérben' : 'Lent') +
         (p.drag ? (st.edit ? '. Húzd a helyére.' : '. Szerkesztés módban húzható.') : '. Beépített, nem mozdítható.');
-      box.hidden = false; return;
+      infoOpen(box); return;
     }
     var d = st.devs.filter(function (x) { return x.pink === st.sel; })[0]; if (!d) { box.hidden = true; return; }
     var s = devState(d), r = st.latest[d.pink], b = (st.bat || []).filter(function (x) { return x.pink === d.pink; })[0];
     box.innerHTML = '<b>' + esc(d.label) + '</b><br>' + esc(ROOM_NAMES[d.room] || '') + ' · ' + esc(ROLE_NAME[d.role] || d.role) +
       '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>' + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
       (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '');
-    box.hidden = false;
+    infoOpen(box);
   }
 
   // ---- visszavonás, elrendezések ---------------------------------------------------------------------
@@ -484,7 +539,7 @@
   function undo() { if (!st.undo.length) return; st.redo.push(JSON.parse(JSON.stringify(st.offs))); st.offs = st.undo.pop(); drawWorld(); markDirty(); }
   function redo() { if (!st.redo.length) return; st.undo.push(JSON.parse(JSON.stringify(st.offs))); st.offs = st.redo.pop(); drawWorld(); markDirty(); }
   function markDirty() { toolbar(); }
-  function rotate(dir) { st.k = (st.k + dir + 4) % 4; st.vb = null; drawSky(); drawWorld(); }
+  function rotate(dir) { st.k = (st.k + dir + 4) % 4; st.vb = null; $('rotdeg').textContent = (st.k * 90) + '°'; drawSky(); drawWorld(); toast('Elforgatva: ' + (st.k * 90) + '°', ''); }
   function toolbar() {
     var owner = st.user && st.role === 'owner', dirty = offsKey(st.offs) !== st.savedKey;
     $('b-undo').disabled = !st.undo.length; $('b-redo').disabled = !st.redo.length;
@@ -924,7 +979,7 @@
   on('b-edit', 'click', function () { if (!canEdit()) return; st.edit = !st.edit; if (st.edit) toast(st.user ? 'Szerkesztés: húzd a bútorokat, aztán Mentés.' : 'Demó szerkesztés: húzd a bútorokat (belépve menthető).', ''); toolbar(); drawItems('lo'); drawItems('up'); showInfo(); });
   on('b-undo', 'click', undo); on('b-redo', 'click', redo);
   on('b-reset', 'click', function () { if (!Object.keys(st.offs).length) return; pushUndo(JSON.parse(JSON.stringify(st.offs))); st.offs = {}; drawWorld(); markDirty(); });
-  on('b-rotl', 'click', function () { rotate(-1); }); on('b-rotr', 'click', function () { rotate(1); });
+  on('b-rot', 'click', function (e) { rotate(e.shiftKey ? -1 : 1); });
   on('b-zin', 'click', function () { zoom(1.25); }); on('b-zout', 'click', function () { zoom(1 / 1.25); }); on('b-fit', 'click', fit);
   on('b-save', 'click', save); on('b-saveas', 'click', saveAs); on('b-def', 'click', makeDefault);
   on('layouts', 'change', function (e) { var row = st.layouts.filter(function (l) { return l.id === e.target.value; })[0]; if (row) applyLayout(row); });
