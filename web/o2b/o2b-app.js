@@ -17,7 +17,7 @@
     ['T4', 'thermo', 'konyha', 'Hőmérő, konyha'], ['T5', 'thermo', 'kagylo', 'Hőmérő, kagyló szoba'], ['T6', 'thermo', 'gyerek', 'Hőmérő, gyerekszoba'],
     ['T7', 'thermo', 'erkely', 'Hőmérő, erkély (kint)'], ['T8', 'thermo', 'nappali', 'Hőmérő, nappali (2.)'],
     ['K1', 'ac_ir', 'nappali', 'Klíma, nappali'], ['K2', 'ac_ir', 'halo', 'Klíma, hálószoba'], ['K3', 'ac_ir', 'kagylo', 'Klíma, kagyló szoba'], ['K4', 'ac_ir', 'gyerek', 'Klíma, gyerekszoba'],
-    ['C1', 'plug', 'furdo_fent', 'Emeleti bojler (meleg víz)'], ['C2', 'plug', 'etkezo', 'Dupla lámpa (étkező, a tükör alatt)'], ['C3', 'plug', 'nappali', 'TV led'],
+    ['C1', 'plug', 'furdo_fent', 'Emeleti bojler (meleg víz)'], ['C2', 'plug', 'etkezo', 'Dupla lámpa (étkező, a tükörnél)'], ['C3', 'plug', 'nappali', 'TV led'],
     ['C4', 'plug', 'etkezo', 'Lépcső, fények'], ['C5', 'plug', 'etkezo', 'Tükör, étkező'], ['C6', 'plug', 'etkezo', 'Karácsonyfa'],
     ['C7', 'plug', 'nappali', 'Szarvas'], ['C8', 'plug', 'erkely', 'Karácsonyi fények (erkély)'],
     ['X1', 'breaker', 'furdo_fent', 'Emeleti fürdő köre'], ['M1', 'pir', 'lepcso_fent', 'Mozgásérzékelő (lépcső teteje)'],
@@ -511,6 +511,24 @@
     st.sel = st.sel === 'p:' + id ? null : 'p:' + id;
     drawItems('lo'); drawItems('up'); showInfo();
   }
+  // Kapcsolás és időzítés a konnektoros lámpáknál: a felület már látszik, de amíg a távkapcsolás nincs
+  // bekötve (a tulaj döntésére vár), a gombok tiltottak, és a kártya ezt ki is mondja.
+  var CTL_PLAN = {
+    C2: ['Napnyugtakor BE', 'Minden nap 22:30 KI'], C3: ['Napnyugta előtt 15 perccel BE', '23:30 KI (hétvégén 0:30)'],
+    C4: ['Ha mozgás van a lépcsőn este, BE 10 percre'], C5: ['Napnyugtakor BE', '22:30 KI'],
+    C6: ['Advent idején 16:30 BE', '22:00 KI'], C7: ['Advent idején 16:30 BE', '22:00 KI'], C8: ['Napnyugtakor BE', '23:00 KI'],
+    C1: ['Csak megerősítéssel kapcsolható (meleg víz)']
+  };
+  var CTL_MOCK = 'https://claude.ai/artifact/GGsjdkiNfYqbxvrunumHMX';
+  function controlPreview(d, r) {
+    if (d.role !== 'plug') return '';
+    var on = r && r.online !== false && isOn(r.status), dis = ' disabled title="A távkapcsolás még nincs bekötve"';
+    return '<div class="ctl"><div class="ctlh">KAPCSOLÁS ÉS IDŐZÍTÉS <span class="soon">HAMAROSAN</span></div>' +
+      '<div class="ctlrow"><span>' + (on ? 'Most BE' : 'Most KI') + '</span><button class="csw" role="switch" aria-checked="' + on + '"' + dis + ' aria-label="Kapcsoló"></button></div>' +
+      '<div class="ctlq"><button class="btn sm"' + dis + '>BE 1 órára</button><button class="btn sm"' + dis + '>KI 23:00-kor</button><button class="btn sm"' + dis + '>Napnyugtakor BE</button></div>' +
+      '<div class="ctlr">Javasolt szabályok:<ul>' + (CTL_PLAN[d.pink] || ['Napnyugtakor BE', '23:00 KI']).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="ctln">A gombok a távkapcsolás bekötése után élnek. <a href="' + CTL_MOCK + '" target="_blank" rel="noopener">Minták és működés</a></div></div>';
+  }
   function infoOpen(box) {
     box.insertAdjacentHTML('beforeend', '<button class="btn ib sm ix" type="button" aria-label="Bezárás">✕</button>');
     box.querySelector('.ix').addEventListener('click', function () { st.sel = null; box.hidden = true; drawItems('lo'); drawItems('up'); drawOverlay(); list(); });
@@ -530,7 +548,7 @@
     var s = devState(d), r = st.latest[d.pink], b = (st.bat || []).filter(function (x) { return x.pink === d.pink; })[0];
     box.innerHTML = '<b>' + esc(d.label) + '</b><br>' + esc(ROOM_NAMES[d.room] || '') + ' · ' + esc(ROLE_NAME[d.role] || d.role) +
       '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>' + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
-      (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '');
+      (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') + controlPreview(d, r);
     infoOpen(box);
   }
 
@@ -720,7 +738,30 @@
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
-  var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sleep', wait: 4000, goal: null, face: 1, fs: 1, tilt: 0, v: 0, jump: null, sp: null, last: 0, fade: 1, dir: 1 };
+  var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sleep', wait: 4000, goal: null, face: 1, fs: 1, tilt: 0, v: 0, jump: null, sp: null, last: 0, fade: 1, dir: 1, next: null };
+  // Pamutka helye a böngészőben megmarad: rövid frissítés után ugyanott folytatja; ha rég nem nézted
+  // (15 percnél régebben), egy másik pihenőhelyen találod. Csak ebben a böngészőben, csak kényelmi adat.
+  var CAT_KEY = 'o2b-pamutka', CAT_FRESH = 15 * 60000;
+  (function restoreCat() {
+    var R0 = S.CAT_ROUTE, sv = null;
+    try { sv = JSON.parse(localStorage.getItem(CAT_KEY) || 'null'); } catch (e) { sv = null; }
+    if (sv && Date.now() - sv.ts < CAT_FRESH && R0[sv.i] && (sv.fl === 'lo' || sv.fl === 'up')) {
+      cat.i = sv.i; cat.fl = sv.fl; cat.x = sv.x; cat.y = sv.y; cat.dir = sv.dir === -1 ? -1 : 1;
+      cat.mode = sv.mode === 'walk' ? 'walk' : sv.mode; cat.wait = Math.max(0, (sv.wait || 0) - (Date.now() - sv.ts)); cat.face = sv.face || 1; cat.fs = cat.face;
+      return;
+    }
+    var rest = []; R0.forEach(function (r, i) { if (r[3] === 'sleep' || r[3] === 'sit') rest.push(i); });
+    var i = rest.length ? rest[Math.floor(Math.random() * rest.length)] : 0;
+    cat.i = i; cat.fl = R0[i][0]; cat.x = R0[i][1]; cat.y = R0[i][2]; cat.mode = 'sleep'; cat.wait = 5000 + Math.random() * 10000;
+  })();
+  function saveCat() {
+    var J = cat.jump, sv = J ? { i: J.ni, fl: J.f1, x: J.x1, y: J.y1 } : { i: cat.i, fl: cat.fl, x: cat.x, y: cat.y };
+    sv.dir = cat.dir; sv.face = cat.face; sv.mode = cat.mode === 'jump' || cat.mode === 'land' ? 'walk' : cat.mode; sv.wait = cat.wait; sv.ts = Date.now();
+    try { localStorage.setItem(CAT_KEY, JSON.stringify(sv)); } catch (e) { /* tiltott tároló: nem baj */ }
+  }
+  setInterval(saveCat, 1000);
+  window.addEventListener('pagehide', saveCat);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) saveCat(); });
   // Pamutka, a világ legcukibb macskája: ezüst cirmos, nagy fej, csillogó sárgászöld szem, pirospozsgás
   // pofi, fekete nyakörv aranycsengővel, csíkos farok. Három póz: ül (szemből), sétál (oldalt), alszik.
   var PAM = { fur: '#e3e7ea', fur2: '#c9cfd4', stripe: '#6b7179', belly: '#fbfcfd', pink: '#f6a9bf', eye: '#c3d84a' };
@@ -825,8 +866,9 @@
     if (r < 0.84) return ['yarn', 5200];
     return ['meow', 2600];
   }
-  function startAction(a) {
+  function startAction(a, text) {
     cat.mode = a[0]; cat.wait = a[1];
+    if (text && layer.cat) { var b0 = layer.cat.querySelector('.bt'); if (b0) b0.textContent = text; if (a[0] === 'meow') { cat.mode = a[0]; return; } }
     if (a[0] === 'meow' && layer.cat) {
       var tg = target(), cold = st.devs.some(function (d) { var r = st.latest[d.pink]; var t = r && r.online !== false && d.role === 'thermo' && d.room !== 'erkely' ? temp(r.status) : null; return t != null && t < tg - 1.5; });
       var txt = cold && Math.random() < 0.5 ? 'Fázom, fűts be!' : MEOWS[Math.floor(Math.random() * MEOWS.length)];
@@ -850,7 +892,8 @@
       if (J.t >= 1) { cat.jump = null; cat.fl = J.f1; cat.x = J.x1; cat.y = J.y1; cat.i = J.ni; cat.v = 0; cat.mode = 'land'; cat.wait = 260; cat.tilt = 0; cat.sp = null; }
     } else if (cat.wait > 0) {
       cat.wait -= dt;
-      if (cat.wait <= 0 && cat.mode !== 'walk') { cat.mode = 'walk'; cat.v = 0; }
+      if (cat.wait <= 0 && cat.next) { var nx0 = cat.next; cat.next = null; startAction(nx0[0], nx0[1]); }
+      else if (cat.wait <= 0 && cat.mode !== 'walk') { cat.mode = 'walk'; cat.v = 0; }
     } else {
       var ni = (cat.i + cat.dir + n) % n, nx = R[ni];
       if (nx[0] !== cat.fl) {                         // szintváltás: ugrás
@@ -888,6 +931,12 @@
     requestAnimationFrame(catStep);
   }
   function catClick() {
+    if (cat.mode === 'sleep') {                           // koppintásra felébred: nyújtózik, aztán nyávog egyet
+      cat.jump = null; cat.sp = null; cat.v = 0;
+      startAction(['stretch', 1500]);
+      cat.next = [['meow', 2600], 'Mrrr… ébren vagyok!'];
+      return;
+    }
     var t = tips();
     toast(t.length ? 'Pamutka: ' + t[0][0].replace(/<[^>]+>/g, '') : 'Pamutka: miaú, minden rendben, dorombolok.', t.length ? '' : 'ok');
     $('pam').classList.remove('mini');

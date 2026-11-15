@@ -158,8 +158,13 @@
   // Hálószoba
   piece('ac_bd', 'Klíma beltéri egysége az ajtó fölött (IR-távirányítóval)', 'lo', [[3.0, 11.2, 0.9, 0.24, 2.38, 0.3, C.WHITE]], false);
   piece('bd_curtain', 'Fehér függöny a magas ablakon', 'lo', [[1.15, 14.16, 0.25, 0.1, 0.1, 2.65, C.LINEN], [2.95, 14.16, 0.25, 0.1, 0.1, 2.65, C.LINEN]], false);
-  piece('bd_wardrobe', 'Beépített szekrényfal (zsályazöld fülkével)', 'lo', [[0.08, 11.3, 0.6, 2.95, 0, 2.6, C.WHITE], [0.66, 12.1, 0.03, 1.4, 0.45, 1.3, C.SAGE]], false);
-  piece('bd_bed', 'Franciaágy', 'lo', [[0.7, 12.0, 2.0, 1.6, 0, 0.45, C.WALNUT], [0.72, 12.02, 1.96, 1.56, 0.45, 0.14, C.LINEN], [1.6, 12.0, 1.08, 1.6, 0.58, 0.05, C.SAGE], [0.8, 12.15, 0.4, 0.55, 0.59, 0.14, C.WHITE], [0.8, 12.9, 0.4, 0.55, 0.59, 0.14, C.WHITE]]);
+  // szimmetrikus beépített szekrényfal a teljes nyugati falon: két szekrénytorony, középen a zsályazöld
+  // fülke az ággyal, fölötte áthidaló felső szekrény
+  piece('bd_wardrobe', 'Beépített szekrényfal a teljes falon, középen fülke az ággyal (szimmetrikus)', 'lo', [
+    [0.06, 11.22, 0.62, 0.78, 0, 2.7, C.WHITE], [0.06, 13.6, 0.62, 0.78, 0, 2.7, C.WHITE],
+    [0.06, 12.0, 0.62, 1.6, 2.05, 0.65, C.WHITE], [0.06, 12.0, 0.05, 1.6, 0, 2.05, C.SAGE],
+    [0.66, 11.6, 0.03, 0.04, 1.0, 0.25, C.BLACK], [0.66, 13.96, 0.03, 0.04, 1.0, 0.25, C.BLACK]], false);
+  piece('bd_bed', 'Franciaágy a szekrényfal fülkéjében', 'lo', [[0.12, 12.05, 2.0, 1.5, 0, 0.45, C.WALNUT], [0.14, 12.07, 1.96, 1.46, 0.45, 0.14, C.LINEN], [1.0, 12.05, 1.1, 1.5, 0.58, 0.05, C.SAGE], [0.22, 12.17, 0.38, 0.55, 0.59, 0.14, C.WHITE], [0.22, 12.88, 0.38, 0.55, 0.59, 0.14, C.WHITE]]);
   piece('bd_desk', 'Állítható íróasztal LG monitorral', 'lo', [].concat([[3.3, 13.4, 1.0, 0.6, 0.72, 0.04, C.OAK], [3.35, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [4.2, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [3.55, 13.85, 0.55, 0.06, 0.95, 0.35, C.BLACK]], [[3.6, 12.95, 0.45, 0.45, 0, 0.5, C.BLACK], [3.62, 12.9, 0.42, 0.08, 0.5, 0.5, C.BLACK]]));
   piece('bd_radiator', 'Radiátor az ablak alatt', 'lo', [[1.5, 14.22, 1.3, 0.1, 0.12, 0.55, C.WHITE]], false);
   piece('bd_iron', 'Vasalódeszka', 'lo', [[3.0, 11.45, 1.1, 0.32, 0.85, 0.04, C.BLUEC], [3.4, 11.55, 0.04, 0.1, 0, 0.85, C.STEEL]]);
@@ -209,7 +214,7 @@
   var PINS = {
     T1: ['lo', 3.2, 3.4, 1.2], T8: ['lo', 1.0, 1.9, 1.2], T2: ['lo', 1.2, 7.3, 1.2], T3: ['lo', 1.1, 13.9, 1.2],
     T4: ['lo', 8.6, 9.8, 1.4], T7: ['lo', 2.6, -1.0, 0.9], K1: ['lo', 0.17, 3.2, 2.62], K2: ['lo', 3.45, 11.32, 2.75],
-    C2: ['lo', 4.05, 8.05, 1.45], C3: ['lo', 4.05, 2.9, 0.9], C4: ['lo', 1.6, 10.2, 1.4], C5: ['lo', 4.3, 8.2, 2.25],
+    C2: ['lo', 4.3, 7.25, 1.55], C3: ['lo', 4.05, 2.9, 0.9], C4: ['lo', 1.6, 10.2, 1.4], C5: ['lo', 4.3, 8.2, 2.25],
     C6: ['lo', 3.75, 10.05, 1.9], C7: ['lo', 1.05, 0.5, 1.0], C8: ['lo', 4.0, -0.5, 1.0],
     IR1: ['lo', 0.5, 1.0, 2.2], IR2: ['lo', 4.2, 13.1, 2.2],
     T5: ['up', 1.2, 2.0, 1.2], T6: ['up', 3.3, 2.8, 1.2], K3: ['up', 0.17, 2.0, 2.45], K4: ['up', 4.4, 3.75, 2.45],
