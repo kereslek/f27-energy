@@ -63,7 +63,7 @@
       inner: [
         [0, 6.27, 4.45, 6.27, [[1.45, 3.1]]],             // nappali / étkező: kétszárnyú üvegajtó
         [0, 11.12, 4.45, 11.12, [[2.95, 4.3]]],           // étkező / háló
-        [4.7, 6.27, 4.7, 11.05, [[7.6, 8.5]]],           // étkező / előszoba
+        [4.7, 6.27, 4.7, 11.05, [[7.65, 8.65]]],   // az igazi ajtó; a második kétszárnyú ajtó vakajtó (szekrény)           // étkező / előszoba
         [4.95, 7.37, 6.95, 7.37, [[5.4, 6.2]]],          // előszoba / fürdő
         [6.88, 7.45, 6.88, 11.05, [[7.6, 8.2], [8.9, 10.7]]],   // előszoba / kamra, konyha (félfal)
         [6.95, 8.38, 8.1, 8.38, []]                       // kamra / konyha
@@ -166,7 +166,7 @@
   piece('dn_radiator', 'Radiátor (0-ra véve; itt mér a Computherm)', 'lo', [[3.55, 6.42, 0.75, 0.1, 0.12, 0.55, C.WHITE]], false);
   piece('dn_thermostat', 'Computherm termosztát (étkező sarka)', 'lo', [[4.32, 6.45, 0.06, 0.14, 1.3, 0.18, C.WHITE]], false);
   piece('dn_chair', 'Krém füles fotel a sarokban, a lépcső mellett', 'lo', [[0.2, 8.85, 0.72, 0.68, 0, 0.42, C.CREAM], [0.1, 8.8, 0.16, 0.78, 0, 1.05, C.CREAM], [0.1, 8.78, 0.3, 0.1, 0.4, 0.62, C.CREAM], [0.1, 9.5, 0.3, 0.1, 0.4, 0.62, C.CREAM], [0.2, 8.8, 0.7, 0.12, 0, 0.62, C.CREAM], [0.2, 9.48, 0.7, 0.12, 0, 0.62, C.CREAM]]);
-  piece('dn_wardrobe', 'Vakajtó mögötti ruhásszekrény (keleti fal)', 'lo', [[4.2, 9.25, 0.4, 1.3, 0, 2.2, C.WHITE], [4.18, 9.88, 0.03, 0.04, 1.0, 0.2, C.STEEL]], false);
+  piece('dn_wardrobe', 'Vakajtó: a régi kétszárnyú ajtó örökre zárva, mögötte az előszoba ruhásszekrénye', 'lo', [[4.56, 9.15, 0.06, 0.82, 0, 2.2, C.WHITE], [4.56, 10.0, 0.06, 0.82, 0, 2.2, C.WHITE], [4.54, 9.92, 0.03, 0.04, 1.0, 0.18, C.STEEL], [4.54, 10.04, 0.03, 0.04, 1.0, 0.18, C.STEEL]], false);
   piece('dn_tree', 'Karácsonyfa (okos konnektoron)', 'lo', [[3.6, 9.9, 0.3, 0.3, 0, 0.2, C.TERRA], [3.42, 9.72, 0.66, 0.66, 0.2, 0.6, C.LEAF], [3.52, 9.82, 0.46, 0.46, 0.8, 0.5, C.LEAF], [3.62, 9.92, 0.26, 0.26, 1.3, 0.4, C.LEAF2], [3.7, 10.0, 0.1, 0.1, 1.7, 0.12, C.YELLOW]]);
 
   // Hálószoba
@@ -184,7 +184,7 @@
   piece('bd_iron', 'Vasalódeszka', 'lo', [[3.0, 11.45, 1.1, 0.32, 0.85, 0.04, C.BLUEC], [3.4, 11.55, 0.04, 0.1, 0, 0.85, C.STEEL]]);
 
   // Előszoba, fürdő, kamra, konyha
-  piece('hl_wardrobe', 'Beépített szekrénysor', 'lo', [[4.98, 8.6, 0.45, 2.25, 0, 2.4, C.WHITE]], false);
+  piece('hl_wardrobe', 'Beépített szekrénysor', 'lo', [[4.98, 8.75, 0.45, 2.1, 0, 2.4, C.WHITE]], false);
   piece('hl_bench', 'Zöld bársony pad a kamraajtó mellett', 'lo', [[6.4, 8.55, 0.45, 0.95, 0.35, 0.1, C.VELVET], [6.42, 8.6, 0.06, 0.06, 0, 0.35, C.DARK], [6.78, 8.6, 0.06, 0.06, 0, 0.35, C.DARK], [6.42, 9.39, 0.06, 0.06, 0, 0.35, C.DARK], [6.78, 9.39, 0.06, 0.06, 0, 0.35, C.DARK]]);
   piece('hl_mat', 'Lábtörlő', 'lo', [[5.55, 10.4, 0.8, 0.5, 0, 0.02, C.TERRA]]);
   piece('bt_shower', 'Zuhany fekete keretes üvegfallal', 'lo', [[4.98, 5.85, 0.92, 0.9, 0, 0.06, C.WHITE], [5.88, 5.85, 0.03, 0.9, 0.06, 1.95, C.GLASS], [5.88, 5.85, 0.03, 0.9, 2.0, 0.04, C.BLACK]], false);
@@ -272,7 +272,7 @@
   }
 
   // Tájolás: a terv "fel" iránya (az erkély felé) és az észak közti szög, óramutató szerint.
-  var PLAN_NORTH = 55;
+  var PLAN_NORTH = 68;
   // az utca: középpont, irány (észak-dél) és a lakás felől kifelé mutató (keleti) egységvektor, méterben
   function streetGeom() {
     var a = PLAN_NORTH * Math.PI / 180;
