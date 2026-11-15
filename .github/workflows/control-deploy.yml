@@ -73,3 +73,17 @@ jobs:
           SQL
           TARGET=o2b SQL_FILE="$F" python -m f27.migrate
           rm -f "$F"
+      - name: 5. Ellenőrzés (az időzítő eléri-e a függvényt)
+        run: |
+          sleep 80
+          python - <<'PY'
+          import os
+          from f27.migrate import run_sql
+          ref, tok = os.environ["REF"], os.environ["SUPABASE_ACCESS_TOKEN"]
+          j = run_sql(ref, tok, "select count(*) as n from cron.job where jobname = 'o2b-control-tick'")
+          r = run_sql(ref, tok, "select status_code from net._http_response order by created desc limit 3")
+          codes = [x.get("status_code") for x in r]
+          print(f"Időzítő: {'megvan' if j and j[0]['n'] else 'HIÁNYZIK'}; a függvény utolsó válaszai: {codes}")
+          if not codes or codes[0] != 200:
+              raise SystemExit("A függvény nem válaszolt 200-zal.")
+          PY
