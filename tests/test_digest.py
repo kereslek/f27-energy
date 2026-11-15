@@ -157,7 +157,7 @@ class TestDigest(unittest.TestCase):
                      "- Nyitva: Kis szoba ablak", "- Elem merül (15 %): Konyha ablak", "- Nem elérhető: Hőmérő, fürdő",
                      "- Régóta hallgat (8 órája): Hőmérő, kis szoba",
                      "- Holnap érkezik vendég, de a bojler (7-es kör) le van kapcsolva: legkésőbb holnap 12:00-kor kapcsold vissza.",
-                     "- Érkezés 15:00 (Airbnb-foglalás), felfűtés 12:00-tól",
+                     "- Érkezés 15:00 (Airbnb-vendég), felfűtés 12:00-tól",
                      "- Kályhakapcsoló: 1/3 fokozat"):
             self.assertIn(line, _norm(body))
         self.assertNotIn("Mai fogyasztás", body)                       # duplikáció volt, a Statisztika mutatja
@@ -186,37 +186,14 @@ class TestDigest(unittest.TestCase):
         body = r["new"][0]["email_body"]
         self.assertIn("- A kályha most fűt (995 W), pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).", _norm(body))
         self.assertIn("- Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).", _norm(body))
-        self.assertIn("- Se érkezés, se távozás.", _norm(body))
-
-    def test_partial_bookings_never_claim_empty(self):
-        """2026.11.15-i hiba: csak az Airbnb-naptár volt bekötve, a levél mégis azt írta: "Se érkezés, se
-        távozás. Következő érkezés: dec. 26." A Booking-foglalásokat nem látjuk, így üres napot nem mondhatunk."""
-        db = self.sb.db
-        db["bookings"].clear()
-        db["bookings"]["z"] = {"id": "z", "source": "airbnb", "kind": "reservation", "start_date": "2026-12-26", "end_date": "2026-12-29", "seen_at": "x"}
-        env = dict(ENV, AIRBNB_ICAL_URL="https://x/ical")
-        r = self.run_at(AT(20, 0), environ=env, **{"P": {"switch_1": True}, "X5": {"cur_power": 9950}, "X7": {"switch": True}})
-        body = "\n".join(_norm(r["new"][0]["email_body"]))
-        self.assertNotIn("Se érkezés, se távozás", body)
-        self.assertNotIn("nincs vendég", body)
-        self.assertNotIn("lekapcsolható", body)
-        self.assertNotIn("üres lakás", body)
-        self.assertIn("A Booking-foglalásokat nem látom, ezért lehet, hogy mégis jön vendég", body)
-        self.assertIn("Következő Airbnb-naptárbeli érkezés: dec. 26. szombat 15:00 (a Bookingot nem látom).", body)
-        self.assertIn("Kösd be a Booking-naptárt (BOOKING_ICAL_URL)", body)
-        self.assertIn("Vendég : --", body)                             # a fejléc sem mondja, hogy üres
-        # ha a Booking-naptár is be van kötve, ugyanez már tény
-        db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]
-        env["BOOKING_ICAL_URL"] = "https://y/ical"
-        r = self.run_at(AT(20, 5, d=1), environ=env)
-        self.assertIn("- Se érkezés, se távozás. Következő érkezés: dec. 26. szombat 15:00.", _norm(r["new"][0]["email_body"]))
+        self.assertIn("- Se érkezés, se távozás, a lakás üres.", _norm(body))
 
     def test_quiet_day_and_public_note(self):
         r = self.run_at(AT(20, 0), **{"X7": {"switch": False}})
         body = r["new"][0]["email_body"]
         self.assertIn("- Nem volt riasztás.", _norm(body))
         self.assertIn("- Nincs teendő.", _norm(body))
-        self.assertIn("- Se érkezés, se távozás.", _norm(body))
+        self.assertIn("- Se érkezés, se távozás, a lakás üres.", _norm(body))
         for s in SECRETS + ["21,4", "Kis szoba", "°C", "kWh"]:
             self.assertNotIn(s, r["note"])
 
@@ -401,11 +378,28 @@ class PartialBookingAndLinksTest(unittest.TestCase):
     """2026.11.14-i hibajelentés: a Booking-foglalások nem látszanak (csak Airbnb-naptár van bekötve),
     és a körökre koppintva nem volt link."""
 
-    def test_partial_flag(self):
-        from f27.digest import booking_partial
-        self.assertTrue(booking_partial({"AIRBNB_ICAL_URL": "x"}))
-        self.assertFalse(booking_partial({"AIRBNB_ICAL_URL": "x", "BOOKING_ICAL_URL": "y"}))
-        self.assertFalse(booking_partial({}))
+    def test_holnap_inside_merged_booking_block(self):
+        """2026.11.15: vendég bent (a naptár zárva nov. 29-ig), a levél mégis "Se érkezés, se távozás.
+        Következő érkezés: dec. 26."-ot írt. A zárt szakasz közepén ezt nem mondhatjuk."""
+        from datetime import date
+        bk = [{"source": "airbnb", "kind": "blocked", "start_date": "2026-11-10", "end_date": "2026-11-29"},
+              {"source": "airbnb", "kind": "reservation", "start_date": "2026-12-26", "end_date": "2026-12-29"}]
+        ls = DG.holnap_lines(bk, date(2026, 11, 15), date(2026, 11, 16))
+        txt = "\n".join(ls)
+        self.assertIn("Ma éjjel: Booking-vendég, a naptárban zárt; újra foglalható: nov. 29. vasárnap.", txt)
+        self.assertIn("Holnap is zárt a naptár: Booking-vendég", txt)
+        self.assertNotIn("Se érkezés, se távozás", txt)
+        self.assertNotIn("dec. 26", txt)
+        # egymást érő események egy szakasz: a foglalható nap a lánc vége
+        bk2 = bk + [{"source": "airbnb", "kind": "reservation", "start_date": "2026-11-29", "end_date": "2026-12-02"}]
+        self.assertIn("újra foglalható: dec. 2. szerda", "\n".join(DG.holnap_lines(bk2, date(2026, 11, 15), date(2026, 11, 16))))
+        # a zárt szakasz vége holnap, és üres napok jönnek
+        ls = DG.holnap_lines(bk, date(2026, 11, 28), date(2026, 11, 29))
+        self.assertIn("- Távozás 10:00 (Booking-vendég, a naptárban zárt): a zárt szakasz vége", ls)
+        # üres lakás: csak ilyenkor mondjuk, hogy se érkezés, se távozás
+        ls = DG.holnap_lines(bk, date(2026, 12, 5), date(2026, 12, 6))
+        self.assertEqual(ls, ["- Ma éjjel: üres (foglalható).",
+                              "- Se érkezés, se távozás, a lakás üres. Következő érkezés: dec. 26. szombat 15:00 (Airbnb-vendég)."])
 
     def test_circuit_buttons_in_html(self):
         from f27.report_stats import CIRC_HINT, to_html

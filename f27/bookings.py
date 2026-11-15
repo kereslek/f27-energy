@@ -9,9 +9,18 @@ A naptár linkje titkos tokent tartalmaz, ezért csak GitHub Secrets-ben él:
 
 Az Airbnb exportjában:
   SUMMARY "Reserved"                -> kind = 'reservation' (Airbnb-vendég)
-  SUMMARY "Airbnb (Not available)"  -> kind = 'blocked' (importált naptár, valószínűleg
-                                       Booking-vendég, vagy elérhetőségi szabály: előkészítési
-                                       idő, előzetes értesítés, kézi lezárás)
+  SUMMARY "Airbnb (Not available)"  -> kind = 'blocked' (Booking-vendég; ritkán karbantartás)
+
+A NAPTÁRAK LOGIKÁJA (a tulaj, 2026.11.15; ezt kell tudni minden foglaltsági mondathoz):
+  - Az Airbnb és a Booking naptára össze van kötve, szinkronban van: az Airbnb-export egymagában
+    teljes. Külön Booking-naptár (BOOKING_ICAL_URL) nem kell.
+  - Ami az Airbnb-naptárban nem foglalható ("Not available"), ott szinte mindig Booking-vendég van.
+    Ritkán (évente 1-2 alkalommal) karbantartás miatt zárt: a kezelő cég vagy a tulaj dolgozik a lakásban.
+  - Az egymás utáni Booking-foglalások az exportban EGY összefüggő zárt szakasznak látszanak, így a
+    szakaszon belüli érkezés és távozás nem látszik. Ilyenkor csak azt mondjuk ki, amit tudunk:
+    "zárva, vendég valószínű", és hogy mikortól foglalható újra (a szakasz vége).
+  - Ellenőrzés, van-e ma vendég: ha a mai és a holnapi éjszaka nem foglalható (bármilyen esemény
+    lefedi), vendég valószínű; a következő foglalható nap a lefedett szakasz vége.
 A Booking exportjában a foglalás és a kézi lezárás nem különböztethető meg, ott minden
 esemény 'reservation'.
 
@@ -149,13 +158,25 @@ def rows_from(source: str, text: str, now: datetime) -> list[dict]:
     return list(rows.values())
 
 
-def partial(environ=None) -> bool:
-    """Igaz, ha a foglalási adat biztosan hiányos: csak az Airbnb-naptár van bekötve, a Booking nem.
-    Az Airbnb exportja a más naptárakból (Booking) importált foglalásokat NEM adja tovább, így ilyenkor
-    egy "üres" nap valójában ismeretlen. KÖZÖS SZABÁLY (esti levél, TL;DR, tippek, térkép): hiányos adatnál
-    soha nem mondunk üres napot vagy "nincs vendég"-et, csak azt, amit az Airbnb-naptár ténylegesen mutat."""
-    environ = os.environ if environ is None else environ
-    return bool((environ.get("AIRBNB_ICAL_URL") or "").strip()) and not (environ.get("BOOKING_ICAL_URL") or "").strip()
+# ---- foglaltsági modell (esti levél, riasztások; a térkép bkModel-je ugyanígy gondolkodik) ----------
+def night_of(rows: list[dict], d: date) -> dict | None:
+    """A d éjszakáját lefedő esemény (Airbnb-foglalás előnyben a zárt nap előtt), vagy None (foglalható)."""
+    k = d.isoformat()
+    hit = [r for r in rows if r["start_date"] <= k < r["end_date"]]
+    return next((r for r in hit if r["kind"] == "reservation"), hit[0] if hit else None)
+
+
+def closed_until(rows: list[dict], d: date, limit: int = 400) -> date | None:
+    """Ha a d éjszakája nem foglalható, az első foglalható nap utána (a zárt szakasz vége); különben None.
+    Az egymás utáni események (Airbnb és Booking vegyesen) egy szakasznak számítanak."""
+    if night_of(rows, d) is None:
+        return None
+    x = d
+    for _ in range(limit):
+        x += timedelta(days=1)
+        if night_of(rows, x) is None:
+            return x
+    return None
 
 
 def parse_ts(s: str) -> datetime:
@@ -224,3 +245,38 @@ def collect_bookings(sb: SupabaseRest, now: datetime | None = None, fetcher=None
     if problems:
         res["note"] = (res["note"] + " " if res["note"] else "Foglalások: ") + "; ".join(problems) + "."
     return res
+
+
+# ---- ellenőrzés (Actions > "Foglaltság-ellenőrzés"): ma és holnap foglalható-e -------------------------
+def check(sb: SupabaseRest, now: datetime | None = None, expect_closed_until: date | None = None) -> dict:
+    """A naptárból: ma és holnap éjjel van-e vendég (nem foglalható), és mikortól foglalható újra.
+    expect_closed_until: a tulaj állítása (pl. legkorábban 11.29.); visszaadja, egyezik-e."""
+    now = now or datetime.now(timezone.utc)
+    today = now.astimezone(BUDAPEST).date()
+    rows = sb.select("bookings", "source,kind,start_date,end_date", end_date=f"gte.{(today - timedelta(days=1)).isoformat()}",
+                     order="start_date.asc", limit="200")
+    a, b = night_of(rows, today), night_of(rows, today + timedelta(days=1))
+    until = closed_until(rows, today)
+    kind = lambda x: "üres (foglalható)" if x is None else ("Airbnb-vendég" if x["kind"] == "reservation" else "Booking-vendég (zárt)")
+    text = (f"Ma éjjel: {kind(a)}. Holnap éjjel: {kind(b)}."
+            + (f" Újra foglalható: {until:%Y.%m.%d}." if until else "")
+            + f" (A naptárban {len(rows)} jövőbeli vagy mai esemény.)")
+    match = None
+    if expect_closed_until is not None:
+        match = bool(a and b and until and until >= expect_closed_until)
+    return {"text": text, "match": match, "today": a is not None, "tomorrow": b is not None}
+
+
+if __name__ == "__main__":                         # python -m f27.bookings check [ÉÉÉÉ-HH-NN]
+    import sys
+    from .alerts import send_ntfy
+    sb = SupabaseRest.from_env()
+    exp = date.fromisoformat(sys.argv[2]) if len(sys.argv) > 2 else None
+    r = check(sb, expect_closed_until=exp)
+    sent = "nincs NTFY_TOPIC"
+    if (os.environ.get("NTFY_TOPIC") or "").strip():
+        send_ntfy({"title": f"{SITE.tag} foglaltság-ellenőrzés", "body": r["text"], "priority": "default", "tags": "calendar"}, os.environ)
+        sent = "push elküldve"
+    # a publikus logba csak ennyi: foglalási adat nem
+    print(f"Foglaltság-ellenőrzés: {sent}." + ("" if r["match"] is None else
+          f" A tulaj leírásával (ma és holnap zárt, foglalható legkorábban {exp:%m.%d}.) egyezik: {'igen' if r['match'] else 'NEM'}."))

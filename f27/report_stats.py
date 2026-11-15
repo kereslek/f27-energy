@@ -195,7 +195,7 @@ def _door_opens(sb, since: datetime) -> dict[date, int]:
     return out
 
 
-def _guest(sb, today: date, safe, partial: bool = False) -> str:
+def _guest(sb, today: date, safe) -> str:
     bk = safe(lambda: sb.select("bookings", "kind,start_date,end_date", end_date=f"gte.{today.isoformat()}",
                                 order="start_date.asc", limit="20"), None)
     if bk is None:
@@ -203,20 +203,18 @@ def _guest(sb, today: date, safe, partial: bool = False) -> str:
     k = today.isoformat()
     if any(b["start_date"] <= k < b["end_date"] for b in bk):
         return "vendég bent"
-    if partial:                                     # csak Airbnb: az "üres" nap ismeretlen (közös szabály, f27.bookings.partial)
-        return "nem tudni (nincs Booking-adat)"
     nxt = [b for b in bk if b["start_date"] > k]
     return "üres" + (f", érkezés {nxt[0]['start_date'][5:].replace('-', '.')}." if nxt else "")
 
 
-def build_stats(sb, now: datetime, safe, archive=None, partial: bool = False) -> tuple[list[str], dict]:
+def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]:
     """Visszaad: (a statisztikai rész sorai, a fejléchez: {'kwh', 'ft', 'guest'})."""
     loc = now.astimezone(BUDAPEST)
     today = loc.date()
     t0 = _day_start(today)
     cut = now - t0                                      # ennyi telt el ma
     month0 = _day_start(today.replace(day=1))
-    guest = _guest(sb, today, safe, partial)
+    guest = _guest(sb, today, safe)
     head = {"kwh": None, "ft": None, "guest": guest}
     pinks = [c[0] for c in CIRCUITS] + [t[0] for t in THERMOS]
     hourly = safe(lambda: _hourly(sb, _day_start(today - timedelta(days=31)), pinks), None)

@@ -1,0 +1,34 @@
+name: Foglaltság-ellenőrzés (F27)
+
+# Kézzel indítható. A Supabase bookings táblájából (az Airbnb-naptár exportja; a Booking-naptár
+# szinkronban van vele) kiszámolja, hogy ma és holnap éjjel van-e vendég, és mikortól foglalható
+# újra. Az eredmény pushban (ntfy) megy a tulajnak; a publikus logba csak az kerül, hogy elment-e,
+# és ha megadsz egy dátumot, egyezik-e a várt "legkorábban ekkor foglalható" nappal.
+
+on:
+  workflow_dispatch:
+    inputs:
+      varhato:
+        description: "Várt legkorábbi foglalható nap (ÉÉÉÉ-HH-NN), nem kötelező"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Ellenőrzés
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          VARHATO: ${{ inputs.varhato }}
+        run: python -m f27.bookings check $VARHATO | tee -a "$GITHUB_STEP_SUMMARY"

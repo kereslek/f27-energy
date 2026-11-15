@@ -309,18 +309,18 @@ kontaktor kell, CLAUDE.md 9. fejezet):
 5. Legfeljebb 10 perc múlva az Adatgyűjtés lefut; a Summary-ban "Foglalások: N foglalás, M lezárt
    időszak frissítve". A térképen belépés után a csempe és a sáv élő lesz.
 
-**A Booking-naptár is kell (`BOOKING_ICAL_URL`).** Az Airbnb exportja a más naptárakból importált
-foglalásokat (Booking) nem adja tovább: 2026.11.15-én a 14 hónapos ablakban csak 3 foglalás és
-1 lezárt időszak jött, miközben a lakásnak évi kb. 110 foglalása van. Bekötés: Booking.com extranet
-> **Árak és elérhetőség** > **Naptár szinkronizálása** > **Naptár exportálása**, a linket
-`BOOKING_ICAL_URL` néven mentsd GitHub Secretként. A Booking exportja nem választja szét a
-foglalást és a kézi lezárást, ezért ott minden esemény foglalásnak számít.
+**A naptárak logikája (a tulaj, 2026.11.15).** Az Airbnb és a Booking naptára össze van kötve és
+szinkronban van, ezért az Airbnb-export egymagában teljes: külön Booking-naptár (`BOOKING_ICAL_URL`)
+nem kell. Ami az Airbnb-naptárban nem foglalható („Not available”), ott szinte mindig Booking-vendég
+van; ritkán (évente 1-2 alkalommal) karbantartás miatt zárt (a kezelő cég vagy a tulaj dolgozik a
+lakásban). Az egymás utáni Booking-foglalások az exportban egyetlen zárt szakasznak látszanak, így a
+szakaszon belüli érkezés és távozás nem látszik: ilyenkor a levél és a térkép csak azt mondja, hogy a
+naptár zárt (vendég valószínű), és mikortól foglalható újra.
 
-Amíg csak az Airbnb-naptár van bekötve, a rendszer **egyetlen helyen sem mond üres napot**
-(közös szabály: `f27/bookings.py` `partial()`, a térképen a `bkModel` `partial` jelzője): az esti levél
-„Az Airbnb-naptárban nincs érkezés… a Bookingot nem látom” formában ír, nem javasol kályha- vagy
-bojler-lekapcsolást, a térkép csempéje „NINCS AIRBNB-VENDÉG”, a naptár nem számol üres éjt. A jelzés
-magától megszűnik, amint Booking-forrású sor kerül a `bookings` táblába.
+**Ellenőrzés, van-e ma vendég:** ha a mai és a holnapi éjszaka nem foglalható, vendég valószínű; a
+következő foglalható nap a zárt szakasz vége. Az esti levél Holnap része ezzel kezd („Ma éjjel: …;
+újra foglalható: …”), és kézzel is futtatható: Actions > **Foglaltság-ellenőrzés (F27)** (az eredmény
+pushban jön, a publikus logba csak az kerül, hogy egyezik-e a megadott várt dátummal).
 
 ## Szerepkörök
 
