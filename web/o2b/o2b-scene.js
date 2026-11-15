@@ -23,7 +23,8 @@
     LEAF2: ['#8fd16f', '#6cb354', '#5a9a45'], TERRA: ['#d8875c', '#b86c45', '#9c5a3a'], RUGB: ['#9fb8cf', '#7f9bb5', '#6c88a3'],
     LINEN: ['#fbf8f1', '#e3dccb', '#d2c9b4'], SHAKER: ['#dfe3e3', '#c3c9c9', '#b0b7b7'], MARBLE: ['#f2f0ec', '#d9d5cd', '#c8c3b9'],
     WALL: ['#6a4c38', '#f6e7c8', '#ead3a6'], WALLW: ['#6a4c38', '#ffffff', '#eef0f2'], WALLB: ['#6a4c38', '#4a6a9a', '#3d5a85'],
-    WALLS: ['#6a4c38', '#b7cdb0', '#a9c1a0'], LOW: ['#ffe0b0', '#d99a5e', '#b97c45'], INNER: ['#6a4c38', '#f6e7c8', '#e3cb9c'],
+    WALLS: ['#3f4349', '#868d95', '#777e86'],   // a nappali TV-s keleti fala: sötétszürke dekorfal (fotó)
+    LOW: ['#ffe0b0', '#d99a5e', '#b97c45'], INNER: ['#6a4c38', '#f6e7c8', '#e3cb9c'],
     SLAB: ['#e9b072', '#c97f4a', '#a8653a'], BEAM: ['#5a3a24', '#432a19', '#362114'], DECK: ['#c98d55', '#a8703f', '#8c5c33'],
     RED: ['#e8574a', '#c43f33', '#a8352b'], YELLOW: ['#ffd65a', '#e8b43a', '#c9982e'], PINKC: ['#f4b6c8', '#de94aa', '#c67d93']
   };
@@ -47,7 +48,7 @@
       // fajta: d = ajtó, w = ablak, g = üvegajtó (erkély)
       outer: [
         [0, 0, 4.4, 0, 'N', [[1.5, 2.9, 'g', 0, 2.6]], { low: 1.05 }],      // az erkély felé: alacsony, hogy látsszon az erkély
-        [4.4, 0, 4.4, 5.8, 'E', [[1.4, 2.6, 'w']]],
+        [4.4, 0, 4.4, 5.8, 'E', []],                                       // a TV-s dekorfal: ablak nincs rajta (alaprajz, fotó)
         [4.4, 5.8, 6.95, 5.8, 'N', []],
         [6.95, 5.8, 6.95, 7.45, 'E', []],
         [6.95, 7.45, 8.1, 7.45, 'N', []],
@@ -129,7 +130,10 @@
   piece('lv_sofa', 'Kanapé', 'lo', [[0.25, 2.2, 0.9, 2.2, 0, 0.42, C.GREY], [0.12, 2.2, 0.25, 2.2, 0, 0.8, C.GREY], [0.25, 2.05, 0.9, 0.2, 0, 0.62, C.GREY], [0.25, 4.35, 0.9, 0.2, 0, 0.62, C.GREY], [0.35, 2.4, 0.18, 0.5, 0.42, 0.3, C.BLUEC], [0.35, 3.8, 0.18, 0.5, 0.42, 0.3, C.YELLOW]]);
   piece('lv_rug', 'Szőnyeg', 'lo', [[1.3, 2.1, 2.1, 2.6, 0, 0.02, C.CREAM]]);
   piece('lv_coffee', 'Dohányzóasztal', 'lo', [].concat(legs(1.65, 2.85, 0.9, 0.9, 0.38, C.DARK), [[1.6, 2.8, 1.0, 1.0, 0.38, 0.05, C.WALNUT], [1.95, 3.15, 0.22, 0.22, 0.43, 0.12, C.LEAF]]));
-  piece('lv_tv', 'TV a lécfalon, lebegő TV-pult LED-szalaggal', 'lo', [[4.24, 1.6, 0.1, 2.4, 0.2, 2.5, C.WOOD], [3.92, 1.8, 0.36, 2.0, 0.35, 0.3, C.WALNUT], [4.18, 2.25, 0.06, 1.1, 0.95, 0.66, C.BLACK], [3.95, 1.8, 0.3, 2.0, 0.32, 0.03, C.LAMP]]);
+  // a keleti fal a fotó szerint: végig sötétszürke dekorfal (a fal színe, C.WALLS), rajta a TV (a terem erkély felőli felében),
+  // alatta hosszú, lebegő fehér TV-pult LED-szalaggal, majdnem a fal végéig
+  piece('lv_tv', 'TV a dekorfalon, lebegő TV-pult LED-szalaggal', 'lo', [[3.98, 1.7, 0.35, 3.9, 0.3, 0.38, C.WHITE], [4.0, 1.7, 0.32, 3.9, 0.27, 0.03, C.LAMP],
+    [4.26, 1.95, 0.06, 1.45, 1.05, 0.85, C.BLACK]]);
   piece('lv_vitrine', 'Antik vitrin', 'lo', [[0.1, 0.5, 0.45, 1.1, 0, 1.9, C.WALNUT], [0.52, 0.6, 0.03, 0.9, 0.5, 1.2, C.GLASS]]);
   piece('lv_table', 'Kerek, bővíthető tölgy étkezőasztal', 'lo', [[2.45, 0.85, 0.12, 0.12, 0, 0.74, C.DARK], [2.0, 0.4, 1.0, 1.0, 0.74, 0.05, C.OAK], [1.75, 0.75, 0.3, 0.3, 0, 0.45, C.GREY], [2.95, 0.75, 0.3, 0.3, 0, 0.45, C.GREY]]);
   piece('lv_cab', 'Magas fehér szekrény, alatta a robotporszívó dokkja', 'lo', [[3.7, 5.55, 0.65, 0.55, 0.12, 1.9, C.WHITE], [3.82, 5.6, 0.36, 0.36, 0, 0.1, C.BLACK]]);
@@ -292,11 +296,37 @@
   // jobb láthatóságért LIFT méterrel a valódi helye fölé emelve lebeg. Egy közös forgatási középpont
   // (az alsó szinté), így forgatva is egymás fölött maradnak.
   var LIFT = 4.6;
-  var OFF = { lo: [0, 0, 0], up: [-2.6, 1.6, 3.0 + LIFT] };
-  function Proj(f, k) {
+  var OFF = { lo: [0, 0, 0], up: [0.2, 0.15, 3.0 + LIFT] };   // a hirdetés két alaprajza egyformán tájolt: a két szoba a nappali fölött, a felső fürdő a lenti fölött
+  // A felső szint a valódi helyén áll az alaprajz szerint (OFF), a képernyőn viszont minden forgatásnál
+  // a lenti fölé lebeg (képernyő-eltolás, SEP): így egyik nézetben sem lóg bele a lentibe, és nem
+  // látszik "kiugrásnak" a ház oldalán. A szaggatott vezetők mutatják, mi van mi fölött.
+  var SEP_OVERLAP = 0.16, sepCache = {};
+  function rawXY(f, k, x, y, z) {
     var b = bounds('lo'), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, o = OFF[f];
+    var u = (x + o[0] - cx) * U, v = (y + o[1] - cy) * U, t;
+    for (var i = 0; i < k; i++) { t = u; u = -v; v = t; }
+    return [u - v, (u + v) / 2 - ((z || 0) + o[2]) * U];
+  }
+  function screenBox(f, k, zs) {
+    var xs = [], ys = [];
+    FLOORS[f].rooms.forEach(function (r) {
+      [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.d], [r.x + r.w, r.y + r.d]].forEach(function (q) {
+        zs.forEach(function (z) { var s = rawXY(f, k, q[0], q[1], z); xs.push(s[0]); ys.push(s[1]); });
+      });
+    });
+    return { x0: Math.min.apply(0, xs), x1: Math.max.apply(0, xs), y0: Math.min.apply(0, ys), y1: Math.max.apply(0, ys) };
+  }
+  function sep(k) {
+    if (sepCache[k]) return sepCache[k];
+    var lo = screenBox('lo', k, [0, FLOORS.lo.H]), up = screenBox('up', k, [-0.5, FLOORS.up.H]);
+    var want = lo.y0 + SEP_OVERLAP * (lo.y1 - lo.y0);         // a felső szint alja ide kerüljön
+    var dy = Math.min(0, want - up.y1), dx = (lo.x0 + lo.x1) / 2 - (up.x0 + up.x1) / 2;
+    return (sepCache[k] = [dx, dy]);
+  }
+  function Proj(f, k) {
+    var b = bounds('lo'), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, o = OFF[f], sh = f === 'up' ? sep(k) : [0, 0];
     function rot(x, y) { var u = (x + o[0] - cx) * U, v = (y + o[1] - cy) * U, t; for (var i = 0; i < k; i++) { t = u; u = -v; v = t; } return [u, v]; }
-    function Q(u, v, z) { return [u - v, (u + v) / 2 - ((z || 0) + o[2]) * U]; }
+    function Q(u, v, z) { return [u - v + sh[0], (u + v) / 2 - ((z || 0) + o[2]) * U + sh[1]]; }
     function P(x, y, z) { var r = rot(x, y); return Q(r[0], r[1], z); }
     // a képernyő-elmozdulásból (vetített egység) világ-elmozdulás (méter)
     function unproject(dx, dy) {
