@@ -97,7 +97,7 @@ class _Sess:
         try:
             return _json(txt)
         except ValueError:
-            return {}
+            return {"_unparsed": True}
 
 
 def _finish(s: _Sess, r: dict) -> dict:
@@ -156,7 +156,12 @@ def login(username: str, password: str, state: dict | None = None) -> tuple[dict
         _start_verify(s, r2["notificationUrl"])
     if r2.get("captchaUrl"):
         raise XiaomiError("a Xiaomi captchát kér: lépj be egyszer a Xiaomi Home appba ugyanezzel a fiókkal, várj egy órát, és próbáld újra")
-    raise XiaomiError("hibás felhasználónév vagy jelszó")
+    if r2.get("_unparsed"):
+        raise XiaomiError("olvashatatlan válasz a Xiaomi belépésre (nem JSON)")
+    code = r2.get("code")
+    if code == 70016:
+        raise XiaomiError("a Xiaomi szerint hibás a felhasználónév vagy a jelszó (70016)")
+    raise XiaomiError(f"a Xiaomi elutasította a belépést (kód {code}, result {r2.get('result')})")
 
 
 def verify(username: str, password: str, pending: dict, code: str) -> tuple[dict, dict]:
