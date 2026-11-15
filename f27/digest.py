@@ -52,6 +52,9 @@ BATTERY_SENSORS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
 STALE = {"1": 6, "2": 6, "3": 6, "4": 6}   # óra
 CONTACT_STALE_H = 24
 KIND = {"fired": "Riasztás", "resolved": "Megszűnt", "test": "Próba"}
+# VÉDŐSZABÁLY (a tulaj, 2026.11.15): az Airbnb-export a Bookingról szinkronizált foglalásokat nem tartalmazza,
+# és külön Booking-naptár nem lesz. Amíg nincs megbízható jelenlét-jel, egy nap SOHA nem "üres".
+KNOWN_EMPTY = False
 
 
 def day_label(d: date) -> str:
@@ -137,7 +140,9 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
         arrive_tomorrow = [b for b in books if b["start_date"] == tomorrow.isoformat()]
         x7 = snap.get("X7")
         ss = stove_state(snap)                      # a mérés dönt, nem a kapcsoló
-        if not covers(today) and not arrive_tomorrow:
+        # VÉDŐSZABÁLY: az Airbnb-exportban szabad nap nem üres (Booking-vendég lehet), ezért "lekapcsolható"
+        # javaslat nincs. A kód marad, ha egyszer megbízható jelenlét-jel lesz (KNOWN_EMPTY).
+        if KNOWN_EMPTY and not covers(today) and not arrive_tomorrow:
             if ss["heating"]:
                 now_txt = f"most fűt ({fmt_w(ss['w'])})" if ss["measured"] else f"a kapcsoló {ss['stage']}/3 fokozaton (mérés nincs)"
                 todo.append(f"A kályha {now_txt}, pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
@@ -146,7 +151,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
                             "Ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
         if arrive_tomorrow and x7 and x7.get("online") is not False and x7["status"].get("switch") is False:
             todo.append(f"Holnap érkezik vendég, de a bojler (7-es kör) le van kapcsolva: legkésőbb holnap {HEAT_START}-kor kapcsold vissza.")
-        if (not covers(today) and not arrive_tomorrow and x7 and x7.get("online") is not False
+        if (KNOWN_EMPTY and not covers(today) and not arrive_tomorrow and x7 and x7.get("online") is not False
                 and x7["status"].get("switch") is True):
             todo.append("Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).")
     out += [""] + notes("Teendők") + ([f"{i}. {t}" for i, t in enumerate(todo, 1)] if todo else ["- Nincs teendő."])
@@ -170,7 +175,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     ba = _safe(lambda: boiler.analyze(boiler.fetch(sb, "X7", now), now, 60.9), None)
     if ba and (ba["today"] > 0 or ba["avg7"]):
         tip = None
-        if books is not None and not covers(today) and not arrive_tomorrow:
+        if KNOWN_EMPTY and books is not None and not covers(today) and not arrive_tomorrow:
             tip = f"ma éjjel üres: bojler LE, ~{boiler._ft(ba['idle_day_ft'] * 0.6)}/nap"
         out += [""] + box("BOJLER", boiler.lines(ba, tip))
 
@@ -258,20 +263,18 @@ def who(b: dict) -> str:
 
 
 def holnap_lines(books: list[dict], today: date, tomorrow: date) -> list[str]:
-    """A Holnap rész a naptárak logikája szerint (f27/bookings.py fejléce): az Airbnb-export teljes, a
-    zárt ("Not available") nap Booking-vendég (ritkán karbantartás), az egymás utáni Booking-foglalások egy
-    zárt szakasznak látszanak, a szakaszon belüli érkezés és távozás nem látszik. Ezért zárt szakasz
-    közepén nem mondunk "se érkezés, se távozás"-t, hanem azt, hogy meddig zárt a naptár."""
+    """A Holnap rész a VÉDŐSZABÁLY szerint (f27/bookings.py fejléce): az Airbnb-export a Bookingról
+    szinkronizált foglalásokat nem tartalmazza, ezért az exportban szabad éjszaka ismeretlen, nem üres.
+    Csak azt mondjuk ki, amit az Airbnb-naptár mutat."""
     from .bookings import closed_until, night_of
     t = tomorrow.isoformat()
     n_today, n_tom = night_of(books, today), night_of(books, tomorrow)
     lines = []
-    # a mai helyzet (az ellenőrzés, amit a tulaj kért): ma és holnap foglalható-e
     if n_today:
         until = closed_until(books, today)
-        lines.append(f"- Ma éjjel: {who(n_today)}" + (f"; újra foglalható: {day_label(until)}." if until else "."))
+        lines.append(f"- Ma éjjel: {who(n_today)}" + (f"; az Airbnb-naptárban szabad ettől: {day_label(until)}." if until else "."))
     else:
-        lines.append("- Ma éjjel: üres (foglalható).")
+        lines.append("- Ma éjjel: az Airbnb-naptárban szabad (Booking-vendég lehet, az exportban nem látszik).")
     for b in books:
         if b["end_date"] == t:
             lines.append(f"- Távozás {CHECKOUT} ({who(b)})" + ("" if b["kind"] == "reservation" else ": a zárt szakasz vége"))
@@ -279,16 +282,15 @@ def holnap_lines(books: list[dict], today: date, tomorrow: date) -> list[str]:
         if b["start_date"] == t:
             lines.append(f"- Érkezés {CHECKIN} ({who(b)}), felfűtés {HEAT_START}-tól")
     if len(lines) == 1:
-        if n_tom:
-            if n_tom["kind"] != "reservation":
-                lines.append("- Holnap is zárt a naptár: Booking-vendég (évente 1-2 alkalommal karbantartás). "
-                             "Egymás utáni Booking-foglalásoknál az érkezés, távozás a zárt szakaszon belül nem látszik.")
-            else:
-                lines.append("- Holnap is Airbnb-vendég van, se érkezés, se távozás.")
+        if n_tom and n_tom["kind"] != "reservation":
+            lines.append("- Holnap is zárt a naptár: Booking-vendég (évente 1-2 alkalommal karbantartás).")
+        elif n_tom:
+            lines.append("- Holnap is Airbnb-vendég van, se érkezés, se távozás.")
         else:
             nxt = [b for b in books if b["start_date"] > t]
-            lines.append("- Se érkezés, se távozás, a lakás üres." +
-                         (f" Következő érkezés: {day_label(date.fromisoformat(nxt[0]['start_date']))} {CHECKIN} ({who(nxt[0])})."
+            lines.append("- Az Airbnb-naptárban holnap nincs érkezés vagy távozás. Booking-vendég lehet: a Bookingról "
+                         "szinkronizált foglalások az exportban nem látszanak, ezért üres napot nem mondok." +
+                         (f" Következő Airbnb-érkezés: {day_label(date.fromisoformat(nxt[0]['start_date']))} {CHECKIN}."
                           if nxt else ""))
     return lines
 
@@ -306,7 +308,7 @@ def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date) -
         dod = f" ({'▲' if p >= 0 else '▼'}{abs(p):.0f}% DoD)"
     cost = f"~{int(round(ft)):,} Ft ma".replace(",", " ") + dod if ft else "nincs adat"
     covers = lambda d: books is not None and any(b["start_date"] <= d.isoformat() < b["end_date"] for b in books)
-    empty = books is not None and not covers(today)
+    empty = KNOWN_EMPTY and books is not None and not covers(today)   # védőszabály: szabad Airbnb-nap nem üres
     nxt = None
     if books is not None:
         fut = sorted((b for b in books if b["start_date"] > today.isoformat()), key=lambda b: b["start_date"])

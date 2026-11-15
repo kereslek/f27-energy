@@ -309,18 +309,16 @@ kontaktor kell, CLAUDE.md 9. fejezet):
 5. Legfeljebb 10 perc múlva az Adatgyűjtés lefut; a Summary-ban "Foglalások: N foglalás, M lezárt
    időszak frissítve". A térképen belépés után a csempe és a sáv élő lesz.
 
-**A naptárak logikája (a tulaj, 2026.11.15).** Az Airbnb és a Booking naptára össze van kötve és
-szinkronban van, ezért az Airbnb-export egymagában teljes: külön Booking-naptár (`BOOKING_ICAL_URL`)
-nem kell. Ami az Airbnb-naptárban nem foglalható („Not available”), ott szinte mindig Booking-vendég
-van; ritkán (évente 1-2 alkalommal) karbantartás miatt zárt (a kezelő cég vagy a tulaj dolgozik a
-lakásban). Az egymás utáni Booking-foglalások az exportban egyetlen zárt szakasznak látszanak, így a
-szakaszon belüli érkezés és távozás nem látszik: ilyenkor a levél és a térkép csak azt mondja, hogy a
-naptár zárt (vendég valószínű), és mikortól foglalható újra.
+**A naptárak logikája és a védőszabály (a tulaj, 2026.11.15).** Az Airbnb és a Booking naptára össze
+van kötve: a Booking-foglalások az Airbnb-appban szürke napként látszanak, de az Airbnb iCal-exportjában
+nem szerepelnek. Külön Booking-naptár nem lesz. Ezért ami az exportban szabad, az nem üres, hanem
+ismeretlen (Booking-vendég lehet): a levél és a térkép soha nem mond üres napot, és nem javasol rá
+kályha- vagy bojler-lekapcsolást. Az exportban „Reserved” = Airbnb-vendég, „Not available” = zárt
+(Booking vagy évente 1-2-szer karbantartás).
 
-**Ellenőrzés, van-e ma vendég:** ha a mai és a holnapi éjszaka nem foglalható, vendég valószínű; a
-következő foglalható nap a zárt szakasz vége. Az esti levél Holnap része ezzel kezd („Ma éjjel: …;
-újra foglalható: …”), és kézzel is futtatható: Actions > **Foglaltság-ellenőrzés (F27)** (az eredmény
-pushban jön, a publikus logba csak az kerül, hogy egyezik-e a megadott várt dátummal).
+**Ellenőrzés:** Actions > **Foglaltság-ellenőrzés (F27)**: a mai és a holnapi éjszaka, a „harmas” mezővel
+egy időszakra is (friss iCal, nyers iCal és adatbázis éjszakánként); az eredmény pushban és e-mailben jön,
+a publikus logba csak egyezés és darabszám kerül.
 
 ## Szerepkörök
 

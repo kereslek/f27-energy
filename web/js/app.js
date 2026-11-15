@@ -508,7 +508,8 @@
   // Demó foglalások (belépés nélkül): a mai naphoz igazítva, hogy minden állapot látsszon.
   function demoBookings(now) {
     var t = budDayKey(now), r = function (kind, a, b) { return { source: 'airbnb', kind: kind, start_date: dayAdd(t, a), end_date: dayAdd(t, b) }; };
-    return [r('reservation', -2, 1), r('blocked', 3, 6), r('reservation', 8, 11), r('reservation', 13, 16), r('blocked', 18, 20), r('reservation', 24, 28)];
+    var bk = function (a, b) { var x = r('reservation', a, b); x.source = 'booking'; return x; };
+    return [r('reservation', -2, 1), r('blocked', 3, 6), r('reservation', 8, 11), bk(13, 16), r('blocked', 18, 20), r('reservation', 24, 28)];
   }
   // A bejárati ajtó (5) első nyitása egy időpont után (érkezés megerősítése).
   function firstDoorOpen(rows, after) {
@@ -547,7 +548,13 @@
       gap = { a: a, b: back ? b : null, back: back, from: dep != null && dep > now ? dep : null, full: full };
     }
     var confirm = cur && cur.s === today && cur.kind === 'reservation' ? firstDoorOpen(doorRows, cur.arr) : null;
-    return { list: list, today: today, now: now, cur: cur, todayArr: todayArr, next: next, gap: gap, confirm: confirm, doorKnown: !!doorRows };
+    // KÖZÖS SZABÁLY (a tulaj, 2026.11.15; f27/bookings.py): az Airbnb-export a Bookingról szinkronizált
+    // foglalásokat NEM tartalmazza (az Airbnb-appban szürkék, az exportban nincsenek), és külön Booking-naptár
+    // nem lesz. Ezért az exportban szabad éjszaka ismeretlen (Booking-vendég lehet): soha nem mondunk üres
+    // napot, és nem javaslunk rá lekapcsolást.
+    var partial = true;
+    return { list: list, today: today, now: now, cur: cur, todayArr: todayArr, next: next, gap: partial ? null : gap, confirm: confirm,
+      doorKnown: !!doorRows, partial: partial };
   }
 
   // ---- Időjárás: Open-Meteo (kulcs nélkül, a böngészőből; csak memóriában) ----------------------
@@ -731,7 +738,7 @@
       else add(now >= heatMs ? 72 : 64, 'blue', '11', res ? 'Ma ' + STAY.checkin + '-kor vendég érkezik (' + BK_SRC[ta.source] + ')' : 'Ma ' + STAY.checkin + '-kor vendég érkezik (Booking)', 'Ma ' + STAY.checkin + '-kor ' + who + '. ' + plan + ' Csak javaslat.');
     }
     // üres a lakás, de megy a kályha: ez a nagy tétel
-    var empty = !m.cur && !(ta && now >= heatMs);
+    var empty = !m.partial && !m.cur && !(ta && now >= heatMs);
     // a mérés dönt: fűt-e most; ha nem, de a kapcsoló BE (feltöltött), az is lekapcsolható, csak kisebb hangsúllyal
     if (empty && stage > 0) {
       var kwh = Math.round(stage * 24 / 5) * 5, dayFt = Math.round(stage * 24 * STOVE_FT_KWH / 100) * 100;
@@ -1585,6 +1592,10 @@
         c = { ck: ta.kind === 'reservation' ? 'MA ÉRKEZIK · ' + BK_SRC[ta.source].toUpperCase() : 'MA ÉRKEZIK · BOOKING', cv: STAY.checkin + ' · ' + durHM(ta.arr - now),
           cs: before ? 'felfűtés indul ' + STAY.heatStart + '-kor' : 'felfűtés: ' + STAY.heatStart + ' óta', k: 'today',
           tip: (ta.kind === 'reservation' ? 'Ma érkezik vendég: ' : 'Ma érkezik vendég (Booking): ') + bkSpan(ta) + '. Felfűtés ' + STAY.heatStart + '-tól.' };
+      } else if (m.partial) {
+        var nxp = m.next;
+        c = { ck: 'NINCS AIRBNB-VENDÉG', cv: nxp ? dayWord(nxp.s, today) + ' ' + STAY.checkin : 'nem tudni', cs: nxp ? 'köv. Airbnb · Booking-vendég lehet' : 'Booking-vendég lehet', k: 'unk',
+          tip: 'Az Airbnb-naptárban most nincs vendég' + (nxp ? ', a következő Airbnb-érkezés ' + bkSpan(nxp) : '') + '. A Bookingról szinkronizált foglalások az Airbnb-exportban nem látszanak, ezért lehet, hogy most is bent van vendég (az Airbnb-appban ezek a napok szürkék).' };
       } else if (m.next) {
         var nx = m.next, res = nx.kind === 'reservation';
         c = { ck: res ? 'ÜRES · KÖVETKEZŐ VENDÉG' : 'ÜRES · KÖVETKEZŐ: BOOKING', cv: dayWord(nx.s, today) + ' ' + STAY.checkin, cs: relText(nx.arr - now) + ' · takarékmód', k: 'free',
@@ -1601,6 +1612,7 @@
         var gapDay = m && !prev && !cur, arrive = m && cur && prev !== cur, leave = m && prev && prev !== cur;
         var tip = (i === 0 ? 'Ma, ' : '') + fullDay(key) + ': ';
         if (!m) tip += 'nincs adat.';
+        else if (gapDay && m.partial) tip += 'nincs Airbnb-foglalás; Booking-vendég lehet (az Airbnb-exportban nem látszik).';
         else if (gapDay) tip += 'üres nap. Javaslat: bojler (7-es kör) LE, kályha KI vagy csak temperálás (a nagy szoba ne hűljön 15 °C alá). Csak javaslat.';
         else {
           var parts = [];
@@ -1668,7 +1680,7 @@
         cells.push({ key: key, d: String(Number(key.slice(8))), out: !inM,
           cls: 'cal-d' + (inM ? '' : ' out') + (key === today ? ' today' : '') + (st.calSel === key ? ' sel' : '') + (free ? ' free' : '') + (key < today ? ' past' : ''),
           lc: 'cal-h l ' + half(prev), rc: 'cal-h r ' + half(cur), lines: lines.map(function (t) { return { t: t }; }), hasLines: lines.length > 0,
-          aria: fullDay(key) + (key === today ? ' (ma)' : '') + ': ' + (!m ? 'nincs adat' : free ? 'üres' : lines.length ? lines.join(', ') : cur && cur.kind === 'reservation' ? 'vendég' : 'Booking-vendég'),
+          aria: fullDay(key) + (key === today ? ' (ma)' : '') + ': ' + (!m ? 'nincs adat' : free ? (m.partial ? 'nincs Airbnb-foglalás' : 'üres') : lines.length ? lines.join(', ') : cur && cur.kind === 'reservation' ? 'vendég' : 'Booking-vendég'),
           pressed: st.calSel === key ? 'true' : 'false',
           pick: (function (k) { return function () { self.setState({ calSel: st.calSel === k ? null : k }); }; })(key),
           kd: (function (k) { return function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); self.setState({ calSel: st.calSel === k ? null : k }); } }; })(key) });
@@ -1685,13 +1697,16 @@
         }, nm = function (b) { return b.kind === 'reservation' ? BK_SRC[b.source] + ' foglalás' : 'Booking-foglalás'; };
         det = fullDay(k) + ': ';
         if (!m) det += 'nincs adat.';
+        else if (!p0 && !c0 && m.partial) det += 'nincs Airbnb-foglalás; Booking-vendég lehet (az Airbnb-exportban nem látszik, az Airbnb-appban szürke).';
         else if (!p0 && !c0) det += k < today ? 'üres nap volt.' : 'üres nap: bojler LE, kályha KI javasolt (csak javaslat).';
         else if (p0 && c0 && p0 !== c0) det += 'váltás. Távozás ' + STAY.checkout + ': ' + nm(p0).toLowerCase() + ' (' + span(p0) + '); érkezés ' + STAY.checkin + ': ' + nm(c0).toLowerCase() + ' (' + span(c0) + ').';
         else if (c0 && p0 !== c0) det += 'érkezés ' + STAY.checkin + '. ' + nm(c0) + ': ' + span(c0) + '.';
         else if (p0 && !c0) det += 'távozás ' + STAY.checkout + '. ' + nm(p0) + ': ' + span(p0) + '.';
         else det += nm(c0) + ': ' + span(c0) + '.';
       }
-      var sum = m ? 'Foglalt éj: ' + booked + (nBlk ? ' (Airbnb ' + nRes + ', Booking ' + nBlk + ')' : '') + ' · üres éj: ' + freeN + ' · kihasználtság: ' + Math.round(booked / dim * 100) + ' %' : 'Nincs adat: ' + bk.why + '.';
+      var sum = !m ? 'Nincs adat: ' + bk.why + '.' : m.partial
+        ? 'Airbnb-naptár: foglalt éj ' + booked + '. A Bookingról szinkronizált foglalások az exportban nem látszanak, ezért az üres éj és a kihasználtság nem számolható.'
+        : 'Foglalt éj: ' + booked + (nBlk ? ' (Airbnb ' + nRes + ', Booking ' + nBlk + ')' : '') + ' · üres éj: ' + freeN + ' · kihasználtság: ' + Math.round(booked / dim * 100) + ' %';
       return {
         open: !!st.calOpen, openAttr: st.calOpen ? 'true' : 'false', title: y + '. ' + mname, checkin: STAY.checkin, checkout: STAY.checkout, demo: bk.demo, none: !m, why: bk.why,
         srcLabel: bk.srcLabel, srcCls: bk.srcCls, srcTip: bk.srcTip, refresh: bk.refresh, refCls: bk.refCls, refTip: bk.refTip,

@@ -11,16 +11,18 @@ Az Airbnb exportjában:
   SUMMARY "Reserved"                -> kind = 'reservation' (Airbnb-vendég)
   SUMMARY "Airbnb (Not available)"  -> kind = 'blocked' (Booking-vendég; ritkán karbantartás)
 
-A NAPTÁRAK LOGIKÁJA (a tulaj, 2026.11.15; ezt kell tudni minden foglaltsági mondathoz):
-  - Az Airbnb és a Booking naptára össze van kötve, szinkronban van: az Airbnb-export egymagában
-    teljes. Külön Booking-naptár (BOOKING_ICAL_URL) nem kell.
-  - Ami az Airbnb-naptárban nem foglalható ("Not available"), ott szinte mindig Booking-vendég van.
-    Ritkán (évente 1-2 alkalommal) karbantartás miatt zárt: a kezelő cég vagy a tulaj dolgozik a lakásban.
-  - Az egymás utáni Booking-foglalások az exportban EGY összefüggő zárt szakasznak látszanak, így a
-    szakaszon belüli érkezés és távozás nem látszik. Ilyenkor csak azt mondjuk ki, amit tudunk:
-    "zárva, vendég valószínű", és hogy mikortól foglalható újra (a szakasz vége).
-  - Ellenőrzés, van-e ma vendég: ha a mai és a holnapi éjszaka nem foglalható (bármilyen esemény
-    lefedi), vendég valószínű; a következő foglalható nap a lefedett szakasz vége.
+A NAPTÁRAK LOGIKÁJA (a tulaj, 2026.11.15; az Airbnb-app képernyőképeivel ellenőrizve):
+  - Az Airbnb és a Booking naptára össze van kötve: a Booking-foglalások az Airbnb-appban szürke
+    (nem foglalható) napként látszanak, DE AZ AIRBNB iCAL-EXPORTJÁBAN NEM SZEREPELNEK (a 2026.12.05-i,
+    12-i, 17-i, 22-i és 25-i Booking-éjszakák az appban szürkék, az exportban nincsenek). Külön
+    Booking-naptár (BOOKING_ICAL_URL) nem lesz: ezzel a konfigurációval dolgozunk.
+  - Ami az exportban "Reserved": Airbnb-vendég. Ami "Not available": zárt (Booking vagy karbantartás).
+  - VÉDŐSZABÁLY: ami az exportban szabad, az NEM üres, hanem ismeretlen (Booking-vendég lehet). Soha nem
+    mondunk üres napot ("a lakás üres", "nincs vendég"), és nem javaslunk rá kályha- vagy bojler-
+    lekapcsolást. Csak azt mondjuk ki, amit az Airbnb-naptár mutat.
+  - Ellenőrzés, van-e ma vendég: Airbnb-foglalás vagy zárt nap = vendég (valószínű); egyébként
+    "az Airbnb-naptárban szabad, Booking-vendég lehet".
+
 A Booking exportjában a foglalás és a kézi lezárás nem különböztethető meg, ott minden
 esemény 'reservation'.
 
@@ -257,9 +259,10 @@ def check(sb: SupabaseRest, now: datetime | None = None, expect_closed_until: da
                      order="start_date.asc", limit="200")
     a, b = night_of(rows, today), night_of(rows, today + timedelta(days=1))
     until = closed_until(rows, today)
-    kind = lambda x: "üres (foglalható)" if x is None else ("Airbnb-vendég" if x["kind"] == "reservation" else "Booking-vendég (zárt)")
+    kind = lambda x: ("az Airbnb-naptárban szabad (Booking-vendég lehet)" if x is None
+                      else "Airbnb-vendég" if x["kind"] == "reservation" else "zárt (Booking-vendég vagy karbantartás)")
     text = (f"Ma éjjel: {kind(a)}. Holnap éjjel: {kind(b)}."
-            + (f" Újra foglalható: {until:%Y.%m.%d}." if until else "")
+            + (f" Az Airbnb-naptárban szabad ettől: {until:%Y.%m.%d}. (Booking-foglalás lehet, az exportban nem látszik.)" if until else "")
             + f" (A naptárban {len(rows)} jövőbeli vagy mai esemény.)")
     match = None
     if expect_closed_until is not None:
@@ -268,6 +271,7 @@ def check(sb: SupabaseRest, now: datetime | None = None, expect_closed_until: da
     horizon = (today + timedelta(days=60)).isoformat()
     events = [f"{r['start_date']} -> {r['end_date']}  {'Airbnb-foglalás' if r['kind'] == 'reservation' else 'zárt (Booking vagy karbantartás)'}"
               for r in rows if r["start_date"] <= horizon]
+    # (a Bookingról szinkronizált éjszakák ebben a listában nem szerepelnek, csak az Airbnb-appban szürkék)
     return {"text": text, "match": match, "today": a is not None, "tomorrow": b is not None, "events": events}
 
 

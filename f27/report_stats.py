@@ -203,8 +203,8 @@ def _guest(sb, today: date, safe) -> str:
     k = today.isoformat()
     if any(b["start_date"] <= k < b["end_date"] for b in bk):
         return "vendég bent"
-    nxt = [b for b in bk if b["start_date"] > k]
-    return "üres" + (f", érkezés {nxt[0]['start_date'][5:].replace('-', '.')}." if nxt else "")
+    # védőszabály: az Airbnb-exportban szabad nap nem üres (Booking-vendég lehet), ezért "nem tudni"
+    return "nem tudni (Booking-vendég lehet)"
 
 
 def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]:
