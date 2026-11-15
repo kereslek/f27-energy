@@ -45,6 +45,26 @@ class BoilerTest(unittest.TestCase):
                                                   {"day": "2026-11-12", "kwh": 2.67}]}, NOW, 60.9)
         self.assertAlmostEqual(a["idle"], 2.67)
 
+    def test_sparse_reheat_uses_mean_not_median(self):
+        """O2B, 2026.11.15: a bojler 3 óránként fűt utána 0,25 kWh-t; a medián 0 lett volna (2 Ft/nap)."""
+        hours = []
+        for i in range(8 * 24, 0, -1):
+            t = NOW - timedelta(hours=i)
+            hours.append({"hour": t.replace(minute=0, second=0, microsecond=0).astimezone(timezone.utc).isoformat(),
+                          "kwh": 0.25 if t.hour % 3 == 0 else 0.0})
+        a = boiler.analyze({"hours": hours, "days": []}, NOW, 70.1)
+        self.assertAlmostEqual(a["idle"], 1.5, delta=0.01)
+        self.assertGreater(a["idle_day_ft"], 100)
+
+    def test_switched_off_at_night_falls_back(self):
+        """Éjjel kikapcsolt bojler (ütemezés): az éjszakai 0 nem hőtartás, a legcsendesebb nap számít."""
+        hours = [{"hour": (NOW - timedelta(hours=i)).replace(minute=0, second=0, microsecond=0).astimezone(timezone.utc).isoformat(),
+                  "kwh": 0.0 if (NOW - timedelta(hours=i)).hour < 6 else 0.3} for i in range(8 * 24, 0, -1)]
+        a = boiler.analyze({"hours": hours, "days": [{"day": "2026-11-10", "kwh": 5.4}, {"day": "2026-11-11", "kwh": 6.1},
+                                                      {"day": "2026-11-12", "kwh": 4.9}]}, NOW, 70.1)
+        self.assertEqual(a["idle_src"], "a legcsendesebb nap")
+        self.assertAlmostEqual(a["idle"], 4.9)
+
 
 if __name__ == "__main__":
     unittest.main()

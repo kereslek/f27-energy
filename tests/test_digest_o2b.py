@@ -51,7 +51,8 @@ class O2BDigestTest(unittest.TestCase):
 
     def test_facts(self):
         b = self.body
-        self.assertIn("Túlfűtött: Gyerekszoba", b)                     # 23,6 °C a 22-es célhoz
+        self.assertIn("Túlfűtött (a napszak céljához képest", b)       # óránként a saját célhoz (nappal 22, éjjel 20)
+        self.assertIn("Gyerekszoba", b.split("Túlfűtött")[1].split("\n")[0])
         self.assertIn("Nem elérhető: Hőmérő, konyha", b)
         self.assertNotIn("Karácsonyfa", b.split("Teendők")[1].split("ELEMCSERE")[0])   # szezonon kívüli dekor nem teendő
         self.assertIn("dupla lámpa KI (ütemezés)", b)                   # holnapi ütemezés
@@ -63,6 +64,18 @@ class O2BDigestTest(unittest.TestCase):
         for word in ("kályha", "vendég", "foglal", "f · 2 · 7", "zöld szék", "orlay", "ferenc"):
             self.assertNotIn(word, b, word)
 
+    def test_tldr_is_sane(self):
+        """2026.11.15-i levél: "Ára ~2 Ft/nap", "Megtakarít ~20 Ft/hó", levágott teendő, DoD a gázzal kevert
+        költség mellett. A pazarlás csak 30 Ft/nap fölött tétel, a teendő rövid változat, DoD nincs a sorban."""
+        tl = self.body.split("TL;DR")[1].split("RELEASE NOTES")[0]
+        self.assertNotIn("DoD", tl)
+        self.assertIn("(gázzal, becsl.)", tl)
+        import re
+        m = re.search(r"Ára \.+: ~([\d ]+) Ft/nap", tl)
+        self.assertTrue(m is None or int(m.group(1).replace(" ", "")) >= 30, tl)
+        teendo = [l for l in tl.splitlines() if "Teendő" in l][0]
+        self.assertFalse(teendo.rstrip().endswith("."), teendo)           # nem levágott mondat
+
     def test_html_rows_link_to_device_card(self):
         self.assertIn("?dev=C1", self.m["html"])
         self.assertIn("<details>", self.m["html"])                     # vasárnap: összecsukott jelmagyarázat
@@ -70,3 +83,21 @@ class O2BDigestTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ComfortHourlyTargetTest(unittest.TestCase):
+    def test_room_on_target_day_and_night_is_not_cold(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from f27 import digest_o2b as O
+        t0 = datetime(2026, 11, 15, 0, 0, tzinfo=O.TZ).astimezone(timezone.utc)
+        hrs = {}
+        for h in range(20):
+            t = t0 + timedelta(hours=h)
+            lh = t.astimezone(O.TZ).hour
+            v = 20.0 if (lh >= 22 or lh < 6) else 22.0                  # pontosan a napszak céljain
+            hrs[t] = {"temp_avg": v - 0.2, "temp_max": v}
+        D = SimpleNamespace(hourly={"T6": hrs}, thermos=[("T6", "Gyerekszoba")], t0=t0)
+        r = O.comfort(D)["rows"][0]
+        self.assertGreater(r["dev"], O.COLD_DEV)                          # régen: átlag 21,2 < 22-1,5 -> "Hideg"
+        self.assertLess(r["dev"], O.HOT_DEV)

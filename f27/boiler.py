@@ -8,12 +8,13 @@ meleg vizet (2026.11.13-14-én mérve az F27-ben: 40 percenként 2-3 perc 1,86 k
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from statistics import median
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Europe/Budapest")
 W_HEAT, SHOWER_KWH, L_PER_KWH, FULL_KWH = 1.86, 1.7, 33, 5.6
 NIGHT = (1, 2, 3, 4)
+DRAW_KWH = 0.5        # ennél több egy éjszakai órában már vízhasználat, nem hőtartás
+MIN_IDLE = 0.8        # kWh/nap: ennél kisebb "hőtartás" fizikailag nem valós (kikapcsolt bojler)
 
 
 def fetch(sb, pink: str, now: datetime) -> dict:
@@ -42,9 +43,14 @@ def analyze(raw: dict, now: datetime, price: float) -> dict:
 
     day_row = next((d for d in raw.get("days") or [] if d["day"] == today), None)
     today_kwh = max(up_to(today, 25), float(day_row["kwh"]) if day_row else 0.0)
-    if len(nights) >= 6:
-        idle, src = median(nights) * 24, "éjszakai órákból mérve"
-    else:
+    # Hőtartás: az éjszakai órák ÁTLAGA (a vízhasználatnak látszó órák nélkül) × 24. A medián nem jó:
+    # ha a bojler ritkábban fűt utána, mint óránként (O2B), vagy éjjel ki van kapcsolva, a medián 0.
+    # Egy tartály naponta legalább kb. 1 kWh-t veszít: ha az éjszakai mérés ennél kevesebbet ad (pl.
+    # éjjel kikapcsolt bojler), az nem hőtartás, akkor a legcsendesebb teljes nap számít.
+    quiet = [k for k in nights if k <= DRAW_KWH]
+    idle = (sum(quiet) / len(quiet) * 24) if len(quiet) >= 6 else None
+    src = "éjszakai órákból mérve"
+    if idle is None or idle < MIN_IDLE:
         full = [float(d["kwh"]) for d in raw.get("days") or [] if d["day"] < today and float(d.get("kwh") or 0) > 0]
         idle, src = (min(full), "a legcsendesebb nap") if len(full) >= 3 else (2.5, "becslés")
     idle_so_far = idle * min(1.0, cut / 24)

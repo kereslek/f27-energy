@@ -32,6 +32,9 @@ MONTHS = ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.",
 GAS_BASE_M3 = 0.26            # nyári alap: meleg víz lent + főzés (m³/nap, a mérőállásokból)
 HEAT_PER_C = 0.06             # 1 °C-kal melegebb lakás kb. 6 %-kal több fűtési gáz
 NIGHT = (22, 6)               # éjszaka (komfortcél: heat_night_c)
+HOT_DEV, COLD_DEV = 1.0, -1.5 # a napszak céljához képesti átlagos eltérés (°C), ami már szóra érdemes
+WASTE_MIN_FT = 30             # ennél kisebb napi tétel nem "pazarlás" a TL;DR-ben
+BOILER_SAVE = 0.25            # a hőtartásból kb. ennyi spórolható (termosztát 55-60 °C, szigetelő köpeny)
 
 LOGO = [
     "  ░▒▓███████▓  ▄███████▄  ▓████████▄",
@@ -223,17 +226,18 @@ def comfort(D: Data) -> dict:
         s = D.hourly.get(pink, {})
         hrs = [(h, r) for h, r in s.items() if h >= D.t0 and r.get("temp_avg") is not None]
         if not hrs:
-            rows.append({"pink": pink, "name": name, "avg": None, "deg_h": None, "max": None})
+            rows.append({"pink": pink, "name": name, "avg": None, "deg_h": None, "max": None, "dev": None})
             continue
-        dh = 0.0
+        dh, dev = 0.0, 0.0
         for h, r in hrs:
-            ex = float(r["temp_avg"]) - target(h.astimezone(TZ).hour)
+            ex = float(r["temp_avg"]) - target(h.astimezone(TZ).hour)   # óránként a SAJÁT célhoz (nappal 22, éjjel 20)
             dh += max(0.0, ex)
+            dev += ex
             over_all += ex
             n_all += 1
         avg = sum(float(r["temp_avg"]) for _h, r in hrs) / len(hrs)
         mx = max((float(r["temp_max"]) for _h, r in hrs if r.get("temp_max") is not None), default=None)
-        rows.append({"pink": pink, "name": name, "avg": avg, "deg_h": dh, "max": mx})
+        rows.append({"pink": pink, "name": name, "avg": avg, "deg_h": dh, "max": mx, "dev": dev / len(hrs)})
     return {"rows": rows, "excess": (over_all / n_all) if n_all else None}
 
 
@@ -394,13 +398,13 @@ def meter_box(D: Data) -> list[str] | None:
 def pamutka(D: Data, cf: dict, todo: list[str]) -> list[str]:
     """1-2 sor macskahangon, a legfontosabb tényből."""
     say = []
-    hot = [r for r in cf["rows"] if r["avg"] is not None and r["avg"] > target(14) + 1]
-    cold = [r for r in cf["rows"] if r["avg"] is not None and r["avg"] < target(14) - 1.5]
+    hot = [r for r in cf["rows"] if r["dev"] is not None and r["dev"] > HOT_DEV]
+    cold = [r for r in cf["rows"] if r["dev"] is not None and r["dev"] < COLD_DEV]
     if hot:
-        r = max(hot, key=lambda x: x["avg"])
-        say.append(f"Miaú! {r['name']}: {_f(r['avg'])} °C, a cél {_f(target(14), 0)}. Tekerd lejjebb a radiátort, nekem így is jó.")
+        r = max(hot, key=lambda x: x["dev"])
+        say.append(f"Miaú! {r['name']}: átlag {_f(r['avg'])} °C, a napszak céljánál {_f(r['dev'])} fokkal melegebb. Tekerd lejjebb a radiátort, nekem így is jó.")
     if cold:
-        r = min(cold, key=lambda x: x["avg"])
+        r = min(cold, key=lambda x: x["dev"])
         say.append(f"Brr, fázom! {r['name']}: csak {_f(r['avg'])} °C. Nézd meg, nem ragadt-e be a radiátorfej.")
     if D.boil and D.boil.get("night_use"):
         say.append("Éjjel is melegedett a bojler. Csöpög valahol egy csap? Megnézném, de nem érem el.")
@@ -472,12 +476,18 @@ def build(sb, cfg: dict, now: datetime, safe, alert_items, archive=None) -> dict
 
     # ---- teendők
     todo: list[str] = [f"Aktív riasztás: {r.get('last_text') or r.get('rule_key')}" for r in D.alerts]
-    hot = sorted((r for r in cf["rows"] if r["avg"] is not None and r["avg"] > target(14) + 1), key=lambda r: -r["avg"])
+    # rövid változat a TL;DR-hez (a hosszú mondat oda levágva értelmetlen lenne)
+    tl_todo: list[str] = [f"riasztás: {(r.get('last_text') or r.get('rule_key'))}" for r in D.alerts]
+    hot = sorted((r for r in cf["rows"] if r["dev"] is not None and r["dev"] > HOT_DEV), key=lambda r: -r["dev"])
     if hot:
-        todo.append(f"Túlfűtött: {', '.join(r['name'] for r in hot[:3])}: tekerd lejjebb a radiátorfejet (cél {_f(target(14), 0)} °C).")
-    cold = [r for r in cf["rows"] if r["avg"] is not None and r["avg"] < target(14) - 1.5]
+        todo.append(f"Túlfűtött (a napszak céljához képest átlag +{_f(hot[0]['dev'])} °C): {', '.join(r['name'] for r in hot[:3])}: "
+                    f"tekerd lejjebb a radiátorfejet (cél nappal {_f(target(14), 0)}, éjjel {_f(target(2), 0)} °C).")
+        tl_todo.append(f"radiátor lejjebb: {hot[0]['name']}")
+    cold = sorted((r for r in cf["rows"] if r["dev"] is not None and r["dev"] < COLD_DEV), key=lambda r: r["dev"])
     if cold:
-        todo.append(f"Hideg: {', '.join(r['name'] for r in cold[:3])}: beragadt a radiátorfej? (kézzel nyit-zár-nyit)")
+        todo.append(f"Hideg (a napszak céljához képest átlag {_f(cold[0]['dev'])} °C): {', '.join(r['name'] for r in cold[:3])}: "
+                    "nyitva a radiátorfej? Ha igen, beragadhatott (kézzel nyit-zár-nyit).")
+        tl_todo.append(f"hideg: {cold[0]['name']} (radiátor?)")
     t2 = next((r for r in cf["rows"] if r["pink"] == "T2"), None)
     others = [r["avg"] for r in cf["rows"] if r["avg"] is not None and r["pink"] != "T2"]
     if t2 and t2["avg"] is not None and others and sum(others) / len(others) > t2["avg"] + 0.8:
@@ -500,24 +510,23 @@ def build(sb, cfg: dict, now: datetime, safe, alert_items, archive=None) -> dict
     # ---- TL;DR
     V = W - 15
     cut = lambda v: v if len(v) <= V else v[:V - 1] + "."
-    dod = ""
-    if pl["kwh"] and pl["kwh_y"] and pl["kwh_y"] >= 0.05:
-        p = (pl["kwh"] - pl["kwh_y"]) / pl["kwh_y"] * 100
-        dod = f" ({'▲' if p >= 0 else '▼'}{abs(p):.0f}% DoD)"
+    # a pazarlás csak akkor "tétel", ha legalább WASTE_MIN_FT forint naponta; különben "nincs nagy tétel"
     waste, price, save = "nincs nagy tétel", "--", "--"
     heat_ft_day = (g_today - GAS_BASE_M3) * gp if g_today and g_today > GAS_BASE_M3 else None
-    if cf["excess"] is not None and cf["excess"] > 0.5 and heat_ft_day:
-        ex = cf["excess"]
-        waste = f"túlfűtés, átl. +{_f(ex)} °C"
-        day = heat_ft_day * HEAT_PER_C * ex
-        price, save = f"~{_ft(day)} Ft/nap", f"~{_ft(day * 30)} Ft/hó"
-    elif D.boil and D.boil.get("idle_day_ft"):
-        waste = "bojler hőtartás"
-        price, save = f"~{_ft(D.boil['idle_day_ft'])} Ft/nap", f"~{_ft(D.boil['idle_day_ft'] * 0.4 * 30)} Ft/hó"
+    over_day = heat_ft_day * HEAT_PER_C * cf["excess"] if heat_ft_day and cf["excess"] is not None and cf["excess"] > 0.5 else 0
+    idle_ft = (D.boil or {}).get("idle_day_ft") or 0
+    if over_day >= WASTE_MIN_FT and over_day >= idle_ft * BOILER_SAVE:
+        waste = f"túlfűtés, átl. +{_f(cf['excess'])} °C"
+        price, save = f"~{_ft(over_day)} Ft/nap", f"~{_ft(over_day * 30)} Ft/hó (a célra)"
+    elif idle_ft * BOILER_SAVE >= WASTE_MIN_FT:
+        waste = f"bojler hőtartás {_f(D.boil['idle'])} kWh/nap"
+        price = f"~{_ft(idle_ft)} Ft/nap"
+        save = f"~{_ft(idle_ft * BOILER_SAVE * 30)} Ft/hó (55 °C)"
+    cost = (f"~{_ft(ft)} Ft ma" + (" (gázzal, becsl.)" if gas_ft else "")) if ft else "nincs adat"
     tldr = ["TL;DR ▒ ▒▒ ▓▓ ▓▓▓▓ " + "█" * (W - 20),
-            " " + kv("Költség", cut((f"~{_ft(ft)} Ft ma" + dod) if ft else "nincs adat"), 12),
+            " " + kv("Költség", cut(cost), 12),
             " " + kv("Pazarlás", cut(waste), 12), " " + kv("Ára", cut(price), 12),
-            " " + kv("Teendő", cut(todo[0] if todo else "nincs"), 12), " " + kv("Megtakarít", cut(save), 12)]
+            " " + kv("Teendő", cut(tl_todo[0] if tl_todo else (todo[0] if todo else "nincs")), 12), " " + kv("Megtakarít", cut(save), 12)]
 
     out: list[str] = []
     # ---- riasztások, teendők
@@ -580,8 +589,9 @@ def build(sb, cfg: dict, now: datetime, safe, alert_items, archive=None) -> dict
             td = [x for h, x in s.items() if h >= D.t0 and x.get("temp_min") is not None]
             tmin = min((float(x["temp_min"]) for x in td), default=None)
             tl.append(f"{r['name'][:12].ljust(12)} {_f(tmin).rjust(4)}|{_f(r['avg']).rjust(4)}|{_f(r['max']).rjust(4)}  "
-                      f"{_f(r['deg_h']).rjust(5)}{' !' if r['avg'] is not None and r['avg'] > target(14) + 1 else ''}")
+                      f"{_f(r['deg_h']).rjust(5)}{' !' if r['dev'] is not None and r['dev'] > HOT_DEV else ' ?' if r['dev'] is not None and r['dev'] < COLD_DEV else ''}")
         tl.append(f"cél: nappal {_f(target(14), 0)}, éjjel {_f(target(2), 0)} °C")
+        tl.append("! túlfűtött, ? hideg (óránként a célhoz)")
         out += box("HŐMÉRŐK · KOMFORT · MA", tl)
 
         kl = []

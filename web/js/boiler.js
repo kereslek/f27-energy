@@ -26,7 +26,6 @@
   function fmt(x, d) { return x == null || !isFinite(x) ? '--' : (+x).toFixed(d == null ? 1 : d).replace('.', ','); }
   function ft(x) { return x == null ? '--' : Math.round(x).toLocaleString('hu-HU').replace(/ /g, ' ') + ' Ft'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
 
   function load(sb, pink) {
     var now = Date.now(), h0 = new Date(now - 8 * 864e5).toISOString(), d0 = parts(now - 15 * 864e5).day;
@@ -71,8 +70,11 @@
     var todayH = upTo(today, 25), dayRow = (raw.days || []).filter(function (d) { return d.day === today; })[0];
     var todayKwh = Math.max(todayH, dayRow ? +dayRow.kwh : 0);
     // hőtartás: az éjszakai órák mediánja × 24; ha nincs elég éjszaka, a 14 nap legcsendesebb napja
-    var idle = nights.length >= 6 ? median(nights) * 24 : null, idleSrc = 'éjszakai órákból mérve';
-    if (idle == null) {
+    // az éjszakai órák ÁTLAGA a vízhasználat nélkül (f27/boiler.py ugyanígy); a medián 0 lehet, ha ritkán
+    // fűt utána vagy éjjel ki van kapcsolva; 0,8 kWh/nap alatt nem valós a hőtartás: a legcsendesebb nap számít
+    var quiet = nights.filter(function (k) { return k <= 0.5; });
+    var idle = quiet.length >= 6 ? quiet.reduce(function (s, k) { return s + k; }, 0) / quiet.length * 24 : null, idleSrc = 'éjszakai órákból mérve';
+    if (idle == null || idle < 0.8) {
       var full = (raw.days || []).filter(function (d) { return d.day < today && +d.kwh > 0; }).map(function (d) { return +d.kwh; });
       if (full.length >= 3) { idle = Math.min.apply(null, full); idleSrc = 'a legcsendesebb nap'; }
       else { idle = 2.5; idleSrc = 'becslés (még kevés a mérés)'; }
