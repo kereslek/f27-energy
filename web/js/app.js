@@ -11,6 +11,12 @@
   var PIN_IDS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', 'P', 'k5', 'k7', 'k8', 'k9', 'G'];
   var PIN_TO_DB = { k5: 'X5', k7: 'X7', k8: 'X8', k9: 'X9' };   // devices.pink a Supabase-ben
   var CONTACTS = ['5', '6', '7', '8', '9', '10'];
+  // szöveg szélessége pixelben (SVG-buborékok méretezéséhez)
+  var _twCtx = null;
+  function textWidth(t, font) {
+    try { _twCtx = _twCtx || document.createElement('canvas').getContext('2d'); _twCtx.font = font; return _twCtx.measureText(t || '').width; }
+    catch (e) { return String(t || '').length * 6.2; }
+  }
   var ROLE = {
     owner: { label: 'TULAJ', color: '#2f6fe4' },
     member: { label: 'CSALÁDTAG', color: '#2f8a5a' },
@@ -1382,6 +1388,8 @@
       var sm = stoveNowOf(P && P.online !== false ? P.stage : null, cs5.w);
       v.flameOn = sm.drawing;
       v.flameLabel = v.flameOn ? 'Kályha fűt · ' + (sm.measured ? fmtW(cs5.w) : sm.kw + ' kW') : '';
+      // a felirat doboza a szöveghez méreteződik (ne lógjon ki a buborékból)
+      v.flameW = Math.max(60, Math.ceil(textWidth(v.flameLabel, '900 10.5px Nunito, sans-serif')) + 18); v.flameX = -v.flameW / 2;
     }
 
     // Belépve (listán szereplő szerepkörrel) a Supabase-ből olvas (az adatgyűjtő óránként tölti);

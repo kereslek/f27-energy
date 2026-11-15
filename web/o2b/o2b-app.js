@@ -1465,5 +1465,5 @@
   setInterval(load, 5 * 60000);
   setInterval(function () { drawSky(); chips(); }, 10 * 60000);
   setInterval(fetchDaily, 3 * 3600000);
-  window.__o2b = { st: st, cat: cat, fit: fit, rotate: rotate };
+  window.__o2b = { st: st, cat: cat, fit: fit, rotate: rotate, say: function (t) { setBubble(t); showBubble(); } };
 })();
