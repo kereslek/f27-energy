@@ -136,6 +136,13 @@
     if (elv > -7) return { s0: '#27367a', s1: '#7a63ad', s2: '#ffae7a', stars: 0.55, sunC: '#ff9a5a', hill: '#3f7a63', hill2: '#2f6552', far: '#4b4a85', glow: 0.75, night: true };
     return { s0: '#14173f', s1: '#2b2a5e', s2: '#3d3f7a', stars: 1, sunC: '#fff2cc', hill: '#244b45', hill2: '#1b3a37', far: '#2c2a5a', glow: 0.95, night: true };
   }
+  function skyVisible() {
+    var W = sky.clientWidth || window.innerWidth || 1440, H = sky.clientHeight || window.innerHeight || 900, k = Math.max(W / 1440, H / 900);
+    var vw = W / k, vh = H / k, x0 = 720 - vw / 2, y0 = 450 - vh / 2, wide = W >= 900;
+    var pl = wide ? (($('pam').offsetWidth || 328) + 24) / k : 0, pr = wide ? (($('ov').offsetWidth || 328) + 24) / k : 0;
+    var top = y0 + (($('top').offsetHeight || 60) + 20) / k;
+    return { x0: x0 + pl, x1: x0 + vw - pr, top: top, w: W };
+  }
   function drawSky() {
     var now = Date.now(), sp = SUN ? SUN.pos(now, LAT, LON) : { alt: 30, az: 180 }, pal = skyPalette(sp.alt);
     sky.innerHTML = '';
@@ -148,7 +155,11 @@
     var stars = el('g', { opacity: pal.stars }, sky);
     for (var i = 0; i < 60; i++) el('circle', { class: 'tw', cx: r1(rnd() * 1440), cy: r1(20 + rnd() * 380), r: r1(0.8 + rnd() * 1.6), fill: '#fff6dc', style: 'animation-delay:' + r1(rnd() * 3) + 's' }, stars);
     // a nap és a hold a valódi helyén: vízszintesen az égtáj a nézet irányához képest, függőlegesen a magasság
-    if (SKY) celestial(sky, SKY.bodies(now, LAT, LON, SKY.viewAzFromNorth(northScreenAngle())), pal);
+    // a látható égsáv a háttérkép (1440 x 900, „slice”) koordinátáiban: a csempék alatt, az oldalpanelek
+    // között, a láthatár fölött; a nap és a hold ide kerül, így telefonon és laptopon is a képernyőn marad
+    var vis = skyVisible();
+    if (SKY) celestial(sky, SKY.bodies(now, LAT, LON, SKY.viewAzFromNorth(northScreenAngle()),
+      { x0: vis.x0 + 40, x1: vis.x1 - 40, horizon: 560, altK: Math.max(1.2, (560 - vis.top - 50) / 70) }), pal);
     [[380, 140, 0.8, 'cloud'], [700, 110, 0.65, 'cloud2'], [1050, 170, 0.75, 'cloud']].forEach(function (c) {
       var cg = el('g', { class: c[3] }, sky), gg = el('g', { transform: 'translate(' + c[0] + ' ' + c[1] + ') scale(' + c[2] + ')', opacity: pal.night ? 0.55 : 1 }, cg);
       [[0, 0, 46, 20], [-22, -12, 24, 18], [18, -16, 26, 20]].forEach(function (e) { el('ellipse', { cx: e[0], cy: e[1], rx: e[2], ry: e[3], fill: '#ffffff', stroke: INK, 'stroke-width': 3 }, gg); });
@@ -161,7 +172,8 @@
     el('path', { d: far, fill: pal.far, stroke: INK, 'stroke-width': 2.5, opacity: 0.75 }, sky);
     // Gellért-hegy (Citadella, Szabadság-szobor) az észak felé eső láthatáron
     var ang = northScreenAngle(), behind = Math.abs(ang) > 110;
-    var hx = 720 + Math.max(-1, Math.min(1, (behind ? (ang > 0 ? 1 : -1) : ang / 90))) * 300, hs = behind ? 0.42 : 0.55;
+    var hs = (behind ? 0.42 : 0.55) * (vis.w < 700 ? 0.62 : 1), hm = 270 * hs + 10;
+    var hx = (vis.x0 + vis.x1) / 2 + Math.max(-1, Math.min(1, (behind ? (ang > 0 ? 1 : -1) : ang / 90))) * Math.max(0, (vis.x1 - vis.x0) / 2 - hm);
     var hg = el('g', { transform: 'translate(' + r1(hx) + ' 612) scale(' + hs + ')' }, sky);
     el('path', { d: 'M-260,10 C-200,-40 -150,-120 -60,-150 C-20,-162 30,-160 70,-140 C150,-100 210,-40 270,10 Z', fill: pal.hill, stroke: INK, 'stroke-width': 3.5, 'stroke-linejoin': 'round' }, hg);
     el('path', { d: 'M-150,-60 C-110,-80 -80,-100 -50,-112 M60,-120 C110,-96 150,-70 190,-40', fill: 'none', stroke: pal.hill2, 'stroke-width': 6, 'stroke-linecap': 'round' }, hg);
@@ -189,8 +201,7 @@
     if (B.nextRise) {
       var nr = B.nextRise, ng = el('g', { opacity: 0.9 }, svg);
       el('path', { d: 'M' + r1(nr.x - 22) + ',' + r1(nr.y) + ' A22,22 0 0 1 ' + r1(nr.x + 22) + ',' + r1(nr.y) + ' Z', fill: '#ffd27a', stroke: INK, 'stroke-width': 3 }, ng);
-      var nt = el('text', { x: r1(nr.x), y: r1(nr.y - 30), 'text-anchor': 'middle', class: 'slab-t', style: 'font-size:13px' }, ng);
-      nt.textContent = 'napkelte ' + nr.label;
+      el('title', {}, ng).textContent = 'Holnapi napkelte: ' + nr.label;
     }
     var m = B.moon;
     if (m.up) {
@@ -199,8 +210,7 @@
       el('circle', { cx: r1(m.x), cy: r1(m.y), r: m.r, fill: '#3d4677', opacity: 0.85 }, mg);
       el('path', { d: m.lit, fill: '#fff6dc' }, mg);
       el('circle', { cx: r1(m.x), cy: r1(m.y), r: m.r, fill: 'none', stroke: INK, 'stroke-width': 3 }, mg);
-      var lt = el('text', { x: r1(m.x), y: r1(m.y + m.r + 20), 'text-anchor': 'middle', class: 'slab-t', style: 'font-size:13px' }, mg);
-      lt.textContent = m.name + ' · ' + Math.round(m.fraction * 100) + '%';
+      el('title', {}, mg).textContent = 'Hold: ' + m.name + ', ' + Math.round(m.fraction * 100) + '% megvilágított';
     }
   }
 
@@ -348,7 +358,7 @@
     function tw(t, fs) { return t.length * fs * 0.58; }
     // 1. szintfeliratok
     ['lo', 'up'].forEach(function (f) {
-      var b = scene.floors[f].bbox, fs = 24 * k, t = f === 'up' ? 'FENT · tetőtér' : 'LENT', x = b.x0 + 6 * k, y = (b.y0 + b.y1) / 2 + (f === 'up' ? -10 : 40) * k;
+      var b = scene.floors[f].bbox, fs = 24 * k, t = f === 'up' ? 'FENT · tetőtér' : 'LENT', x = Math.max(b.x0 + 6 * k, st.vb[0] + 10 * k), y = (b.y0 + b.y1) / 2 + (f === 'up' ? -10 : 40) * k;
       var lv = el('text', { x: r1(x), y: r1(y), class: 'lvlab', style: 'font-size:' + r1(fs) + 'px;stroke-width:' + r1(5 * k) + 'px' }, gl);
       lv.textContent = t; take([x, y - fs, x + tw(t, fs), y + 4 * k]);
     });
@@ -451,13 +461,30 @@
     });
     return b;
   }
+  // A nézet a lakásra illeszt (a szobák sarkai a padlón és a falak tetején), nem a díszekre:
+  // az iránytű és a dekor ne tolja el a középpontot (2026.11.15: ettől csúszott le telefonon a lakás).
+  function houseBox() {
+    var b = null;
+    ['lo', 'up'].forEach(function (f) {
+      var F = S.FLOORS[f], P = scene.floors[f].proj.P;
+      F.rooms.forEach(function (r) {
+        [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.d], [r.x + r.w, r.y + r.d]].forEach(function (c) {
+          [0, F.H].forEach(function (z) {
+            var q = P(c[0], c[1], z);
+            b = b ? { x0: Math.min(b.x0, q[0]), x1: Math.max(b.x1, q[0]), y0: Math.min(b.y0, q[1]), y1: Math.max(b.y1, q[1]) } : { x0: q[0], x1: q[0], y0: q[1], y1: q[1] };
+          });
+        });
+      });
+    });
+    return b || contentBox();
+  }
   function fit() {
     document.documentElement.style.setProperty('--toph', (($('top').offsetHeight || 60) + 16) + 'px');
-    var b = contentBox(), W = world.clientWidth || 1440, H = world.clientHeight || 900, phone = W < 760;
+    var b = houseBox(), W = world.clientWidth || 1440, H = world.clientHeight || 900, phone = W < 760;
     // hely a felső csempéknek és az alsó Pamutka-kártyának
     var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, topH = ($('top').offsetHeight || 60) + 14, top = phone ? topH : (wide ? 100 : 90), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
     var aw = Math.max(200, W - left - right), ah = Math.max(200, H - top - bottom);
-    var cw = b.x1 - b.x0 + 60, ch = b.y1 - b.y0 + 60, s = Math.min(aw / cw * (phone ? 1.45 : 1), ah / ch);
+    var cw = b.x1 - b.x0 + 40, ch = b.y1 - b.y0 + 50, s = Math.min(aw / cw * (phone ? 1.08 : 1), ah / ch);
     var vw = W / s, vh = H / s, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
     // a tartalom közepe a szabad terület közepére
     var ox = (left + aw / 2) / s, oy = (top + ah / 2) / s;
@@ -669,7 +696,9 @@
     if (SUN) {
       var t = SUN.times(Date.now(), LAT, LON), dl = st.daily;
       if (SKY) { var mi = SKY.moonIllum(Date.now()); $('c-sun').title = 'Napkelte, napnyugta (a nap útja szaggatott ívként az égen). Hold: ' + SKY.phaseName(mi.phase) + ', ' + Math.round(mi.fraction * 100) + '% megvilágított.'; }
-      chip('c-sun', t.rise ? '↑' + SUN.hm(t.rise) + ' ↓' + SUN.hm(t.set) : '--', dl && dl.tmin != null ? 'holnap ' + fmt(dl.tmin, 0) + '…' + fmt(dl.tmax, 0) + ' °C' : 'napkelte · napnyugta');
+      // a hold fázisa itt (az égen csak a rajza van, felirat nélkül, hogy ne ütközzön a lakás feliratával)
+      var moonTxt = SKY ? (function () { var m2 = SKY.moonIllum(Date.now()); return ' · hold ' + Math.round(m2.fraction * 100) + '%'; })() : '';
+      chip('c-sun', t.rise ? '↑' + SUN.hm(t.rise) + ' ↓' + SUN.hm(t.set) : '--', (dl && dl.tmin != null ? 'holnap ' + fmt(dl.tmin, 0) + '…' + fmt(dl.tmax, 0) + ' °C' : 'napkelte · napnyugta') + moonTxt);
     }
     var due = BAT ? BAT.due(st.bat) : [];
     if (due.length) {

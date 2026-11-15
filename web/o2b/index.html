@@ -344,6 +344,8 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 /* kapcsolás: áttekinthető kártya (2026.11.15, a tulaj auditja) */
 .nowst{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:18px;letter-spacing:.6px;color:#6b7280}
 .nowst.on{color:#2f8a3a}
+@media (max-width:1400px){#b-edit .lbl,#b-rot .lbl{display:none}}
+#app:not(.editing) #tools .edonly{display:none}   /* visszavonás, újra, alaphelyzet, mentés: csak Szerkesztés módban */
 .offbtn .offn{display:inline-block;min-width:18px;padding:1px 5px;border-radius:999px;background:#8a8f9c;color:#fff;font:900 11px Nunito,sans-serif;margin-left:4px}
 .offbtn.on{background:#e8f4ff}.offbtn.on .slash{display:none}
 .offnote{font:800 12.5px Nunito,sans-serif;color:#6b7280;margin:0 0 8px;padding:6px 10px;border:2px dashed #c9cfd8;border-radius:12px}
