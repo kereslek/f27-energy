@@ -33,6 +33,7 @@ from .site import SITE
 from .battery import digest_lines as battery_lines
 from .report_stats import banner, box, build_stats, footer, notes, stripe, subject_line, to_html
 from .supa import SupabaseError, SupabaseRest
+from . import boiler
 
 MONTHS = ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec.")
 DAYS = ("hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat", "vasárnap")
@@ -177,6 +178,14 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
     # 4b. Statisztika: ASCII-táblázat, órás oszlopsor, összevetések (f27.report_stats)
     stats, head = build_stats(sb, now, _safe)
     out += [""] + stripe("STATISZTIKA") + ["(a Tuya-naplóból)"] + stats
+
+    # 4c. Bojler-napló (a tulaj kérése, 2026.11.15; ugyanaz a számolás, mint a térkép kártyáján)
+    ba = _safe(lambda: boiler.analyze(boiler.fetch(sb, "X7", now), now, 60.9), None)
+    if ba and (ba["today"] > 0 or ba["avg7"]):
+        tip = None
+        if books is not None and not covers(today) and not arrive_tomorrow:
+            tip = f"ma éjjel üres: bojler LE, ~{boiler._ft(ba['idle_day_ft'] * 0.6)}/nap"
+        out += [""] + box("BOJLER", boiler.lines(ba, tip))
 
     # 5. Érzékelők most + link
     out += [""] + stripe("ÉRZÉKELŐK MOST") + [f"- {x}" for x in context_lines(snap, now)]

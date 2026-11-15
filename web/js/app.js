@@ -1732,6 +1732,7 @@
       var self = this, st = this.state;
       if (!this.sb || !st.user || !st.role) return;
       this.loadBattery();
+      this.loadBoiler();
       if (st.role !== 'owner' && st.role !== 'cleaner') { this.setState({ al: { err: 'role' } }); return; }
       var missing = function (e) { var c = (e && e.code) || '', m = (e && e.message) || ''; return c === 'PGRST205' || c === '42P01' || /does not exist|Could not find the table/i.test(m); };
       var fail = function (e) { self.setState({ al: { err: missing(e) ? 'missing' : 'other', at: Date.now() } }); };
@@ -1751,6 +1752,33 @@
     // Elemcsere-előrejelzés: a dashboard maga számolja (web/js/battery.js) a device_status előzményből
     // és az élő állapotból, így a battery_status tábla (008_battery.sql) nélkül is működik; ha a tábla
     // megvan, eszközönként a sürgősebb becslés nyer. Az előzményt legfeljebb 3 óránként kéri le újra.
+    // Bojler-napló (web/js/boiler.js): a 7-es kör órás és napi fogyasztása, 10 percenként frissítve.
+    // A metrics_hourly a tulajé és a családtagé; másnak (és belépés nélkül) a demó nap látszik.
+    loadBoiler(force) {
+      var self = this, st = this.state;
+      if (!window.F27Boiler) return;
+      if (!this.sb || !st.user || ['owner', 'member'].indexOf(st.role) < 0) { this._boilRaw = null; return; }
+      if (!force && this._boilAt && Date.now() - this._boilAt < 10 * 60000) return;
+      this._boilAt = Date.now();
+      window.F27Boiler.load(this.sb, 'X7').then(function (raw) { self._boilRaw = raw; self.setState({ boilAt: Date.now() }); });
+    }
+    boilerAnalysis(src) {
+      if (!window.F27Boiler) return null;
+      var st = this.state, raw = st.live ? this._boilRaw : window.F27Boiler.demo(st.now || Date.now(), 'f27');
+      if (!raw || raw.empty === true) return null;
+      var cs = circuitState(src, 'k7');
+      var a = window.F27Boiler.analyze(raw, { now: st.now || Date.now(), price: PRICE_B, liveW: cs.w });
+      return a.empty ? null : a;
+    }
+    openBoiler(a) {
+      if (!a || !window.F27Boiler) return;
+      var B = window.F27Boiler, tips = [];
+      tips.push({ html: 'Üres napokon a bojler lekapcsolható: a hőtartás kb. <b>' + B.ft(a.idleCostDay) + '/nap</b> (' + B.fmt(a.idle) + ' kWh). A kihűlt vizet vissza kell fűteni, ezért a valódi megtakarítás ennek kb. 50-70%-a. Érkezés előtt 3 órával kapcsold vissza (teljes felfűtés kb. 5,6 kWh).' });
+      if (a.idle > 2) tips.push({ warn: true, html: 'A hőtartás magas (' + B.fmt(a.idle) + ' kWh/nap, kb. ' + B.ft(a.idleCostMonth) + '/hó): éjjel is 40 percenként fűt. A bojler termosztátját 55-60 °C-ra véve (ha most magasabb) vagy szigetelő köpennyel kb. 20-30% spórolható.' });
+      if (a.nightUse.length) tips.push({ warn: true, html: 'Ma éjjel (' + a.nightUse.join(', ') + ' órakor) a szokásosnál többet fűtött: ha nem fürdött senki, nézd meg a csapokat (csöpögés?).' });
+      B.open({ a: a, title: 'Bojler · 7-es kör (Hajdu 120 l)', tips: tips });
+    }
+
     loadBattery() {
       var self = this, sb = this.sb;
       if (!sb || !this.state.user) return;
@@ -2085,11 +2113,14 @@
         br: cons.k5 == null ? 'nem elérhető' : 'mért ' + fmtW(cons.k5),
         hasVerdict: !!cons.verdict, verdict: cons.verdict, verdictCls: 'ov-vd' + (cons.verdictOk ? ' ok' : '')
       };
+      var boil = this.boilerAnalysis(src);
       var power = { total: cons.btnText === '-- kW' ? '--' : cons.total, totalFt: cons.totalFt,
         rows: cons.circ.map(function (c) {
-          var cs = circuitState(src, c.id);
+          var cs = circuitState(src, c.id), bsub = c.id === 'k7' && boil ? window.F27Boiler.sub(boil) : '';
           return { id: c.id, name: c.name, short: c.short, wText: c.w == null ? '--' : fmtW(c.w), pct: c.pct, color: c.color, ft: c.ft || '', pick: pick(c.id),
-            tag: cs.tag, tagCls: 'st ' + cs.kind, tip: cs.text };
+            tag: cs.tag, tagCls: 'st ' + cs.kind, tip: cs.text,
+            // B: a bojler sora alatt a mai összegzés, koppintásra a Bojler-napló kártya (A)
+            hasSub: !!bsub, sub: bsub, openSub: function () { self.openBoiler(boil); } };
         }) };
       // elemszint kis jele (nyílászárók, hőmérők)
       var battOf = function (c) {

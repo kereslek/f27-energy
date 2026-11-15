@@ -606,7 +606,8 @@
     var s = devState(d), r = st.latest[d.pink], b = (st.bat || []).filter(function (x) { return x.pink === d.pink; })[0];
     box.innerHTML = '<b>' + esc(d.label) + '</b><br>' + esc(ROOM_NAMES[d.room] || '') + ' · ' + esc(ROLE_NAME[d.role] || d.role) +
       (CTL_PINKS.indexOf(d.pink) >= 0 ? '' : '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>') + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
-      (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') + controlCard(d);
+      (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') +
+      (d.pink === 'C1' && window.F27Boiler && boilA() ? '<button type="button" class="bsub big" data-boil="1">' + esc(F27Boiler.sub(boilA())) + ' · Bojler-napló ›</button>' : '') + controlCard(d);
     infoOpen(box);
   }
 
@@ -729,6 +730,29 @@
     });
   }
   // a tanácsok: [szöveg, szoba (ahova Pamutka odasétál)]
+  // ---- Bojler-napló (web/js/boiler.js; az emeleti bojler a C1 konnektoron) -----------------------------
+  var boilRaw = null, boilAt = 0, PRICE_O2B = 70.1;
+  function loadBoil(force) {
+    if (!window.F27Boiler || !sb || !st.user || ['owner', 'member'].indexOf(st.role) < 0) { boilRaw = null; return; }
+    if (!force && boilAt && Date.now() - boilAt < 10 * 60000) return;
+    boilAt = Date.now();
+    F27Boiler.load(sb, 'C1').then(function (raw) { boilRaw = raw; render(); });
+  }
+  function boilA() {
+    if (!window.F27Boiler) return null;
+    var raw = st.live ? boilRaw : F27Boiler.demo(Date.now(), 'o2b');
+    if (!raw || (!raw.hours.length && !raw.days.length)) return null;
+    var r = st.latest.C1, w = r && r.online !== false ? (isOn(r.status) ? watts(r.status) : 0) : null;
+    return F27Boiler.analyze(raw, { price: PRICE_O2B, liveW: w });
+  }
+  function openBoil() {
+    var a = boilA(); if (!a) { toast('A bojler-napló belépve (tulaj, családtag) látszik.', ''); return; }
+    var B = F27Boiler, tips = [{ html: 'Ha napokig senki nincs itthon, a bojler lekapcsolható (Kapcsolók > Emeleti bojler): a hőtartás kb. <b>' + B.ft(a.idleCostDay) + '/nap</b> (' + B.fmt(a.idle) + ' kWh). Hazaérkezés előtt 3 órával kapcsold vissza.' }];
+    if (a.nightUse.length) tips.push({ warn: true, html: 'Ma éjjel (' + a.nightUse.join(', ') + ' órakor) a szokásosnál többet fűtött: ha nem fürdött senki, nézd meg a csapokat.' });
+    B.open({ a: a, title: 'Emeleti bojler · C1', tips: tips });
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-boil]'); if (b) { e.stopPropagation(); openBoil(); } });
+
   function tips() {
     var out = [], tg = target();
     st.devs.forEach(function (d) {
@@ -741,6 +765,12 @@
       if (d.role === 'plug' && d.pink === 'C1' && r.online !== false) {
         var w = watts(r.status);
         if (w && w > 500) out.push(['A <b>fenti bojler</b> most fűt (' + fmt(w, 0) + ' W).', 'furdo_fent', 'C1', 'orange']);
+      }
+      // D: Pamutka szól, ha szokatlan a bojler napja (sokkal több a szokásosnál, vagy éjjel is fűtött)
+      if (d.pink === 'C1' && window.F27Boiler) {
+        var ba = boilA();
+        if (ba && ba.pct7 != null && ba.pct7 > 0.4 && ba.use > 1.5) out.push(['Miaú! Az <b>emeleti bojler</b> ma ' + F27Boiler.fmt(ba.todayKwh) + ' kWh-t evett, a szokásos ' + F27Boiler.fmt(ba.avg7) + ' helyett (' + F27Boiler.pctTxt(ba.pct7) + ', kb. ' + F27Boiler.ft(ba.cost) + '). Ez ' + F27Boiler.showersTxt(ba.showers) + ' vagy egy kád fürdő. Fürdött valaki? 🛁', 'furdo_fent', 'C1', 'orange']);
+        if (ba && ba.nightUse.length) out.push(['Miaú! Az emeleti bojler <b>éjjel is fűtött</b> (' + ba.nightUse.join(', ') + ' órakor), a hőtartásnál többet. Csöpög valahol egy csap?', 'furdo_fent', 'C1', 'red']);
       }
     });
     var off = st.devs.filter(function (d) { return d.role === 'thermo' && st.latest[d.pink] && st.latest[d.pink].online === false; });
@@ -780,7 +810,9 @@
       var r = st.latest[d.pink], off = !r || r.online === false, w = !off ? watts(r.status) : null, on = r && isOn(r.status);
       if (w && !(d.pink === 'C1' && st.latest.X1 && watts(st.latest.X1.status) != null)) tot += w;
       var pct = w ? Math.min(100, Math.round(w / 20)) : 0;
-      return '<div class="cr' + (off ? ' off' : '') + '"><span class="n">' + esc(d.label.replace(/ \(.*\)$/, '')) + '</span><span class="bar"><i style="width:' + pct + '%"></i></span><span class="w">' + (off ? 'offline' : on ? (w ? fmt(w, 0) + ' W' : '0 W') : 'KI') + '</span></div>';
+      var bsub = d.pink === 'C1' && window.F27Boiler ? F27Boiler.sub(boilA()) : '';
+      return '<div class="cr' + (off ? ' off' : '') + '"><span class="n">' + esc(d.label.replace(/ \(.*\)$/, '')) + '</span><span class="bar"><i style="width:' + pct + '%"></i></span><span class="w">' + (off ? 'offline' : on ? (w ? fmt(w, 0) + ' W' : '0 W') : 'KI') + '</span></div>' +
+        (bsub ? '<button type="button" class="bsub" data-boil="1" title="Bojler-napló: mennyit ment ma, mit jelent, mihez képest">' + esc(bsub) + ' ›</button>' : '');
     }).join('');
     var due = BAT ? BAT.due(st.bat) : [];
     var bats = due.length ? due.map(function (r) { return '<div class="br ' + r.level + '"><b>' + esc(r.label || r.pink) + '</b><span>' + esc(BAT.when(r)) + '</span></div>'; }).join('')
@@ -1377,7 +1409,7 @@
       var street = (r[5].data || []).filter(function (x) { return x.key === 'street'; })[0];
       var hadStreet = st.street;
       st.street = r[5].error ? null : (street && street.value) || null;
-      st.live = true; batCalc(); render(); streetBox(); loadControl();
+      st.live = true; batCalc(); render(); streetBox(); loadControl(); loadBoil();
       if (hadStreet !== st.street) drawWorld();
     });
   }

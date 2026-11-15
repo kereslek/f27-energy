@@ -1,4 +1,4 @@
--- O2B (és bármely új telephely) teljes adatbázis-sémája egy fájlban: supabase/schema.sql + migrations/002-012.
+-- O2B (és bármely új telephely) teljes adatbázis-sémája egy fájlban: supabase/schema.sql + migrations/002-013.
 -- Generálva: tools/build_setup_sql.sh. Újrafuttatható (create if not exists, drop policy if exists).
 -- Az új Supabase-projekt SQL Editorában egyben futtasd (Run). Adat nem vész el.
 
@@ -1418,4 +1418,16 @@ create table if not exists public.robot_auth (
 alter table public.robot_auth enable row level security;
 revoke all on public.robot_auth from public, anon, authenticated;
 
+notify pgrst, 'reload schema';
+
+-- ===================================================================== supabase/migrations/013_boiler.sql
+-- 013: a Bojler-naplót (web/js/boiler.js) a családtag is látja: az órás összesítő olvasása (mindkét projekt).
+-- Újrafuttatható. Írni továbbra is csak a titkos kulcs (adatgyűjtő) tud.
+do $$ begin
+  if to_regclass('public.metrics_hourly') is not null then
+    drop policy if exists metrics_hourly_select on public.metrics_hourly;
+    create policy metrics_hourly_select on public.metrics_hourly for select to authenticated
+      using ((select public.my_role()) in ('owner', 'member'));
+  end if;
+end $$;
 notify pgrst, 'reload schema';

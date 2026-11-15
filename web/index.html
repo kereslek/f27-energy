@@ -680,6 +680,8 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ovsheet .ov-head{padding:14px 12px 8px;border-bottom:3px solid #1e2a44;background:linear-gradient(180deg,#fff1c9,#fffdf7)}
 .ovsheet>.ov-f1,.ovsheet>.ov-f2,.ovsheet>.ov-f3{overflow-y:auto;padding:10px 12px 16px;flex:1 1 auto}
 .ovsheet .ov-title{font-size:21px}
+.ov-sub{all:unset;box-sizing:border-box;cursor:pointer;display:block;margin:0 2px 4px 2px;padding:2px 8px;border-radius:8px;background:rgba(79,195,247,.16);color:inherit;font:800 10.5px/1.35 Nunito,sans-serif}.ov-sub:hover,.ov-sub:focus-visible{background:rgba(79,195,247,.32);outline:none}
+.ovsheet .ov-sub{font-size:12.5px;padding:4px 10px}
 .ovsheet .ov-door,.ovsheet .ov-pr{font-size:13px;padding:4px 2px}
 .ovsheet .ov-door .t{font-size:12px}
 .ovsheet .ov-h{font-size:11px}
@@ -1572,7 +1574,7 @@ Elrendezés visszaállítása
 </button>
 <div class="ov-sec">
 <span class="ov-h" title="A világítás, a hűtő és a TV nincs mérve.">FOGYASZTÁS MOST <b class="ov-tot">{{ov.power.total}}</b><span class="ov-ft">{{ov.power.totalFt}}</span></span>
-<sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}" title="{{r.tip}}"><span class="n">{{r.short}}</span><span class="{{r.tagCls}}">{{r.tag}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="w">{{r.wText}}</span></button></sc-for>
+<sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}" title="{{r.tip}}"><span class="n">{{r.short}}</span><span class="{{r.tagCls}}">{{r.tag}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="w">{{r.wText}}</span></button><sc-if value="{{r.hasSub}}"><button class="ov-sub" type="button" onClick="{{r.openSub}}" title="Bojler-napló: mennyit ment ma, mit jelent, mihez képest">{{r.sub}} ›</button></sc-if></sc-for>
 </div>
 <div class="ov-sec">
 <span class="ov-h">NYÍLÁSZÁRÓK<sc-if value="{{ov.doors.anyOpen}}"><b class="ov-red"> · {{ov.doors.openText}}</b></sc-if></span>
@@ -1619,7 +1621,7 @@ Elrendezés visszaállítása
 <div class="ov-tabs" role="tablist"><sc-for list="{{ov.tabs}}" as="t"><button class="{{t.cls}}" type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}">{{t.label}}</button></sc-for></div>
 <div class="ov-tabp">
 <sc-if value="{{ov.tabPower}}">
-<sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr big" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}" title="{{r.tip}}"><span class="n">{{r.name}} <span class="{{r.tagCls}}">{{r.tag}}</span></span><span class="w">{{r.wText}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="f">{{r.ft}}</span></button></sc-for>
+<sc-for list="{{ov.power.rows}}" as="r"><button class="ov-pr big" type="button" onClick="{{r.pick}}" data-ov="{{r.id}}" title="{{r.tip}}"><span class="n">{{r.name}} <span class="{{r.tagCls}}">{{r.tag}}</span></span><span class="w">{{r.wText}}</span><span class="bar"><span style="width: {{r.pct}}; background: {{r.color}}"></span></span><span class="f">{{r.ft}}</span></button><sc-if value="{{r.hasSub}}"><button class="ov-sub" type="button" onClick="{{r.openSub}}" title="Bojler-napló: mennyit ment ma, mit jelent, mihez képest">{{r.sub}} ›</button></sc-if></sc-for>
 <span class="ov-fn">{{ov.power.totalFt}} · a világítás, a hűtő és a TV nincs mérve.</span>
 </sc-if>
 <sc-if value="{{ov.tabDoors}}">
@@ -1819,6 +1821,7 @@ Elrendezés visszaállítása
 <script src="js/walker.js"></script>
 <script src="js/battery.js"></script>
 <script src="js/access.js"></script>
+<script src="js/boiler.js"></script>
 <script src="js/g3-scene.js"></script>
 <script src="js/app.js"></script>
 </body>
