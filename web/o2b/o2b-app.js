@@ -50,6 +50,25 @@
   function ago(ms) { var m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'most' : m < 60 ? m + ' p' : m < 1440 ? Math.floor(m / 60) + ' ó ' + (m % 60) + ' p' : Math.floor(m / 1440) + ' nap'; }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function canEdit() { return !st.user || st.role === 'owner'; }
+  // Offline eszközök: alapból nem látszanak a lakásban (tű, dekor, listák); a kapcsolóval (Offline gomb)
+  // megjeleníthetők. A beállítás ebben a böngészőben marad. Az Eszközök lap mindig mindet mutatja.
+  var OFF_KEY = 'o2b-show-offline', PIECE_PINK = { dn_tree: 'C6', lv_deer: 'C7' };
+  st.showOff = false; try { st.showOff = localStorage.getItem(OFF_KEY) === '1'; } catch (e) { /* tiltott tároló */ }
+  function isOff(p) { var r = st.latest[p]; return !!(r && r.online === false); }
+  function hideOff(p) { return !st.showOff && isOff(p); }
+  function offCount() { return st.devs.filter(function (d) { return d.role !== 'ir_hub' && isOff(d.pink); }).length; }
+  function offBtn() {
+    var b = $('b-off'); if (!b) return;
+    var n = offCount();
+    b.setAttribute('aria-pressed', st.showOff ? 'true' : 'false'); b.classList.toggle('on', st.showOff);
+    $('offlbl').textContent = st.showOff ? 'Offline: látszik' : 'Offline: rejtve';
+    $('offn').textContent = n; $('offn').hidden = !n;
+    b.title = (st.showOff ? 'Az offline eszközök látszanak. Kattints az elrejtésükhöz.' : n + ' offline eszköz elrejtve (pl. karácsonyfa). Kattints a megjelenítésükhöz.');
+  }
+  function setShowOff(v) {
+    st.showOff = !!v; try { localStorage.setItem(OFF_KEY, st.showOff ? '1' : '0'); } catch (e) { /* nem baj */ }
+    drawItems('lo'); drawItems('up'); render();
+  }
   // kapcsolni a tulaj és a családtag tud (belépés nélkül demóban bárki próbálgathatja); a megtekintő és a bemutató link csak néz
   function canCtl() { return !st.user || st.role === 'owner' || st.role === 'member'; }
   function roClause() { return st.role === 'share' ? 'Bemutató: itt csak nézelődni lehet, kapcsolni nem.' : 'Kapcsolni a tulaj és a családtag tud; neked megtekintő hozzáférésed van.'; }
@@ -226,6 +245,7 @@
     var g = layer[f]; if (!g) return;
     g.innerHTML = '';
     scene.floors[f].items.forEach(function (it) {
+      if (it.kind === 'piece' && PIECE_PINK[it.id] && hideOff(PIECE_PINK[it.id])) return;   // offline dekor (karácsonyfa, szarvas)
       var ig = el('g', it.kind === 'piece' ? { class: 'pc' + (it.drag ? ' mv' : '') + (st.sel === 'p:' + it.id ? ' sel' : '') + (drag && drag.id === it.id ? ' drag' : ''), 'data-piece': it.id } : { class: 'wall' }, g);
       it.boxes.forEach(function (bx) { drawBox(bx, ig); });
       if (it.kind === 'piece') {
@@ -326,7 +346,7 @@
     ['lo', 'up'].forEach(function (f) {
       scene.floors[f].pins.forEach(function (pn) {
         var d = byPink[pn.id] || DEFAULT_DEVS.filter(function (x) { return x.pink === pn.id; })[0];
-        if (!d || d.role === 'ir_hub') return;
+        if (!d || d.role === 'ir_hub' || hideOff(pn.id)) return;
         P.push({ pn: pn, d: d, s: devState(d), x: pn.p[0], y: pn.p[1] });
       });
     });
@@ -696,7 +716,7 @@
   // jobb oldali Áttekintés panel (asztali nézet), a F27 mintájára
   function overview() {
     var box = $('ovbody'); if (!box) return;
-    var th = st.devs.filter(function (d) { return d.role === 'thermo'; });
+    var th = st.devs.filter(function (d) { return d.role === 'thermo' && !hideOff(d.pink); });
     var tiles = th.map(function (d) {
       var r = st.latest[d.pink], s = devState(d), hum = r && r.status && typeof r.status.va_humidity === 'number' ? r.status.va_humidity : null;
       var b = (st.bat || []).filter(function (x) { return x.pink === d.pink; })[0], bl = b && BAT && BAT.ORDER[b.level] <= 3;
@@ -704,7 +724,7 @@
         '<span class="v">' + esc(s.big && s.big !== 'offline' ? s.big : s.cls === 'off' ? 'offline' : '--') + '</span>' +
         '<span class="m">' + (hum != null ? 'pára ' + hum + ' %' : '&nbsp;') + (bl ? ' · <b class="bw">elem!</b>' : '') + '</span></button>';
     }).join('');
-    var plugs = st.devs.filter(function (d) { return d.role === 'plug' || d.role === 'breaker'; });
+    var plugs = st.devs.filter(function (d) { return (d.role === 'plug' || d.role === 'breaker') && !hideOff(d.pink); });
     var tot = 0, rows = plugs.map(function (d) {
       var r = st.latest[d.pink], off = !r || r.online === false, w = !off ? watts(r.status) : null, on = r && isOn(r.status);
       if (w && !(d.pink === 'C1' && st.latest.X1 && watts(st.latest.X1.status) != null)) tot += w;
@@ -714,7 +734,9 @@
     var due = BAT ? BAT.due(st.bat) : [];
     var bats = due.length ? due.map(function (r) { return '<div class="br ' + r.level + '"><b>' + esc(r.label || r.pink) + '</b><span>' + esc(BAT.when(r)) + '</span></div>'; }).join('')
       : '<div class="br ok">Minden elem rendben.</div>';
-    box.innerHTML = switchesHtml() + '<div class="ovs"><div class="ovh">HŐMÉRSÉKLETEK <small>cél: ' + target() + ' °C</small></div><div class="tiles">' + tiles + '</div></div>' +
+    var nOff = offCount();
+    box.innerHTML = (nOff && !st.showOff ? '<div class="offnote">' + nOff + ' offline eszköz elrejtve <button class="mini lnk" data-off="1">Mutasd</button></div>' : '') +
+      switchesHtml() + '<div class="ovs"><div class="ovh">HŐMÉRSÉKLETEK <small>cél: ' + target() + ' °C</small></div><div class="tiles">' + tiles + '</div></div>' +
       '<div class="ovs"><div class="ovh">FOGYASZTÁS MOST <b>' + fmt(tot, 0) + ' W</b></div>' + rows + '</div>' +
       '<div class="ovs"><div class="ovh">ELEMEK</div>' + bats + '</div>' +
       '<div class="ovs"><div class="ovh">FŰTÉS</div><div class="br ok">Gázkazán (Savio), Computherm termosztát az étkezőben: még nincs bekötve, a hőmérők mutatják a hatását.</div></div>';
@@ -723,7 +745,7 @@
   }
   function render() {
     $('demo').hidden = st.live; $('livepill').hidden = !st.live;
-    chips(); list(); pamutka(); overview(); drawPins(); showInfo(); toolbar();
+    chips(); list(); pamutka(); overview(); drawPins(); showInfo(); toolbar(); offBtn();
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
@@ -1227,7 +1249,7 @@
     return '<div class="ovs swb"><div class="ovh">' + (ro ? 'LÁMPÁK ÉS KONNEKTOROK' : 'KAPCSOLÓK <button class="mini lnk" data-ctl="sched">Heti időzítő</button>') + '</div>' +
       (st.ctl.missing && !ro ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
       (ro ? '' : '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>') +
-      CTL_PINKS.map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = st.role === 'share' ? null : nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + (ro ? '<div class="ctln">' + roClause() + '</div>' : '') + '</div>';
+      CTL_PINKS.filter(function (p) { return !hideOff(p); }).map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = st.role === 'share' ? null : nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + (ro ? '<div class="ctln">' + roClause() + '</div>' : '') + '</div>';
   }
   // C: heti időzítő lap
   function schedRender() {
@@ -1372,6 +1394,8 @@
   on('b-undo', 'click', undo); on('b-redo', 'click', redo);
   on('b-reset', 'click', function () { if (!Object.keys(st.offs).length) return; pushUndo(JSON.parse(JSON.stringify(st.offs))); st.offs = {}; drawWorld(); markDirty(); });
   on('b-rot', 'click', function (e) { rotate(e.shiftKey ? -1 : 1); });
+  on('b-off', 'click', function () { setShowOff(!st.showOff); toast(st.showOff ? 'Az offline eszközök is látszanak.' : 'Az offline eszközök elrejtve.', ''); });
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-off]'); if (b) setShowOff(true); });
   on('b-zin', 'click', function () { zoom(1.25); }); on('b-zout', 'click', function () { zoom(1 / 1.25); }); on('b-fit', 'click', fit);
   on('b-save', 'click', save); on('b-saveas', 'click', saveAs); on('b-def', 'click', makeDefault);
   on('layouts', 'change', function (e) { var row = st.layouts.filter(function (l) { return l.id === e.target.value; })[0]; if (row) applyLayout(row); });

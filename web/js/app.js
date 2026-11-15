@@ -1088,6 +1088,7 @@
       this.liveTimer = 0;
       this.state = {
         pos: {}, sel: null, drag: null,
+        showOff: readShowOff(),
         drawer: false, drawerAuto: false, drawerFade: false, phone: window.innerWidth <= 700, saveAs: false, confirmId: null, busy: false, peek: false, remember: authStore.remember,
         weather: null, daily: null, wxOpen: false, wxAt: null, hist: null, histAt: 0, ovVariant: ovVariantFromUrl(), ovTab: 'power', ovSheet: false,
         advIdx: 0, advHover: false, advOpen: false, advTalk: false, advMute: sGet(LOCAL, ADV_MUTE_KEY) === '1', advVariant: advVariantFromUrl(),
@@ -1243,6 +1244,11 @@
       v.adv = this.advVals(v, dv);
       v.info = { srcLabel: st.live ? 'ÉLŐ' : 'DEMÓ', srcCls: 'dp-src ' + (st.live ? 'live' : 'demo'),
         bubbleCls: 'ip-bubble ' + v.adv.curTone + (st.advTalk ? ' talk' : ''), showCur: v.adv.showCur };
+      // Offline eszközök: alapból nem látszanak a térképen (a nagyítósáv Offline gombja mutatja őket);
+      // az Eszközök panel és a listák mindet mutatják.
+      var offIds = live ? v.pins.filter(function (m) { var d = live[dbPink(m.id)]; return d && d.online === false; }).map(function (m) { return m.id; }) : [];
+      if (!st.showOff && offIds.length) v.pins = v.pins.filter(function (m) { return offIds.indexOf(m.id) < 0; });
+      syncOffBtn(offIds.length, st.showOff);
       return v;
     }
 
@@ -2977,7 +2983,15 @@
     return null;
   }
 
-  var editBtnZ = null;
+  var editBtnZ = null, offBtnZ = null, OFF_KEY = 'f27-show-offline';
+  function readShowOff() { try { return localStorage.getItem(OFF_KEY) === '1'; } catch (e) { return false; } }
+  function syncOffBtn(n, on) {
+    if (!offBtnZ) return;
+    offBtnZ.setAttribute('aria-pressed', on ? 'true' : 'false'); offBtnZ.classList.toggle('on', !!on);
+    offBtnZ.querySelector('.zofl').textContent = on ? 'Offline látszik' : 'Offline rejtve';
+    var c = offBtnZ.querySelector('.zofn'); c.textContent = n; c.style.display = n ? '' : 'none';
+    offBtnZ.title = on ? 'Az offline eszközök is látszanak a térképen. Kattints az elrejtésükhöz.' : (n ? n + ' offline eszköz elrejtve. Kattints a megjelenítésükhöz.' : 'Nincs offline eszköz. (Ha lesz, alapból rejtve marad.)');
+  }
   var rotBtnZ = null;
   function syncRotBtn(k) {
     if (!rotBtnZ) return;
@@ -3019,6 +3033,11 @@
     rotBtnZ = mk('', 'Forgatás 90 fokkal (R; Shift+R visszafelé)', function () { app.rotateView(1); },
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span class="zrot">0°</span>');
     rotBtnZ.classList.add('zrotb');
+    offBtnZ = mk('', 'Offline eszközök megjelenítése', function () {
+      var on = !app.state.showOff; try { localStorage.setItem(OFF_KEY, on ? '1' : '0'); } catch (e) { /* nem baj */ }
+      app.setState({ showOff: on }); app.toast(on ? 'Az offline eszközök is látszanak.' : 'Az offline eszközök elrejtve.', 'info');
+    }, '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="zsl" d="M4 20L20 4"/></svg><span class="zofl">Offline rejtve</span><span class="zofn">0</span>');
+    offBtnZ.classList.add('zoff');
     mk('', 'Teljes nézet (0)', resetView,
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>');
     document.body.appendChild(bar);

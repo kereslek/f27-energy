@@ -147,12 +147,18 @@
     shell(2.02, 6.72, 0.42, 0.4, 2.02, 6.66, 0.42, 0.12); shell(2.02, 9.18, 0.42, 0.38, 2.02, 9.48, 0.42, 0.1);
     return o;
   })());
-  piece('dn_side', 'Fekete üvegajtós tálalószekrény, rajta a dupla lámpa (két fehér asztali lámpa, C2)', 'lo', [[3.85, 7.4, 0.5, 1.6, 0, 0.85, C.BLACK], [3.83, 7.45, 0.02, 1.5, 0.15, 0.6, C.GLASS], [3.95, 7.5, 0.22, 0.22, 0.85, 0.12, C.BLACK], [3.92, 7.47, 0.28, 0.28, 0.97, 0.26, C.CREAM], [3.95, 8.65, 0.22, 0.22, 0.85, 0.12, C.BLACK], [3.92, 8.62, 0.28, 0.28, 0.97, 0.26, C.CREAM]]);
-  piece('dn_mirror', 'Nagy, hosszú, fekvő tükör fekete kerettel', 'lo', [[4.3, 7.45, 0.07, 1.5, 1.3, 0.8, C.BLACK], [4.27, 7.52, 0.04, 1.36, 1.37, 0.66, C.GLASS]], false);
-  piece('dn_radiator', 'Radiátor (0-ra véve; itt mér a Computherm)', 'lo', [[3.1, 6.42, 0.8, 0.1, 0.12, 0.55, C.WHITE]], false);
+  // A fotók szerint (a lépcső tetejéről és az előszoba ajtajából): a nyugati falon az alacsony fekete,
+  // üvegajtós tálaló, rajta két fehér lámpa (C2), fölötte a fekete keretes fekvő tükör (C5); a lépcső
+  // felőli sarokban a krém füles fotel, mögötte a lépcső alatti fekete beépített szekrény; a keleti falon
+  // az előszoba ajtaja és a vakajtós ruhásszekrény; középen az asztal hosszában a nappali üvegajtaja felé.
+  piece('dn_side', 'Alacsony fekete üvegajtós tálaló, rajta a dupla lámpa (két fehér asztali lámpa, C2)', 'lo', [[0.05, 7.05, 0.45, 1.6, 0, 0.82, C.BLACK], [0.5, 7.12, 0.02, 0.72, 0.12, 0.6, C.GLASS], [0.5, 7.88, 0.02, 0.72, 0.12, 0.6, C.GLASS], [0.48, 7.84, 0.04, 0.04, 0.05, 0.75, C.BLACK],
+    [0.15, 7.15, 0.2, 0.2, 0.82, 0.12, C.WHITE], [0.11, 7.11, 0.28, 0.28, 0.94, 0.26, C.CREAM], [0.15, 8.35, 0.2, 0.2, 0.82, 0.12, C.WHITE], [0.11, 8.31, 0.28, 0.28, 0.94, 0.26, C.CREAM]]);
+  piece('dn_mirror', 'Nagy fekvő tükör fekete kerettel a tálaló fölött', 'lo', [[0.02, 7.1, 0.07, 1.5, 1.3, 0.8, C.BLACK], [0.07, 7.17, 0.04, 1.36, 1.37, 0.66, C.GLASS]], false);
+  piece('dn_under', 'Fekete beépített szekrény a lépcső alatt', 'lo', [[0.1, 9.55, 1.25, 0.06, 0, 1.85, C.BLACK], [0.75, 9.52, 0.03, 0.12, 0.9, 0.18, C.CREAM]], false);
+  piece('dn_radiator', 'Radiátor (0-ra véve; itt mér a Computherm)', 'lo', [[3.55, 6.42, 0.75, 0.1, 0.12, 0.55, C.WHITE]], false);
   piece('dn_thermostat', 'Computherm termosztát (étkező sarka)', 'lo', [[4.32, 6.45, 0.06, 0.14, 1.3, 0.18, C.WHITE]], false);
-  piece('dn_chair', 'Krém füles fotel a lépcső alatt', 'lo', [[0.2, 8.3, 0.75, 0.75, 0, 0.42, C.CREAM], [0.12, 8.3, 0.15, 0.75, 0, 1.0, C.CREAM], [0.2, 8.2, 0.75, 0.12, 0, 0.62, C.CREAM], [0.2, 9.0, 0.75, 0.12, 0, 0.62, C.CREAM]]);
-  piece('dn_wardrobe', 'Vakajtó mögötti ruhásszekrény', 'lo', [[0.08, 6.6, 0.35, 1.2, 0, 2.2, C.WHITE]], false);
+  piece('dn_chair', 'Krém füles fotel a sarokban, a lépcső mellett', 'lo', [[0.2, 8.85, 0.72, 0.68, 0, 0.42, C.CREAM], [0.1, 8.8, 0.16, 0.78, 0, 1.05, C.CREAM], [0.1, 8.78, 0.3, 0.1, 0.4, 0.62, C.CREAM], [0.1, 9.5, 0.3, 0.1, 0.4, 0.62, C.CREAM], [0.2, 8.8, 0.7, 0.12, 0, 0.62, C.CREAM], [0.2, 9.48, 0.7, 0.12, 0, 0.62, C.CREAM]]);
+  piece('dn_wardrobe', 'Vakajtó mögötti ruhásszekrény (keleti fal)', 'lo', [[4.2, 9.25, 0.4, 1.3, 0, 2.2, C.WHITE], [4.18, 9.88, 0.03, 0.04, 1.0, 0.2, C.STEEL]], false);
   piece('dn_tree', 'Karácsonyfa (okos konnektoron)', 'lo', [[3.6, 9.9, 0.3, 0.3, 0, 0.2, C.TERRA], [3.42, 9.72, 0.66, 0.66, 0.2, 0.6, C.LEAF], [3.52, 9.82, 0.46, 0.46, 0.8, 0.5, C.LEAF], [3.62, 9.92, 0.26, 0.26, 1.3, 0.4, C.LEAF2], [3.7, 10.0, 0.1, 0.1, 1.7, 0.12, C.YELLOW]]);
 
   // Hálószoba
@@ -214,7 +220,7 @@
   var PINS = {
     T1: ['lo', 3.2, 3.4, 1.2], T8: ['lo', 1.0, 1.9, 1.2], T2: ['lo', 1.2, 7.3, 1.2], T3: ['lo', 1.1, 13.9, 1.2],
     T4: ['lo', 8.6, 9.8, 1.4], T7: ['lo', 2.6, -1.0, 0.9], K1: ['lo', 0.17, 3.2, 2.62], K2: ['lo', 3.45, 11.32, 2.75],
-    C2: ['lo', 4.3, 7.25, 1.55], C3: ['lo', 4.05, 2.9, 0.9], C4: ['lo', 1.6, 10.2, 1.4], C5: ['lo', 4.3, 8.2, 2.25],
+    C2: ['lo', 0.3, 7.25, 1.55], C3: ['lo', 4.05, 2.9, 0.9], C4: ['lo', 1.6, 10.2, 1.4], C5: ['lo', 0.1, 7.95, 2.25],
     C6: ['lo', 3.75, 10.05, 1.9], C7: ['lo', 1.05, 0.5, 1.0], C8: ['lo', 4.0, -0.5, 1.0],
     IR1: ['lo', 0.5, 1.0, 2.2], IR2: ['lo', 4.2, 13.1, 2.2],
     T5: ['up', 1.2, 2.0, 1.2], T6: ['up', 3.3, 2.8, 1.2], K3: ['up', 0.17, 2.0, 2.45], K4: ['up', 4.4, 3.75, 2.45],
