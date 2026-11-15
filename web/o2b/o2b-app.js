@@ -413,6 +413,16 @@
         el('rect', { class: 'vbg', x: r1(b[0]), y: r1(b[1]), width: r1(w), height: r1(b[3] - b[1]), rx: r1(10 * k), fill: s.cls === 'hot' ? '#ffd9cc' : s.cls === 'cold' ? '#d6e6ff' : s.cls === 'off' ? '#e4e6ea' : '#ffffff', style: 'stroke-width:' + r1(2 * k) + 'px' }, pg);
         var vt = el('text', { class: 'vt', x: r1(b[0] + w / 2), y: r1(b[1] + 14.5 * k), 'text-anchor': 'middle', fill: INK, style: 'font-size:' + r1(12.5 * k) + 'px' }, pg); vt.textContent = s.big;
       }
+      // a bojler fűt (C1 konnektor, kb. 1,8 kW): villám és felszálló hőhullám a tű fölött
+      if (pn.id === 'C1') {
+        var br = st.latest.C1, bw = br && br.online !== false && isOn(br.status) ? watts(br.status) : null;
+        if (bw != null && bw >= 500) {
+          var bm = el('g', { class: 'boilmark', transform: 'translate(' + r1(q.x) + ',' + r1(q.y - R - 12 * k) + ') scale(' + r1(k * 85) / 100 + ')' }, pg);
+          bm.innerHTML = '<g class="boil-waves"><path d="M-12,-10 q-4,-6 0,-12 q4,-6 0,-12"/><path d="M0,-12 q-4,-6 0,-12 q4,-6 0,-12"/><path d="M12,-10 q-4,-6 0,-12 q4,-6 0,-12"/></g>' +
+            '<g class="boil-zap"><circle cx="0" cy="0" r="11" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.4"/><path d="M2,-9 L-5,1 L0,1 L-2.5,9 L6,-3 L1,-3 Z" fill="#1e2a44"/></g>';
+          s = Object.assign({}, s, { txt: s.txt + ' · fűt, ' + fmt(bw / 1000, 1) + ' kW' });
+        }
+      }
       var ti = el('title', {}, pg); ti.textContent = d.label + ': ' + s.txt;
       pg.addEventListener('click', function (e) { e.stopPropagation(); select(pn.id); });
       pg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(pn.id); } });

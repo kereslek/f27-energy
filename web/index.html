@@ -382,6 +382,12 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .adv{--adv-play:paused;--adv-talk:0;font-family:"Nunito",sans-serif;color:#1e2a44}
 .adv.talk{--adv-play:running;--adv-talk:1}
 .adv-char{all:unset;box-sizing:border-box;pointer-events:auto;cursor:pointer;position:absolute;left:0;top:0;width:67px;height:82px;border-radius:16px}
+@keyframes boilzap{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 #ffd23f)}40%{transform:scale(1.14) rotate(-6deg);filter:drop-shadow(0 0 6px #ffd23f)}55%{transform:scale(.96)}}
+@keyframes boilwave{0%{transform:translateY(4px);opacity:0}30%{opacity:.9}100%{transform:translateY(-16px);opacity:0}}
+.boil-zap{transform-box:fill-box;transform-origin:50% 50%;animation:boilzap .9s ease-in-out infinite}
+.boil-waves path{fill:none;stroke:#ff7a1a;stroke-width:2.6;stroke-linecap:round;transform-box:fill-box;animation:boilwave 1.6s ease-out infinite}
+.boil-waves path:nth-child(2){animation-delay:.5s}.boil-waves path:nth-child(3){animation-delay:1s}
+@media (prefers-reduced-motion:reduce){.boil-zap,.boil-waves path{animation:none}}
 .adv-char:focus-visible,.adv-bubble:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
 .adv-char svg{display:block;width:67px;height:82px;overflow:visible}
 .adv-char .mb{position:absolute;right:0;top:4px;width:20px;height:20px;border-radius:50%;background:#ffffff;border:2px solid #1e2a44;display:flex;align-items:center;justify-content:center}
@@ -1153,6 +1159,19 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 
 
 
+
+<!-- bojler: ha a 7-es kör fűt (kb. 1,8 kW), villám és felszálló hőhullámok a bojleren -->
+<sc-if value="{{boilOn}}">
+<g transform="{{sc.fx.boiler}}" style="pointer-events: none" aria-label="{{boilLabel}}">
+<g class="boil-waves"><path d="M-14,-6 q-4,-6 0,-12 q4,-6 0,-12" /><path d="M0,-8 q-4,-6 0,-12 q4,-6 0,-12" /><path d="M14,-6 q-4,-6 0,-12 q4,-6 0,-12" /></g>
+<g class="boil-zap"><circle cx="0" cy="-2" r="13" fill="#ffd23f" stroke="#1e2a44" stroke-width="2.6"></circle>
+<path d="M2,-12 L-6,0 L0,0 L-3,10 L7,-4 L1,-4 Z" fill="#1e2a44" stroke="#1e2a44" stroke-width="1" stroke-linejoin="round"></path></g>
+<g class="flame-tag" transform="translate(0 24)">
+<rect x="{{boilX}}" y="-9" width="{{boilW}}" height="17" rx="8.5" fill="#e3f2ff" stroke="#1e2a44" stroke-width="2"></rect>
+<text x="0" y="4" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="10.5" fill="#1d4f91">{{boilLabel}}</text>
+</g>
+</g>
+</sc-if>
 
 <!-- gázkonvektor: az alap és legolcsóbb fűtés (a tulaj, 2026.11.14); nincs mérése, ezért mindig látszik -->
 <g transform="{{sc.fx.gas}}" style="pointer-events: none" aria-label="Gázkonvektor: az alap és legolcsóbb fűtés">

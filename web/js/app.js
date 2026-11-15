@@ -1390,6 +1390,11 @@
       v.flameLabel = v.flameOn ? 'Kályha fűt · ' + (sm.measured ? fmtW(cs5.w) : sm.kw + ' kW') : '';
       // a felirat doboza a szöveghez méreteződik (ne lógjon ki a buborékból)
       v.flameW = Math.max(60, Math.ceil(textWidth(v.flameLabel, '900 10.5px Nunito, sans-serif')) + 18); v.flameX = -v.flameW / 2;
+      // bojler: ha a 7-es kör fűt (kb. 1,8 kW), villám és hőhullám a bojleren, felirattal
+      var cs7 = circuitState(src0, 'k7');
+      v.boilOn = cs7.kind === 'run';
+      v.boilLabel = v.boilOn ? 'Bojler fűt · ' + fmtW(cs7.w) : '';
+      v.boilW = Math.max(60, Math.ceil(textWidth(v.boilLabel, '900 10.5px Nunito, sans-serif')) + 18); v.boilX = -v.boilW / 2;
     }
 
     // Belépve (listán szereplő szerepkörrel) a Supabase-ből olvas (az adatgyűjtő óránként tölti);

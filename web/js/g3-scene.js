@@ -744,7 +744,7 @@ class G3Scene extends MiniDC.Component {
       gangSlab: gangSlab, railing: railing, mirror: mirror, ghost: ghost, blind: blind,
       fx: {
         stoveTop: tr(341, 303, 110), flame: tr(365, 318, 38), ch1: tr(377, 190, 96), ch2: tr(404, 470, 96),
-        ghosts: tr(414, 552, 34), compass: 'translate(170,555)', gw: tr(460, 568, 60), gas: tr(404, 585, 30), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
+        ghosts: tr(414, 552, 34), compass: 'translate(170,555)', gw: tr(460, 568, 60), gas: tr(404, 585, 30), boiler: tr(279, 376, 108), priv: tr(308, 506, 3), wcTag: tr(271, 506, 22), pendant: tr(218.5, 520.5, 58)
       }
     };
     this._scs[K] = sc;

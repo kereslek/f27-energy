@@ -27,7 +27,7 @@
     layer.style.cssText = 'position:absolute;left:0;top:0;width:1440px;height:900px;transform-origin:0 0;pointer-events:none;z-index:1';
     o.stage.parentNode.insertBefore(layer, o.stage.nextSibling);
     var css = document.createElement('style');
-    css.textContent = '@keyframes wkhop{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}}' +
+    css.textContent = '@keyframes wkhop{0%,100%{transform:translateY(0) rotate(-2.5deg)}25%{transform:translateY(-3px) rotate(0)}50%{transform:translateY(0) rotate(2.5deg)}75%{transform:translateY(-3px) rotate(0)}}' +
       '@keyframes wkdance{0%,100%{transform:scaleX(1)}25%{transform:scaleX(-1)}50%{transform:scaleX(1) translateY(-6px)}75%{transform:scaleX(-1)}}' +
       '@keyframes wklook{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}70%{transform:rotate(12deg)}}' +
       '@keyframes wkzz{0%{transform:translate(0,0);opacity:0}20%{opacity:1}100%{transform:translate(10px,-28px);opacity:0}}' +
@@ -38,7 +38,7 @@
       '@keyframes wkwake{0%,20%{transform:rotate(-14deg) translateY(4px) scale(1.08,.8)}38%{transform:scale(.86,1.22) translateY(-18px)}52%{transform:scale(1.08,.92)}64%{transform:rotate(-8deg)}74%{transform:rotate(8deg)}84%{transform:rotate(-3deg)}100%{transform:none}}' +
       '#walkerlayer .wk{cursor:grab;touch-action:none}#walkerlayer .wk.held{cursor:grabbing}' +
       '#walkerlayer .wb{transform-box:fill-box;transform-origin:50% 100%}' +
-      '#walkerlayer .walk .wb{animation:wkhop .45s ease-in-out infinite}' +
+      '#walkerlayer .walk .wb{animation:wkhop 1s ease-in-out infinite}' +
       '#walkerlayer .dance .wb{animation:wkdance 1.2s ease-in-out infinite}' +
       '#walkerlayer .look .wb{animation:wklook 2.2s ease-in-out infinite}' +
       '#walkerlayer .sleep .wb{transform:rotate(-14deg) translateY(4px)}' +
@@ -188,11 +188,13 @@
           var p0 = o.project(w.x, w.y);
           w.x += dx / d * sp; w.y += dy / d * sp; w.mode = 'walk';
           var p1 = o.project(nx[0], nx[1]);
-          if (Math.abs(p1[0] - p0[0]) > 0.5) w.face = p1[0] > p0[0] ? 1 : -1;
+          // irányváltás csak egyértelmű vízszintes mozgásnál (különben szinte függőleges szakaszon villogna)
+          var hx = p1[0] - p0[0], hy = p1[1] - p0[1];
+          if (Math.abs(hx) > 0.35 * Math.abs(hy) && Math.abs(hx) > 2) w.face = hx > 0 ? 1 : -1;
         }
       }
       if (!p) { p = o.project(w.x, w.y); k += w.mode; }
-      g.setAttribute('transform', 'translate(' + Math.round(p[0] * 10) / 10 + ',' + Math.round(p[1] * 10) / 10 + ')');
+      g.setAttribute('transform', 'translate(' + p[0].toFixed(2) + ',' + p[1].toFixed(2) + ')');
       if (g.getAttribute('class') !== k) g.setAttribute('class', k);
       // kézben: a padlón árnyék mutatja, hová huppan
       if (w.hold) { drop.setAttribute('cx', Math.round(w.hold[0])); drop.setAttribute('cy', Math.round(w.hold[1] + FLOOR)); drop.setAttribute('opacity', '0.22'); }
@@ -202,8 +204,10 @@
       if (use.getAttribute('href') !== h) use.setAttribute('href', h);
       tick();
     }
-    // 20 képkocka/mp elég a sétához, és a nagy időugrásoknál (alvó lap, tesztek) sem halmozódik fel
-    function tick() { setTimeout(function () { step(Date.now()); }, 50); }
+    // A kijelző frissítéséhez igazítva (egyenletes, nem rángat); rejtett lapon a böngésző szünetelteti,
+    // a nagy időugrást a dt-korlát fogja meg. Ha nincs requestAnimationFrame, 60 Hz-es időzítő.
+    var raf = root.requestAnimationFrame ? root.requestAnimationFrame.bind(root) : function (f) { return setTimeout(function () { f(Date.now()); }, 16); };
+    function tick() { raf(step); }
     tick();
     return { state: w, layer: layer, say: say };
   }
