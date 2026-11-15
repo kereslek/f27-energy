@@ -530,7 +530,7 @@
     var d = st.devs.filter(function (x) { return x.pink === st.sel; })[0]; if (!d) { box.hidden = true; return; }
     var s = devState(d), r = st.latest[d.pink], b = (st.bat || []).filter(function (x) { return x.pink === d.pink; })[0];
     box.innerHTML = '<b>' + esc(d.label) + '</b><br>' + esc(ROOM_NAMES[d.room] || '') + ' · ' + esc(ROLE_NAME[d.role] || d.role) +
-      '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>' + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
+      (CTL_PINKS.indexOf(d.pink) >= 0 ? '' : '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>') + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
       (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') + controlCard(d);
     infoOpen(box);
   }
@@ -1001,25 +1001,80 @@
       render(); drawOverlay();
     });
   }
+  // ---- időpontok: a következő kapcsolás, emberi szöveg ----
+  var WDN = ['vasárnap', 'hétfő', 'kedd', 'szerda', 'csütörtök', 'péntek', 'szombat'];
+  function whenText(d) {
+    var now = new Date(), t0 = new Date(now); t0.setHours(0, 0, 0, 0);
+    var dd = Math.round((new Date(d).setHours(0, 0, 0, 0) - t0) / 864e5), h = hm(d.getHours() * 60 + d.getMinutes());
+    return (dd === 0 ? 'ma' : dd === 1 ? 'holnap' : WDN[d.getDay()]) + ' ' + h;
+  }
+  function sunAt(kind, dayMs) { if (!SUN) return null; var t = SUN.times(dayMs, LAT, LON); var x = kind === 'sunset' ? t.set : t.rise; return x ? new Date(x) : null; }
+  function ruleNext(r, from) {
+    from = from || new Date();
+    for (var i = 0; i < 8; i++) {
+      var day = new Date(from); day.setHours(12, 0, 0, 0); day.setDate(day.getDate() + i);
+      var bit = 1 << ((day.getDay() + 6) % 7);
+      if (!(r.days & bit)) continue;
+      var at;
+      if (r.kind === 'time') { at = new Date(day); at.setHours(0, r.minute, 0, 0); }
+      else { var sa = sunAt(r.kind, day.getTime()); if (!sa) continue; at = new Date(sa.getTime() + r.minute * 60000); at.setSeconds(0, 0); }
+      if (at > from) return at;
+    }
+    return null;
+  }
+  function ruleSentence(r, short) {
+    var days = r.days === 127 ? 'Minden nap' : r.days === 31 ? 'Hétköznap' : r.days === 96 ? 'Hétvégén' : ruleDays(r.days);
+    return (short ? days.toLowerCase() : days) + ' ' + ruleWhen(r) + ' ' + (r.action === 'on' ? 'bekapcsol' : 'kikapcsol');
+  }
+  function nextEvent(p) {
+    var best = null;
+    st.ctl.timers.forEach(function (t) { if (t.pink !== p) return; var at = new Date(t.due_at); if (at > new Date() && (!best || at < best.at)) best = { at: at, on: t.action === 'on', why: 'egyszeri' }; });
+    st.ctl.rules.forEach(function (r) { if (r.pink !== p || !r.enabled) return; var at = ruleNext(r); if (at && (!best || at < best.at)) best = { at: at, on: r.action === 'on', why: ruleSentence(r, true) }; });
+    return best;
+  }
+  function presetsFor(p) {
+    if (p === 'C1') return [{ id: 'm', t: 'Hétköznap reggel 5:30-kor BE', r: { action: 'on', kind: 'time', minute: 330, days: 31 } },
+      { id: 'n', t: 'Hétköznap 8:00-kor KI', r: { action: 'off', kind: 'time', minute: 480, days: 31 } }];
+    return [{ id: 'e', t: 'Minden nap napnyugtakor BE', r: { action: 'on', kind: 'sunset', minute: 0, days: 127 } },
+      { id: 'n', t: 'Minden nap 23:00-kor KI', r: { action: 'off', kind: 'time', minute: 1380, days: 127 } }];
+  }
+  function sameRule(a, b) { return a.pink === b.pink && a.action === b.action && a.kind === b.kind && a.minute === b.minute && a.days === b.days; }
+  function findRule(p, r) { return st.ctl.rules.filter(function (x) { return sameRule(x, Object.assign({ pink: p }, r)); })[0]; }
+
   function addTimer(p, action, due, label) {
-    if (!sb || !st.user) { st.ctl.timers.push({ id: 'demo' + Date.now(), pink: p, action: action, due_at: due.toISOString(), label: label }); ctlRender(); toast('Időzítő beállítva (demó)', 'ok'); return Promise.resolve(); }
+    var dup = st.ctl.timers.filter(function (t) { return t.pink === p && t.action === action && Math.abs(new Date(t.due_at) - due) < 90000; })[0];
+    if (dup) { toast('Ez az egyszeri időzítő már be van állítva: ' + whenText(due) + ' ' + (action === 'on' ? 'BE' : 'KI') + '.', ''); return Promise.resolve(); }
+    var msg = shortName(p) + ': egyszer, ' + whenText(due) + '-kor ' + (action === 'on' ? 'bekapcsol' : 'kikapcsol') + '.';
+    if (!sb || !st.user) { st.ctl.timers.push({ id: 'demo' + Date.now(), pink: p, action: action, due_at: due.toISOString(), label: label }); ctlRender(); toast(msg + ' (demó)', 'ok'); return Promise.resolve(); }
     return sb.from('control_timers').insert({ pink: p, action: action, due_at: due.toISOString(), label: label }).then(function (r) {
-      if (r.error) toast('Az időzítő nem menthető' + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err'); else toast('Időzítő: ' + label, 'ok');
+      if (r.error) toast('Az időzítő nem menthető' + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err'); else toast(msg, 'ok');
       loadControl();
     });
   }
   function quick(p, kind) {
     var now = new Date();
-    if (kind === 'on1h') { switchPlug(p, true, CTL_CONFIRM[p] ? true : false); addTimer(p, 'off', new Date(now.getTime() + 3600e3), 'KI ' + hm(now.getHours() * 60 + now.getMinutes() + 60) + '-kor'); }
+    if (kind === 'on1h') { switchPlug(p, true, CTL_CONFIRM[p] ? true : false); addTimer(p, 'off', new Date(now.getTime() + 3600e3), 'KI 1 óra múlva'); }
     else if (kind === 'off23') { var t = new Date(now); t.setHours(23, 0, 0, 0); if (t <= now) t.setDate(t.getDate() + 1); addTimer(p, 'off', t, 'KI 23:00-kor'); }
-    else if (kind === 'onsunset') { var s = SUN ? new Date(SUN.times(Date.now(), LAT, LON).set) : new Date(now.getTime() + 3600e3); if (s <= now) s = new Date(s.getTime() + 864e5); addTimer(p, 'on', s, 'BE napnyugtakor (' + hm(s.getHours() * 60 + s.getMinutes()) + ')'); }
+    else if (kind === 'onsunset') { var s = sunAt('sunset', Date.now()) || new Date(now.getTime() + 3600e3); if (s <= now) s = sunAt('sunset', Date.now() + 864e5); addTimer(p, 'on', s, 'BE napnyugtakor'); }
+  }
+  function saveRule(p, r) {
+    r = Object.assign({ pink: p, enabled: true }, r);
+    var ex = findRule(p, r);
+    if (ex) { toast('Ez az ütemezés már megvan: ' + ruleSentence(ex) + '.', ''); if (!ex.enabled) ruleOp(ex.id, 'tog'); return; }
+    var nx = ruleNext(r), msg = 'Ütemezve: ' + ruleSentence(r) + '.' + (nx ? ' Először: ' + whenText(nx) + '.' : '');
+    if (!sb || !st.user) { r.id = 'demo' + Date.now(); st.ctl.rules.push(r); ctlRender(); toast(msg + ' (demó)', 'ok'); return; }
+    sb.from('control_rules').insert(r).then(function (x) { if (x.error) toast('Az ütemezés nem menthető' + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err'); else toast(msg, 'ok'); loadControl(); });
   }
   function addRule(p, action, whenKey, days, timeStr) {
-    var r = { pink: p, action: action, kind: 'time', minute: 0, days: days, enabled: true };
+    var r = { action: action, kind: 'time', minute: 0, days: days };
     if (whenKey === 'sunset') r.kind = 'sunset'; else if (whenKey === 'sunset-15') { r.kind = 'sunset'; r.minute = -15; } else if (whenKey === 'sunrise') r.kind = 'sunrise';
     else { var m = /^(\d{1,2}):(\d{2})$/.exec(timeStr || ''); if (!m) { toast('Adj meg időpontot (ÓÓ:PP).', 'err'); return; } r.minute = Math.min(1439, +m[1] * 60 + +m[2]); }
-    if (!sb || !st.user) { r.id = 'demo' + Date.now(); st.ctl.rules.push(r); ctlRender(); toast('Szabály hozzáadva (demó)', 'ok'); return; }
-    sb.from('control_rules').insert(r).then(function (x) { if (x.error) toast('A szabály nem menthető' + (st.ctl.missing ? ' (a kapcsolás még nincs telepítve)' : ''), 'err'); else toast('Szabály mentve: ' + shortName(p) + ' ' + (action === 'on' ? 'BE' : 'KI') + ', ' + ruleWhen(r), 'ok'); loadControl(); });
+    saveRule(p, r);
+  }
+  function togglePreset(p, id) {
+    var pr = presetsFor(p).filter(function (x) { return x.id === id; })[0]; if (!pr) return;
+    var ex = findRule(p, pr.r);
+    if (ex && ex.enabled) { ruleOp(ex.id, 'del'); toast('Kikapcsolva: ' + ruleSentence(ex) + '.', ''); } else saveRule(p, pr.r);
   }
   function ruleOp(id, op) {
     var r = st.ctl.rules.filter(function (x) { return x.id === id; })[0]; if (!r) return;
@@ -1040,39 +1095,50 @@
     var a = st.ctl.ask; if (!a || a.p !== p) return '';
     return '<div class="ask">Biztos? A bojler adja a fenti meleg vizet. <button class="btn sm y" data-ctl="yes">Igen, ' + (a.on ? 'BE' : 'KI') + '</button><button class="btn sm" data-ctl="no">Mégse</button></div>';
   }
-  function rulesHtml(rules, withName) {
-    if (!rules.length) return '<div class="none">Még nincs szabály.</div>';
+  function rulesHtml(rules, withName, empty) {
+    if (!rules.length) return empty == null ? '<div class="none">Nincs ismétlődő ütemezés.</div>' : empty;
     return '<ul class="rl">' + rules.map(function (r) {
-      return '<li class="' + (r.enabled ? '' : 'dis') + '"><span class="t">' + (withName ? '<b>' + esc(shortName(r.pink)) + '</b> ' : '') + (r.action === 'on' ? 'BE' : 'KI') + ' ' + esc(ruleWhen(r)) + ', ' + esc(ruleDays(r.days)) + '</span>' +
-        '<button class="mini" data-ctl="rtog" data-id="' + r.id + '">' + (r.enabled ? 'szünet' : 'aktív') + '</button><button class="mini" data-ctl="rdel" data-id="' + r.id + '" aria-label="Szabály törlése">✕</button></li>';
+      var nx = r.enabled ? ruleNext(r) : null;
+      return '<li class="' + (r.enabled ? '' : 'dis') + '"><span class="t">' + (withName ? '<b>' + esc(shortName(r.pink)) + ':</b> ' : '') + esc(ruleSentence(r)) +
+        '<small>' + (r.enabled ? (nx ? 'következő: ' + whenText(nx) : '') : 'szünetel') + '</small></span>' +
+        '<button class="mini" data-ctl="rtog" data-id="' + r.id + '">' + (r.enabled ? 'Szünet' : 'Folytat') + '</button><button class="mini" data-ctl="rdel" data-id="' + r.id + '" aria-label="Ütemezés törlése">✕</button></li>';
     }).join('') + '</ul>';
   }
   function addFormHtml(p, withDev) {
     return '<form class="radd" data-ctl="radd"' + (p ? ' data-p="' + p + '"' : '') + '>' +
       (withDev ? '<select name="p" aria-label="Eszköz">' + CTL_PINKS.map(function (x) { return '<option value="' + x + '">' + esc(shortName(x)) + '</option>'; }).join('') + '</select>' : '') +
-      '<select name="a" aria-label="Mit"><option value="on">BE</option><option value="off">KI</option></select>' +
-      '<select name="w" aria-label="Mikor"><option value="time">időpontban</option><option value="sunset-15">napnyugta előtt 15 p</option><option value="sunset">napnyugtakor</option><option value="sunrise">napkeltekor</option></select>' +
+      '<select name="d" aria-label="Mely napokon"><option value="127">Minden nap</option><option value="31">Hétköznap</option><option value="96">Hétvégén</option></select>' +
+      '<select name="w" aria-label="Mikor"><option value="time">ekkor:</option><option value="sunset-15">15 perccel napnyugta előtt</option><option value="sunset">napnyugtakor</option><option value="sunrise">napkeltekor</option></select>' +
       '<input name="t" type="time" value="22:30" aria-label="Időpont">' +
-      '<select name="d" aria-label="Napok"><option value="127">minden nap</option><option value="31">hétköznap</option><option value="96">hétvégén</option></select>' +
-      '<button class="btn sm y" type="submit">Hozzáadás</button></form>';
+      '<select name="a" aria-label="Mit tegyen"><option value="on">kapcsoljon BE</option><option value="off">kapcsoljon KI</option></select>' +
+      '<button class="btn sm y" type="submit">Ütemezés mentése</button></form>';
   }
-  // A: az eszköz kártyáján
+  // A: az eszköz kártyáján: most, következő kapcsolás, egyszeri, ismétlődő
+  function nextHtml(p) {
+    var n = nextEvent(p);
+    return '<div class="nxt">' + (n ? 'Következő kapcsolás: <b>' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') + '</b><small>' + esc(n.why) + '</small>' : 'Nincs ütemezett kapcsolás.') + '</div>';
+  }
   function controlCard(d) {
     if (CTL_PINKS.indexOf(d.pink) < 0) return '';
-    var p = d.pink, timers = st.ctl.timers.filter(function (t) { return t.pink === p; }), rules = st.ctl.rules.filter(function (r) { return r.pink === p; });
-    return '<div class="ctl"><div class="ctlh">KAPCSOLÁS ÉS IDŐZÍTÉS' + (st.ctl.missing ? ' <span class="soon">MÉG NINCS TELEPÍTVE</span>' : '') + '</div>' +
-      '<div class="ctlrow"><span>' + (plugOn(p) ? 'Most BE' : 'Most KI') + (st.ctl.busy[p] ? ' · kapcsol…' : '') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) +
-      '<div class="ctlq"><button class="btn sm" data-ctl="q" data-k="on1h" data-p="' + p + '">BE 1 órára</button><button class="btn sm" data-ctl="q" data-k="off23" data-p="' + p + '">KI 23:00-kor</button><button class="btn sm" data-ctl="q" data-k="onsunset" data-p="' + p + '">BE napnyugtakor</button></div>' +
-      (timers.length ? '<div class="sub">Időzítők</div><ul class="rl">' + timers.map(function (t) { return '<li><span class="t">' + esc(t.label || (t.action === 'on' ? 'BE' : 'KI')) + '</span><button class="mini" data-ctl="tdel" data-id="' + t.id + '" aria-label="Időzítő törlése">✕</button></li>'; }).join('') + '</ul>' : '') +
-      '<div class="sub">Szabályok (minden héten)</div>' + rulesHtml(rules) + addFormHtml(p) +
-      (CTL_CONFIRM[p] ? '<div class="ctln">A bojlert csak megerősítéssel lehet kapcsolni.</div>' : '') + '</div>';
+    var p = d.pink, timers = st.ctl.timers.filter(function (t) { return t.pink === p && new Date(t.due_at) > new Date(Date.now() - 60000); }).sort(function (a, b) { return new Date(a.due_at) - new Date(b.due_at); });
+    var rules = st.ctl.rules.filter(function (r) { return r.pink === p; }), pres = presetsFor(p);
+    return '<div class="ctl">' + (st.ctl.missing ? '<div class="ctln"><span class="soon">MÉG NINCS TELEPÍTVE</span></div>' : '') +
+      '<div class="ctlrow"><span class="nowst ' + (plugOn(p) ? 'on' : '') + '">' + (st.ctl.busy[p] ? 'Kapcsol…' : plugOn(p) ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) + nextHtml(p) +
+      '<div class="sec"><div class="sub">Egyszeri <small>csak egyszer fut le</small></div>' +
+      '<div class="ctlq"><button class="btn sm" data-ctl="q" data-k="on1h" data-p="' + p + '">BE most, 1 óra múlva KI</button><button class="btn sm" data-ctl="q" data-k="off23" data-p="' + p + '">KI ma 23:00-kor</button>' + (p === 'C1' ? '' : '<button class="btn sm" data-ctl="q" data-k="onsunset" data-p="' + p + '">BE ma napnyugtakor</button>') + '</div>' +
+      (timers.length ? '<ul class="rl">' + timers.map(function (t) { return '<li><span class="t">' + whenText(new Date(t.due_at)) + ' ' + (t.action === 'on' ? 'BE' : 'KI') + '<small>egyszeri</small></span><button class="mini" data-ctl="tdel" data-id="' + t.id + '" aria-label="Időzítő törlése">✕</button></li>'; }).join('') + '</ul>' : '') + '</div>' +
+      '<div class="sec"><div class="sub">Ütemezés <small>minden héten ismétlődik, magától</small></div>' +
+      '<div class="pres">' + pres.map(function (pr) { var ex = findRule(p, pr.r), on = !!(ex && ex.enabled); return '<button class="pre' + (on ? ' on' : '') + '" role="switch" aria-checked="' + on + '" data-ctl="pre" data-p="' + p + '" data-id="' + pr.id + '"><span class="ck">' + (on ? '✓' : '+') + '</span>' + esc(pr.t) + '</button>'; }).join('') + '</div>' +
+      rulesHtml(rules.filter(function (r) { return !(r.enabled && pres.some(function (pr) { return sameRule(r, Object.assign({ pink: p }, pr.r)); })); }), false, '') +
+      '<details class="own"><summary>Saját ütemezés…</summary>' + addFormHtml(p) + '</details></div>' +
+      (CTL_CONFIRM[p] ? '<div class="ctln">A bojlert kézzel csak megerősítéssel lehet kapcsolni.</div>' : '') + '</div>';
   }
   // B: Kapcsolók blokk
   function switchesHtml() {
     return '<div class="ovs swb"><div class="ovh">KAPCSOLÓK <button class="mini lnk" data-ctl="sched">Heti időzítő</button></div>' +
       (st.ctl.missing ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
       '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>' +
-      CTL_PINKS.map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + p + (plugOnline(p) || !st.live ? '' : ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + '</div>';
+      CTL_PINKS.map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + '</div>';
   }
   // C: heti időzítő lap
   function schedRender() {
@@ -1102,6 +1168,7 @@
     else if (k === 'yes' && st.ctl.ask) switchPlug(st.ctl.ask.p, st.ctl.ask.on, true);
     else if (k === 'no') { st.ctl.ask = null; ctlRender(); }
     else if (k === 'q') quick(p, b.getAttribute('data-k'));
+    else if (k === 'pre') togglePreset(p, b.getAttribute('data-id'));
     else if (k === 'rdel' || k === 'rtog') ruleOp(b.getAttribute('data-id'), k === 'rdel' ? 'del' : 'tog');
     else if (k === 'tdel') timerDel(b.getAttribute('data-id'));
     else if (k === 'scene') { var sc = SCENES.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0]; if (sc && !st.ctl.busy.scene) runScene(sc); }
@@ -1109,6 +1176,10 @@
     else if (k === 'sched') { st.sel = null; showInfo(); drawOverlay(); $('schedsheet').hidden = false; $('devsheet').hidden = true; schedRender(); }
     else return;
     e.stopPropagation();
+  });
+  document.addEventListener('change', function (e) {
+    var f = e.target.form; if (!f || f.getAttribute('data-ctl') !== 'radd' || e.target.name !== 'w') return;
+    f.elements.t.hidden = e.target.value !== 'time';
   });
   document.addEventListener('submit', function (e) {
     var f = e.target; if (!f.getAttribute || f.getAttribute('data-ctl') !== 'radd') return;

@@ -308,6 +308,24 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 #info{max-width:380px}
 #info{max-height:calc(100% - 120px);overflow-y:auto}
 
+/* kapcsolás: áttekinthető kártya (2026.11.15, a tulaj auditja) */
+.nowst{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:18px;letter-spacing:.6px;color:#6b7280}
+.nowst.on{color:#2f8a3a}
+.nxt{padding:7px 9px;border-radius:10px;border:2px solid #1e2a44;background:#e7f8ec;font-size:12.5px;margin:4px 0 2px}
+.nxt b{font-size:14px}.nxt small{display:block;color:#45507a;font-weight:800;font-size:11px}
+.sec{margin-top:10px;padding-top:8px;border-top:2px dashed #e3d6bd}
+.sub small{font-weight:800;letter-spacing:0;text-transform:none;color:#7a5a2e;margin-left:4px}
+.sec .sub{margin-top:0}
+.rl .t small{display:block;font-size:10.5px;color:#6b7280;font-weight:800}
+.pres{display:flex;flex-direction:column;gap:5px;margin-bottom:6px}
+.pre{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:11px;border:2.5px solid #1e2a44;background:#fff;font:900 12.5px "Nunito",sans-serif;box-shadow:0 2px 0 #1e2a44}
+.pre .ck{width:20px;height:20px;border-radius:6px;border:2px solid #1e2a44;display:inline-flex;align-items:center;justify-content:center;font-size:13px;background:#fff;flex:0 0 auto}
+.pre.on{background:#e7f8ec}.pre.on .ck{background:#3fae6a;color:#fff}
+.pre:hover{background:#fff1c9}.pre:focus-visible{outline:3px solid #ff4fa3}
+.own{margin-top:6px}.own summary{cursor:pointer;font:900 12px "Nunito",sans-serif;color:#2f6fe4}
+.radd input[hidden]{display:none}
+#toast{top:auto!important;bottom:calc(64px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px);text-align:center}
+
 /* telefon */
 @media (max-width: 760px){
   /* telefon: felül egy sor (márka, Eszközök, Fiók), alatta a csempék rendezett 3 oszlopos rácsban, alcím nélkül */
@@ -329,7 +347,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
   #b-zin,#b-zout,#savest{display:none}
   #tools .btn.ib.sm{width:34px}
   .sheet,#logincard{left:8px;right:8px;width:auto;max-width:none;top:auto;bottom:58px;max-height:72%}
-  #info{left:8px;right:8px;width:auto;max-width:none;top:var(--toph,150px);bottom:auto;padding-right:44px}
+  #info{left:8px;right:8px;width:auto;max-width:none;top:var(--toph,150px);bottom:auto;padding-right:44px;max-height:calc(100% - var(--toph,150px) - 66px);overflow-y:auto;z-index:6}
   #toast{top:var(--toph,150px);max-width:calc(100% - 32px);text-align:center}
   #tools .edonly{display:none}
   #app.editing #tools .edonly{display:inline-flex}
