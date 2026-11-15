@@ -12,6 +12,10 @@ on:
         description: "Várt legkorábbi foglalható nap (ÉÉÉÉ-HH-NN), nem kötelező"
         required: false
         default: ""
+      harmas:
+        description: "Hármas ellenőrzés egy időszakra: 'ÉÉÉÉ-HH-NN ÉÉÉÉ-HH-NN' (első nap, az utolsó utáni nap); üresen a sima ellenőrzés"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -37,4 +41,7 @@ jobs:
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           VARHATO: ${{ inputs.varhato }}
-        run: python -m f27.bookings check $VARHATO | tee -a "$GITHUB_STEP_SUMMARY"
+          HARMAS: ${{ inputs.harmas }}
+          AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
+        run: |
+          if [ -n "$HARMAS" ]; then python -m f27.bookings harmas $HARMAS; else python -m f27.bookings check $VARHATO; fi | tee -a "$GITHUB_STEP_SUMMARY"

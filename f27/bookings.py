@@ -271,6 +271,61 @@ def check(sb: SupabaseRest, now: datetime | None = None, expect_closed_until: da
     return {"text": text, "match": match, "today": a is not None, "tomorrow": b is not None, "events": events}
 
 
+def triple_check(sb: SupabaseRest, text: str, d0: date, d1: date, now: datetime | None = None) -> dict:
+    """Három független ellenőrzés a [d0, d1) éjszakákra: (1) a friss iCal a mi feldolgozónkkal, (2) a nyers
+    iCal szöveg feldolgozó nélkül (VEVENT-ek száma, a dátumsorok egyszerű kiolvasása), (3) a tárolt adatbázis."""
+    import re
+    now = now or datetime.now(timezone.utc)
+    raw_n = text.upper().count("BEGIN:VEVENT")
+    # (2) nyers: minden VEVENT-ből a DTSTART/DTEND első 8 számjegye, más logika nélkül
+    raw = []
+    for blk in re.split(r"BEGIN:VEVENT", text, flags=re.I)[1:]:
+        a = re.search(r"DTSTART[^:\n]*:(\d{8})", blk)
+        b = re.search(r"DTEND[^:\n]*:(\d{8})", blk)
+        sm = re.search(r"SUMMARY[^:\n]*:([^\r\n]*)", blk)
+        if a:
+            st = datetime.strptime(a.group(1), "%Y%m%d").date()
+            en = datetime.strptime(b.group(1), "%Y%m%d").date() if b else st + timedelta(days=1)
+            raw.append({"start_date": st.isoformat(), "end_date": en.isoformat(),
+                        "kind": kind_of("airbnb", sm.group(1) if sm else "")})
+    parsed = [{"start_date": e["start"].isoformat(), "end_date": e["end"].isoformat(), "kind": kind_of("airbnb", e["summary"])}
+              for e in parse_events(text)]
+    stored = sb.select("bookings", "source,kind,start_date,end_date", end_date=f"gte.{d0.isoformat()}",
+                       start_date=f"lt.{d1.isoformat()}", limit="500")
+    nights, x = [], d0
+    while x < d1:
+        nights.append(x)
+        x += timedelta(days=1)
+    busy = {name: [n for n in nights if night_of(rows, n)] for name, rows in (("friss", parsed), ("nyers", raw), ("tárolt", stored))}
+    overlap = lambda rows: [r for r in rows if r["start_date"] < d1.isoformat() and r["end_date"] > d0.isoformat()]
+    agree = busy["friss"] == busy["nyers"] == busy["tárolt"]
+    return {"raw_n": raw_n, "parsed_n": len(parsed), "nights": len(nights), "busy": busy, "agree": agree,
+            "events": {k: overlap(v) for k, v in (("friss", parsed), ("nyers", raw), ("tárolt", stored))}}
+
+
+if __name__ == "__main__" and len(__import__("sys").argv) > 1 and __import__("sys").argv[1] == "harmas":
+    # python -m f27.bookings harmas ÉÉÉÉ-HH-NN ÉÉÉÉ-HH-NN   (az első és az utolsó utáni nap)
+    import sys
+    from .alerts import email_ready, send_email, send_ntfy
+    d0, d1 = date.fromisoformat(sys.argv[2]), date.fromisoformat(sys.argv[3])
+    r = triple_check(SupabaseRest.from_env(), fetch(os.environ["AIRBNB_ICAL_URL"].strip()), d0, d1)
+    nb = {k: len(v) for k, v in r["busy"].items()}
+    head = (f"{d0:%m.%d.}-{d1:%m.%d.} ({r['nights']} éjszaka), foglalt éjszaka: friss iCal {nb['friss']}, "
+            f"nyers iCal {nb['nyers']}, tárolt {nb['tárolt']}. A három forrás {'EGYEZIK' if r['agree'] else 'NEM egyezik'}. "
+            f"Az iCal-ben {r['raw_n']} esemény, ebből a feldolgozó {r['parsed_n']}-et olvasott ki.")
+    lines = [head, ""]
+    for k, evs in r["events"].items():
+        lines.append(f"{k}: " + ("; ".join(f"{e['start_date']} -> {e['end_date']} ({e['kind']})" for e in evs) or "nincs esemény az időszakban"))
+    body = "\n".join(lines)
+    if (os.environ.get("NTFY_TOPIC") or "").strip():
+        send_ntfy({"title": f"{SITE.tag} hármas ellenőrzés", "body": head, "priority": "high", "tags": "calendar"}, os.environ)
+    if email_ready(os.environ):
+        send_email({"subject": f"{SITE.tag} hármas ellenőrzés {d0:%m.%d.}-{d1:%m.%d.}", "email_body": body}, os.environ)
+    # publikus log: csak egyezés és darabszám (melyik éjszaka foglalt, az nem)
+    print(f"Hármas ellenőrzés: a három forrás {'egyezik' if r['agree'] else 'NEM egyezik'}; "
+          f"nyers esemény {r['raw_n']}, feldolgozott {r['parsed_n']}; push és e-mail elküldve.")
+    sys.exit(0)
+
 if __name__ == "__main__":                         # python -m f27.bookings check [ÉÉÉÉ-HH-NN]
     import sys
     from .alerts import send_ntfy
