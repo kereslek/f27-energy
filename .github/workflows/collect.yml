@@ -83,7 +83,14 @@ jobs:
             fi
             echo "::endgroup::"
             [ $(( $(date +%s) + 600 )) -lt "$end" ] || break
-            sleep 600
+            # a körök között: a dashboard robot-parancsai (014_robot_cmd.sql) 10 mp-enként; ha nem megy, sima várakozás
+            t0=$(date +%s)
+            if [ -n "$O2B_SUPABASE_URL" ] && [ -n "$O2B_SUPABASE_SECRET_KEY" ]; then
+              SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+                timeout 660 python -m f27.robots watch 600 || echo "::warning::A robot-parancsok figyelése megszakadt."
+            fi
+            rest=$(( t0 + 600 - $(date +%s) ))
+            [ "$rest" -le 0 ] || sleep "$rest"
           done
           echo "Körök ebben a futásban: $n"
       - name: Következő futás indítása

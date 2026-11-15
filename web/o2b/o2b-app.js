@@ -607,7 +607,7 @@
     box.innerHTML = '<b>' + esc(d.label) + '</b><br>' + esc(ROOM_NAMES[d.room] || '') + ' · ' + esc(ROLE_NAME[d.role] || d.role) +
       (CTL_PINKS.indexOf(d.pink) >= 0 ? '' : '<br>Most: <b style="font-size:15px">' + esc(s.txt) + '</b>') + (r && r.ts ? '<br><small>Utolsó jelentés: ' + ago(Date.parse(r.ts)) + ' ezelőtt</small>' : '') +
       (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') +
-      (d.pink === 'C1' && window.F27Boiler && boilA() ? '<button type="button" class="bsub big" data-boil="1">' + esc(F27Boiler.sub(boilA())) + ' · Bojler-napló ›</button>' : '') + controlCard(d);
+      (d.pink === 'C1' && window.F27Boiler && boilA() ? '<button type="button" class="bsub big" data-boil="1">' + esc(F27Boiler.sub(boilA())) + ' · Bojler-napló ›</button>' : '') + controlCard(d) + robotCard(d);
     infoOpen(box);
   }
 
@@ -1334,6 +1334,76 @@
       (ro ? '' : '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>') +
       CTL_PINKS.filter(function (p) { return !hideOff(p); }).map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = st.role === 'share' ? null : nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + (ro ? '<div class="ctln">' + roClause() + '</div>' : '') + '</div>';
   }
+  // ---- robotporszívók vezérlése (014_robot_cmd.sql): a parancs a sorba kerül, az adatgyűjtő 10 mp-enként
+  // felveszi és továbbítja a gyártói felhőnek (f27/robots.py watch). Csak a tulaj és a családtag küldhet.
+  var RCMD = { start: 'Takarítás indul', pause: 'Szünet', dock: 'Haza a dokkba', find: 'Hol vagy? (hangjelzés)' };
+  var RST = { queued: 'elküldve, az adatgyűjtő pár másodpercen belül továbbítja…', running: 'a robot megkapta, végrehajtja…', done: 'kész',
+    error: 'nem sikerült', expired: 'lejárt (az adatgyűjtő nem vette fel 3 percen belül)' };
+  st.rob = { cmd: {}, ask: null };
+  function robHas(p) { var r = st.latest[p]; return !st.user || !!(r && r.ts); }
+  function robotCard(d) {
+    if (d.role !== 'robot' || st.role === 'share') return '';
+    if (!canCtl()) return '<div class="ctl"><div class="ctln">' + roClause() + '</div></div>';
+    var p = d.pink, c = st.rob.cmd[p], s = (st.latest[p] && st.latest[p].status) || {};
+    var pend = !!(c && (c.status === 'queued' || c.status === 'running')), has = robHas(p);
+    function btn(k, label, y) { return '<button type="button" class="btn sm' + (y ? ' y' : '') + '" data-rob="' + k + '" data-p="' + p + '"' + (pend || !has ? ' disabled' : '') + '>' + label + '</button>'; }
+    return '<div class="ctl rob"><div class="sub">Vezérlés</div><div class="ctlq">' +
+      (s.cleaning ? btn('pause', 'Szünet', true) : btn('start', 'Indítás', true)) + btn('dock', 'Haza a dokkba') + btn('find', 'Hol vagy?') + '</div>' +
+      (st.rob.ask === p ? '<div class="ask">Biztosan elindítod a takarítást? <button type="button" class="btn sm y" data-rob="yes" data-p="' + p + '">Igen, indulhat</button><button type="button" class="btn sm" data-rob="no" data-p="' + p + '">Mégse</button></div>' : '') +
+      (c ? '<div class="rst ' + c.status + '" role="status"><b>' + esc(RCMD[c.cmd]) + ':</b> ' + esc(RST[c.status] || c.status) + (c.note ? '<small>' + esc(c.note) + '</small>' : '') + '</div>' : '') +
+      '<div class="ctln">' + (has ? 'A parancsot az adatgyűjtő továbbítja, általában 10-20 mp alatt. Egyszerre egy parancs mehet.' : 'Ehhez a robothoz még nincs belépés (Actions: Robotok bejelentkezése).') + '</div></div>';
+  }
+  function robLocal(p, k) {
+    var r = st.latest[p] = st.latest[p] || { online: true, status: {} }, s = r.status = Object.assign({}, r.status || {});
+    if (k === 'start') { s.state = 'cleaning'; s.cleaning = true; } else if (k === 'pause') { s.state = 'paused'; s.cleaning = false; }
+    else if (k === 'dock') { s.state = 'returning'; s.cleaning = true; }
+  }
+  function robErr(e) {
+    var m = (e && (e.message || e.code)) || '';
+    if (/PGRST202|robot_cmd_enqueue/.test(m) && /not find|could not|schema cache/i.test(m)) return 'a robotvezérlés még nincs telepítve (014_robot_cmd.sql)';
+    return m.slice(0, 120) || 'nem sikerült';
+  }
+  function robName(p) { var d = st.devs.filter(function (x) { return x.pink === p; })[0]; return d ? d.label.replace(/^Robotporszívó /, 'Robot ') : p; }
+  function robSend(p, k) {
+    st.rob.cmd[p] = { cmd: k, status: 'queued' }; showInfo();
+    if (!sb || !st.user) {                                   // demó: csak eljátsszuk
+      setTimeout(function () { var c = st.rob.cmd[p]; if (c) { c.status = 'running'; showInfo(); } }, 700);
+      setTimeout(function () { var c = st.rob.cmd[p]; if (!c) return; c.status = 'done'; robLocal(p, k); render(); showInfo(); toast(robName(p) + ': ' + RCMD[k] + ' (demó: belépve tényleg vezérel)', 'ok'); }, 1600);
+      return;
+    }
+    sb.rpc('robot_cmd_enqueue', { p_pink: p, p_cmd: k }).then(function (res) {
+      var c = st.rob.cmd[p]; if (!c) return;
+      if (res.error) { c.status = 'error'; c.note = robErr(res.error); showInfo(); toast(robName(p) + ': ' + c.note, 'err'); return; }
+      c.id = res.data; robPoll(p, c.id, Date.now());
+    });
+  }
+  function robPoll(p, id, t0) {
+    setTimeout(function () {
+      var c = st.rob.cmd[p]; if (!c || c.id !== id || !sb || !st.user) return;
+      sb.from('robot_cmd').select('status,note').eq('id', id).maybeSingle().then(function (r) {
+        if (c !== st.rob.cmd[p]) return;
+        if (r.data) { c.status = r.data.status; c.note = r.data.note; }
+        if (c.status === 'queued' || c.status === 'running') {
+          if (Date.now() - t0 < 200000) robPoll(p, id, t0); else { c.status = 'expired'; }
+          showInfo(); return;
+        }
+        showInfo();
+        toast(robName(p) + ': ' + RCMD[c.cmd] + ' · ' + (RST[c.status] || c.status), c.status === 'done' ? 'ok' : 'err');
+        if (c.status === 'done') { robLocal(p, c.cmd); render(); setTimeout(load, 8000); }
+      });
+    }, 3000);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-rob]') : null; if (!b || b.disabled) return;
+    e.stopPropagation();
+    var k = b.getAttribute('data-rob'), p = b.getAttribute('data-p');
+    if (!canCtl()) { toast(roClause(), ''); return; }
+    if (k === 'start') { st.rob.ask = p; showInfo(); return; }
+    if (k === 'no') { st.rob.ask = null; showInfo(); return; }
+    if (k === 'yes') { st.rob.ask = null; k = 'start'; }
+    robSend(p, k);
+  });
+
   // C: heti időzítő lap
   function schedRender() {
     var box = $('schedbody'); if (!box || $('schedsheet').hidden) return;

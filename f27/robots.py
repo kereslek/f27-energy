@@ -19,7 +19,9 @@ kulcs fér hozzá, a böngésző és a bemutató link soha. Jelszót nem tárolu
 
 Állapot (az adatgyűjtő minden körében): `devices` és `device_status` sorok R1, R2 jellel:
     status = {state, cleaning, battery, charging, area_m2, minutes, error, src}
-Parancs: start | pause | dock (egyszerre egy, utána legalább 3 mp szünet, CLAUDE.md 9. fejezet).
+Parancs: start | pause | dock | find (egyszerre egy, utána legalább 3 mp szünet, CLAUDE.md 9. fejezet).
+A dashboard a robot_cmd sorba ír (014_robot_cmd.sql), az adatgyűjtő a körök között 10 mp-enként
+felveszi (`watch`), végrehajtja, és utána friss állapotot ír.
 
 A log publikus: csak darabszám és OK / HIBA kerül bele, név, azonosító, token, e-mail soha.
 """
@@ -48,7 +50,9 @@ GAP_S = 3.0
 # Dreame miot (dreame.vacuum.p2028, Z10 Pro): (siid, piid) tulajdonságok, (siid, aiid) műveletek
 DREAME_PROPS = {"state": (2, 1), "error": (2, 2), "battery": (3, 1), "charging": (3, 2),
                 "status": (4, 1), "minutes": (4, 2), "area_m2": (4, 3)}
-DREAME_ACTIONS = {"start": (2, 1), "pause": (2, 2), "dock": (3, 1)}
+DREAME_ACTIONS = {"start": (2, 1), "pause": (2, 2), "dock": (3, 1), "find": (7, 1)}   # find: "itt vagyok" hang
+COMMANDS = ("start", "pause", "dock", "find")
+CMD_TTL_S = 180                                       # a 3 percnél régebbi függő parancs lejár (014_robot_cmd.sql)
 # a Dreame állapotkódjai (siid 2, piid 1) -> egységes állapot
 DREAME_STATE = {1: "cleaning", 2: "idle", 3: "paused", 4: "error", 5: "returning", 6: "charging",
                 7: "mopping", 8: "drying", 9: "washing", 10: "returning", 11: "building_map", 12: "cleaning",
@@ -128,7 +132,8 @@ async def rr_status(auth: dict) -> list[dict]:
 
 async def rr_command(auth: dict, cmd: str) -> None:
     from roborock import RoborockCommand
-    c = {"start": RoborockCommand.APP_START, "pause": RoborockCommand.APP_PAUSE, "dock": RoborockCommand.APP_CHARGE}[cmd]
+    c = {"start": RoborockCommand.APP_START, "pause": RoborockCommand.APP_PAUSE, "dock": RoborockCommand.APP_CHARGE,
+         "find": RoborockCommand.FIND_ME}[cmd]
     dm, devs = await _rr_devices(auth)
     try:
         if not devs:
@@ -212,7 +217,7 @@ def collect(sb: SupabaseRest) -> int:
 
 
 def command(sb: SupabaseRest, pink: str, cmd: str) -> None:
-    if pink not in ROBOTS or cmd not in ("start", "pause", "dock"):
+    if pink not in ROBOTS or cmd not in COMMANDS:
         raise ValueError("ismeretlen robot vagy parancs")
     src = ROBOTS[pink]["src"]
     auth = auth_get(sb, src)
@@ -223,6 +228,66 @@ def command(sb: SupabaseRest, pink: str, cmd: str) -> None:
     else:
         mi_command(auth, cmd)
     time.sleep(GAP_S)                               # kapcsolási szabály: utána legalább 3 mp szünet
+
+
+# ---- parancssor a dashboardról (robot_cmd, 014_robot_cmd.sql) -------------------------------------------
+def _mask(text: str) -> str:
+    return re.sub(r"[\w.+-]+@[\w.-]+", "<e-mail>", text)
+
+
+def _age_s(ts: str) -> float:
+    return (datetime.now(timezone.utc) - datetime.fromisoformat(ts.replace("Z", "+00:00"))).total_seconds()
+
+
+def run_queue(sb: SupabaseRest) -> int:
+    """A függő parancsok végrehajtása sorban (egyszerre egy, utána 3 mp). Visszaadja a végrehajtottak számát."""
+    rows = sb.select("robot_cmd", "id,pink,cmd,created_at", status="eq.queued", order="id.asc", limit="5")
+    done = 0
+    for r in rows:
+        rid = f"eq.{r['id']}"
+        if _age_s(r["created_at"]) > CMD_TTL_S:
+            sb.update("robot_cmd", {"status": "expired", "done_at": now_iso(), "note": "nem vette fel a gyűjtő 3 percen belül"},
+                      id=rid, status="eq.queued")
+            continue
+        if not sb.update("robot_cmd", {"status": "running"}, id=rid, status="eq.queued"):
+            continue                                # közben más felvette
+        try:
+            command(sb, r["pink"], r["cmd"])
+            sb.update("robot_cmd", {"status": "done", "done_at": now_iso()}, id=rid)
+            print(f"Robot-parancs: {r['pink']} {r['cmd']} OK")
+        except Exception as e:                       # noqa: BLE001
+            sb.update("robot_cmd", {"status": "error", "done_at": now_iso(),
+                                    "note": f"{type(e).__name__}: {_mask(str(e))}"[:200]}, id=rid)
+            print(f"Robot-parancs: {r['pink']} {r['cmd']} HIBA ({type(e).__name__})")
+        done += 1
+    if done:
+        time.sleep(5)                               # a robot átvált, utána friss állapot a térképre
+        try:
+            collect(sb)
+        except Exception:                            # noqa: BLE001
+            pass
+    return done
+
+
+def watch(sb: SupabaseRest, seconds: float, every: float = 10.0) -> None:
+    """A gyűjtő körei között: `seconds` másodpercig 10 mp-enként felveszi a dashboard parancsait.
+    Soha nem tér vissza korábban (a hívó ciklus ezzel tartja a 10 perces ütemet)."""
+    end, warned = time.monotonic() + seconds, False
+    while True:
+        try:
+            run_queue(sb)
+        except SupabaseError as e:
+            if not warned:
+                print(f"Robot-parancsok: a sor nem olvasható ({e.code or e.status}); lefutott a 014_robot_cmd.sql?")
+                warned = True
+        except Exception as e:                       # noqa: BLE001
+            if not warned:
+                print(f"Robot-parancsok: HIBA ({type(e).__name__})")
+                warned = True
+        left = end - time.monotonic()
+        if left <= 0:
+            return
+        time.sleep(min(every, left))
 
 
 # ---- parancssor (a workflow-k hívják) -----------------------------------------------------------------
@@ -274,8 +339,12 @@ def main(argv: list[str]) -> int:
         elif what == "cmd":
             command(sb, argv[1], argv[2])
             print("Parancs elküldve.")
+        elif what == "queue":
+            print(f"Robot-parancsok: {run_queue(sb)} végrehajtva")
+        elif what == "watch":
+            watch(sb, float(argv[1]) if len(argv) > 1 else 600)
         else:
-            print("Használat: roborock-kod | roborock | xiaomi | xiaomi-kod | status | cmd R1|R2 start|pause|dock")
+            print("Használat: roborock-kod | roborock | xiaomi | xiaomi-kod | status | queue | watch [mp] | cmd R1|R2 start|pause|dock|find")
             return 2
     except KeyError as e:
         print(f"HIBA: hiányzó secret: {e.args[0]}")
@@ -284,7 +353,7 @@ def main(argv: list[str]) -> int:
         print(f"HIBA: adatbázis ({e}). Lefutott a 012_robots.sql?")
         return 1
     except Exception as e:                           # noqa: BLE001
-        msg = re.sub(r"[\w.+-]+@[\w.-]+", "<e-mail>", str(e))[:120]   # a log publikus
+        msg = _mask(str(e))[:120]                   # a log publikus
         print(f"HIBA: {type(e).__name__}: {msg}")
         return 1
     return 0

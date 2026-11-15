@@ -184,3 +184,68 @@ class XiaomiTwoStepTest(unittest.TestCase):
         data = sb.upserts[0][1][0]["data"]
         self.assertNotIn("pending", data); self.assertIn("session", data)
         self.assertIn("Xiaomi: OK, 1", buf.getvalue())
+
+
+class QueueSb(FakeSb):
+    """robot_cmd sor a memóriában (select status=eq.queued, update feltételes kiváltással)."""
+
+    def __init__(self, cmds, auth=None):
+        super().__init__(auth)
+        self.cmds = cmds
+
+    def select(self, table, columns="*", **f):
+        if table == "robot_cmd":
+            return [dict(c) for c in self.cmds if c["status"] == "queued"]
+        return super().select(table, columns, **f)
+
+    def update(self, table, patch, **f):
+        out = []
+        for c in self.cmds:
+            if f"eq.{c['id']}" == f.get("id") and ("status" not in f or f["status"] == f"eq.{c['status']}"):
+                c.update(patch); out.append(dict(c))
+        return out
+
+
+class RobotQueueTest(unittest.TestCase):
+    def now(self, ago=0):
+        from datetime import datetime, timedelta, timezone
+        return (datetime.now(timezone.utc) - timedelta(seconds=ago)).isoformat()
+
+    def test_executes_in_order_and_marks_done(self):
+        sb = QueueSb([{"id": 1, "pink": "R2", "cmd": "find", "status": "queued", "created_at": self.now(5)},
+                      {"id": 2, "pink": "R1", "cmd": "dock", "status": "queued", "created_at": self.now(2)}])
+        seen = []
+        with mock.patch.object(robots, "command", side_effect=lambda s, p, c: seen.append((p, c))), \
+                mock.patch.object(robots, "collect", return_value=1), mock.patch.object(robots.time, "sleep"), redirect_stdout(io.StringIO()):
+            self.assertEqual(robots.run_queue(sb), 2)
+        self.assertEqual(seen, [("R2", "find"), ("R1", "dock")])
+        self.assertEqual([c["status"] for c in sb.cmds], ["done", "done"])
+
+    def test_old_command_expires_without_running(self):
+        sb = QueueSb([{"id": 1, "pink": "R2", "cmd": "start", "status": "queued", "created_at": self.now(400)}])
+        with mock.patch.object(robots, "command", side_effect=AssertionError("nem futhat")):
+            self.assertEqual(robots.run_queue(sb), 0)
+        self.assertEqual(sb.cmds[0]["status"], "expired")
+
+    def test_error_note_masks_email_and_log_is_safe(self):
+        sb = QueueSb([{"id": 7, "pink": "R2", "cmd": "start", "status": "queued", "created_at": self.now(1)}])
+        buf = io.StringIO()
+        with mock.patch.object(robots, "command", side_effect=RuntimeError("token lejárt valaki@pelda.hu")), \
+                mock.patch.object(robots, "collect", return_value=0), mock.patch.object(robots.time, "sleep"), redirect_stdout(buf):
+            robots.run_queue(sb)
+        self.assertEqual(sb.cmds[0]["status"], "error")
+        self.assertNotIn("@", sb.cmds[0]["note"]); self.assertNotIn("@", buf.getvalue())
+        self.assertIn("R2 start HIBA (RuntimeError)", buf.getvalue())
+
+    def test_find_is_a_known_command(self):
+        self.assertIn("find", robots.COMMANDS); self.assertIn("find", robots.DREAME_ACTIONS)
+
+    def test_watch_keeps_the_rhythm_even_without_table(self):
+        sb = FakeSb()
+        sb.select = mock.Mock(side_effect=robots.SupabaseError(404, "PGRST205"))
+        clock = [0.0]
+        with mock.patch.object(robots.time, "monotonic", side_effect=lambda: clock[0]), \
+                mock.patch.object(robots.time, "sleep", side_effect=lambda s: clock.__setitem__(0, clock[0] + s)), redirect_stdout(io.StringIO()) as buf:
+            robots.watch(sb, 60, every=10)
+        self.assertGreaterEqual(clock[0], 60)
+        self.assertEqual(buf.getvalue().count("014_robot_cmd"), 1)        # egyszer szól, nem spamel

@@ -39,3 +39,17 @@ tárolunk (a Xiaomi jóváhagyott munkamenete, a passToken, ugyanitt van). Ha eg
 Indítás, szünet, haza a dokkba gombok a kártyán, időzítéssel. A parancs a GitHub Actionsön fut
 (kb. 20-40 mp késéssel), ehhez egy finomhangolt GitHub-token kell, csak erre a repóra és csak az
 Actions indítására. A kapcsolási szabály itt is él: egyszerre egy parancs, utána 3 mp szünet.
+
+## Vezérlés a térképről
+
+Belépve a robot kártyáján (tűre koppintás): **Indítás** (megerősítéssel), **Szünet** (takarítás
+közben), **Haza a dokkba**, **Hol vagy?** (a robot hangjelzést ad). Csak a tulaj és a családtag
+küldhet parancsot; a megtekintő és a bemutató link nem.
+
+Hogyan jut el a robothoz: a böngésző nem éri el a gyártói felhőt (a tokenek a `robot_auth`-ban, csak
+a titkos kulccsal), ezért a parancs a `robot_cmd` sorba kerül (`supabase/migrations/014_robot_cmd.sql`,
+`robot_cmd_enqueue()`), és az adatgyűjtő a 10 perces körök között 10 másodpercenként felveszi
+(`python -m f27.robots watch`). Így általában 10-20 mp alatt indul a robot. Szabályok: robotonként
+egyszerre egy függő parancs, óránként legfeljebb 30, a 3 percnél régebbi függő parancs lejár,
+két parancs között legalább 3 mp (CLAUDE.md 9. fejezet). A kártya mutatja az állapotot (elküldve,
+végrehajtja, kész, hiba), utána friss robotállapotot tölt.

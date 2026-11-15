@@ -94,6 +94,12 @@ class SupabaseRest:
         if rows:
             self._req("POST", table, None, rows, prefer="return=minimal")
 
+    def update(self, table: str, patch: dict, **filters) -> list[dict]:
+        """Szűrt sorok módosítása; a módosult sorokat adja vissza (feltételes kiváltáshoz: status=eq.queued)."""
+        if not filters:
+            raise ValueError("update: legalább egy szűrő kell")
+        return self._req("PATCH", table, dict(filters), patch, prefer="return=representation") or []
+
     def delete(self, table: str, **filters) -> None:
         """Sorok törlése PostgREST szűrőkkel (pl. id='in.(a,b)'). Szűrő nélkül nem fut:
         a teljes tábla véletlen törlését így nem lehet elkövetni."""
