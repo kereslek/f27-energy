@@ -188,6 +188,29 @@ class TestDigest(unittest.TestCase):
         self.assertIn("- Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).", _norm(body))
         self.assertIn("- Se érkezés, se távozás.", _norm(body))
 
+    def test_partial_bookings_never_claim_empty(self):
+        """2026.11.15-i hiba: csak az Airbnb-naptár volt bekötve, a levél mégis azt írta: "Se érkezés, se
+        távozás. Következő érkezés: dec. 26." A Booking-foglalásokat nem látjuk, így üres napot nem mondhatunk."""
+        db = self.sb.db
+        db["bookings"].clear()
+        db["bookings"]["z"] = {"id": "z", "source": "airbnb", "kind": "reservation", "start_date": "2026-12-26", "end_date": "2026-12-29", "seen_at": "x"}
+        env = dict(ENV, AIRBNB_ICAL_URL="https://x/ical")
+        r = self.run_at(AT(20, 0), environ=env, **{"P": {"switch_1": True}, "X5": {"cur_power": 9950}, "X7": {"switch": True}})
+        body = "\n".join(_norm(r["new"][0]["email_body"]))
+        self.assertNotIn("Se érkezés, se távozás", body)
+        self.assertNotIn("nincs vendég", body)
+        self.assertNotIn("lekapcsolható", body)
+        self.assertNotIn("üres lakás", body)
+        self.assertIn("A Booking-foglalásokat nem látom, ezért lehet, hogy mégis jön vendég", body)
+        self.assertIn("Következő Airbnb-naptárbeli érkezés: dec. 26. szombat 15:00 (a Bookingot nem látom).", body)
+        self.assertIn("Kösd be a Booking-naptárt (BOOKING_ICAL_URL)", body)
+        self.assertIn("Vendég : --", body)                             # a fejléc sem mondja, hogy üres
+        # ha a Booking-naptár is be van kötve, ugyanez már tény
+        db["alert_log"] = [x for x in db["alert_log"] if x["kind"] != "digest"]
+        env["BOOKING_ICAL_URL"] = "https://y/ical"
+        r = self.run_at(AT(20, 5, d=1), environ=env)
+        self.assertIn("- Se érkezés, se távozás. Következő érkezés: dec. 26. szombat 15:00.", _norm(r["new"][0]["email_body"]))
+
     def test_quiet_day_and_public_note(self):
         r = self.run_at(AT(20, 0), **{"X7": {"switch": False}})
         body = r["new"][0]["email_body"]

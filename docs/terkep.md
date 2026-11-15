@@ -309,10 +309,18 @@ kontaktor kell, CLAUDE.md 9. fejezet):
 5. Legfeljebb 10 perc múlva az Adatgyűjtés lefut; a Summary-ban "Foglalások: N foglalás, M lezárt
    időszak frissítve". A térképen belépés után a csempe és a sáv élő lesz.
 
-Nem kötelező: ha a Booking.com naptárát közvetlenül is be akarod kötni (extranet: **Árak és
-elérhetőség** > **Naptár szinkronizálása** > exportálás), a linket `BOOKING_ICAL_URL` néven mentsd.
-A Booking exportja nem választja szét a foglalást és a kézi lezárást, ezért ott minden esemény
-foglalásnak számít.
+**A Booking-naptár is kell (`BOOKING_ICAL_URL`).** Az Airbnb exportja a más naptárakból importált
+foglalásokat (Booking) nem adja tovább: 2026.11.15-én a 14 hónapos ablakban csak 3 foglalás és
+1 lezárt időszak jött, miközben a lakásnak évi kb. 110 foglalása van. Bekötés: Booking.com extranet
+> **Árak és elérhetőség** > **Naptár szinkronizálása** > **Naptár exportálása**, a linket
+`BOOKING_ICAL_URL` néven mentsd GitHub Secretként. A Booking exportja nem választja szét a
+foglalást és a kézi lezárást, ezért ott minden esemény foglalásnak számít.
+
+Amíg csak az Airbnb-naptár van bekötve, a rendszer **egyetlen helyen sem mond üres napot**
+(közös szabály: `f27/bookings.py` `partial()`, a térképen a `bkModel` `partial` jelzője): az esti levél
+„Az Airbnb-naptárban nincs érkezés… a Bookingot nem látom” formában ír, nem javasol kályha- vagy
+bojler-lekapcsolást, a térkép csempéje „NINCS AIRBNB-VENDÉG”, a naptár nem számol üres éjt. A jelzés
+magától megszűnik, amint Booking-forrású sor kerül a `bookings` táblába.
 
 ## Szerepkörök
 

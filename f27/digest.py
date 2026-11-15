@@ -71,7 +71,7 @@ def _safe(fn, default):
         return default
 
 
-def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
+def build(sb: SupabaseRest, cfg: dict, now: datetime, partial: bool | None = None) -> dict:
     """A levél tárgya és szövege. Minden rész külön olvas; ami hiányzik, az "nincs adat"."""
     loc = now.astimezone(BUDAPEST)
     today, tomorrow = loc.date(), loc.date() + timedelta(days=1)
@@ -128,7 +128,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             t = last_report(d)
             if t is not None and now - t > timedelta(hours=STALE[pink]):
                 todo.append(f"Régóta hallgat ({int((now - t).total_seconds() // 3600)} órája): {name}")
-    partial = booking_partial()
+    partial = booking_partial() if partial is None else partial      # a hívó környezetéből (run_digest)
     books = _safe(lambda: sb.select("bookings", "source,kind,start_date,end_date",
                                     end_date=f"gte.{today.isoformat()}", order="start_date.asc", limit="50"), None)
     if books is not None:
@@ -138,7 +138,12 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
         arrive_tomorrow = [b for b in books if b["start_date"] == tomorrow.isoformat()]
         x7 = snap.get("X7")
         ss = stove_state(snap)                      # a mérés dönt, nem a kapcsoló
-        if not covers(today) and not arrive_tomorrow:
+        # Hiányos adatnál (csak Airbnb) az "üres" nap ismeretlen: ilyenkor nincs "lekapcsolható" javaslat.
+        known_empty = not partial and not covers(today) and not arrive_tomorrow
+        if partial:
+            todo.append("Kösd be a Booking-naptárt (BOOKING_ICAL_URL): most csak az Airbnb-naptárt látom, a "
+                        "Booking-foglalásokat nem, ezért üres napot nem mondok, és a kályhát, bojlert sem javaslom lekapcsolni.")
+        if known_empty:
             if ss["heating"]:
                 now_txt = f"most fűt ({fmt_w(ss['w'])})" if ss["measured"] else f"a kapcsoló {ss['stage']}/3 fokozaton (mérés nincs)"
                 todo.append(f"A kályha {now_txt}, pedig ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
@@ -147,12 +152,10 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
                             "Ma éjjel nincs vendég és holnap sem érkezik: lekapcsolható (csak javaslat).")
         if arrive_tomorrow and x7 and x7.get("online") is not False and x7["status"].get("switch") is False:
             todo.append(f"Holnap érkezik vendég, de a bojler (7-es kör) le van kapcsolva: legkésőbb holnap {HEAT_START}-kor kapcsold vissza.")
-        if (not covers(today) and not arrive_tomorrow and x7 and x7.get("online") is not False
+        if (known_empty and x7 and x7.get("online") is not False
                 and x7["status"].get("switch") is True):
             todo.append("Ma éjjel nincs vendég és holnap sem érkezik: a bojler (7-es kör) lekapcsolható (csak javaslat).")
     out += [""] + notes("Teendők") + ([f"{i}. {t}" for i, t in enumerate(todo, 1)] if todo else ["- Nincs teendő."])
-    if partial and any("nincs vendég" in t or "érkezik vendég" in t for t in todo):
-        out.append(PARTIAL_WARN)
     blines = battery_lines(bat or [], today)
     if blines:                                   # csak a 30 napon belül esedékes elemek (a tulaj kérése)
         out += [""] + box("ELEMCSERE", blines + ["!! = 2 héten belül vagy lemerült"])
@@ -166,24 +169,30 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             else "Booking-foglalás (az Airbnb naptárából)"
         lines = [f"- Távozás {CHECKOUT} ({what(b)})" for b in books if b["end_date"] == tomorrow.isoformat()]
         lines += [f"- Érkezés {CHECKIN} ({what(b)}), felfűtés {HEAT_START}-tól" for b in books if b["start_date"] == tomorrow.isoformat()]
-        if not lines:
-            nxt = [b for b in books if b["start_date"] > tomorrow.isoformat()]
-            lines.append("- Se érkezés, se távozás." + (f" Következő érkezés: {day_label(date.fromisoformat(nxt[0]['start_date']))} {CHECKIN}."
-                                                        if nxt else ""))
-        if partial:
-            lines.append("- Forrás: csak az Airbnb-naptár, a Booking-foglalásokat nem látom (BOOKING_ICAL_URL nincs beállítva).")
+        nxt = [b for b in books if b["start_date"] > tomorrow.isoformat()]
+        nxt_txt = f"{day_label(date.fromisoformat(nxt[0]['start_date']))} {CHECKIN}" if nxt else None
+        if not lines and partial:
+            # hiányos adat: nem állítjuk, hogy nincs vendég (a Booking-foglalásokat nem látjuk)
+            lines.append("- Az Airbnb-naptárban holnap nincs érkezés vagy távozás. A Booking-foglalásokat nem látom, "
+                         "ezért lehet, hogy mégis jön vendég: nézd meg a Booking extranetben.")
+            if nxt_txt:
+                lines.append(f"- Következő Airbnb-naptárbeli érkezés: {nxt_txt} (a Bookingot nem látom).")
+        elif not lines:
+            lines.append("- Se érkezés, se távozás." + (f" Következő érkezés: {nxt_txt}." if nxt_txt else ""))
+        elif partial:
+            lines.append("- Forrás: csak az Airbnb-naptár; a Booking-foglalásokat nem látom.")
         out += lines
 
     # 4. Mai fogyasztás: a STATISZTIKA dobozai mutatják (a tulaj kérése, 2026.11.14: a külön rész duplikáció volt)
     # 4b. Statisztika: ASCII-táblázat, órás oszlopsor, összevetések (f27.report_stats)
-    stats, head = build_stats(sb, now, _safe)
+    stats, head = build_stats(sb, now, _safe, partial=partial)
     out += [""] + stripe("STATISZTIKA") + ["(a Tuya-naplóból)"] + stats
 
     # 4c. Bojler-napló (a tulaj kérése, 2026.11.15; ugyanaz a számolás, mint a térkép kártyáján)
     ba = _safe(lambda: boiler.analyze(boiler.fetch(sb, "X7", now), now, 60.9), None)
     if ba and (ba["today"] > 0 or ba["avg7"]):
         tip = None
-        if books is not None and not covers(today) and not arrive_tomorrow:
+        if books is not None and not partial and not covers(today) and not arrive_tomorrow:
             tip = f"ma éjjel üres: bojler LE, ~{boiler._ft(ba['idle_day_ft'] * 0.6)}/nap"
         out += [""] + box("BOJLER", boiler.lines(ba, tip))
 
@@ -194,7 +203,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
             "Naponta legfeljebb egy ilyen levél jön; az azonnali riasztások pushon (ntfy) mennek. "
             "Beállítás: a térkép Riasztások panelje."]
     top = banner(now, head["kwh"], head["ft"], head["guest"], head.get("kwh_y")) + ["", f">> DASHBOARD: {MAP_URL}", ""]
-    top += tldr(head, books, snap, active, todo, today) + [""]
+    top += tldr(head, books, snap, active, todo, today, partial) + [""]
     marked = "\n".join(top + out) + "\n"                 # a HTML-hez jelölt részekkel (összecsukott jelmagyarázat)
     text = "\n".join(l for l in top + out if l not in ("<<LEGEND>>", "<</LEGEND>>")) + "\n"
     return {"subject": subject_line(now, head, len(active)), "email_body": text,
@@ -266,19 +275,13 @@ def _push(r: dict) -> str:
     return "igen" if "push" in ch else "nem"
 
 
-PARTIAL_WARN = ("   ! Csak az Airbnb-naptárt látom, a Booking-foglalásokat nem: ellenőrizd, "
-                "mielőtt lekapcsolsz valamit.")
-
-
 def booking_partial(environ=None) -> bool:
-    """Igaz, ha a foglalási adat biztosan hiányos: nincs Booking-naptár bekötve (BOOKING_ICAL_URL).
-    Ilyenkor a vendéggel kapcsolatos mondatok mellé figyelmeztetés kerül (a tulaj jelezte, 2026.11.14,
-    hogy az Airbnb-export a Booking-foglalásokat nem tartalmazza)."""
-    environ = os.environ if environ is None else environ
-    return bool((environ.get("AIRBNB_ICAL_URL") or "").strip()) and not (environ.get("BOOKING_ICAL_URL") or "").strip()
+    """A közös szabály (f27.bookings.partial): hiányos foglalási adatnál nincs "üres" nap."""
+    from .bookings import partial
+    return partial(environ)
 
 
-def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date) -> list[str]:
+def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date, partial: bool = False) -> list[str]:
     """TL;DR blokk a fejléc alatt (a tulaj választása, 1C): mennyibe került a nap, mi a legnagyobb
     pazarlás most, mennyi az ára, egy teendő, és mennyi spórolható. Csak javaslat, semmit nem kapcsol."""
     from .report_stats import W, kv
@@ -291,7 +294,7 @@ def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date) -
         dod = f" ({'▲' if p >= 0 else '▼'}{abs(p):.0f}% DoD)"
     cost = f"~{int(round(ft)):,} Ft ma".replace(",", " ") + dod if ft else "nincs adat"
     covers = lambda d: books is not None and any(b["start_date"] <= d.isoformat() < b["end_date"] for b in books)
-    empty = books is not None and not covers(today)
+    empty = books is not None and not covers(today) and not partial   # hiányos adatnál nem tudjuk (közös szabály)
     nxt = None
     if books is not None:
         fut = sorted((b for b in books if b["start_date"] > today.isoformat()), key=lambda b: b["start_date"])
@@ -320,9 +323,6 @@ def tldr(head: dict, books, snap: dict, active: list, todo: list, today: date) -
         waste, price = "bojler megy, üres lakás", "~60-90 Ft/nap"
         save = price
         todo1 = "bojler LE (7-es kör)" + (f", vissza {nxt:%m.%d.} 12h" if nxt else "")
-    if "üres lakás" in waste and booking_partial():
-        waste = waste.replace("üres lakás", "üres? (Airbnb)")      # a Booking-foglalásokat nem látjuk
-        todo1 = "ellenőrizd a Bookingot"
     return ["TL;DR ▒ ▒▒ ▓▓ ▓▓▓▓ " + "█" * (W - 20),
             " " + kv("Költség", cut(cost), 12), " " + kv("Pazarlás", cut(waste), 12), " " + kv("Ára", cut(price), 12),
             " " + kv("Teendő", cut(todo1), 12), " " + kv("Megtakarít", cut(save), 12)]
@@ -354,7 +354,7 @@ def run_digest(sb: SupabaseRest, now: datetime | None = None, environ=None, send
             res["note"] = "Napi összefoglaló: nem kellett."
             return res
         if SITE.id == "f27":
-            msg = build(sb, cfg, now)
+            msg = build(sb, cfg, now, partial=booking_partial(environ))
         else:                                           # O2B és a további telephelyek saját tartalma
             from . import digest_o2b
             m = digest_o2b.build(sb, cfg, now, _safe, alert_items)

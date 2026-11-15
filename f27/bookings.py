@@ -149,6 +149,15 @@ def rows_from(source: str, text: str, now: datetime) -> list[dict]:
     return list(rows.values())
 
 
+def partial(environ=None) -> bool:
+    """Igaz, ha a foglalási adat biztosan hiányos: csak az Airbnb-naptár van bekötve, a Booking nem.
+    Az Airbnb exportja a más naptárakból (Booking) importált foglalásokat NEM adja tovább, így ilyenkor
+    egy "üres" nap valójában ismeretlen. KÖZÖS SZABÁLY (esti levél, TL;DR, tippek, térkép): hiányos adatnál
+    soha nem mondunk üres napot vagy "nincs vendég"-et, csak azt, amit az Airbnb-naptár ténylegesen mutat."""
+    environ = os.environ if environ is None else environ
+    return bool((environ.get("AIRBNB_ICAL_URL") or "").strip()) and not (environ.get("BOOKING_ICAL_URL") or "").strip()
+
+
 def parse_ts(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
