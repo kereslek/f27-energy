@@ -54,10 +54,10 @@ jobs:
             echo "CONTROL_CRON_KEY=$KEY"; echo "CONTROL_PINKS=$PINKS"; echo "CONTROL_CONFIRM=$CONF"
             echo "SITE_LAT=47.48"; echo "SITE_LON=19.04"
           } > "$F"
-          supabase secrets set --project-ref "$REF" --env-file "$F" > /dev/null
+          supabase secrets set --project-ref "$REF" --env-file "$F" --yes > /dev/null
           rm -f "$F"; echo "Titkok beállítva."
       - name: 3. Függvény telepítése
-        run: supabase functions deploy control --project-ref "$REF" --no-verify-jwt --use-api
+        run: supabase functions deploy control --project-ref "$REF" --no-verify-jwt --use-api --yes
       - name: 4. Percenkénti időzítő
         run: |
           F=supabase/_cron_tmp.sql
