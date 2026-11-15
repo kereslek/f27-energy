@@ -34,16 +34,16 @@
   var CSS = '' +
     '.f27a-ov{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,28,48,.55);backdrop-filter:blur(3px)}' +
     '.f27a-card{position:relative;max-width:440px;width:100%;max-height:calc(100% - 24px);overflow:auto;background:#fffaf0;border:3px solid #1e2a44;border-radius:22px;box-shadow:0 8px 0 #1e2a44,0 18px 40px rgba(0,0,0,.35);padding:20px 20px 18px;font:600 15px/1.45 Nunito,system-ui,sans-serif;color:#1e2a44}' +
-    '.f27a-card h2{font:400 26px/1.1 "Lilita One",Nunito,sans-serif;margin:0 0 8px;letter-spacing:.5px}' +
+    '.f27a-card h2{font:400 26px/1.1 "Quest Display","Lilita One",Nunito,sans-serif;margin:0 0 8px;letter-spacing:.5px}' +
     '.f27a-card p{margin:6px 0}.f27a-card ul{margin:8px 0 4px;padding-left:20px}.f27a-card li{margin:3px 0}' +
-    '.f27a-big{font:400 64px/1 "Lilita One",Nunito,sans-serif;text-align:center;margin:10px 0 4px;color:#e0569b;text-shadow:0 3px 0 #1e2a44;font-variant-numeric:tabular-nums}' +
+    '.f27a-big{font:400 64px/1 "Quest Display","Lilita One",Nunito,sans-serif;text-align:center;margin:10px 0 4px;color:#e0569b;text-shadow:0 3px 0 #1e2a44;font-variant-numeric:tabular-nums}' +
     '.f27a-btn{appearance:none;border:2.5px solid #1e2a44;border-radius:14px;background:#ffd23f;color:#1e2a44;font:800 15px Nunito,sans-serif;padding:9px 16px;cursor:pointer;box-shadow:0 3px 0 #1e2a44;margin:4px 6px 4px 0}' +
     '.f27a-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #1e2a44}.f27a-btn.sec{background:#fff}.f27a-btn.red{background:#ff8a7a}.f27a-btn.sm{font-size:13px;padding:5px 10px;border-radius:11px}' +
     '.f27a-btn[disabled]{opacity:.5;cursor:default}' +
     '.f27a-x{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;border:2.5px solid #1e2a44;background:#fff;font:900 18px Nunito,sans-serif;cursor:pointer}' +
     '#f27a-bar{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:8000;display:flex;align-items:center;gap:8px;max-width:calc(100% - 20px);' +
       'background:#1e2a44;color:#fff;border-radius:999px;padding:6px 6px 6px 14px;font:800 13px Nunito,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3);overflow:hidden}' +
-    '#f27a-bar .t{font:400 20px "Lilita One",Nunito,sans-serif;color:#ffd23f;font-variant-numeric:tabular-nums;letter-spacing:.5px}' +
+    '#f27a-bar .t{font:400 20px "Quest Display","Lilita One",Nunito,sans-serif;color:#ffd23f;font-variant-numeric:tabular-nums;letter-spacing:.5px}' +
     '#f27a-bar .lbl{color:#ff9ccc;letter-spacing:.5px}#f27a-bar .txt{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
     '#f27a-bar button{appearance:none;border:0;border-radius:999px;background:#fff;color:#1e2a44;font:800 12px Nunito,sans-serif;padding:6px 10px;cursor:pointer;flex:none}' +
     '#f27a-bar i{position:absolute;left:0;bottom:0;height:3px;background:#ffd23f;transition:width 1s linear}' +
@@ -262,7 +262,7 @@
         '<li>Bármikor visszavonhatod. A címet nem tároljuk: csak most látod.</li></ul>' +
         '<label class="f27a-f"><span>KINEK? (nem kötelező, csak neked)</span><input id="f27a-note" maxlength="60" placeholder="pl. Péter, Kati néni"></label>' +
         '<button class="f27a-btn" type="button" id="f27a-mk">Új bemutató link (59:59)</button><div class="f27a-err" id="f27a-e1"></div>' +
-        '<div id="f27a-new"></div><h3 style="margin:14px 0 4px;font:400 18px \'Lilita One\',sans-serif">Az elmúlt 7 nap linkjei</h3><ul class="f27a-list" id="f27a-links"><li class="s">Betöltés…</li></ul>';
+        '<div id="f27a-new"></div><h3 style="margin:14px 0 4px;font:400 18px \'Quest Display,Lilita One\',sans-serif">Az elmúlt 7 nap linkjei</h3><ul class="f27a-list" id="f27a-links"><li class="s">Betöltés…</li></ul>';
       body.querySelector('#f27a-mk').addEventListener('click', function () {
         var btn = this, note = body.querySelector('#f27a-note').value;
         btn.disabled = true; body.querySelector('#f27a-e1').textContent = '';

@@ -11,11 +11,13 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="F27 Energy Quest: a lakás izometrikus térképe, húzható bútorokkal és eszközökkel, mentett elrendezésekkel.">
 <title>F27 Energy Quest</title>
+<link rel="preload" href="fonts/QuestDisplay-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<style>@font-face{font-family:"Quest Display";src:url("fonts/QuestDisplay-Regular.woff2") format("woff2");font-display:swap}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=Baloo+2:wght@800&amp;family=Lilita+One&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">
 <style>
 a{color:#1e2a44}a:hover{color:#ff4fa3}
-.lil{font-family:"Lilita One","Baloo 2","Nunito",sans-serif;letter-spacing:.4px}
+.lil{font-family:"Quest Display","Lilita One","Baloo 2","Nunito",sans-serif;letter-spacing:.4px}
 .fr{font-family:"Fraunces",Georgia,serif}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes hop{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-12px) rotate(3deg)}}
@@ -82,14 +84,14 @@ a{color:#1e2a44}a:hover{color:#ff4fa3}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.35}}
 .chip{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 12px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
 .ck{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a}
-.cv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44}
+.cv{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44}
 .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;border:3px solid #1e2a44;box-sizing:border-box}
 .tag{font-size:9.5px;font-weight:900;letter-spacing:.8px;color:#ffffff;padding:2px 8px;border-radius:999px;border:2px solid #1e2a44}
 .pin{all:unset;position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;cursor:pointer;z-index:2}
 .root.editing .pin{cursor:grab;touch-action:none}
 .pin:active{cursor:grabbing}
 .pin.drag{z-index:5}
-.pin .dot{position:absolute;inset:0;border-radius:50%;border:3px solid #1e2a44;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#ffffff;font-family:"Lilita One","Baloo 2",sans-serif;font-size:13px;box-shadow:0 3px 0 #1e2a44;transition:transform .12s}
+.pin .dot{position:absolute;inset:0;border-radius:50%;border:3px solid #1e2a44;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#ffffff;font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:13px;box-shadow:0 3px 0 #1e2a44;transition:transform .12s}
 .pin.sm .dot{font-size:11px}
 .pin:hover .dot,.pin:focus-visible .dot{transform:scale(1.15)}
 .pin:focus-visible{outline:none}
@@ -230,7 +232,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .dc-room{font-weight:800;font-size:11.5px;color:#6b7280;white-space:nowrap}
 .dc-dot{width:9px;height:9px;border-radius:50%;border:2px solid #1e2a44;flex:0 0 auto}
 .dc-dot.on{background:#3fae6a}.dc-dot.off{background:#ff4f6d}.dc-dot.unk{background:#c4c8d0}
-.dc-val{font-family:"Lilita One","Baloo 2","Nunito",sans-serif;font-size:20px;line-height:1.1;color:#1e2a44;white-space:nowrap}
+.dc-val{font-family:"Quest Display","Lilita One","Baloo 2","Nunito",sans-serif;font-size:20px;line-height:1.1;color:#1e2a44;white-space:nowrap}
 .dc-val.good{color:#2f7d4f}.dc-val.bad{color:#c8321f}.dc-val.hot{color:#b8461b}.dc-val.warm{color:#b45309}.dc-val.muted{color:#8a8f9c;font-size:16px}
 .dc-seen{font-weight:800;font-size:11.5px;color:#45507a;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hpw{display:inline-flex;align-items:center;gap:4px;font-weight:900;font-size:11px;white-space:nowrap}
@@ -296,7 +298,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .bk-14{font-size:10.5px;font-weight:900;color:#45507a;white-space:nowrap}
 .bk-sp{flex:1 1 auto}
 .bk-lvs{display:flex;gap:4px}
-.lv.sm{flex:0 0 auto;white-space:nowrap;min-height:0;height:22px;padding:0 6px;border-radius:8px;border-width:2px;box-shadow:0 2px 0 #1e2a44;font:400 12px/1 "Lilita One","Baloo 2",sans-serif;letter-spacing:.3px;flex-direction:row;align-items:center}
+.lv.sm{flex:0 0 auto;white-space:nowrap;min-height:0;height:22px;padding:0 6px;border-radius:8px;border-width:2px;box-shadow:0 2px 0 #1e2a44;font:400 12px/1 "Quest Display","Lilita One","Baloo 2",sans-serif;letter-spacing:.3px;flex-direction:row;align-items:center}
 .lv.sm:hover{transform:translateY(-1px)}
 .bkpanel .livepill{height:22px;padding:0 8px;font-size:10.5px}
 .bk-strip{position:relative;flex:1 1 auto;border:2px solid #1e2a44;border-radius:12px;background:#ffffff;overflow:hidden}
@@ -305,7 +307,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .bk-day.we{background:#fffbf2}
 .bk-day.today{background:#fff1c2}
 .bk-dn{margin-top:2px;font-size:9px;font-weight:900;line-height:1;color:#45507a}
-.bk-dd{font:400 13px/1.05 "Lilita One","Baloo 2",sans-serif;color:#1e2a44}
+.bk-dd{font:400 13px/1.05 "Quest Display","Lilita One","Baloo 2",sans-serif;color:#1e2a44}
 .bk-day.today .bk-dd{color:#c8321f}
 .bk-gapbox{position:absolute;left:2px;right:2px;top:44px;bottom:3px;border:1.5px dashed #3fae6a;border-radius:7px;background:#e7f8ec;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .bk-ic{width:13px;height:13px;display:block}
@@ -357,7 +359,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .cal-h.blk{background:#ffd3dd}
 .cal-h.free{background:transparent}
 .cal-d.free:not(.past):not(.out){background:#eefaf1}
-.cal-n{position:absolute;left:5px;top:3px;font:400 15px/1 "Lilita One","Baloo 2",sans-serif}
+.cal-n{position:absolute;left:5px;top:3px;font:400 15px/1 "Quest Display","Lilita One","Baloo 2",sans-serif}
 .cal-d.today .cal-n{color:#c8321f}
 .cal-ls{position:absolute;left:3px;right:3px;bottom:3px;display:flex;flex-direction:column;gap:1px;font-size:9.5px;font-weight:900;line-height:1.1}
 .cal-ls span{background:rgba(255,253,247,.88);border-radius:4px;padding:0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -510,7 +512,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .wxcard{pointer-events:auto;position:fixed;width:300px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px 12px 10px;border-radius:18px;border:3px solid #1e2a44;background:#fffdf7;box-shadow:0 5px 0 #1e2a44,0 14px 30px rgba(14,20,40,.3);font-family:"Nunito",sans-serif;color:#1e2a44;animation:dpup .18s ease-out;z-index:7}
 .wx-h{display:flex;align-items:center;gap:8px}
 .wx-h svg{width:30px;height:30px;flex:0 0 auto}
-.wx-t{font-family:"Lilita One","Baloo 2",sans-serif;font-size:24px}
+.wx-t{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:24px}
 .wx-d{flex:1 1 auto;font-weight:800;font-size:13px;color:#45507a}
 .wx-r{margin-top:4px;font-weight:800;font-size:13px}
 .wx-hint{margin:8px 0 0;padding:7px 9px;border-radius:12px;border:2px solid #1e2a44;font-weight:900;font-size:13px;line-height:1.35}
@@ -524,7 +526,7 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .tbcol .devbtn .cnt{min-width:20px;height:19px;font-size:11px}
 .tbcol .devbtn .wdot{right:-5px;top:-5px;width:12px;height:12px}
 .consbtn{justify-content:flex-start;background:#fff7e6}
-.consbtn .cw{font-family:"Lilita One","Baloo 2",sans-serif;font-size:15px;font-weight:400;letter-spacing:.2px}
+.consbtn .cw{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:15px;font-weight:400;letter-spacing:.2px}
 
 /* ---- Élő áttekintés (jobb oszlop; telefonon alsó lap) ---- */
 .ovpanel{padding:10px 10px 10px;display:flex;flex-direction:column;gap:6px;font-family:"Nunito",sans-serif;color:#1e2a44;overflow:hidden;box-sizing:border-box}
@@ -536,13 +538,13 @@ body.panning,body.panning #stage,body.panning *{cursor:grabbing!important}
 .ov-vars button.on{background:#1e2a44;color:#ffe066}
 .ov-vars button:focus-visible,.ovpanel button:focus-visible,.ovsheet button:focus-visible{outline:3px solid #ff4fa3;outline-offset:1px}
 .ov-h{font-size:9.5px;font-weight:900;letter-spacing:1px;color:#45507a;display:flex;align-items:baseline;gap:6px;white-space:nowrap}
-.ov-tot{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:15px;letter-spacing:0;color:#1e2a44}
+.ov-tot{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:15px;letter-spacing:0;color:#1e2a44}
 .ov-ft{font-size:10px;letter-spacing:0;color:#9a3412;margin-left:auto}
 .ov-red{color:#c8321f}
 .ov-sub{font-size:11px;font-weight:800;color:#45507a}
 .ov-fn{font-size:9.5px;font-weight:700;color:#8a8f9c}
 .ov-mis{display:block;padding:4px 6px;border-radius:8px;background:#ffe1d6;border:2px solid #1e2a44;font-size:10.5px;font-weight:900;line-height:1.25;color:#9a2b17;text-align:left}
-.ov-stage{font-family:"Lilita One","Baloo 2",sans-serif;font-size:26px;line-height:1;color:#c8321f;white-space:nowrap}
+.ov-stage{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:26px;line-height:1;color:#c8321f;white-space:nowrap}
 .ov-stage.s0{color:#2f7d4f}.ov-stage.sx{color:#8a8f9c}
 .ov-pips{display:inline-flex;gap:3px}
 .ov-pip{width:16px;height:10px;border-radius:4px;border:2px solid #1e2a44;background:#eee3cc}
@@ -587,7 +589,7 @@ button.ov-sec:hover,.ov-pr:hover,.ov-door:hover,.ov-t:hover{background:#fff1c9}
 .ov-pr{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:44px 50px minmax(0,1fr) 50px;align-items:center;gap:6px;padding:1px 2px;border-radius:6px;font-size:11px;font-weight:900}
 .ov-pr .bar{height:7px;border-radius:4px;border:1.5px solid #1e2a44;background:#eee3cc;overflow:hidden}
 .ov-pr .bar span{display:block;height:100%}
-.ov-pr .w{text-align:right;font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:13px;white-space:nowrap}
+.ov-pr .w{text-align:right;font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:13px;white-space:nowrap}
 .ov-door{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:20px minmax(0,1fr) auto 34px;align-items:center;column-gap:5px;padding:1px 2px;border-radius:6px;font-size:11px;font-weight:800}
 .ov-door svg{width:15px;height:15px}
 .ov-door .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900}
@@ -608,11 +610,11 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ov-t{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;column-gap:4px;padding:3px 6px;border-radius:8px;border:2px solid #1e2a44;background:#ffffff}
 .ov-t .n{grid-column:1 / -1;font-size:9.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ov-t .ov-bat{grid-column:2;grid-row:2;align-self:end}
-.ov-t .v{grid-row:2 / 4;grid-column:1;align-self:center;font-family:"Lilita One","Baloo 2",sans-serif;font-size:16px}
+.ov-t .v{grid-row:2 / 4;grid-column:1;align-self:center;font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:16px}
 .ov-t .h{grid-column:2;grid-row:3;font-size:9.5px;font-weight:800;color:#6b7280;text-align:right;line-height:1.1}
 .ov-t.cold{background:#dff1ff}.ov-t.warm{background:#ffe9d6}.ov-t.ok{background:#e7f8ec}.ov-t.stove{background:#ffe1d6}.ov-t.off{background:#f1f3f7}
 .ov-ac{flex-direction:row;align-items:baseline;flex-wrap:wrap;column-gap:8px}
-.ov-acv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:15px;color:#8a8f9c}
+.ov-acv{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:15px;color:#8a8f9c}
 .ov-acv.on{color:#2f7d4f}
 .ov-acv.off{color:#c8321f}
 .ov-alert{all:unset;box-sizing:border-box;cursor:pointer;margin-top:auto;padding:5px 8px;border-radius:10px;border:2px solid #1e2a44;background:#fff6e0;font-size:11px;font-weight:900;color:#9a3412;box-shadow:0 2px 0 #1e2a44}
@@ -633,7 +635,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ov-mini .vb{width:14px;height:24px;border-radius:4px;border:1.5px solid #1e2a44;background:#eee3cc;display:flex;align-items:flex-end;overflow:hidden}
 .ov-mini .vb span{display:block;width:100%}
 .ov-mini .n{font-size:9.5px;font-weight:900}
-.ov-mini .w{font-family:"Lilita One","Baloo 2",sans-serif;font-size:11.5px;white-space:nowrap}
+.ov-mini .w{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:11.5px;white-space:nowrap}
 .ov-tile.door{flex-direction:row;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 6px}
 .ov-tile.door .ov-ico{width:18px;height:18px}
 .ov-tile.door .n{font-size:10.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0;min-width:0}
@@ -642,7 +644,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ov-tile.door.open .t{color:#ffffff;font-weight:900}
 .ov-tile.door.warn{background:#fff6e0}
 .ov-tile.temp .n{font-size:9.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ov-tile.temp .v{font-family:"Lilita One","Baloo 2",sans-serif;font-size:17px;line-height:1}
+.ov-tile.temp .v{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:17px;line-height:1}
 .ov-tile.temp .h{font-size:9.5px;font-weight:800;color:#6b7280}
 .ov-tile.temp{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:4px}
 .ov-tile.temp .n{grid-column:1 / -1}
@@ -660,7 +662,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 .ov-h3s{cursor:pointer;background:#1e2a44!important;color:#fff7e6}
 .ov-h3s .ov-h,.ov-h3s .ov-sub{color:#cfd6e8}
 .ov-h3s .ov-stage{color:#ffd23f}.ov-h3s .ov-stage.s0{color:#8ff5b8}
-.ov-big3{font-family:"Lilita One","Baloo 2",sans-serif;font-size:22px;line-height:1.05;white-space:nowrap}
+.ov-big3{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:22px;line-height:1.05;white-space:nowrap}
 .ov-h3o.open{background:#ff5a3c!important;color:#ffffff}
 .ov-h3o.open .ov-h,.ov-h3o.open .ov-sub{color:#ffe1d6}
 .ov-tabs{display:flex;gap:4px}
@@ -839,7 +841,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <circle cx="{{sky.sunX}}" cy="{{sky.sunY}}" r="30" fill="{{L.sunC}}" stroke="#1e2a44" stroke-width="3" opacity="{{L.sunOp}}"></circle>
 <sc-if value="{{sky.riseUp}}">
 <g class="nextrise" opacity="0.9"><path d="{{sky.riseD}}" fill="#ffd27a" stroke="#1e2a44" stroke-width="3"></path>
-<text x="{{sky.riseX}}" y="{{sky.riseLY}}" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="0.8">{{sky.riseLabel}}</text></g>
+<text x="{{sky.riseX}}" y="{{sky.riseLY}}" text-anchor="middle" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="0.8">{{sky.riseLabel}}</text></g>
 </sc-if>
 <sc-if value="{{sky.moonUp}}">
 <g class="moon" opacity="{{sky.moonOp}}">
@@ -847,7 +849,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <circle cx="{{sky.moonX}}" cy="{{sky.moonY}}" r="24" fill="#3d4677" opacity="0.85"></circle>
 <path d="{{sky.moonLit}}" fill="#fff6dc"></path>
 <circle cx="{{sky.moonX}}" cy="{{sky.moonY}}" r="24" fill="none" stroke="#1e2a44" stroke-width="3"></circle>
-<text x="{{sky.moonX}}" y="{{sky.moonLY}}" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="0.8">{{sky.moonLabel}}</text>
+<text x="{{sky.moonX}}" y="{{sky.moonLY}}" text-anchor="middle" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="0.8">{{sky.moonLabel}}</text>
 <title>{{sky.moonTip}}</title>
 </g>
 </sc-if>
@@ -889,7 +891,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <sc-if value="{{sc.far.S}}">
 <polygon points="{{sc.gangSlab}}" fill="#d9c3a0" stroke="#1e2a44" stroke-width="2"></polygon>
 <path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
-<text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
+<text transform="{{sc.gangTr}}" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
 </sc-if>
 
 <sc-for list="{{sc.slab}}" as="b" hint-placeholder-count="0">
@@ -1066,7 +1068,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <polygon points="{{sc.win8}}" fill="#e6f6ff" stroke="#1e2a44" stroke-width="2.5" opacity="0.92"></polygon>
 <path d="{{sc.win8frame}}" stroke="#ffffff" stroke-width="2" fill="none"></path>
 <path d="{{sc.railing}}" stroke="#1e2a44" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
-<text transform="{{sc.gangTr}}" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
+<text transform="{{sc.gangTr}}" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="13" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke" letter-spacing="1.2">gang, belső udvar</text>
 </sc-if>
 <sc-for list="{{winsNear}}" as="w" hint-placeholder-count="0">
 <g opacity="0.35">
@@ -1114,7 +1116,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <polygon points="2.7,-5.4 -32,-16 -2.7,5.4" fill="#45507a" stroke="#1e2a44" stroke-width="1.6" stroke-linejoin="round"></polygon>
 </g>
 <circle cx="0" cy="0" r="3" fill="#ffd23f" stroke="#1e2a44" stroke-width="1.5"></circle>
-<g font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="14" text-anchor="middle" stroke="#1e2a44" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">
+<g font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="14" text-anchor="middle" stroke="#1e2a44" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">
 <text x="{{sc.compassL.e.x}}" y="{{sc.compassL.e.y}}" fill="#ff6b52">É</text>
 <text x="{{sc.compassL.k.x}}" y="{{sc.compassL.k.y}}" fill="#ffffff">K</text>
 <text x="{{sc.compassL.d.x}}" y="{{sc.compassL.d.y}}" fill="#ffffff">D</text>
@@ -1129,16 +1131,16 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <g transform="{{sc.fx.priv}}" style="pointer-events: none">
 <rect x="-30" y="-36" width="60" height="18" rx="6" fill="#4d311c" stroke="#1e2a44" stroke-width="2.5"></rect>
 <path d="M-22,-29 v-3 a3,3 0 0 1 6,0 v3 M-23.5,-29 h9 v7 h-9 z" fill="#f0cf6a" stroke="#f0cf6a" stroke-width="1.4"></path>
-<text x="5" y="-23" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="10" fill="#fff7e6" letter-spacing="0.6">PRIVÁT</text>
+<text x="5" y="-23" text-anchor="middle" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="10" fill="#fff7e6" letter-spacing="0.6">PRIVÁT</text>
 </g>
 <g transform="{{sc.fx.pendant}}" style="pointer-events: none"><circle class="breathe" cx="0" cy="6" r="22" fill="url(#halo2)" opacity="{{L.lampOp}}"></circle></g>
 <g transform="{{sc.fx.wcTag}}" style="pointer-events: none">
 <rect x="-14" y="-36" width="28" height="18" rx="6" fill="#ffffff" stroke="#1e2a44" stroke-width="2.5"></rect>
-<text x="0" y="-23" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="11" fill="#1e2a44">WC</text>
+<text x="0" y="-23" text-anchor="middle" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="11" fill="#1e2a44">WC</text>
 </g>
 <g transform="{{fx.seat5}}" style="pointer-events: none">
 <ellipse cx="0" cy="0" rx="13" ry="6.5" fill="#ffffff" fill-opacity="0.25" stroke="#ffffff" stroke-width="2" stroke-dasharray="3 3"></ellipse>
-<text x="0" y="-9" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3" paint-order="stroke">+1</text>
+<text x="0" y="-9" text-anchor="middle" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3" paint-order="stroke">+1</text>
 </g>
 
 
@@ -1202,7 +1204,7 @@ button.ov-sec.ov-stove.dark:hover{background:#26355a}
 <circle cx="-4" cy="5" r="2.1" fill="#1e2a44"></circle><circle cx="4" cy="5" r="2.1" fill="#1e2a44"></circle>
 <path d="M-3,11 q3,-2.5 6,0" fill="none" stroke="#1e2a44" stroke-width="1.8"></path>
 </g></g>
-<sc-if value="{{g.label}}"><text x="0" y="-16" text-anchor="middle" font-family="'Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3.2" paint-order="stroke">Huzat-szellem</text></sc-if>
+<sc-if value="{{g.label}}"><text x="0" y="-16" text-anchor="middle" font-family="'Quest Display','Lilita One', 'Baloo 2', sans-serif" font-size="12" fill="#ffffff" stroke="#1e2a44" stroke-width="3.2" paint-order="stroke">Huzat-szellem</text></sc-if>
 </g>
 </sc-for>
 
@@ -1335,7 +1337,7 @@ Elrendezés visszaállítása
 <div style="display: grid; grid-template-columns: 168px minmax(0, 1fr) 32px; align-items: center; gap: 8px; height: 17px">
 <span style="font-size: 11.5px; font-weight: 900; white-space: nowrap">{{r.name}}</span>
 <span style="height: 9px; border-radius: 5px; background: #eee3cc; border: 1.5px solid #1e2a44; overflow: hidden"><span style="display: block; height: 100%; width: {{r.w}}; background: {{r.c}}"></span></span>
-<span style="font-family: 'Lilita One','Baloo 2'; font-size: 13px; text-align: right; color: {{r.tc}}">{{r.v}}</span>
+<span style="font-family: 'Quest Display','Lilita One','Baloo 2'; font-size: 13px; text-align: right; color: {{r.tc}}">{{r.v}}</span>
 </div>
 </sc-for>
 </div>

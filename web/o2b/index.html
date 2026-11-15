@@ -11,6 +11,8 @@
 <meta name="referrer" content="no-referrer">
 <title>O2B Energy Quest</title>
 <meta name="description" content="O2B Energy Quest: a kétszintes lakás izometrikus babaháza bútorokkal, élő eszközökkel és Pamutkával, a tanácsadó macskával.">
+<link rel="preload" href="../fonts/QuestDisplay-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<style>@font-face{font-family:"Quest Display";src:url("../fonts/QuestDisplay-Regular.woff2") format("woff2");font-display:swap}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=Baloo+2:wght@800&amp;family=Lilita+One&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">
 <style>
@@ -47,9 +49,9 @@ body{position:fixed;inset:0;touch-action:none}
 .pc.sel{filter:drop-shadow(0 0 4px #ff4fa3) drop-shadow(0 0 2px #ff4fa3)}
 .pc.drag{cursor:grabbing;filter:drop-shadow(0 14px 6px rgba(30,42,68,.45)) brightness(1.08)}
 .wall{pointer-events:none}
-.rlabel{font-family:"Lilita One","Baloo 2",sans-serif;font-size:15px;fill:#fff7e6;stroke:#1e2a44;stroke-width:3.4px;paint-order:stroke;pointer-events:none;letter-spacing:.6px}
-.lvlab{font-family:"Lilita One","Baloo 2",sans-serif;font-size:28px;fill:#ffe066;stroke:#1e2a44;stroke-width:5px;paint-order:stroke;pointer-events:none;letter-spacing:1px}
-.slab-t{font-family:"Lilita One","Baloo 2",sans-serif;font-size:14px;fill:#fff7e6;stroke:#1e2a44;stroke-width:3px;paint-order:stroke;letter-spacing:1px}
+.rlabel{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:15px;fill:#fff7e6;stroke:#1e2a44;stroke-width:3.4px;paint-order:stroke;pointer-events:none;letter-spacing:.6px}
+.lvlab{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:28px;fill:#ffe066;stroke:#1e2a44;stroke-width:5px;paint-order:stroke;pointer-events:none;letter-spacing:1px}
+.slab-t{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:14px;fill:#fff7e6;stroke:#1e2a44;stroke-width:3px;paint-order:stroke;letter-spacing:1px}
 .mark{font-family:"Nunito",sans-serif;font-weight:900;font-size:11px;fill:#1e2a44;pointer-events:none}
 .street{cursor:default}
 .street.can{cursor:pointer}
@@ -58,7 +60,7 @@ body{position:fixed;inset:0;touch-action:none}
 .pin{cursor:pointer;outline:none}
 .pin .dot{stroke:#1e2a44;stroke-width:3}
 .pin .ring{fill:none;stroke:#ff5a3c;stroke-width:3;transform-box:fill-box;transform-origin:center;animation:pulse 1.4s ease-out infinite}
-.pin text{font-family:"Lilita One","Baloo 2",sans-serif;pointer-events:none}
+.pin text{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;pointer-events:none}
 .pin:hover .dot,.pin:focus .dot{stroke:#ffe066}
 .pin.sel .dot{stroke:#ff4fa3;stroke-width:4}
 .pin .vbg{stroke:#1e2a44;stroke-width:2}
@@ -135,12 +137,12 @@ body{position:fixed;inset:0;touch-action:none}
 #top{position:absolute;left:12px;right:12px;top:10px;display:flex;gap:10px;align-items:flex-start;pointer-events:none;z-index:5}
 #chips{display:flex;gap:10px;flex-wrap:wrap;pointer-events:auto;min-width:0}
 .brand{display:flex;flex-direction:column;justify-content:center;padding:4px 14px 6px;border-radius:16px;background:#3fae6a;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;color:#fff7e6}
-.brand b{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:22px;letter-spacing:1px;line-height:1.1;text-shadow:0 2px 0 #1e2a44}
+.brand b{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:22px;letter-spacing:1px;line-height:1.1;text-shadow:0 2px 0 #1e2a44}
 .brand small{font-size:10.5px;font-weight:900;letter-spacing:1px}
 .chip{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 12px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;min-width:96px}
 .chip[hidden]{display:none}
 .ck{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;white-space:nowrap}
-.cv{font-family:"Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44;white-space:nowrap}
+.cv{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:23px;line-height:1.05;color:#1e2a44;white-space:nowrap}
 .cs{font-size:10.5px;font-weight:800;color:#6b7280;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .chip.warn{background:#fff3c9}
 .chip.hot{background:#ffd9cc}
@@ -188,13 +190,13 @@ select.lay[hidden]{display:none}
 
 /* kijelölt tárgy */
 #info{position:absolute;right:12px;top:96px;z-index:5;max-width:330px;padding:10px 12px;border-radius:16px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;font:800 13px/1.35 "Nunito",sans-serif}
-#info b{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:17px;letter-spacing:.3px}
+#info b{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:17px;letter-spacing:.3px}
 #info[hidden]{display:none}
 
 /* Eszközök fiók és belépés */
 .sheet{position:absolute;right:12px;top:96px;bottom:70px;width:380px;max-width:calc(100% - 24px);z-index:6;display:flex;flex-direction:column;padding:12px;border-radius:22px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44}
 .sheet[hidden]{display:none}
-.sheet h2{margin:0 0 8px;font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:21px;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.sheet h2{margin:0 0 8px;font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:21px;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
 .sheet h2 .x{margin-left:auto}
 #rooms{overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px;overscroll-behavior:contain}
 .room h3{margin:0 0 4px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#7a5a2e}
@@ -207,7 +209,7 @@ select.lay[hidden]{display:none}
 .dv.sel{background:#ffe066}
 #logincard{position:absolute;right:12px;top:96px;z-index:7;width:330px;padding:14px;border-radius:20px;background:#fbf1dc;border:4px solid #1e2a44;box-shadow:0 6px 0 #1e2a44}
 #logincard[hidden]{display:none}
-#logincard .lchead{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 6px;font:400 20px "Lilita One",sans-serif}
+#logincard .lchead{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 6px;font:400 20px "Quest Display","Lilita One",sans-serif}
 #logincard .lchead .x{flex:none}
 #logincard label{display:block;font-size:12px;font-weight:900;margin:6px 0 2px}
 #logincard input{width:100%;height:40px;border-radius:12px;border:3px solid #1e2a44;padding:0 10px;font:800 14px "Nunito",sans-serif}
@@ -239,14 +241,14 @@ body.wide .sheet,body.wide #logincard{right:calc(var(--pw) + 28px)}
 .ovtitle{font-family:"Fraunces",serif;font-weight:800;font-size:22px;color:#3b2a14;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .ovs{background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;padding:8px 9px;box-shadow:0 2px 0 #1e2a44}
 .ovh{font-size:10.5px;font-weight:900;letter-spacing:1.1px;color:#45507a;margin-bottom:6px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
-.ovh b{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:17px;letter-spacing:.3px;color:#1e2a44}
+.ovh b{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:17px;letter-spacing:.3px;color:#1e2a44}
 .ovh small{font-size:10px;color:#7a5a2e;letter-spacing:.3px}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .ovt{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;padding:5px 8px;border-radius:11px;border:2px solid #1e2a44;background:#e7f8ec;font-family:"Nunito",sans-serif}
 .ovt:hover{filter:brightness(1.04)}.ovt:focus-visible{outline:3px solid #ff4fa3}
 .ovt.hot{background:#ffe1d6}.ovt.cold{background:#dcecff}.ovt.off{background:#eceef1;opacity:.8}.ovt.sel{outline:3px solid #ff4fa3}
 .ovt .r{font-size:10.5px;font-weight:900;color:#45507a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ovt .v{font-family:"Lilita One","Baloo 2",sans-serif;font-size:21px;line-height:1.1;color:#1e2a44}
+.ovt .v{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:21px;line-height:1.1;color:#1e2a44}
 .ovt .m{font-size:10px;font-weight:800;color:#6b7280}
 .ovt .bw{color:#c43f1f}
 .cr{display:grid;grid-template-columns:minmax(0,1fr) 84px 58px;align-items:center;gap:6px;font:800 11.5px "Nunito",sans-serif;padding:2px 0}
@@ -290,7 +292,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
   #tools{max-width:calc(100% - 24px);left:12px;justify-content:flex-end}
 }
 
-.pbrand{display:none;align-items:center;height:38px;padding:0 12px;border-radius:12px;background:#3fae6a;border:3px solid #1e2a44;box-shadow:0 3px 0 #1e2a44;color:#fff7e6;font-family:"Lilita One","Baloo 2",sans-serif;font-size:19px;letter-spacing:1px;text-shadow:0 2px 0 #1e2a44}
+.pbrand{display:none;align-items:center;height:38px;padding:0 12px;border-radius:12px;background:#3fae6a;border:3px solid #1e2a44;box-shadow:0 3px 0 #1e2a44;color:#fff7e6;font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-size:19px;letter-spacing:1px;text-shadow:0 2px 0 #1e2a44}
 .rotbtn #rotdeg{font-variant-numeric:tabular-nums;min-width:26px}
 #info .ix{position:absolute;right:8px;top:8px}
 
@@ -324,7 +326,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 .swb .ovh{align-items:center}
 .scn{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px}
 .scb{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;padding:5px 7px;border-radius:10px;border:2.5px solid #1e2a44;background:#fff;box-shadow:0 2px 0 #1e2a44}
-.scb b{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:13.5px;letter-spacing:.3px}.scb small{font-size:10px;color:#6b7280;font-weight:800}
+.scb b{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:13.5px;letter-spacing:.3px}.scb small{font-size:10px;color:#6b7280;font-weight:800}
 .scb:hover{background:#fff1c9}.scb.busy{animation:breathe 1s ease-in-out infinite}.scb:focus-visible{outline:3px solid #ff4fa3}
 .swr{display:flex;align-items:center;gap:7px;padding:3px 0;border-top:1.5px dashed #e3d6bd}
 .swr.off{opacity:.55}
@@ -342,7 +344,7 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 #info{max-height:calc(100% - 120px);overflow-y:auto}
 
 /* kapcsolás: áttekinthető kártya (2026.11.15, a tulaj auditja) */
-.nowst{font-family:"Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:18px;letter-spacing:.6px;color:#6b7280}
+.nowst{font-family:"Quest Display","Lilita One","Baloo 2",sans-serif;font-weight:400;font-size:18px;letter-spacing:.6px;color:#6b7280}
 .nowst.on{color:#2f8a3a}
 @media (max-width:1400px){#b-edit .lbl,#b-rot .lbl{display:none}}
 #app:not(.editing) #tools .edonly{display:none}   /* visszavonás, újra, alaphelyzet, mentés: csak Szerkesztés módban */

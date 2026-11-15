@@ -62,9 +62,9 @@
       '<ellipse class="sh" cx="0" cy="0" rx="22" ry="6" fill="#1e2a44" opacity=".22"></ellipse>' +
       '<g class="dust"><ellipse cx="-26" cy="-2" rx="10" ry="6"></ellipse><ellipse cx="26" cy="-2" rx="10" ry="6"></ellipse><ellipse cx="-14" cy="3" rx="7" ry="4"></ellipse><ellipse cx="15" cy="3" rx="7" ry="4"></ellipse></g>' +
       '<g class="wf"><g class="wb"><use width="58" height="71" x="-29" y="-69"></use></g></g>' +
-      '<text class="zz a" x="18" y="-70" font-family="Lilita One, sans-serif" font-size="14" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>' +
-      '<text class="zz b" x="26" y="-78" font-family="Lilita One, sans-serif" font-size="12" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>' +
-      '<g class="ex"><circle cx="20" cy="-82" r="10" fill="#ffe066" stroke="#1e2a44" stroke-width="2.5"></circle><text x="20" y="-77" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="15" fill="#1e2a44">!</text></g>' +
+      '<text class="zz a" x="18" y="-70" font-family="Quest Display,Lilita One, sans-serif" font-size="14" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>' +
+      '<text class="zz b" x="26" y="-78" font-family="Quest Display,Lilita One, sans-serif" font-size="12" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>' +
+      '<g class="ex"><circle cx="20" cy="-82" r="10" fill="#ffe066" stroke="#1e2a44" stroke-width="2.5"></circle><text x="20" y="-77" text-anchor="middle" font-family="Quest Display,Lilita One, sans-serif" font-size="15" fill="#1e2a44">!</text></g>' +
       '<g class="bub"><rect x="-66" y="-112" width="132" height="28" rx="12" fill="#fffdf7" stroke="#1e2a44" stroke-width="2.5"></rect>' +
       '<path d="M-5,-85 L0,-76 L6,-85" fill="#fffdf7" stroke="#1e2a44" stroke-width="2.5" stroke-linejoin="round"></path>' +
       '<text class="bt" x="0" y="-93" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="13" fill="#1e2a44"></text></g></g>';

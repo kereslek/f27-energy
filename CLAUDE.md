@@ -292,6 +292,10 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 
 Minden dashboardon (F27, O2B és minden jövőbeli lakás) **minden felnyíló ablak, kártya, lap és képernyő bezárható**: jól látható ✕ gomb (`aria-label="Bezárás…"`), Esc (gépelés közben is), és ahol értelmes, a térképre koppintás is bezárja. Ez a bemutató link képernyőire is igaz (üdvözlő: ✕ után alul „Indítás” gomb; lejárt: ✕). Új ablaknál a tesztben ellenőrizni kell: minden látható `role="dialog"` elemben van bezárógomb.
 
+## 18. ÁLLANDÓ SZABÁLY: hibátlan ő és ű (a tulaj kérése, 2026.11.15)
+
+A **Lilita One-ból hiányzik az ő ű Ő Ű** (a böngésző más betűtípusból pótolja, ezért hibásan látszik). Minden dashboardon, mockupon, e-mailben és jövőbeli felületen: a címsor-betű a **Quest Display** (`web/fonts/QuestDisplay-Regular.woff2`, a Lilita One magyarral kiegészített, OFL-es változata, `tools/build_quest_font.py`), a Lilita One legfeljebb mögötte állhat; artifactban data URI-ként ágyazd be. Új betűtípus csak akkor, ha tartalmazza az ő ű Ő Ű-t (ellenőrzés: canvas-mérés két tartalékkal, nem `document.fonts.check`, az hamisan igent mond). Tesztek: `tests/test_fonts.py` (a Lilita One nem állhat elöl), Playwright magyar-ékezet audit mindkét dashboardon.
+
 ## 15. Állapot
 
 - 2026.11.01: repó váz kész: Tuya kliens, felderítő workflow, titkosítás, Pages térkép (sematikus alaprajz, demo adat). Következő: a tulaj végigmegy a `docs/tuya-setup.md`-n, lefuttatja az Eszközfelderítés workflow-t, utána a párosítás ellenőrzése és a pink számok véglegesítése.

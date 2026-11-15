@@ -890,14 +890,14 @@
       '<path d="M-20,-28 Q-18,-20 -20,-12 M-8,-30 Q-6,-20 -8,-8 M4,-30 Q6,-20 4,-9" fill="none" stroke="' + PAM.stripe + '" stroke-width="2.6" stroke-linecap="round"/>' +
       pamTail('M-30,-6 C-20,6 22,6 34,-6', 8) +
       '<g class="head">' + pamHead(16, -26, 0.55, true) + '</g></g>';
-    ['a', 'b'].forEach(function (c, i) { o += '<text class="zz ' + c + '" x="' + (34 + i * 7) + '" y="' + (-46 - i * 6) + '" font-family="Lilita One, sans-serif" font-size="16" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>'; });
+    ['a', 'b'].forEach(function (c, i) { o += '<text class="zz ' + c + '" x="' + (34 + i * 7) + '" y="' + (-46 - i * 6) + '" font-family="Quest Display,Lilita One, sans-serif" font-size="16" fill="#fff7e6" stroke="#1e2a44" stroke-width="3" paint-order="stroke">z</text>'; });
     return o;
   }
   function buildCat(g) {
     g.innerHTML = '<g class="pose p-walk">' + pamWalk() + '</g><g class="pose p-sit">' + pamSit() + '</g><g class="pose p-sleep">' + pamSleep() + '</g>' +
       '<g class="yarn"><g class="yb"><circle cx="0" cy="-9" r="9" fill="#ff7aa8" stroke="#1e2a44" stroke-width="2.4"/><path d="M-7,-13 Q0,-6 7,-14 M-8,-7 Q0,-1 8,-8 M-3,-17 Q2,-9 -2,-1" fill="none" stroke="#c94f7c" stroke-width="1.6"/></g><path class="ythr" d="M-8,-4 Q-24,4 -40,-2" fill="none" stroke="#ff7aa8" stroke-width="2"/></g>' +
       '<g class="bubble"><rect x="-58" y="-188" width="116" height="34" rx="14" fill="#fffdf7" stroke="#1e2a44" stroke-width="3"/><path d="M-6,-155 L0,-144 L8,-155" fill="#fffdf7" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"/><text class="bt" x="0" y="-165" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="17" fill="#1e2a44">Miaú?</text></g>' +
-      '<g class="alert"><g><circle cx="0" cy="-142" r="14" fill="#ffe066" stroke="#1e2a44" stroke-width="3"/><text x="0" y="-135" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="20" fill="#1e2a44">!</text></g></g>' +
+      '<g class="alert"><g><circle cx="0" cy="-142" r="14" fill="#ffe066" stroke="#1e2a44" stroke-width="3"/><text x="0" y="-135" text-anchor="middle" font-family="Quest Display,Lilita One, sans-serif" font-size="20" fill="#1e2a44">!</text></g></g>' +
       '<g class="dust"><ellipse cx="-34" cy="-4" rx="12" ry="7"/><ellipse cx="34" cy="-4" rx="12" ry="7"/><ellipse cx="-18" cy="2" rx="9" ry="5"/><ellipse cx="20" cy="2" rx="9" ry="5"/></g>' +
       '<text x="0" y="22" text-anchor="middle" class="slab-t" style="font-size:15px">Pamutka</text>';
   }
