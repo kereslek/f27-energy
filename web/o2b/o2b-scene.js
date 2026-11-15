@@ -133,6 +133,9 @@
   piece('lv_vitrine', 'Antik vitrin', 'lo', [[0.1, 0.5, 0.45, 1.1, 0, 1.9, C.WALNUT], [0.52, 0.6, 0.03, 0.9, 0.5, 1.2, C.GLASS]]);
   piece('lv_table', 'Kerek, bővíthető tölgy étkezőasztal', 'lo', [[2.45, 0.85, 0.12, 0.12, 0, 0.74, C.DARK], [2.0, 0.4, 1.0, 1.0, 0.74, 0.05, C.OAK], [1.75, 0.75, 0.3, 0.3, 0, 0.45, C.GREY], [2.95, 0.75, 0.3, 0.3, 0, 0.45, C.GREY]]);
   piece('lv_cab', 'Magas fehér szekrény, alatta a robotporszívó dokkja', 'lo', [[3.7, 5.55, 0.65, 0.55, 0.12, 1.9, C.WHITE], [3.82, 5.6, 0.36, 0.36, 0, 0.1, C.BLACK]]);
+  // robotporszívó lent: DreameBot Z10 Pro a porgyűjtő dokkjában, a nappali sarkában (R1)
+  piece('lv_robot', 'DreameBot Z10 Pro robotporszívó a porgyűjtő dokkjában (R1)', 'lo', [[0.06, 5.58, 0.2, 0.36, 0, 0.42, C.DGREY], [0.08, 5.62, 0.16, 0.28, 0.42, 0.04, C.BLACK],
+    { cyl: [0.45, 5.76, 0.17, 0, 0.09], c: C.DGREY }, { cyl: [0.45, 5.76, 0.05, 0.09, 0.03], c: C.BLACK }]);
   piece('lv_deer', 'Szarvas (dekor, okos konnektoron)', 'lo', [[1.0, 0.35, 0.12, 0.3, 0, 0.55, C.CREAM], [0.98, 0.35, 0.16, 0.36, 0.55, 0.22, C.CREAM], [1.0, 0.3, 0.12, 0.1, 0.77, 0.25, C.CREAM]]);
 
   // Étkező
@@ -214,6 +217,9 @@
   piece('ub_bath', 'Kád csempézett előfallal', 'up', [[4.62, 5.72, 1.8, 0.75, 0, 0.55, C.WHITE], [4.7, 5.8, 1.64, 0.6, 0.5, 0.06, C.BLUEC]], false);
   piece('ub_sink', 'Mosdószekrény tükörrel, fali WC', 'up', [[5.0, 6.62, 0.6, 0.4, 0, 0.85, C.GREY], [5.05, 6.98, 0.5, 0.04, 1.1, 0.6, C.GLASS], [5.85, 6.7, 0.36, 0.3, 0.25, 0.25, C.WHITE]], false);
   piece('ub_towel', 'Króm törölközőszárító', 'up', [[6.42, 6.55, 0.05, 0.4, 0.3, 1.0, C.STEEL]], false);
+  // robotporszívó fent: Roborock S7 a dokkjában, az emeleti előtérben (R2)
+  piece('ub_robot', 'Roborock S7 robotporszívó a dokkjában (R2)', 'up', [[4.38, 6.44, 0.1, 0.32, 0, 0.12, C.WHITE],
+    { cyl: [4.16, 6.6, 0.17, 0, 0.09], c: C.WHITE }, { cyl: [4.16, 6.6, 0.05, 0.09, 0.03], c: C.ORANGE }]);
   piece('ub_boiler', 'Villanybojler: kerek, álló, a fürdő mennyezete fölötti térben', 'up', [{ cyl: [5.45, 6.32, 0.28, 2.38, 1.0], c: C.WHITE }, { cyl: [5.45, 6.32, 0.29, 2.38, 0.08], c: C.STEEL }], false);
 
   // ---- eszközök (tűk): pink -> [szint, x, y, z (m)] ----------------------------------------------
@@ -224,7 +230,7 @@
     C6: ['lo', 3.75, 10.05, 1.9], C7: ['lo', 1.05, 0.5, 1.0], C8: ['lo', 4.0, -0.5, 1.0],
     IR1: ['lo', 0.5, 1.0, 2.2], IR2: ['lo', 4.2, 13.1, 2.2],
     T5: ['up', 1.2, 2.0, 1.2], T6: ['up', 3.3, 2.8, 1.2], K3: ['up', 0.17, 2.0, 2.45], K4: ['up', 4.4, 3.75, 2.45],
-    C1: ['up', 5.45, 6.32, 3.5], X1: ['up', 6.3, 6.9, 1.6], M1: ['up', 0.75, 7.25, 0.3],
+    C1: ['up', 5.45, 6.32, 3.5], R1: ['lo', 0.45, 5.76, 0.6], R2: ['up', 4.16, 6.6, 0.6], X1: ['up', 6.3, 6.9, 1.6], M1: ['up', 0.75, 7.25, 0.3],
     IR3: ['up', 0.3, 3.4, 2.2], IR4: ['up', 4.3, 3.0, 2.2]
   };
   // nem okos, de fontos tárgyak jelölése (nem kattintható eszköz, csak felirat)

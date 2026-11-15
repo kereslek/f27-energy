@@ -37,6 +37,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Robotporszívó-könyvtárak (O2B; ha nem sikerül, a gyűjtés enélkül megy)
+        continue-on-error: true
+        run: pip install -q python-roborock
       - name: Adatgyűjtés (10 percenként, kb. 1 órán át)
         env:
           TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
@@ -74,6 +77,9 @@ jobs:
               SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
               AIRBNB_ICAL_URL= BOOKING_ICAL_URL= \
                 python -m f27.collect || echo "::warning::Az O2B $n. köre hibával zárult."
+              # robotporszívók (R1 Dreame lent, R2 Roborock fent): csak ha volt bejelentkezés (f27/robots.py)
+              SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+                timeout 120 python -m f27.robots status || echo "::warning::A robotok lekérése hibával zárult."
             fi
             echo "::endgroup::"
             [ $(( $(date +%s) + 600 )) -lt "$end" ] || break

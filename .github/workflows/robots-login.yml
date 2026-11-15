@@ -1,0 +1,60 @@
+name: Robotok bejelentkezése (O2B)
+
+# Kézzel indítható. A két robotporszívó gyártói felhőjébe lép be, és a kapott tokent az O2B
+# Supabase `robot_auth` táblájába írja (012_robots.sql; csak a titkos kulcs éri el). Jelszót nem tárol.
+#   roborock-kod  a Roborock e-mailt küld egy kóddal (ROBOROCK_EMAIL secret)
+#   roborock      belépés: a kapott kód ide a "kod" mezőbe, VAGY ROBOROCK_PASSWORD secret
+#   xiaomi        belépés: XIAOMI_USERNAME + XIAOMI_PASSWORD secret (a Dreame a Xiaomi Home-ban van)
+# A log publikus: csak OK / HIBA és a robotok száma kerül bele (e-mail, név, azonosító, token nem).
+
+on:
+  workflow_dispatch:
+    inputs:
+      lepes:
+        description: "Mit csináljon"
+        type: choice
+        options: [roborock-kod, roborock, xiaomi]
+        default: roborock-kod
+      kod:
+        description: "Roborock e-mailben kapott kód (csak a roborock lépéshez, ha nincs jelszó)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: robots-login
+  cancel-in-progress: false
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Könyvtárak
+        run: pip install -q python-roborock
+      - name: Adatbázis (012_robots.sql, O2B)
+        env:
+          TARGET: o2b
+          SQL_FILE: supabase/migrations/012_robots.sql
+        run: python -m f27.migrate
+      - name: Belépés
+        env:
+          SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
+          ROBOROCK_EMAIL: ${{ secrets.ROBOROCK_EMAIL }}
+          ROBOROCK_PASSWORD: ${{ secrets.ROBOROCK_PASSWORD }}
+          ROBOROCK_CODE: ${{ inputs.kod }}
+          XIAOMI_USERNAME: ${{ secrets.XIAOMI_USERNAME }}
+          XIAOMI_PASSWORD: ${{ secrets.XIAOMI_PASSWORD }}
+          LEPES: ${{ inputs.lepes }}
+        run: |
+          [ -n "$ROBOROCK_CODE" ] && echo "::add-mask::$ROBOROCK_CODE"
+          python -m f27.robots "$LEPES" | tee -a "$GITHUB_STEP_SUMMARY"; exit ${PIPESTATUS[0]}

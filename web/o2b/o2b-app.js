@@ -16,6 +16,7 @@
     ['T1', 'thermo', 'nappali', 'Hőmérő, nappali'], ['T2', 'thermo', 'etkezo', 'Hőmérő, étkező'], ['T3', 'thermo', 'halo', 'Hőmérő, hálószoba'],
     ['T4', 'thermo', 'konyha', 'Hőmérő, konyha'], ['T5', 'thermo', 'kagylo', 'Hőmérő, kagyló szoba'], ['T6', 'thermo', 'gyerek', 'Hőmérő, gyerekszoba'],
     ['T7', 'thermo', 'erkely', 'Hőmérő, erkély (kint)'], ['T8', 'thermo', 'nappali', 'Hőmérő, nappali (2.)'],
+    ['R1', 'robot', 'nappali', 'Robotporszívó lent (Dreame Z10 Pro)'], ['R2', 'robot', 'eloter', 'Robotporszívó fent (Roborock S7)'],
     ['K1', 'ac_ir', 'nappali', 'Klíma, nappali'], ['K2', 'ac_ir', 'halo', 'Klíma, hálószoba'], ['K3', 'ac_ir', 'kagylo', 'Klíma, kagyló szoba'], ['K4', 'ac_ir', 'gyerek', 'Klíma, gyerekszoba'],
     ['C1', 'plug', 'furdo_fent', 'Emeleti bojler (meleg víz)'], ['C2', 'plug', 'etkezo', 'Dupla lámpa (étkező, a tükörnél)'], ['C3', 'plug', 'nappali', 'TV led'],
     ['C4', 'plug', 'etkezo', 'Lépcső, fények'], ['C5', 'plug', 'etkezo', 'Tükör, étkező'], ['C6', 'plug', 'etkezo', 'Karácsonyfa'],
@@ -26,9 +27,9 @@
   ].map(function (r) { return { pink: r[0], role: r[1], room: r[2], label: r[3] }; });
   var ROOM_NAMES = { erkely: 'Erkély', nappali: 'Nappali', etkezo: 'Étkező', halo: 'Hálószoba', furdo_lent: 'Fürdő (lent)', eloszoba: 'Előszoba',
     kamra: 'Kamra', konyha: 'Konyha', kagylo: 'Kagyló szoba', gyerek: 'Gyerekszoba', eloter: 'Előtér (fent)', furdo_fent: 'Fürdő (fent)', lepcso_fent: 'Lépcső teteje' };
-  var ROLE_COL = { thermo: '#2f6fe4', ac_ir: '#26a5c9', plug: '#ff8a3d', breaker: '#c0399f', pir: '#7a6fb0', ir_hub: '#26a5c9' };
-  var ROLE_GLYPH = { thermo: '°', ac_ir: '❄', plug: 'W', breaker: 'K', pir: '◉', ir_hub: '≈' };
-  var ROLE_NAME = { thermo: 'hőmérő', ac_ir: 'klíma (IR-ről vezérelt)', plug: 'okos konnektor', breaker: 'okos kismegszakító', pir: 'mozgásérzékelő', ir_hub: 'IR-távirányító' };
+  var ROLE_COL = { thermo: '#2f6fe4', ac_ir: '#26a5c9', plug: '#ff8a3d', breaker: '#c0399f', pir: '#7a6fb0', ir_hub: '#26a5c9', robot: '#14a38b' };
+  var ROLE_GLYPH = { thermo: '°', ac_ir: '❄', plug: 'W', breaker: 'K', pir: '◉', ir_hub: '≈', robot: '◍' };
+  var ROLE_NAME = { thermo: 'hőmérő', ac_ir: 'klíma (IR-ről vezérelt)', plug: 'okos konnektor', breaker: 'okos kismegszakító', pir: 'mozgásérzékelő', ir_hub: 'IR-távirányító', robot: 'robotporszívó' };
 
   var st = {
     k: 0, offs: {}, edit: false, sel: null, user: null, role: null, live: false, devs: DEFAULT_DEVS, latest: {},
@@ -92,6 +93,15 @@
     }
     if (d.role === 'pir') return { txt: s.pir === 'pir' ? 'mozgás most' : 'nyugalom', cls: s.pir === 'pir' ? 'on' : '', big: s.pir === 'pir' ? 'mozgás!' : null };
     if (d.role === 'ac_ir') return { txt: 'IR-ről vezérelt, állapotot nem küld', cls: '', big: null };
+    if (d.role === 'robot') {
+      if (off) return { txt: 'offline', cls: 'off', big: null };
+      var RS = { cleaning: 'takarít', returning: 'hazamegy', charging: 'töltődik', charged: 'dokkban, feltöltve', docked: 'dokkban', paused: 'szünetel',
+        idle: 'áll', error: 'HIBA', mopping: 'mos', drying: 'szárít', washing: 'mopot mos', dust_collecting: 'port ürít', upgrading: 'frissít' };
+      var rt = RS[s.state] || s.state || '--', bat = typeof s.battery === 'number' ? s.battery + '%' : '';
+      var extra = s.cleaning && s.area_m2 != null ? ' · ' + fmt(+s.area_m2, 0) + ' m², ' + (s.minutes || 0) + ' perc' : '';
+      return { txt: rt + (bat ? ' · ' + bat : '') + extra + (s.error ? ' · ' + s.error : ''), cls: s.state === 'error' ? 'hot' : s.cleaning ? 'on' : '',
+        big: s.state === 'error' ? 'HIBA' : s.cleaning ? rt + (bat ? ' ' + bat : '') : null };
+    }
     return { txt: off ? 'offline' : 'online', cls: off ? 'off' : '', big: null };
   }
 
@@ -105,6 +115,8 @@
     });
     L.X1 = { online: true, status: { cur_power: 0, switch: true } };
     L.M1 = { online: true, status: { pir: 'none', battery_percentage: 100 } };
+    L.R1 = { online: true, status: { state: 'charged', cleaning: false, battery: 100, src: 'xiaomi' } };
+    L.R2 = { online: true, status: { state: 'cleaning', cleaning: true, battery: 64, area_m2: 18, minutes: 22, src: 'roborock' } };
     st.latest = L; st.wx = st.wx || { temp: 6.1 }; st.motion = now - 12 * 60000;
     st.bat = [{ pink: 'T3', label: 'Hőmérő, hálószoba', level: 'due14', eta_lo: 0, eta_hi: 14 }];
     if (st.ctl) { st.ctl.timers = []; st.ctl.rules = [{ id: 'd1', pink: 'C3', action: 'on', kind: 'sunset', minute: -15, days: 127, enabled: true }, { id: 'd2', pink: 'C3', action: 'off', kind: 'time', minute: 1410, days: 31, enabled: true }, { id: 'd3', pink: 'C3', action: 'off', kind: 'time', minute: 1439, days: 96, enabled: true }, { id: 'd4', pink: 'C2', action: 'on', kind: 'time', minute: 1050, days: 127, enabled: true }, { id: 'd5', pink: 'C2', action: 'off', kind: 'time', minute: 1350, days: 127, enabled: true }]; }
@@ -1324,6 +1336,8 @@
       if (r[0].data && r[0].data.length) {
         var known = {}; DEFAULT_DEVS.forEach(function (d) { known[d.pink] = d; });
         st.devs = r[0].data.map(function (d) { return Object.assign({}, known[d.pink] || {}, d, { room: d.room || (known[d.pink] || {}).room }); });
+        // a robotporszívók nem Tuya-eszközök: az első jelentésükig is látszanak ("nincs adat")
+        DEFAULT_DEVS.forEach(function (d) { if (d.role === 'robot' && !st.devs.some(function (x) { return x.pink === d.pink; })) st.devs.push(d); });
       }
       st.latest = {}; (r[1].data || []).forEach(function (x) { st.latest[x.pink] = x; });
       st.batTable = r[2].error ? [] : (r[2].data || []);
