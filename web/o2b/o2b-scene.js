@@ -180,8 +180,9 @@
     [0.66, 11.6, 0.03, 0.04, 1.0, 0.25, C.BLACK], [0.66, 13.96, 0.03, 0.04, 1.0, 0.25, C.BLACK]], false);
   // az ágy kárpitozott kerete és fejtámlája tópszínű, hogy ne olvadjon össze a fehér szekrénytornyokkal (a tulaj, 2026.11.20);
   // két oldalt kis rés marad a fülke falától
-  piece('bd_bed', 'Franciaágy kárpitozott fejtámlával a szekrényfal fülkéjében', 'lo', [[0.13, 12.1, 0.16, 1.4, 0, 1.05, C.TAUPE], [0.29, 12.1, 1.83, 1.4, 0, 0.42, C.TAUPE], [0.31, 12.12, 1.79, 1.36, 0.42, 0.15, C.LINEN],
-    [1.15, 12.1, 0.97, 1.4, 0.56, 0.05, C.TERRA], [0.36, 12.2, 0.36, 0.55, 0.57, 0.15, C.WHITE], [0.36, 12.85, 0.36, 0.55, 0.57, 0.15, C.WHITE]]);
+  // az ágy a szekrénytornyok elé húzva (a fejtámla a tornyok síkjában): a nézetből így semmi nem lóg bele (a tulaj, 2026.11.20)
+  piece('bd_bed', 'Franciaágy kárpitozott fejtámlával a szekrényfal előtt', 'lo', [[0.72, 12.1, 0.16, 1.4, 0, 1.05, C.TAUPE], [0.88, 12.1, 1.8, 1.4, 0, 0.42, C.TAUPE], [0.9, 12.12, 1.76, 1.36, 0.42, 0.15, C.LINEN],
+    [1.72, 12.1, 0.96, 1.4, 0.56, 0.05, C.TERRA], [0.95, 12.2, 0.36, 0.55, 0.57, 0.15, C.WHITE], [0.95, 12.85, 0.36, 0.55, 0.57, 0.15, C.WHITE]]);
   piece('bd_desk', 'Állítható íróasztal LG monitorral', 'lo', [].concat([[3.3, 13.4, 1.0, 0.6, 0.72, 0.04, C.OAK], [3.35, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [4.2, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [3.55, 13.85, 0.55, 0.06, 0.95, 0.35, C.BLACK]], [[3.6, 12.95, 0.45, 0.45, 0, 0.5, C.BLACK], [3.62, 12.9, 0.42, 0.08, 0.5, 0.5, C.BLACK]]));
   piece('bd_radiator', 'Radiátor az ablak alatt', 'lo', [[4.22, 12.15, 0.1, 1.3, 0.12, 0.55, C.WHITE]], false);
   piece('bd_iron', 'Vasalódeszka', 'lo', [[3.0, 11.45, 1.1, 0.32, 0.85, 0.04, C.BLUEC], [3.4, 11.55, 0.04, 0.1, 0, 0.85, C.STEEL]]);

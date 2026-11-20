@@ -533,6 +533,56 @@ body.wide #info{top:150px}
 .pmsave b{font:400 20px "Quest Display","Lilita One",sans-serif;color:#ffd23f}.pmsave small{font:800 11.5px "Nunito",sans-serif;color:#b9c3da}
 .pmlater summary{cursor:pointer;font:900 12px "Nunito",sans-serif;color:#2f6fe4;margin:2px 0 6px}
 .pmlater summary:focus-visible{outline:3px solid #ff4fa3}
+
+/* a megerősítő kérdés nem takar és nem lóg ki: a kérdezett csempe a teljes sort elfoglalja, a kérdés alul (2026.11.20) */
+.vtile.asking{grid-column:1/-1}
+.vtile.asking .vpask{position:static;inset:auto;margin-top:4px;animation:vpop .15s ease-out}
+.vtile.asking .vpask .btn{min-height:36px;font-size:13px}
+
+/* C: négyfüles eszköz-adatlap (2026.11.20) */
+#info.dd{width:400px;max-width:calc(100% - 24px);padding:12px 12px 12px}
+#info.dd b{font-size:18px}
+.ddh{display:flex;align-items:center;gap:10px;padding-right:40px}
+.ddi{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;border:2.5px solid #1e2a44;flex:0 0 auto}
+.ddi svg{width:24px;height:24px;stroke-width:2.2}
+.ddn{min-width:0}.ddn small{display:block;font:800 11.5px/1.3 "Nunito",sans-serif;color:#6b7280;margin-top:2px}
+.ddn .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:0}.ddn .dot.on{background:#2fa56b}.ddn .dot.off{background:#9aa3b5}
+.ddtabs{display:flex;gap:2px;margin:10px -2px 8px;border-bottom:2px solid #ece3cf;overflow-x:auto}
+.ddtabs button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:7px 8px 6px;font:900 12.5px "Nunito",sans-serif;color:#6b7280;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.ddtabs button svg{width:15px;height:15px;stroke-width:2.3}
+.ddtabs button[aria-selected="true"]{color:#1e2a44;border-color:#1e2a44}
+.ddtabs button:focus-visible{outline:3px solid #ff4fa3}
+.ddb{display:flex;flex-direction:column;gap:8px}
+.ddb .sub{font:900 11px "Nunito",sans-serif;letter-spacing:.8px;color:#6b7280;text-transform:uppercase}
+.ddbig{display:flex;align-items:baseline;gap:10px;background:#fbf1dc;border-radius:14px;padding:8px 12px}
+.ddbig small{font:900 10.5px "Nunito",sans-serif;letter-spacing:1px;color:#6b7280}
+.ddbig span{font:400 26px "Quest Display","Lilita One",sans-serif;color:#1e2a44}.ddbig span.hot{color:#d9452b}.ddbig span.cold{color:#2f6fe4}
+.ddbig em{margin-left:auto;font:800 12px "Nunito",sans-serif;color:#6b7280;font-style:normal}
+.ddk{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ddk div{background:#f6f1e6;border-radius:12px;padding:6px 8px}
+.ddk small{display:block;font:800 10.5px "Nunito",sans-serif;color:#6b7280}
+.ddk span{font:400 17px "Quest Display","Lilita One",sans-serif;color:#1e2a44}
+.ddc{background:#f6f1e6;border-radius:12px;padding:8px 9px 6px}
+.ddc.none{font:800 12px "Nunito",sans-serif;color:#6b7280;padding:10px}
+.ddc svg{display:block;width:100%;height:70px}
+.ddct{display:flex;justify-content:space-between;gap:8px;font:900 11px "Nunito",sans-serif;color:#6b7280;margin-bottom:4px}
+.ddct .tgk{font-style:normal;color:#2fa56b}
+.ddax{display:flex;justify-content:space-between;font:800 10px "Nunito",sans-serif;color:#8a8f9c;margin-top:2px}
+.ddwk{display:grid;grid-template-columns:24px repeat(24,1fr);gap:1.5px;align-items:center;margin:6px 0 4px}
+.ddwk .hh{font:800 8.5px "Nunito",sans-serif;color:#8a8f9c;text-align:left}
+.ddwk .dn{font:900 9.5px "Nunito",sans-serif;color:#6b7280}
+.ddwk .c{height:11px;border-radius:2px;background:#ece3cf}.ddwk .c.on{background:#ffd23f}
+.ddset{display:flex;flex-direction:column;gap:1px;background:#ece3cf;border-radius:12px;overflow:hidden}
+.ddset>div{display:flex;align-items:center;gap:8px;background:#fdfaf3;padding:8px 10px;font:900 12.5px "Nunito",sans-serif;color:#1e2a44}
+.ddset>div>span:first-child{flex:1;min-width:0}
+.ddset small{display:block;font:800 11px "Nunito",sans-serif;color:#6b7280}
+.ddset .lock{font-size:14px}
+.ddlog{list-style:none;margin:0;padding:0}
+.ddlog li{display:grid;grid-template-columns:86px 10px 1fr;gap:8px;align-items:start;padding:6px 0;border-bottom:1px solid #efe7d5;font:900 12.5px "Nunito",sans-serif;color:#1e2a44}
+.ddlog time{font:800 11.5px "Nunito",sans-serif;color:#6b7280;font-variant-numeric:tabular-nums}
+.ddlog i{width:9px;height:9px;border-radius:50%;margin-top:4px;background:#9aa3b5}.ddlog i.on{background:#2fa56b}.ddlog i.err{background:#e8432f}.ddlog i.m{background:#4f86e8}
+.ddlog small{display:block;font:800 11px "Nunito",sans-serif;color:#6b7280}
+@media (max-width:760px){#info.dd{width:auto;max-width:none}.ddtabs{gap:0}.ddtabs button{flex:1;justify-content:center;padding:7px 3px 6px;font-size:12.5px}.ddtabs button svg{display:none}}
 </style>
 </head>
 <body>
@@ -700,6 +750,9 @@ body.wide #info{top:150px}
     <symbol id="pi-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
     <symbol id="pi-cat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5L5.5 4l4 3h5l4-3 1 5.5V13a8 8 0 0 1-15 0z"/><path d="M9 12.5h.01M15 12.5h.01" stroke-width="3"/><path d="M11 15.5h2l-1 1z"/></symbol>
     <symbol id="pi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+    <symbol id="pi-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="pi-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+    <symbol id="pi-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/></symbol>
   </defs>
 </svg>
 
