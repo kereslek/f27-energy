@@ -463,6 +463,7 @@
         tagged[fp.id] = true;
         var fs = 13 * k, nm = fp.id === 'erkely' ? 'Erkély (kint)' : fp.n, tv = rt.t == null ? '--' : fmt(rt.t) + '°', pw = (tw(tv, fs) + 14 * k), w = pw + tw(nm, fs) + 16 * k, h = 22 * k;
         var offs = [[0, 0], [0, -20], [0, 20], [-36, 0], [36, 0], [0, -38], [0, 38], [-34, -24], [34, 24], [34, -24], [-34, 24], [0, -56], [0, 56], [-60, 0], [60, 0]];
+        [70, 95, 125].forEach(function (rr) { for (var a = 0; a < 360; a += 30) offs.push([Math.cos(a * Math.PI / 180) * rr * 1.4, Math.sin(a * Math.PI / 180) * rr * 0.7]); });
         var c = offs.map(function (q) { return [fp.label[0] + q[0] * k, fp.label[1] + q[1] * k]; });
         // a tűk eredeti helye "puha" akadály: lehetőleg ne oda kerüljön
         obst.push.apply(obst, pinSoft);
@@ -505,7 +506,14 @@
     }
     // ha egy téli üresjáratú klíma-tű így sem fér el, inkább elmarad (az Eszközök listában megvan)
     P = P.filter(function (q) { return q.d.role !== 'ac_ir' || !tagBoxes.some(function (b) { return q.x + R > b[0] && q.x - R < b[2] && q.y + R > b[1] && q.y - R < b[3]; }); });
-    P.forEach(function (q) { take([q.x - R, q.y - R, q.x + R, q.y + R + 2.5 * k]); });
+    var placedP = [];
+    P.forEach(function (q) {
+      var free = function (x, y) { var b = [x - R, y - R, x + R, y + R + 2.5 * k]; return !hits(b) && !placedP.some(function (o) { return b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]; }); };
+      if (!free(q.x, q.y)) {
+        outer: for (var rr = 1; rr <= 6; rr++) for (var a = 0; a < 360; a += 30) { var nx = q.x + Math.cos(a * Math.PI / 180) * R * 1.1 * rr, ny = q.y + Math.sin(a * Math.PI / 180) * R * 1.1 * rr; if (free(nx, ny)) { q.x = nx; q.y = ny; break outer; } }
+      }
+      var bb = [q.x - R, q.y - R, q.x + R, q.y + R + 2.5 * k]; placedP.push(bb); take(bb);
+    });
     // 5. a tűk címkéi: név és érték (pl. „Dupla lámpa · 25 W”). Soha nem fedhet mást (a tulaj, 2026.11.20):
     //    előbb közvetlenül a tű mellett, aztán távolabbi gyűrűkön összekötő vonallal; ha a teljes név sehol nem fér,
     //    csak az érték; ha az sem, a címke elmarad (az érték a Vezérlés lapon és a tű adatlapján megvan).
