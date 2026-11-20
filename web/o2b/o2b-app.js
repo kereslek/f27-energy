@@ -516,6 +516,8 @@
         if (cost(bb) === 0 || oi === opts.length - 1 && q.s.big) { q.lbl = lb; q.vb = take(bb); return; }
       }
     });
+    // téli üresjáratú klíma-tű, amelyre egy másik tű címkéje került: elmarad (az Eszközök listában megvan)
+    P = P.filter(function (q) { return q.d.role !== 'ac_ir' || !P.some(function (o) { return o.vb && q.x + R > o.vb[0] && q.x - R < o.vb[2] && q.y + R > o.vb[1] && q.y - R < o.vb[3]; }); });
     // 6. jelölők
     FL.forEach(function (f) {
       scene.floors[f].marks.forEach(function (m) {
@@ -608,7 +610,7 @@
     document.documentElement.style.setProperty('--toph', (($('top').offsetHeight || 60) + 16) + 'px');
     var b = houseBox(), W = world.clientWidth || 1440, H = world.clientHeight || 900, phone = W < 760;
     // hely a felső csempéknek és az alsó Pamutka-kártyának
-    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, topH = ($('top').offsetHeight || 60) + 14, top = phone ? topH + 46 : (wide ? 146 : 136), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
+    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, topH = ($('top').offsetHeight || 60) + 14, top = phone ? topH + 46 : (wide ? 146 : 136), bottom = phone ? 182 : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
     var aw = Math.max(200, W - left - right), ah = Math.max(200, H - top - bottom);
     var cw = b.x1 - b.x0 + 40, ch = b.y1 - b.y0 + 50, s = Math.min(aw / cw * (phone ? 1.08 : 1), ah / ch);
     var vw = W / s, vh = H / s, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -706,6 +708,7 @@
 
   // ---- kijelölés, info ----------------------------------------------------------------------------
   function select(pink) {
+    if (st.tab && st.tab !== 'home' && typeof setTab === 'function' && (window.innerWidth || 1440) <= 760) setTab('home');
     var pf = pinFloor(pink);
     if (pf && st.floor !== 'both' && pf !== st.floor) { st.floor = pf; saveView(); st.vb = null; drawWorld(); floorBar(); }
     st.sel = st.sel === pink ? null : pink;
@@ -737,6 +740,7 @@
       (b && BAT && BAT.ORDER[b.level] <= 3 ? '<br>Elem: ' + esc(BAT.when(b)) : '') +
       (d.pink === 'C1' && window.F27Boiler && boilA() ? '<button type="button" class="bsub big" data-boil="1">' + esc(F27Boiler.sub(boilA())) + ' · Bojler-napló ›</button>' : '') + controlCard(d) + robotCard(d);
     infoOpen(box);
+    if ($('rsheet') && !$('rsheet').hidden && typeof robSheet === 'function') robSheet();
   }
 
   // ---- visszavonás, elrendezések ---------------------------------------------------------------------
@@ -911,17 +915,102 @@
     });
     return out;
   }
-  function pamutka() {
-    var t = tips();
-    var html = t.length ? '<div class="sayhd">Miaú! Ezt láttam (' + t.length + '):</div><ul class="tips">' + t.slice(0, 8).map(function (x) {
-        return '<li class="tipc ' + (x[3] || 'orange') + '"><span class="tx">' + x[0] + '</span>' + (x[2] ? '<button class="btn sm tbtn" type="button" data-pink="' + esc(x[2]) + '">Mutasd</button>' : '') + '</li>';
-      }).join('') + '</ul>'
-      : '<div class="sayhd">Minden rendben, dorombolok. A szobák a cél körül vannak.</div>';
-    $('say').innerHTML = html + (st.live ? '' : '<small><i>Demó: belépés után a valódi adatokból szólok.</i></small>');
-    Array.prototype.forEach.call($('say').querySelectorAll('.tbtn'), function (bt) { bt.addEventListener('click', function () { select(bt.getAttribute('data-pink')); }); });
-    cat.goal = t.length ? t[0][1] : null;
-    layer.cat && layer.cat.classList.toggle('has-tip', !!t.length);
+  // D: Pamutka (2026.11.20): egy buborék a legfontosabb gondról forintban, a ház állapota (gyűrű + 3 sáv),
+  // legfeljebb 3 teendő a havi hatás szerint rangsorolva; a „Beállítom” megerősítés után el is végzi
+  // (ütemezést vesz fel), a kézi teendő „Mutasd” / „Kész”; a többi a „Később” alatt.
+  // A becslések forrása: gáz a mérőfotók óta mért 2,3 m³/nap (2026.11.15), fűtési rész 91%, 1 °C kb. 6%;
+  // bojler a mért hőtartásból (web/js/boiler.js); lámpa a mért wattból.
+  var GAS_M3_DAY = 2.3, GAS_FT_M3 = 2.87 * 34.5, HEAT_SHARE = 0.91, PER_DEG = 0.06, A1_FT = 70.1;
+  var PAM_DONE_KEY = 'o2b-pam-done';
+  st.pam = { ask: null };
+  function pamDoneToday() { try { var o = JSON.parse(localStorage.getItem(PAM_DONE_KEY) || '{}'), d = new Date().toDateString(); return o.d === d ? o.ids || [] : []; } catch (e) { return []; } }
+  function pamMarkDone(id) { try { var ids = pamDoneToday(); if (ids.indexOf(id) < 0) ids.push(id); localStorage.setItem(PAM_DONE_KEY, JSON.stringify({ d: new Date().toDateString(), ids: ids })); } catch (e) { /* nem baj */ } }
+  function ftR(x) { x = Math.round(x / 10) * 10; return '~' + x.toLocaleString('hu-HU') + ' Ft'; }
+  function ruleOn(p, r) { var ex = findRule(p, r); return !!(ex && ex.enabled); }
+  function pamTodos() {
+    var out = [], tg = target(), heatMonth = GAS_M3_DAY * 30.4 * GAS_FT_M3 * HEAT_SHARE;
+    // 1. túlfűtött szobák: a kazán a termosztát szobája szerint fűt, a többi szoba túlfűthet
+    var rooms = ['nappali', 'etkezo', 'halo', 'kagylo', 'gyerek'].map(function (r) { return [r, roomTemp(r)]; }).filter(function (x) { return x[1] && x[1].t != null; });
+    var hot = rooms.filter(function (x) { return x[1].c === 'hot'; }).sort(function (a, b) { return b[1].t - a[1].t; });
+    if (hot.length) {
+      var exc = rooms.reduce(function (a, x) { return a + Math.max(0, x[1].t - tg); }, 0) / rooms.length, g = exc * PER_DEG * heatMonth, h0 = hot[0];
+      var dn = st.devs.filter(function (d) { return d.role === 'thermo' && d.room === h0[0]; })[0];
+      out.push({ id: 'hot-' + h0[0], kind: 'manual', gain: g, pink: dn && dn.pink, room: h0[0],
+        t: (hot.length > 1 ? hot.length + ' szoba túlfűtött, a legmelegebb: ' : '') + (ROOM_NAMES[h0[0]] || h0[0]) + ' ' + fmt(h0[1].t) + '°',
+        s: 'a cél ' + tg + ' °C. Radiátorfej egy fokkal lejjebb' + (h0[0] === 'etkezo' ? ' (itt mér a termosztát: inkább a termosztátot vedd lejjebb)' : '') + '.',
+        bub: (ROOM_NAMES[h0[0]] || h0[0]) + ': ' + fmt(h0[1].t) + ' °C, ' + fmt(h0[1].t - tg) + ' fokkal a cél fölött.' + (g >= 20 ? ' Ez ' + ftR(g) + ' havonta.' : '') });
+    }
+    // 2. bojler éjjel: hőtartás 23:00 és 5:30 között (a mért hőtartásból)
+    var ba = boilA(), rOff = { action: 'off', kind: 'time', minute: 1380, days: 127 }, rOn = { action: 'on', kind: 'time', minute: 330, days: 127 };
+    if (ba && ba.idleCostDay) out.push({ id: 'boil-night', kind: 'rules', p: 'C1', rules: [rOff, rOn], done: ruleOn('C1', rOff) && ruleOn('C1', rOn), gain: ba.idleCostDay * (6.5 / 24) * 30.4,
+      t: 'Bojler éjjel KI, 23:00-tól 5:30-ig', s: 'éjjel is tartja a hőt (kb. ' + F27Boiler.fmt(ba.idle) + ' kWh/nap)', q: 'Felveszek két heti ütemezést az emeleti bojlerre: minden nap 23:00-kor KI, 5:30-kor BE. Bármikor kikapcsolhatod.',
+      bub: 'Az emeleti bojler éjjel is fűt. Ha 23:00 és 5:30 között pihen, ' + ftR(ba.idleCostDay * (6.5 / 24) * 30.4) + ' marad havonta.' });
+    // 3. sokáig égő lámpák ütemezés nélkül (C4 lépcső, C2 dupla lámpa): napnyugtakor BE, 23:30-kor KI
+    ['C4', 'C2', 'C3'].forEach(function (p) {
+      var r = st.latest[p], w = r && plugOn(p) ? watts(r.status) : null;
+      if (!w || st.ctl.rules.some(function (x) { return x.pink === p && x.enabled; })) return;
+      var a = { action: 'on', kind: 'sunset', minute: 0, days: 127 }, b = { action: 'off', kind: 'time', minute: 1410, days: 127 };
+      out.push({ id: 'lamp-' + p, kind: 'rules', p: p, rules: [a, b], done: false, gain: w * 14 / 1000 * 30.4 * A1_FT,
+        t: shortName(p) + ': napnyugtától 23:30-ig', s: 'most ' + fmt(w, 0) + ' W, ütemezés nélkül', q: 'Felveszek két heti ütemezést: ' + shortName(p) + ' napnyugtakor BE, 23:30-kor KI.' });
+    });
+    out.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || b.gain - a.gain; });
+    var dd = pamDoneToday(); out.forEach(function (x) { if (x.kind === 'manual' && dd.indexOf(x.id) >= 0) x.done = true; });
+    return out;
   }
+  function pamScore() {
+    var rooms = ['nappali', 'etkezo', 'halo', 'kagylo', 'gyerek'].map(roomTemp).filter(function (x) { return x && x.t != null; });
+    var comf = rooms.length ? rooms.filter(function (x) { return x.c === 'ok'; }).length / rooms.length : 1;
+    var devs = st.devs.filter(function (d) { return d.role !== 'ir_hub' && d.role !== 'ac_ir'; }), onl = devs.filter(function (d) { return !isOff(d.pink); }).length / Math.max(1, devs.length);
+    var due = BAT ? BAT.due(st.bat).length : 0, dev = Math.max(0, onl - due * 0.05);
+    var ba = boilA(), cost = ba && ba.pct7 != null ? Math.max(0, Math.min(1, 1 - ba.pct7)) : 0.7;
+    return { score: Math.round(100 * (0.5 * comf + 0.25 * dev + 0.25 * cost)), bars: [
+      ['Komfort', comf, '#2fa56b', rooms.filter(function (x) { return x.c === 'ok'; }).length + '/' + rooms.length + ' a célon'],
+      ['Költség', cost, '#ff7a45', ba && ba.pct7 != null ? 'bojler ' + F27Boiler.pctTxt(ba.pct7) : 'nincs adat'],
+      ['Eszközök', dev, '#4f86e8', Math.round(onl * 100) + '% online' + (due ? ', ' + due + ' elem' : '')]] };
+  }
+  function pamutka() {
+    var td = pamTodos(), top = td.slice(0, 3), rest = tips().filter(function (x) { return !/Egy fokkal lejjebb/.test(x[0]); }), sc = pamScore();
+    var lead = top.filter(function (x) { return !x.done && x.bub; })[0];
+    var bub = lead ? lead.bub : rest.length ? rest[0][0] : 'Minden rendben, dorombolok. A szobák a cél körül vannak.';
+    var saved = td.filter(function (x) { return x.done && x.kind === 'rules'; }).reduce(function (a, x) { return a + x.gain; }, 0);
+    var R = 30, C = 2 * Math.PI * R;
+    var h = '<div class="pmb">Miaú! ' + bub + '</div>' +
+      '<div class="pms"><svg width="78" height="78" viewBox="0 0 78 78" role="img" aria-label="A ház állapota: ' + sc.score + ' a 100-ból"><circle cx="39" cy="39" r="' + R + '" fill="none" stroke="#efe4cc" stroke-width="9"/>' +
+      '<circle cx="39" cy="39" r="' + R + '" fill="none" stroke="' + (sc.score >= 75 ? '#2fa56b' : sc.score >= 50 ? '#f2a541' : '#e8432f') + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (C * sc.score / 100).toFixed(1) + ' 999" transform="rotate(-90 39 39)"/>' +
+      '<text x="39" y="44" text-anchor="middle" class="pmsn">' + sc.score + '</text></svg><div class="pmbars">' +
+      sc.bars.map(function (b) { return '<div class="pmbar"><span>' + b[0] + '</span><span class="tr"><i style="width:' + Math.round(b[1] * 100) + '%;background:' + b[2] + '"></i></span><small>' + esc(b[3]) + '</small></div>'; }).join('') + '</div></div>';
+    if (top.length) h += '<div class="pmtd">' + top.map(function (x, i) {
+      var btn = x.done ? '<span class="pmok">Kész</span>' : x.kind === 'rules' ? (canCtl() ? '<button type="button" class="btn sm y" data-pam="do" data-id="' + x.id + '">Beállítom</button>' : '') :
+        (x.pink ? '<button type="button" class="btn sm" data-pam="show" data-pink="' + x.pink + '">Mutasd</button>' : '') + '<button type="button" class="btn sm" data-pam="done" data-id="' + x.id + '">Kész</button>';
+      var s = '<div class="pmt' + (x.done ? ' done' : '') + '"><span class="n">' + (x.done ? '✓' : i + 1) + '</span><p>' + esc(x.t) + '<small>' + esc(x.s) + '</small>' + (x.gain >= 10 ? '<span class="gain">' + ftR(x.gain) + '/hó</span>' : '') + '</p><span class="act">' + btn + '</span>';
+      if (st.pam.ask === x.id) s += '<div class="pmask" role="alertdialog" aria-label="Megerősítés"><p>' + esc(x.q) + '</p><div class="row"><button type="button" class="btn sm no" data-pam="no">Mégse</button><button type="button" class="btn sm y" data-pam="yes" data-id="' + x.id + '">Rendben</button></div></div>';
+      return s + '</div>';
+    }).join('') + '</div>';
+    if (saved >= 10) h += '<div class="pmsave"><b>' + ftR(saved) + '/hó</b><small>a beállított teendők becsült hatása</small></div>';
+    if (rest.length) h += '<details class="pmlater"><summary>Később (' + rest.length + ')</summary><ul class="tips">' + rest.map(function (x) {
+      return '<li class="tipc ' + (x[3] || 'orange') + '"><span class="tx">' + x[0] + '</span>' + (x[2] ? '<button class="btn sm tbtn" type="button" data-pink="' + esc(x[2]) + '">Mutasd</button>' : '') + '</li>'; }).join('') + '</ul></details>';
+    $('say').innerHTML = h + (st.live ? '' : '<small><i>Demó: belépés után a valódi adatokból szólok.</i></small>');
+    var all = tips();
+    cat.goal = lead && lead.room ? lead.room : all.length ? all[0][1] : null;
+    layer.cat && layer.cat.classList.toggle('has-tip', !!(lead || all.length));
+    st.pamLead = { text: bub.replace(/<[^>]+>/g, ''), pink: lead ? lead.pink || lead.p : rest.length ? rest[0][2] : null };
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-pam], #say .tbtn, #pbody .tbtn') : null; if (!b) return;
+    e.stopPropagation();
+    if (b.classList.contains('tbtn')) { if (typeof setTab === 'function' && st.tab !== 'home') setTab('home'); select(b.getAttribute('data-pink')); return; }
+    var k = b.getAttribute('data-pam'), id = b.getAttribute('data-id');
+    if (k === 'show') { if (typeof setTab === 'function' && st.tab !== 'home') setTab('home'); select(b.getAttribute('data-pink')); return; }
+    if (k === 'done') { pamMarkDone(id); toast('Köszi! Pamutka dorombol.', 'ok'); render(); return; }
+    if (k === 'do') { st.pam.ask = st.pam.ask === id ? null : id; render(); return; }
+    if (k === 'no') { st.pam.ask = null; render(); return; }
+    if (k === 'yes') {
+      st.pam.ask = null;
+      var x = pamTodos().filter(function (t) { return t.id === id; })[0];
+      if (x && x.kind === 'rules') x.rules.forEach(function (r, i) { setTimeout(function () { if (!findRule(x.p, r)) saveRule(x.p, r); else if (!ruleOn(x.p, r)) ruleOp(findRule(x.p, r).id, 'tog'); }, i * 400); });
+      setTimeout(render, 900); render();
+    }
+  });
   // jobb oldali Áttekintés panel (asztali nézet), a F27 mintájára
   function overview() {
     var box = $('ovbody'); if (!box) return;
@@ -956,7 +1045,7 @@
   }
   function render() {
     $('demo').hidden = st.live; $('livepill').hidden = !st.live;
-    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar();
+    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar(); if (typeof tabRender === 'function') tabRender();
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
@@ -1785,7 +1874,7 @@
   on('b-pmin', 'click', function () { var p = $('pam'); p.classList.toggle('mini'); $('b-pmin').textContent = p.classList.contains('mini') ? '+' : '−'; if ((world.clientWidth || 1440) < 900) fit(); });
   on('b-dev', 'click', function () { var s = $('devsheet'); s.hidden = !s.hidden; $('b-dev').setAttribute('aria-expanded', s.hidden ? 'false' : 'true'); if (!s.hidden) { $('logincard').hidden = true; list(); } });
   on('b-schedx', 'click', function () { $('schedsheet').hidden = true; });
-  on('b-devx', 'click', function () { $('devsheet').hidden = true; $('b-dev').setAttribute('aria-expanded', 'false'); });
+  on('b-devx', 'click', function () { $('devsheet').hidden = true; $('b-dev').setAttribute('aria-expanded', 'false'); if (st.tab !== 'home') setTab('home'); });
   on('b-login', 'click', function () {
     var c = $('logincard'); c.hidden = !c.hidden;
     if (!c.hidden) { $('devsheet').hidden = true; streetBox(); if (!st.user) $('em').focus(); }
@@ -1819,7 +1908,7 @@
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
     if (e.key === 'r' || e.key === 'R') { rotate(e.shiftKey ? -1 : 1); return; }
-    if (e.key === 'Escape') { $('schedsheet').hidden = true; $('devsheet').hidden = true; $('logincard').hidden = true; st.sel = null; showInfo(); drawPins(); }
+    if (e.key === 'Escape') { $('schedsheet').hidden = true; $('devsheet').hidden = true; $('logincard').hidden = true; if (st.tab !== 'home') setTab('home'); st.sel = null; showInfo(); drawPins(); }
   });
   var rsT = 0;
   window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { layoutMode(); fit(); drawSky(); }, 120); });
@@ -1839,6 +1928,66 @@
       onReady: function () { setUser({ id: 'share', email: '', share: true }); },
       onExpire: function () { sb = null; shareRun = null; setUser(null); $('b-login').hidden = true; } });
   } else if (sb) sb.auth.onAuthStateChange(function (ev, ses) { setTimeout(function () { setUser(ses && ses.user ? ses.user : null); }, 0); });
+
+  // ---- E: telefonos fülsor (Otthon, Vezérlés, Hő, Robotok, Pamutka) és a lapjai (2026.11.20) ----------------------
+  var TAB_SHEET = { ctl: 'devsheet', heat: 'tsheet', rob: 'rsheet', pam: 'psheet' };
+  st.tab = 'home';
+  function setTab(t) {
+    st.tab = t;
+    ['devsheet', 'tsheet', 'rsheet', 'psheet', 'schedsheet'].forEach(function (id) { $(id).hidden = true; });
+    if (TAB_SHEET[t]) { $(TAB_SHEET[t]).hidden = false; $('logincard').hidden = true; st.sel = null; $('info').hidden = true; }
+    Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'), function (b) { if (b.getAttribute('data-tab') === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    $('b-dev').setAttribute('aria-expanded', t === 'ctl' ? 'true' : 'false');
+    tabRender();
+  }
+  function tabRender() {
+    if (st.tab === 'ctl' && !$('devsheet').hidden) list();
+    if (!$('tsheet').hidden) heatSheet();
+    if (!$('rsheet').hidden) robSheet();
+    if (!$('psheet').hidden) $('pbody').innerHTML = $('say').innerHTML;
+    pStrip();
+  }
+  function heatSheet() {
+    var h = '';
+    [['LENT', ['nappali', 'etkezo', 'halo', 'konyha', 'erkely']], ['FENT', ['kagylo', 'gyerek']]].forEach(function (g) {
+      h += '<div class="hsec">' + g[0] + ' · cél ' + target() + ' °C</div>';
+      g[1].forEach(function (rid) {
+        var rt = roomTemp(rid); if (!rt) return;
+        var ds = st.devs.filter(function (d) { return d.role === 'thermo' && d.room === rid; }), d0 = ds[0];
+        var hum = ds.map(function (d) { var r = st.latest[d.pink]; return r && r.status && typeof r.status.va_humidity === 'number' ? r.status.va_humidity : null; }).filter(function (x) { return x != null; })[0];
+        var b = (st.bat || []).filter(function (x) { return ds.some(function (d) { return d.pink === x.pink; }); })[0], bl = b && BAT && BAT.ORDER[b.level] <= 3;
+        var why = rid === 'erkely' ? 'kint' : rt.c === 'hot' ? 'melegebb a célnál' : rt.c === 'cold' ? 'hidegebb a célnál' : rt.c === 'na' ? 'nincs friss mérés' : 'a célon';
+        h += '<button type="button" class="hrow" data-hpink="' + d0.pink + '"><span>' + esc(ROOM_NAMES[rid] || rid) + '<small>' + why + (hum != null ? ' · pára ' + hum + ' %' : '') + (rt.n > 1 ? ' · ' + rt.n + ' hőmérő' : '') + (bl ? ' · elem kell!' : '') + '</small></span><span class="t ' + rt.c + '">' + (rt.t == null ? '--' : fmt(rt.t) + '°') + '</span></button>';
+      });
+    });
+    h += '<div class="ctln">A gázkazánt a Computherm termosztát kapcsolja (az étkezőben mér); ezt még nem látjuk, a hőmérők mutatják a hatását.</div>';
+    $('tbody').innerHTML = h;
+  }
+  function robSheet() {
+    $('rbody').innerHTML = ['R1', 'R2'].map(function (p) {
+      var d = devOf(p), s = devState(d), run = robOn(p);
+      return '<div class="robk' + (run ? ' run' : '') + '"><div class="rh"><span class="ric"><svg aria-hidden="true"><use href="#pi-robot"/></svg></span><span>' + esc(robName(p)) + '<small>' + esc((VP_UP.indexOf(d.room) >= 0 ? 'fent' : 'lent') + ' · ' + s.txt) + '</small></span></div>' + robotCard(d) + '</div>';
+    }).join('') || '<div class="ctln">Nincs robot.</div>';
+  }
+  // Otthon képernyő: Pamutka egy sorban (a legfontosabb tanács), koppintásra a Pamutka lap
+  function pStrip() {
+    var L = st.pamLead || { text: 'Miaú!', pink: null };
+    $('pstx').textContent = L.text;
+    $('b-pstrip').hidden = !L.pink;
+    $('b-pstrip').setAttribute('data-pink', L.pink || '');
+  }
+  $('tabbar').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) setTab(b.getAttribute('data-tab')); });
+  ['b-tx', 'b-rx', 'b-px'].forEach(function (id) { $(id).addEventListener('click', function () { setTab('home'); }); });
+  $('pstrip').addEventListener('click', function (e) {
+    var b = e.target.closest('#b-pstrip');
+    if (b) { e.stopPropagation(); var pk = b.getAttribute('data-pink'); if (pk) { setTab('home'); select(pk); } return; }
+    setTab('pam');
+  });
+  $('pstrip').addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.id === 'pstrip') { e.preventDefault(); setTab('pam'); } });
+  document.addEventListener('click', function (e) {
+    var h = e.target.closest && e.target.closest('[data-hpink]');
+    if (h) { e.stopPropagation(); var pk = h.getAttribute('data-hpink'); setTab('home'); if (!st.layers.heat) select(pk); else { var pf = pinFloor(pk); if (pf && st.floor !== 'both' && pf !== st.floor) setFloor(pf); } return; }
+  });
   function layoutMode() { document.body.classList.toggle('wide', (window.innerWidth || 1440) >= 900); }
   layoutMode();
   if ((world.clientWidth || 1440) < 900) { $('pam').classList.add('mini'); $('b-pmin').textContent = '+'; }

@@ -13,78 +13,6 @@
 <meta name="description" content="O2B Energy Quest: a kétszintes lakás izometrikus babaháza bútorokkal, élő eszközökkel és Pamutkával, a tanácsadó macskával.">
 <link rel="preload" href="../fonts/QuestDisplay-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <style>@font-face{font-family:"Quest Display";src:url("../fonts/QuestDisplay-Regular.woff2") format("woff2");font-display:swap}
-/* nézetváltó: Lent / Fent / Ház és a rétegek (A, 2026.11.20) */
-#floorbar{position:absolute;left:50%;top:96px;transform:translateX(-50%);z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px)}
-.fseg,.flay{display:inline-flex;gap:3px;padding:3px;border-radius:15px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
-#floorbar button{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 13px;border-radius:11px;font:900 13.5px "Nunito",sans-serif;color:#1e2a44}
-#floorbar button[aria-pressed="true"]{background:#1e2a44;color:#ffe066}
-.flay button[aria-pressed="false"]{color:#8a8f9c}
-#floorbar button:focus-visible{outline:3px solid #ff4fa3;outline-offset:1px}
-#floorbar svg{width:17px;height:17px;stroke-width:2.3}
-#labels .rtag rect:first-child{filter:drop-shadow(0 2px 0 rgba(30,42,68,.35))}
-#labels .rtt{font-family:"Quest Display","Lilita One",sans-serif;fill:#fff}
-#labels .rtn{font-family:"Nunito",sans-serif;font-weight:900;fill:#1e2a44}
-#pins .pin .glow{animation:pinglow 2.6s ease-in-out infinite}
-@keyframes pinglow{50%{opacity:.45}}
-@media (prefers-reduced-motion:reduce){#pins .pin .glow{animation:none}}
-body.wide #info{top:150px}
-@media (max-width:760px){
-  #floorbar{left:8px;right:8px;transform:none;top:var(--toph,150px);max-width:none;gap:6px}
-  #floorbar button{min-height:30px;padding:0 10px;font-size:12.5px}
-  .flay button span{display:none}
-  .flay button{padding:0 9px}
-  #info{top:calc(var(--toph,150px) + 46px)!important;max-height:calc(100% - var(--toph,150px) - 112px)!important}
-  #toast{top:calc(var(--toph,150px) + 46px)}
-}
-
-/* B: Vezérlőpult (2026.11.20) */
-.vp .ovh{display:flex;align-items:center;gap:8px}
-.vptabs{display:flex;gap:3px;background:#efe4cc;border-radius:12px;padding:3px;margin:2px 0 8px}
-.vptabs button{all:unset;cursor:pointer;flex:1;text-align:center;padding:5px 2px;border-radius:9px;font:900 12px "Nunito",sans-serif;color:#7a6f57}
-.vptabs button[aria-pressed="true"]{background:#fffdf7;color:#1e2a44;box-shadow:0 1px 0 #1e2a44,0 0 0 2px #1e2a44}
-.vptabs button:focus-visible{outline:3px solid #ff4fa3}
-.vpscn{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
-.vsc{all:unset;box-sizing:border-box;cursor:pointer;border-radius:13px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font:900 11px/1.15 "Nunito",sans-serif;color:#fff;border:2.5px solid #1e2a44;box-shadow:0 3px 0 #1e2a44}
-.vsc .ib{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.25);display:grid;place-items:center}
-.vsc svg{width:18px;height:18px;stroke-width:2.3}
-.vsc.busy{opacity:.6}
-.vsc:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
-.s-esti{background:linear-gradient(160deg,#f2a541,#d9682b)}.s-film{background:linear-gradient(160deg,#5a6ee0,#3a3f9c)}.s-unnep{background:linear-gradient(160deg,#2fb383,#17795a)}.s-le{background:linear-gradient(160deg,#5b6378,#323849)}
-.vproom{margin-bottom:8px}
-.vrh{display:flex;align-items:center;gap:6px;font:900 13px "Nunito",sans-serif;color:#1e2a44;margin:2px 2px 5px}
-.vrh small{font-size:11px;color:#6b7280}
-.vrh .t{margin-left:auto;font:400 14px "Quest Display","Lilita One",sans-serif;color:#fff;border-radius:999px;padding:0 8px;background:#2fa56b}
-.vrh .t.hot{background:#ff7a45}.vrh .t.cold{background:#4f86e8}.vrh .t.out{background:#58627a}
-.vtiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.vtile{position:relative;min-width:0;box-sizing:border-box;cursor:pointer;background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;box-shadow:0 3px 0 #1e2a44;padding:8px;min-height:84px;display:flex;flex-direction:column;gap:4px;color:#1e2a44}
-.vtile:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
-.vtile .tr{display:flex;align-items:center;gap:4px}
-.vtile .ic{width:30px;height:30px;border-radius:10px;background:#eef0f5;display:grid;place-items:center;flex:0 0 auto}
-.vtile .ic svg{width:18px;height:18px;stroke-width:2.3;color:#1e2a44}
-.vtile .stt{margin-left:auto;font:900 9.5px "Nunito",sans-serif;letter-spacing:.6px;padding:2px 6px;border-radius:999px;background:#eef0f5;color:#6b7280}
-.vtile .more{all:unset;cursor:pointer;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;color:#6b7280}
-.vtile .more svg{width:18px;height:18px}
-.vtile .more:hover{background:#eef0f5}.vtile .more:focus-visible{outline:3px solid #ff4fa3}
-.vtile .nm{font:900 12.5px/1.2 "Nunito",sans-serif}
-.vtile .sb{font:800 10.5px/1.25 "Nunito",sans-serif;color:#6b7280;overflow:hidden;text-overflow:ellipsis}
-.vtile.on{background:#fff3c4}.vtile.on .ic{background:#ffd23f}.vtile.on .stt{background:#1e2a44;color:#ffd23f}
-.vtile.run{background:#dcf4ee}.vtile.run .ic{background:#14a38b}.vtile.run .ic svg{color:#fff}.vtile.run .stt{background:#14a38b;color:#fff}
-.vtile.off{opacity:.55}
-.vpask{position:absolute;inset:-2px;border-radius:13px;background:#1e2a44;color:#fff7e6;padding:8px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;z-index:2;animation:vpop .15s ease-out}
-.vpask.wide{position:relative;inset:auto;margin:-2px 0 8px}
-.vpask p{margin:0;font:900 12.5px/1.3 "Nunito",sans-serif}
-.vpask small{display:block;font-weight:800;font-size:11px;color:#b9c3da}
-.vpask .row{display:flex;gap:5px}.vpask .btn{flex:1;min-height:30px;justify-content:center;box-shadow:none;border-width:2px}
-.vpask .btn.no{background:#36425f;color:#fff;border-color:#36425f}
-.vpask .btn.warn{background:#e8432f;color:#fff}
-@keyframes vpop{from{transform:scale(.96);opacity:0}}
-@media (prefers-reduced-motion:reduce){.vpask{animation:none}}
-.vpac{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:13px;border:2px dashed #b9b2a0;font:900 12px "Nunito",sans-serif;color:#1e2a44}
-.vpac small{display:block;font-weight:800;font-size:10.5px;color:#6b7280}
-.vpac .ic{width:28px;height:28px;border-radius:9px;background:#eef0f5;display:grid;place-items:center;flex:0 0 auto}
-.vpac svg{width:16px;height:16px;stroke-width:2.3}
-.vpac b{margin-left:auto;color:#6b7280}
-.vpac:focus-visible{outline:3px solid #ff4fa3}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=Baloo+2:wght@800&amp;family=Lilita+One&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">
@@ -473,6 +401,138 @@ body.wide #toast{top:auto;bottom:calc(64px + env(safe-area-inset-bottom,0px));ma
   #app.editing #tools #layouts{display:none}
   .sheet{height:72%}
 }
+/* nézetváltó: Lent / Fent / Ház és a rétegek (A, 2026.11.20) */
+#floorbar{position:absolute;left:50%;top:96px;transform:translateX(-50%);z-index:4;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px)}
+.fseg,.flay{display:inline-flex;gap:3px;padding:3px;border-radius:15px;background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44}
+#floorbar button{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 13px;border-radius:11px;font:900 13.5px "Nunito",sans-serif;color:#1e2a44}
+#floorbar button[aria-pressed="true"]{background:#1e2a44;color:#ffe066}
+.flay button[aria-pressed="false"]{color:#8a8f9c}
+#floorbar button:focus-visible{outline:3px solid #ff4fa3;outline-offset:1px}
+#floorbar svg{width:17px;height:17px;stroke-width:2.3}
+#labels .rtag rect:first-child{filter:drop-shadow(0 2px 0 rgba(30,42,68,.35))}
+#labels .rtt{font-family:"Quest Display","Lilita One",sans-serif;fill:#fff}
+#labels .rtn{font-family:"Nunito",sans-serif;font-weight:900;fill:#1e2a44}
+#pins .pin .glow{animation:pinglow 2.6s ease-in-out infinite}
+@keyframes pinglow{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){#pins .pin .glow{animation:none}}
+body.wide #info{top:150px}
+@media (max-width:760px){
+  #floorbar{left:8px;right:8px;transform:none;top:var(--toph,150px);max-width:none;gap:6px}
+  #floorbar button{min-height:30px;padding:0 10px;font-size:12.5px}
+  .flay button span{display:none}
+  .flay button{padding:0 9px}
+  #toast{top:calc(var(--toph,150px) + 46px)}
+}
+
+/* B: Vezérlőpult (2026.11.20) */
+.vp .ovh{display:flex;align-items:center;gap:8px}
+.vptabs{display:flex;gap:3px;background:#efe4cc;border-radius:12px;padding:3px;margin:2px 0 8px}
+.vptabs button{all:unset;cursor:pointer;flex:1;text-align:center;padding:5px 2px;border-radius:9px;font:900 12px "Nunito",sans-serif;color:#7a6f57}
+.vptabs button[aria-pressed="true"]{background:#fffdf7;color:#1e2a44;box-shadow:0 1px 0 #1e2a44,0 0 0 2px #1e2a44}
+.vptabs button:focus-visible{outline:3px solid #ff4fa3}
+.vpscn{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.vsc{all:unset;box-sizing:border-box;cursor:pointer;border-radius:13px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font:900 11px/1.15 "Nunito",sans-serif;color:#fff;border:2.5px solid #1e2a44;box-shadow:0 3px 0 #1e2a44}
+.vsc .ib{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.25);display:grid;place-items:center}
+.vsc svg{width:18px;height:18px;stroke-width:2.3}
+.vsc.busy{opacity:.6}
+.vsc:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.s-esti{background:linear-gradient(160deg,#f2a541,#d9682b)}.s-film{background:linear-gradient(160deg,#5a6ee0,#3a3f9c)}.s-unnep{background:linear-gradient(160deg,#2fb383,#17795a)}.s-le{background:linear-gradient(160deg,#5b6378,#323849)}
+.vproom{margin-bottom:8px}
+.vrh{display:flex;align-items:center;gap:6px;font:900 13px "Nunito",sans-serif;color:#1e2a44;margin:2px 2px 5px}
+.vrh small{font-size:11px;color:#6b7280}
+.vrh .t{margin-left:auto;font:400 14px "Quest Display","Lilita One",sans-serif;color:#fff;border-radius:999px;padding:0 8px;background:#2fa56b}
+.vrh .t.hot{background:#ff7a45}.vrh .t.cold{background:#4f86e8}.vrh .t.out{background:#58627a}
+.vtiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.vtile{position:relative;min-width:0;box-sizing:border-box;cursor:pointer;background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;box-shadow:0 3px 0 #1e2a44;padding:8px;min-height:84px;display:flex;flex-direction:column;gap:4px;color:#1e2a44}
+.vtile:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.vtile .tr{display:flex;align-items:center;gap:4px}
+.vtile .ic{width:30px;height:30px;border-radius:10px;background:#eef0f5;display:grid;place-items:center;flex:0 0 auto}
+.vtile .ic svg{width:18px;height:18px;stroke-width:2.3;color:#1e2a44}
+.vtile .stt{margin-left:auto;font:900 9.5px "Nunito",sans-serif;letter-spacing:.6px;padding:2px 6px;border-radius:999px;background:#eef0f5;color:#6b7280}
+.vtile .more{all:unset;cursor:pointer;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;color:#6b7280}
+.vtile .more svg{width:18px;height:18px}
+.vtile .more:hover{background:#eef0f5}.vtile .more:focus-visible{outline:3px solid #ff4fa3}
+.vtile .nm{font:900 12.5px/1.2 "Nunito",sans-serif}
+.vtile .sb{font:800 10.5px/1.25 "Nunito",sans-serif;color:#6b7280;overflow:hidden;text-overflow:ellipsis}
+.vtile.on{background:#fff3c4}.vtile.on .ic{background:#ffd23f}.vtile.on .stt{background:#1e2a44;color:#ffd23f}
+.vtile.run{background:#dcf4ee}.vtile.run .ic{background:#14a38b}.vtile.run .ic svg{color:#fff}.vtile.run .stt{background:#14a38b;color:#fff}
+.vtile.off{opacity:.55}
+.vpask{position:absolute;inset:-2px;border-radius:13px;background:#1e2a44;color:#fff7e6;padding:8px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;z-index:2;animation:vpop .15s ease-out}
+.vpask.wide{position:relative;inset:auto;margin:-2px 0 8px}
+.vpask p{margin:0;font:900 12.5px/1.3 "Nunito",sans-serif}
+.vpask small{display:block;font-weight:800;font-size:11px;color:#b9c3da}
+.vpask .row{display:flex;gap:5px}.vpask .btn{flex:1;min-height:30px;justify-content:center;box-shadow:none;border-width:2px}
+.vpask .btn.no{background:#36425f;color:#fff;border-color:#36425f}
+.vpask .btn.warn{background:#e8432f;color:#fff}
+@keyframes vpop{from{transform:scale(.96);opacity:0}}
+@media (prefers-reduced-motion:reduce){.vpask{animation:none}}
+.vpac{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:13px;border:2px dashed #b9b2a0;font:900 12px "Nunito",sans-serif;color:#1e2a44}
+.vpac small{display:block;font-weight:800;font-size:10.5px;color:#6b7280}
+.vpac .ic{width:28px;height:28px;border-radius:9px;background:#eef0f5;display:grid;place-items:center;flex:0 0 auto}
+.vpac svg{width:16px;height:16px;stroke-width:2.3}
+.vpac b{margin-left:auto;color:#6b7280}
+.vpac:focus-visible{outline:3px solid #ff4fa3}
+
+/* E: telefon (2026.11.20): alsó fülsor, felcsúszó lapok, Pamutka egy sorban */
+#tabbar,#pstrip{display:none}
+.sbody{overflow-y:auto;flex:1 1 auto;min-height:0}
+.hrow{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:6px;border-radius:14px;background:#fffdf7;border:2.5px solid #1e2a44;box-shadow:0 3px 0 #1e2a44;font:900 13.5px "Nunito",sans-serif;color:#1e2a44}
+.hrow small{display:block;font-weight:800;font-size:11px;color:#6b7280}
+.hrow .t{margin-left:auto;font:400 20px "Quest Display","Lilita One",sans-serif;color:#fff;border-radius:999px;padding:1px 10px;background:#2fa56b}
+.hrow .t.hot{background:#ff7a45}.hrow .t.cold{background:#4f86e8}.hrow .t.out{background:#58627a}.hrow .t.na{background:#9aa3b5}
+.hrow:focus-visible{outline:3px solid #ff4fa3}
+.hsec{font:900 11px "Nunito",sans-serif;letter-spacing:1px;color:#6b7280;margin:6px 2px 6px}
+.robk{background:#fffdf7;border:2.5px solid #1e2a44;border-radius:16px;box-shadow:0 3px 0 #1e2a44;padding:10px;margin-bottom:10px}
+.robk .rh{display:flex;align-items:center;gap:10px;font:900 15px "Nunito",sans-serif;color:#1e2a44}
+.robk .rh small{display:block;font-weight:800;font-size:11.5px;color:#6b7280}
+.robk .ric{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#eef0f5}
+.robk .ric svg{width:22px;height:22px;stroke-width:2.2;color:#1e2a44}
+.robk.run .ric{background:#14a38b}.robk.run .ric svg{color:#fff}
+@media (max-width:760px){
+  #tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:absolute;left:0;right:0;bottom:0;z-index:8;background:#fbf1dc;border-top:4px solid #1e2a44;padding:5px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  #tabbar button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font:900 10.5px "Nunito",sans-serif;color:#6b7280;padding:3px 0;border-radius:12px}
+  #tabbar svg{width:30px;height:24px;padding:2px 8px;border-radius:10px;stroke-width:2.2;box-sizing:content-box}
+  #tabbar button[aria-current="page"]{color:#1e2a44}
+  #tabbar button[aria-current="page"] svg{background:#ffd23f}
+  #tabbar button:focus-visible{outline:3px solid #ff4fa3}
+  #pam{display:none}
+  #acts #b-dev{display:none}
+  #pstrip{display:flex;align-items:center;gap:8px;position:absolute;left:8px;right:8px;bottom:calc(122px + env(safe-area-inset-bottom,0px));z-index:5;padding:6px 8px;border-radius:16px;background:#fbf1dc;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;cursor:pointer}
+  #pstrip .pface{width:34px;height:34px;flex:0 0 auto;border-radius:10px;background:#dfe9fb;display:grid;place-items:center}
+  #pstrip .pface svg{width:30px;height:30px}
+  #pstrip .tx{flex:1;min-width:0;font:800 12px/1.3 "Nunito",sans-serif;color:#1e2a44;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #pstrip:focus-visible{outline:3px solid #ff4fa3}
+  #tools{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+  .sheet,#logincard{bottom:calc(68px + env(safe-area-inset-bottom,0px))!important;top:auto;max-height:calc(100% - var(--toph,150px) - 84px)!important;height:auto}
+  .sheet{min-height:40%}
+  #info{top:auto!important;bottom:calc(68px + env(safe-area-inset-bottom,0px));left:6px;right:6px;max-height:68%!important;border-radius:22px 22px 16px 16px;padding-top:20px;box-shadow:0 -6px 24px rgba(10,16,30,.35)}
+  #info::before{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);width:42px;height:5px;border-radius:9px;background:#d6d0c2}
+}
+
+/* D: Pamutka (2026.11.20): buborék, gyűrű + sávok, legfeljebb 3 teendő, Később */
+.pmb{background:#fffdf7;border:2.5px solid #1e2a44;border-radius:16px 16px 16px 4px;padding:9px 11px;font:800 13.5px/1.45 "Nunito",sans-serif;color:#1e2a44;margin-bottom:8px}
+.pms{display:flex;align-items:center;gap:10px;background:#fffdf7;border:2.5px solid #1e2a44;border-radius:16px;padding:8px 10px;margin-bottom:8px}
+.pmsn{font:400 24px "Quest Display","Lilita One",sans-serif;fill:#1e2a44}
+.pmbars{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pmbar{display:grid;grid-template-columns:62px 1fr;gap:2px 8px;align-items:center;font:900 11.5px "Nunito",sans-serif;color:#1e2a44}
+.pmbar .tr{height:8px;border-radius:999px;background:#efe4cc;overflow:hidden}.pmbar .tr i{display:block;height:100%;border-radius:999px}
+.pmbar small{grid-column:2;font-weight:800;font-size:10.5px;color:#6b7280;margin-top:-3px}
+.pmtd{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.pmt{position:relative;display:grid;grid-template-columns:28px 1fr;gap:4px 8px;align-items:start;background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;box-shadow:0 3px 0 #1e2a44;padding:8px 9px}
+.pmt .n{width:28px;height:28px;border-radius:9px;background:#1e2a44;color:#ffd23f;display:grid;place-items:center;font:400 15px "Quest Display","Lilita One",sans-serif}
+.pmt p{margin:0;font:900 12.5px/1.3 "Nunito",sans-serif;color:#1e2a44;min-width:0}
+.pmt p small{display:block;font-weight:800;font-size:11px;color:#6b7280;margin-top:1px}
+.pmt .gain{display:inline-block;margin-top:4px;font:900 11px "Nunito",sans-serif;color:#185c3c;background:#dff3e7;border-radius:999px;padding:1px 8px}
+.pmt .act{grid-column:2;display:flex;gap:5px;flex-wrap:wrap}
+.pmt.done{background:#e8f6ee}.pmt.done .n{background:#2fa56b;color:#fff}
+.pmok{font:900 12px "Nunito",sans-serif;color:#185c3c}
+.pmask{grid-column:1/-1;background:#1e2a44;color:#fff7e6;border-radius:11px;padding:8px;display:flex;flex-direction:column;gap:6px;animation:vpop .15s ease-out}
+.pmask p{margin:0;font:800 12.5px/1.35 "Nunito",sans-serif;color:#dfe5f2}
+.pmask .row{display:flex;gap:6px}.pmask .btn{flex:1;justify-content:center}.pmask .btn.no{background:#36425f;color:#fff;border-color:#36425f}
+.pmsave{display:flex;align-items:baseline;gap:8px;background:#1e2a44;color:#fff7e6;border-radius:14px;padding:8px 11px;margin-bottom:8px}
+.pmsave b{font:400 20px "Quest Display","Lilita One",sans-serif;color:#ffd23f}.pmsave small{font:800 11.5px "Nunito",sans-serif;color:#b9c3da}
+.pmlater summary{cursor:pointer;font:900 12px "Nunito",sans-serif;color:#2f6fe4;margin:2px 0 6px}
+.pmlater summary:focus-visible{outline:3px solid #ff4fa3}
 </style>
 </head>
 <body>
@@ -577,6 +637,30 @@ body.wide #toast{top:auto;bottom:calc(64px + env(safe-area-inset-bottom,0px));ma
       </div>
     </form>
   </div>
+  <div class="sheet" id="tsheet" hidden role="dialog" aria-label="Hőmérők">
+    <h2>Hőmérők <button class="btn ib sm x" id="b-tx" type="button" aria-label="Bezárás">✕</button></h2>
+    <div id="tbody" class="sbody"></div>
+  </div>
+  <div class="sheet" id="rsheet" hidden role="dialog" aria-label="Robotok">
+    <h2>Robotok <button class="btn ib sm x" id="b-rx" type="button" aria-label="Bezárás">✕</button></h2>
+    <div id="rbody" class="sbody"></div>
+  </div>
+  <div class="sheet" id="psheet" hidden role="dialog" aria-label="Pamutka">
+    <h2>Pamutka <button class="btn ib sm x" id="b-px" type="button" aria-label="Bezárás">✕</button></h2>
+    <div id="pbody" class="sbody"></div>
+  </div>
+  <div id="pstrip" role="button" tabindex="0" aria-label="Pamutka tanácsa, koppints a részletekért">
+    <span class="pface" aria-hidden="true"><svg viewBox="-42 -56 84 80"><use href="#cat-face"/></svg></span>
+    <span class="tx" id="pstx">Miaú!</span>
+    <button class="btn sm y" id="b-pstrip" type="button">Mutasd</button>
+  </div>
+  <nav id="tabbar" aria-label="Fülek">
+    <button type="button" data-tab="home" aria-current="page"><svg aria-hidden="true"><use href="#pi-home"/></svg><span>Otthon</span></button>
+    <button type="button" data-tab="ctl"><svg aria-hidden="true"><use href="#pi-grid"/></svg><span>Vezérlés</span></button>
+    <button type="button" data-tab="heat"><svg aria-hidden="true"><use href="#pi-thermo"/></svg><span>Hő</span></button>
+    <button type="button" data-tab="rob"><svg aria-hidden="true"><use href="#pi-robot"/></svg><span>Robotok</span></button>
+    <button type="button" data-tab="pam"><svg aria-hidden="true"><use href="#pi-cat"/></svg><span>Pamutka</span></button>
+  </nav>
   <div id="toast" hidden role="status"></div>
 </div>
 
