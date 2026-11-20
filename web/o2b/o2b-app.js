@@ -971,7 +971,10 @@
   function pamutka() {
     var td = pamTodos(), top = td.slice(0, 3), rest = tips().filter(function (x) { return !/Egy fokkal lejjebb/.test(x[0]); }), sc = pamScore();
     var lead = top.filter(function (x) { return !x.done && x.bub; })[0];
-    var bub = lead ? lead.bub : rest.length ? rest[0][0] : 'Minden rendben, dorombolok. A szobák a cél körül vannak.';
+    // a sürgős jelzés (szokatlan bojler-nap, éjjeli fűtés, lemerült elem) megelőzi a megtakarítási tanácsot
+    var urg = rest.filter(function (x) { return x[3] === 'red' || /evett/.test(x[0]); })[0];
+    if (urg) rest = rest.filter(function (x) { return x !== urg; });
+    var bub = urg ? urg[0].replace(/^Miaú! /, '') : lead ? lead.bub : rest.length ? rest[0][0] : 'Minden rendben, dorombolok. A szobák a cél körül vannak.';
     var saved = td.filter(function (x) { return x.done && x.kind === 'rules'; }).reduce(function (a, x) { return a + x.gain; }, 0);
     var R = 30, C = 2 * Math.PI * R;
     var h = '<div class="pmb">Miaú! ' + bub + '</div>' +
@@ -991,9 +994,9 @@
       return '<li class="tipc ' + (x[3] || 'orange') + '"><span class="tx">' + x[0] + '</span>' + (x[2] ? '<button class="btn sm tbtn" type="button" data-pink="' + esc(x[2]) + '">Mutasd</button>' : '') + '</li>'; }).join('') + '</ul></details>';
     $('say').innerHTML = h + (st.live ? '' : '<small><i>Demó: belépés után a valódi adatokból szólok.</i></small>');
     var all = tips();
-    cat.goal = lead && lead.room ? lead.room : all.length ? all[0][1] : null;
+    cat.goal = urg ? urg[1] : lead && lead.room ? lead.room : all.length ? all[0][1] : null;
     layer.cat && layer.cat.classList.toggle('has-tip', !!(lead || all.length));
-    st.pamLead = { text: bub.replace(/<[^>]+>/g, ''), pink: lead ? lead.pink || lead.p : rest.length ? rest[0][2] : null };
+    st.pamLead = { text: bub.replace(/<[^>]+>/g, ''), pink: urg ? urg[2] : lead ? lead.pink || lead.p : rest.length ? rest[0][2] : null };
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-pam], #say .tbtn, #pbody .tbtn') : null; if (!b) return;
