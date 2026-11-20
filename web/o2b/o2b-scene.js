@@ -21,7 +21,7 @@
     ORANGE: ['#d9874a', '#b86c35', '#9c5a2b'], BLUEC: ['#c3dcf0', '#9cc0de', '#86abcb'], GLASS: ['#cfeaff', '#a9d4f5', '#93c2e8'],
     STEEL: ['#b8bec8', '#8f96a3', '#7a818e'], LAMP: ['#fff0b3', '#ffd060', '#e8b440'], LEAF: ['#6dbb5a', '#4f9a40', '#3f8233'],
     LEAF2: ['#8fd16f', '#6cb354', '#5a9a45'], TERRA: ['#d8875c', '#b86c45', '#9c5a3a'], RUGB: ['#9fb8cf', '#7f9bb5', '#6c88a3'],
-    LINEN: ['#fbf8f1', '#e3dccb', '#d2c9b4'], SHAKER: ['#dfe3e3', '#c3c9c9', '#b0b7b7'], MARBLE: ['#f2f0ec', '#d9d5cd', '#c8c3b9'],
+    LINEN: ['#fbf8f1', '#e3dccb', '#d2c9b4'], TAUPE: ['#b9a58a', '#9a8770', '#86755f'], SHAKER: ['#dfe3e3', '#c3c9c9', '#b0b7b7'], MARBLE: ['#f2f0ec', '#d9d5cd', '#c8c3b9'],
     WALL: ['#6a4c38', '#f6e7c8', '#ead3a6'], WALLW: ['#6a4c38', '#ffffff', '#eef0f2'], WALLB: ['#6a4c38', '#4a6a9a', '#3d5a85'], WALLG: ['#6a4c38', '#a9c1a0', '#8eaa86'],
     WALLS: ['#3f4349', '#868d95', '#777e86'],   // a nappali TV-s keleti fala: sötétszürke dekorfal (fotó)
     LOW: ['#ffe0b0', '#d99a5e', '#b97c45'], INNER: ['#6a4c38', '#f6e7c8', '#e3cb9c'],
@@ -178,7 +178,10 @@
     [0.06, 11.22, 0.62, 0.78, 0, 2.7, C.WHITE], [0.06, 13.6, 0.62, 0.78, 0, 2.7, C.WHITE],
     [0.06, 12.0, 0.62, 1.6, 2.05, 0.65, C.WHITE], [0.06, 12.0, 0.05, 1.6, 0, 2.05, C.SAGE],
     [0.66, 11.6, 0.03, 0.04, 1.0, 0.25, C.BLACK], [0.66, 13.96, 0.03, 0.04, 1.0, 0.25, C.BLACK]], false);
-  piece('bd_bed', 'Franciaágy a szekrényfal fülkéjében', 'lo', [[0.12, 12.05, 2.0, 1.5, 0, 0.45, C.CREAM], [0.14, 12.07, 1.96, 1.46, 0.45, 0.14, C.LINEN], [1.0, 12.05, 1.1, 1.5, 0.58, 0.05, C.SAGE], [0.22, 12.17, 0.38, 0.55, 0.59, 0.14, C.WHITE], [0.22, 12.88, 0.38, 0.55, 0.59, 0.14, C.WHITE]]);
+  // az ágy kárpitozott kerete és fejtámlája tópszínű, hogy ne olvadjon össze a fehér szekrénytornyokkal (a tulaj, 2026.11.20);
+  // két oldalt kis rés marad a fülke falától
+  piece('bd_bed', 'Franciaágy kárpitozott fejtámlával a szekrényfal fülkéjében', 'lo', [[0.13, 12.1, 0.16, 1.4, 0, 1.05, C.TAUPE], [0.29, 12.1, 1.83, 1.4, 0, 0.42, C.TAUPE], [0.31, 12.12, 1.79, 1.36, 0.42, 0.15, C.LINEN],
+    [1.15, 12.1, 0.97, 1.4, 0.56, 0.05, C.TERRA], [0.36, 12.2, 0.36, 0.55, 0.57, 0.15, C.WHITE], [0.36, 12.85, 0.36, 0.55, 0.57, 0.15, C.WHITE]]);
   piece('bd_desk', 'Állítható íróasztal LG monitorral', 'lo', [].concat([[3.3, 13.4, 1.0, 0.6, 0.72, 0.04, C.OAK], [3.35, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [4.2, 13.45, 0.06, 0.5, 0, 0.72, C.BLACK], [3.55, 13.85, 0.55, 0.06, 0.95, 0.35, C.BLACK]], [[3.6, 12.95, 0.45, 0.45, 0, 0.5, C.BLACK], [3.62, 12.9, 0.42, 0.08, 0.5, 0.5, C.BLACK]]));
   piece('bd_radiator', 'Radiátor az ablak alatt', 'lo', [[4.22, 12.15, 0.1, 1.3, 0.12, 0.55, C.WHITE]], false);
   piece('bd_iron', 'Vasalódeszka', 'lo', [[3.0, 11.45, 1.1, 0.32, 0.85, 0.04, C.BLUEC], [3.4, 11.55, 0.04, 0.1, 0, 0.85, C.STEEL]]);

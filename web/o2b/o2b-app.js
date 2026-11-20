@@ -184,8 +184,8 @@
     [[-200, -10], [-170, -30], [-120, -70], [120, -80], [170, -45], [215, -15]].forEach(function (q) {
       el('circle', { cx: q[0], cy: q[1], r: 13, fill: pal.hill2, stroke: INK, 'stroke-width': 2.5 }, hg);
     });
-    var lab = el('text', { x: 2, y: -310, 'text-anchor': 'middle', class: 'slab-t', style: 'font-size:26px;stroke-width:5px' }, hg);
-    lab.textContent = (behind ? '↓ ' : '') + 'Gellért-hegy';
+    // felirat nélkül (a ház jelölőire lógott, 2026.11.20); a neve a hegyre mutatva látszik
+    var lab = el('title', {}, hg); lab.textContent = 'Gellért-hegy (Citadella, Szabadság-szobor)' + (behind ? ', mögöttünk' : '');
     // közeli fű
     el('path', { d: 'M-200,720 Q360,690 720,712 T1640,700 L1640,1100 L-200,1100 Z', fill: pal.hill2, opacity: 0.9 }, sky);
   }
@@ -242,9 +242,10 @@
       layer[f] = el('g', { class: 'items' }, g);
       drawItems(f);
     });
+    // a macska a feliratok és a tűk alatt: soha nem takar szobanevet vagy tűt (a tulaj, 2026.11.20)
+    layer.cat = el('g', { id: 'cat', class: 'walk', role: 'button', tabindex: 0, 'aria-label': 'Pamutka, a tanácsadó macska' }, world);
     layer.labels = el('g', { id: 'labels' }, world);
     layer.pins = el('g', { id: 'pins' }, world);
-    layer.cat = el('g', { id: 'cat', class: 'walk', role: 'button', tabindex: 0, 'aria-label': 'Pamutka, a tanácsadó macska' }, world);
     buildCat(layer.cat);
     layer.cat.addEventListener('pointerdown', catDown);
     layer.cat.addEventListener('click', function (e) { e.stopPropagation(); if (catDrag.justDropped) { catDrag.justDropped = false; return; } catClick(); });
@@ -348,7 +349,7 @@
   // az a szobanév, és azt elrejtjük (a szobák az Eszközök listában is megvannak).
   function drawOverlay() {
     if (!scene || !layer.labels || !layer.pins) return;
-    var k = uiK(), gl = layer.labels, gp = layer.pins, obst = [], pad = 2 * k;
+    var k = uiK(), gl = layer.labels, gp = layer.pins, obst = st.obst = [], pad = 2 * k;
     gl.innerHTML = ''; gp.innerHTML = '';
     function hits(b) { for (var i = 0; i < obst.length; i++) { var o = obst[i]; if (b[0] < o[2] + pad && b[2] > o[0] - pad && b[1] < o[3] + pad && b[3] > o[1] - pad) return true; } return false; }
     function take(b) { obst.push(b); return b; }
@@ -931,7 +932,7 @@
       '<g class="bubble"><rect x="-58" y="-188" width="116" height="34" rx="14" fill="#fffdf7" stroke="#1e2a44" stroke-width="3"/><path d="M-6,-155 L0,-144 L8,-155" fill="#fffdf7" stroke="#1e2a44" stroke-width="3" stroke-linejoin="round"/><text class="bt" x="0" y="-165" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="17" fill="#1e2a44">Miaú?</text></g>' +
       '<g class="alert"><g><circle cx="0" cy="-142" r="14" fill="#ffe066" stroke="#1e2a44" stroke-width="3"/><text x="0" y="-135" text-anchor="middle" font-family="Quest Display,Lilita One, sans-serif" font-size="20" fill="#1e2a44">!</text></g></g>' +
       '<g class="dust"><ellipse cx="-34" cy="-4" rx="12" ry="7"/><ellipse cx="34" cy="-4" rx="12" ry="7"/><ellipse cx="-18" cy="2" rx="9" ry="5"/><ellipse cx="20" cy="2" rx="9" ry="5"/></g>' +
-      '<text x="0" y="22" text-anchor="middle" class="slab-t" style="font-size:15px">Pamutka</text>';
+      '<title>Pamutka, a tanácsadó macska</title>';
   }
   // a panel nagy képe
   function pamHero() {
@@ -1052,7 +1053,22 @@
     bt.textContent = '';
     lines.forEach(function (ln, i) { var ts = document.createElementNS('http://www.w3.org/2000/svg', 'tspan'); ts.setAttribute('x', 0); ts.setAttribute('y', -154 - H + 23 + i * 20); ts.textContent = ln; bt.appendChild(ts); });
   }
-  function showBubble() { cat.talkUntil = Date.now() + 2600; }
+  function showBubble() { cat.talkUntil = Date.now() + 2600; placeBubble(); }
+  // a buborék helye: a macska fölött, vagy mellette jobbra/balra, ahol a legkevesebb feliratot takarja
+  function placeBubble() {
+    var g = layer.cat && layer.cat.querySelector('.bubble'), rc = g && g.querySelector('rect'); if (!rc) return;
+    var m = /translate\(([-\d.]+),([-\d.]+)\) scale\(([-\d.]+)\)/.exec(layer.cat.getAttribute('transform') || ''); if (!m) return;
+    var px = +m[1], py = +m[2], sc = +m[3], x = +rc.getAttribute('x'), y = +rc.getAttribute('y'), W = +rc.getAttribute('width'), H = +rc.getAttribute('height');
+    var cands = [[0, 0], [0, -30], [W / 2 + 46, 70], [-(W / 2 + 46), 70], [W / 2 + 46, 20], [-(W / 2 + 46), 20], [0, -70]], bi = 0, bc = Infinity;
+    cands.forEach(function (c, i) {
+      var b = [px + (x + c[0]) * sc, py + (y + c[1]) * sc, px + (x + c[0] + W) * sc, py + (y + c[1] + H) * sc], cost = 0;
+      (st.obst || []).forEach(function (o) { var ox = Math.min(b[2], o[2]) - Math.max(b[0], o[0]), oy = Math.min(b[3], o[3]) - Math.max(b[1], o[1]); if (ox > 0 && oy > 0) cost += ox * oy; });
+      if (cost < bc - 1) { bc = cost; bi = i; }
+    });
+    var c = cands[bi];
+    g.setAttribute('transform', 'translate(' + c[0] + ',' + c[1] + ')');
+    var tail = g.querySelector('path'); if (tail) tail.style.display = c[0] ? 'none' : '';
+  }
   var LANDS = ['Hopp!', 'Huh, megvagyok!', 'Ez jó hely lesz.', 'Miaú! Legközelebb szólj!', 'Puff!'];
   // Megfogás: ha útban van (egy eszköz vagy bútor előtt), fogd meg és tedd arrébb. Lóg a kezedben,
   // elengedve leesik, huppan, összeszedi magát, aztán onnan sétál tovább.
