@@ -900,7 +900,7 @@
     h += '<div class="ddtabs" role="tablist" aria-label="Adatlap">' + tabs.map(function (t) { return '<button type="button" role="tab" data-dtab="' + t[0] + '" aria-selected="' + (st.dtab === t[0]) + '"><svg aria-hidden="true"><use href="#pi-' + t[2] + '"/></svg>' + t[1] + '</button>'; }).join('') + '</div><div class="ddb" role="tabpanel">';
     if (st.dtab === 'ov') {
       if (CTL_PINKS.indexOf(p) >= 0) {
-        h += '<div class="ctl"><div class="ctlrow"><span class="nowst ' + (on ? 'on' : '') + '">' + (st.ctl.busy[p] ? 'Kapcsol…' : on ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) + '</div>';
+        h += '<div class="ctl"><div class="ctlrow"><span class="nowst ' + (on ? 'on' : '') + '">' + (st.ctl.busy[p] ? 'Kapcsol…' : on ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) + (canCtl() ? '' : '<div class="ctln">' + roClause() + '</div>') + '</div>';
       } else if (d.role !== 'robot') h += '<div class="ddbig"><small>MOST</small><span class="' + s.cls + '">' + esc(s.big || s.txt) + '</span>' + (d.role === 'thermo' && d.room !== 'erkely' ? '<em>cél ' + target() + ' °C</em>' : '') + '</div>';
       h += ddKpis(d, c.mh);
       if (d.role === 'robot') h += robotCard(d);
