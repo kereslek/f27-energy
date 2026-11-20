@@ -34,8 +34,14 @@
   var st = {
     k: 0, offs: {}, edit: false, sel: null, user: null, role: null, live: false, devs: DEFAULT_DEVS, latest: {},
     bat: [], batTable: [], wx: null, daily: null, motion: null, street: null, layouts: [], current: null,
-    undo: [], redo: [], vb: null, savedKey: '{}', tipIdx: 0
+    undo: [], redo: [], vb: null, savedKey: '{}', tipIdx: 0,
+    floor: 'lo', layers: { heat: true, dev: true, rob: true }
   };
+  // nézet: egyszerre egy szint nagyban (Lent / Fent), vagy a babaház (Ház); rétegek; böngészőnként megmarad
+  try {
+    var fv = localStorage.getItem('o2b-floor'); if (fv === 'lo' || fv === 'up' || fv === 'both') st.floor = fv;
+    var lv = JSON.parse(localStorage.getItem('o2b-layers') || 'null'); if (lv) ['heat', 'dev', 'rob'].forEach(function (k) { if (typeof lv[k] === 'boolean') st.layers[k] = lv[k]; });
+  } catch (e) { /* privát mód: alapértékek */ }
   var scene = null, sb = null, cfg = window.F27_CONFIG || {};
   var $ = function (id) { return document.getElementById(id); };
   var world = $('world'), sky = $('sky');
@@ -103,6 +109,66 @@
         big: s.state === 'error' ? 'HIBA' : s.cleaning ? rt + (bat ? ' ' + bat : '') : null };
     }
     return { txt: off ? 'offline' : 'online', cls: off ? 'off' : '', big: null };
+  }
+
+  // ---- szintek, hőtérkép, tűk kinézete -------------------------------------------------------------
+  function visF() { return st.floor === 'both' ? ['lo', 'up'] : [st.floor]; }
+  function pinFloor(p) { var r = null; ['lo', 'up'].forEach(function (f) { if (scene && scene.floors[f].pins.some(function (q) { return q.id === p; })) r = f; }); return r; }
+  function pinLayerOn(d) {
+    if (d.role === 'robot') return st.layers.rob;
+    if (d.role === 'thermo') return !st.layers.heat;      // a hőfok a szoba-címkén látszik
+    return st.layers.dev;
+  }
+  var HEAT_COL = { hot: '#ff7a45', ok: '#2fa56b', cold: '#4f86e8', out: '#58627a', na: '#9aa3b5' };
+  var HEAT_FILL = { hot: '#ff8a5b', ok: '#5fc48e', cold: '#6f9cf0' };
+  // a szoba hőfoka: az online hőmérők átlaga; c = hot / ok / cold a napszak céljához (erkély: kint)
+  function roomTemp(room) {
+    var ts = st.devs.filter(function (d) { return d.role === 'thermo' && d.room === room; });
+    if (!ts.length) return null;
+    var v = ts.map(function (d) { var r = st.latest[d.pink]; return r && r.online !== false ? temp(r.status) : null; }).filter(function (x) { return x != null; });
+    var t = v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null, tg = target();
+    return { t: t, n: v.length, c: room === 'erkely' ? 'out' : t == null ? 'na' : t > tg + 1 ? 'hot' : t < tg - 1.5 ? 'cold' : 'ok' };
+  }
+  var PIN_ICON = { C1: 'boiler', C2: 'lamp', C3: 'tv', C4: 'bulb', C5: 'lamp', C6: 'star', C7: 'star', C8: 'bulb', X1: 'bolt' };
+  function pinIcon(d) { return PIN_ICON[d.pink] || { thermo: 'thermo', ac_ir: 'snow', robot: 'robot', pir: 'motion', breaker: 'bolt' }[d.role] || 'plug'; }
+  function pinColors(d, s) {
+    var r = st.latest[d.pink], off = !r || r.online === false || s.cls === 'off';
+    var lit = (d.role === 'plug' || d.role === 'breaker') && r && r.online !== false && isOn(r.status);
+    if (off) return { fill: '#d6d9e0', ic: '#7d8494' };
+    if (d.role === 'robot' && s.cls === 'on') return { fill: '#14a38b', ic: '#ffffff', on: true, glow: 'rgba(20,163,139,.35)' };
+    if (d.role === 'pir' && s.cls === 'on') return { fill: '#7a6fb0', ic: '#ffffff', on: true, glow: 'rgba(122,111,176,.35)' };
+    if (s.cls === 'hot' || s.cls === 'cold') return { fill: s.cls === 'hot' ? '#ff5a3c' : '#2f6fe4', ic: '#ffffff', alert: true };
+    if (lit) return { fill: '#ffd23f', ic: INK, on: true, glow: 'rgba(255,210,63,.45)' };
+    return { fill: '#fffdf7', ic: ROLE_COL[d.role] || INK };
+  }
+  function pinLabel(q) {
+    var d = q.d, s = q.s;
+    if (d.role === 'ac_ir' || d.role === 'ir_hub') return null;
+    if (d.role === 'thermo') return s.big;
+    var nm = d.role === 'robot' ? robName(d.pink) : d.role === 'pir' ? 'Mozgás' : shortName(d.pink);
+    if (nm.length > 20) nm = nm.slice(0, 19) + '…';
+    return s.big ? nm + ' · ' + s.big : nm;
+  }
+  function saveView() { try { localStorage.setItem('o2b-floor', st.floor); localStorage.setItem('o2b-layers', JSON.stringify(st.layers)); } catch (e) { /* nem baj */ } }
+  function setFloor(f) {
+    if (f === st.floor) return;
+    st.floor = f; saveView(); st.vb = null; drawWorld(); floorBar(); render();
+  }
+  function setLayer(k) { st.layers[k] = !st.layers[k]; saveView(); updateHeat(); floorBar(); drawOverlay(); }
+  function floorBar() {
+    var fb = $('floorbar'); if (!fb) return;
+    Array.prototype.forEach.call(fb.querySelectorAll('[data-floor]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-floor') === st.floor); });
+    Array.prototype.forEach.call(fb.querySelectorAll('[data-layer]'), function (b) { b.setAttribute('aria-pressed', !!st.layers[b.getAttribute('data-layer')]); });
+  }
+  // a szobák padlója a célhőfokhoz képest színezve (narancs: melegebb, zöld: a célon, kék: hidegebb)
+  function updateHeat() {
+    ['lo', 'up'].forEach(function (f) {
+      var hg = layer['heat-' + f]; if (!hg) return;
+      Array.prototype.forEach.call(hg.querySelectorAll('polygon'), function (pg) {
+        var rt = roomTemp(pg.getAttribute('data-room')), c = rt && HEAT_FILL[rt.c];
+        pg.setAttribute('fill', c || 'none'); pg.setAttribute('opacity', st.layers.heat && c ? 0.55 : 0);
+      });
+    });
   }
 
   // ---- demó adat (belépés nélkül) ----------------------------------------------------------------
@@ -223,9 +289,10 @@
     el('stop', { offset: 0, 'stop-color': '#ffd58a', 'stop-opacity': 0.9 }, ember); el('stop', { offset: 0.5, 'stop-color': '#ffb35c', 'stop-opacity': 0.3 }, ember); el('stop', { offset: 1, 'stop-color': '#ff9a3c', 'stop-opacity': 0 }, ember);
     ['lo', 'up'].forEach(function (f) {
       var F = scene.floors[f], g = el('g', { id: 'fl-' + f }, world);
+      if (visF().indexOf(f) < 0) g.setAttribute('display', 'none');
       var b = F.bbox;
       el('ellipse', { cx: r1((b.x0 + b.x1) / 2), cy: r1(b.y1 - 30), rx: r1((b.x1 - b.x0) * 0.45), ry: r1((b.x1 - b.x0) * 0.08), fill: INK, opacity: f === 'up' ? 0.12 : 0.2 }, g);
-      if (f === 'up') {
+      if (f === 'up' && st.floor === 'both') {
         var gd = el('g', { 'stroke-dasharray': '6 7', stroke: '#fff7e6', 'stroke-width': 2.4, opacity: 0.8 }, g);
         F.guides.forEach(function (d) { el('path', { d: d }, gd); });
         el('path', { d: F.guides.stair, stroke: '#ffe066', 'stroke-width': 3.4, 'stroke-dasharray': '3 6', opacity: 1 }, gd);
@@ -238,7 +305,9 @@
         el('polygon', { points: fp.p, fill: fp.fill, stroke: INK, 'stroke-width': 1.6 }, pg);
         el('path', { d: fp.lines, stroke: fp.lc, 'stroke-width': 1, fill: 'none' }, pg);
       });
-      if (f === 'lo') drawCompass(g);
+      var hg = layer['heat-' + f] = el('g', { class: 'heat', 'pointer-events': 'none' }, g);
+      F.floors.forEach(function (fp) { el('polygon', { points: fp.p, 'data-room': fp.id, fill: 'none', opacity: 0, style: 'mix-blend-mode:multiply' }, hg); });
+      if (f === 'lo' && visF().indexOf('lo') >= 0) drawCompass(g);
       layer[f] = el('g', { class: 'items' }, g);
       drawItems(f);
     });
@@ -251,6 +320,7 @@
     layer.cat.addEventListener('click', function (e) { e.stopPropagation(); if (catDrag.justDropped) { catDrag.justDropped = false; return; } catClick(); });
     layer.drop = el('ellipse', { id: 'catdrop', rx: 30, ry: 9, fill: '#1e2a44', opacity: 0 }, world);
     world.insertBefore(layer.drop, layer.cat);
+    updateHeat();
     if (!st.vb) fit(); else applyVB();
   }
   function drawBox(bx, g) {
@@ -342,38 +412,72 @@
 
   // ---- feliratok és tűk állandó képernyőméretben (mint a F27 HTML-tűi): nagyítva sem nőnek, kicsinyítve sem tűnnek el
   // a tűk és feliratok a házzal együtt nőnek, de kicsinyítéskor egy olvasható méret alá nem mennek
-  function uiK() { var s = scaleNow() || 1; return Math.max(1, Math.min(2.4, 0.72 / s)); }
-  // Feliratok és tűk egy menetben, ütközésfigyeléssel (audit, 2026.11.15: több helyen egymásra csúsztak).
-  // Sorrend: szintfeliratok, tűk (egymástól széttolva, a vonaluk a helyükre mutat), értékbuborékok
-  // (jobbra, balra, fölé, alá), jelölők (Savio, Computherm), végül a szobanevek; ami sehová nem fér,
-  // az a szobanév, és azt elrejtjük (a szobák az Eszközök listában is megvannak).
+  // a feliratok képernyőn közel állandó méretűek: nagyításnál sem nőnek túl nagyra (egyszintes nézet, 2026.11.20)
+  function uiK() { var s = scaleNow() || 1; return Math.max(0.5, Math.min(2.4, 1.05 / s)); }
+  // Feliratok és tűk egy menetben, ütközésfigyeléssel (audit, 2026.11.15 és 2026.11.20).
+  // Sorrend: szintfeliratok (csak a Ház nézetben), tűk (egymástól széttolva, a vonaluk a helyükre mutat),
+  // szoba-címkék a hőfokkal (Hőtérkép réteg), a tűk név- és értékcímkéi, jelölők (Savio, Computherm),
+  // végül a sima szobanevek; ami sehová nem fér, az a sima szobanév, és azt elrejtjük.
   function drawOverlay() {
     if (!scene || !layer.labels || !layer.pins) return;
-    var k = uiK(), gl = layer.labels, gp = layer.pins, obst = st.obst = [], pad = 2 * k;
+    var k = uiK(), gl = layer.labels, gp = layer.pins, obst = st.obst = [], pad = 2 * k, FL = visF();
     gl.innerHTML = ''; gp.innerHTML = '';
     function hits(b) { for (var i = 0; i < obst.length; i++) { var o = obst[i]; if (b[0] < o[2] + pad && b[2] > o[0] - pad && b[1] < o[3] + pad && b[3] > o[1] - pad) return true; } return false; }
     function take(b) { obst.push(b); return b; }
     function cost(b) { var c = 0; obst.forEach(function (o) { var ox = Math.min(b[2], o[2] + pad) - Math.max(b[0], o[0] - pad), oy = Math.min(b[3], o[3] + pad) - Math.max(b[1], o[1] - pad); if (ox > 0 && oy > 0) c += ox * oy; }); return c; }
-    // a jelöltek közül az első ütközésmentes, ha nincs ilyen, a legkisebb átfedésű; mk(c) -> doboz
     function best(cands, mk) { var bi = 0, bc = Infinity; for (var n = 0; n < cands.length; n++) { var c = cost(mk(cands[n])); if (c === 0) return cands[n]; if (c < bc) { bc = c; bi = n; } } return cands[bi]; }
     function tw(t, fs) { return t.length * fs * 0.58; }
-    // 1. szintfeliratok
-    ['lo', 'up'].forEach(function (f) {
+    // 0. a panelek (Pamutka, Áttekintés, csempék, nézetváltó, eszközsor) és a képernyő széle akadály: oda nem kerül felirat
+    (function () {
+      var sc = scaleNow() || 1, vb = st.vb, W = world.clientWidth || 1440, H = world.clientHeight || 900, R0 = world.getBoundingClientRect(), big = 1e5;
+      var toW = function (r) { return [vb[0] + (r.left - R0.left) / sc, vb[1] + (r.top - R0.top) / sc, vb[0] + (r.right - R0.left) / sc, vb[1] + (r.bottom - R0.top) / sc]; };
+      ['pam', 'ov', 'top', 'floorbar', 'tools'].forEach(function (id) { var e = $(id); if (!e || e.hidden || e.offsetParent === null) return; var r = e.getBoundingClientRect(); if (r.width && r.height) obst.push(toW(r)); });
+      var x0 = vb[0], y0 = vb[1], x1 = vb[0] + W / sc, y1 = vb[1] + H / sc;
+      obst.push([x0 - big, y0 - big, x0 + 4 / sc, y1 + big], [x1 - 4 / sc, y0 - big, x1 + big, y1 + big], [x0 - big, y0 - big, x1 + big, y0 + 4 / sc], [x0 - big, y1 - 4 / sc, x1 + big, y1 + big]);
+    })();
+    // 1. szintfeliratok (csak ha mindkét szint látszik)
+    if (st.floor === 'both') ['lo', 'up'].forEach(function (f) {
       var b = scene.floors[f].bbox, fs = 24 * k, t = f === 'up' ? 'FENT · tetőtér' : 'LENT', x = Math.max(b.x0 + 6 * k, st.vb[0] + 10 * k), y = (b.y0 + b.y1) / 2 + (f === 'up' ? -10 : 40) * k;
       var lv = el('text', { x: r1(x), y: r1(y), class: 'lvlab', style: 'font-size:' + r1(fs) + 'px;stroke-width:' + r1(5 * k) + 'px' }, gl);
       lv.textContent = t; take([x, y - fs, x + tw(t, fs), y + 4 * k]);
     });
-    // 2. tűk: széttolás
+    // 2. a látszó tűk listája (réteg, szint, offline)
     var byPink = {}; st.devs.forEach(function (d) { byPink[d.pink] = d; });
-    var R = 15 * k, P = [];
-    ['lo', 'up'].forEach(function (f) {
+    var R = 14 * k, P = [];
+    FL.forEach(function (f) {
       scene.floors[f].pins.forEach(function (pn) {
         var d = byPink[pn.id] || DEFAULT_DEVS.filter(function (x) { return x.pink === pn.id; })[0];
-        if (!d || d.role === 'ir_hub' || hideOff(pn.id)) return;
+        if (!d || d.role === 'ir_hub' || hideOff(pn.id) || !pinLayerOn(d)) return;
         P.push({ pn: pn, d: d, s: devState(d), x: pn.p[0], y: pn.p[1] });
       });
     });
-    for (var it = 0; it < 40; it++) {
+    // 3. szoba-címkék a hőfokkal (Hőtérkép réteg) ELŐSZÖR: a tűk majd kitérnek előlük
+    var tagged = {}, fixed = obst.slice(), tagBoxes = [];
+    var pinSoft = P.map(function (q) { return [q.x - R, q.y - R, q.x + R, q.y + R]; });
+    if (st.layers.heat) FL.forEach(function (f) {
+      scene.floors[f].floors.forEach(function (fp) {
+        var rt = roomTemp(fp.id); if (!rt) return;
+        tagged[fp.id] = true;
+        var fs = 13 * k, nm = fp.id === 'erkely' ? 'Erkély (kint)' : fp.n, tv = rt.t == null ? '--' : fmt(rt.t) + '°', pw = (tw(tv, fs) + 14 * k), w = pw + tw(nm, fs) + 16 * k, h = 22 * k;
+        var offs = [[0, 0], [0, -20], [0, 20], [-36, 0], [36, 0], [0, -38], [0, 38], [-34, -24], [34, 24], [34, -24], [-34, 24], [0, -56], [0, 56], [-60, 0], [60, 0]];
+        var c = offs.map(function (q) { return [fp.label[0] + q[0] * k, fp.label[1] + q[1] * k]; });
+        // a tűk eredeti helye "puha" akadály: lehetőleg ne oda kerüljön
+        obst.push.apply(obst, pinSoft);
+        var mk = function (z) { return [z[0] - w / 2, z[1] - h / 2, z[0] + w / 2, z[1] + h / 2]; }, pick = best(c, mk);
+        if (cost(mk(pick)) > 0) { var w0 = w, p0 = pick; w = pw + 6 * k; pick = best(c, mk); if (cost(mk(pick)) > 0) { w = w0; pick = p0; } else nm = ''; }   // szűk helyen csak a hőfok
+        obst.length -= pinSoft.length;
+        var bx = take([pick[0] - w / 2, pick[1] - h / 2, pick[0] + w / 2, pick[1] + h / 2]); tagBoxes.push(bx);
+        var tg = el('g', { class: 'rtag' }, gl);
+        el('rect', { x: r1(bx[0]), y: r1(bx[1]), width: r1(w), height: r1(h), rx: r1(h / 2), fill: '#fffdf7', stroke: INK, 'stroke-width': r1(2 * k) }, tg);
+        el('rect', { x: r1(bx[0] + 3 * k), y: r1(bx[1] + 3 * k), width: r1(pw), height: r1(h - 6 * k), rx: r1((h - 6 * k) / 2), fill: HEAT_COL[rt.c] }, tg);
+        var t1 = el('text', { x: r1(bx[0] + 3 * k + pw / 2), y: r1(bx[1] + h / 2 + fs * 0.36), 'text-anchor': 'middle', class: 'rtt', style: 'font-size:' + r1(fs) + 'px' }, tg); t1.textContent = tv;
+        if (nm) { var t2 = el('text', { x: r1(bx[0] + pw + 9 * k), y: r1(bx[1] + h / 2 + fs * 0.36), class: 'rtn', style: 'font-size:' + r1(fs) + 'px' }, tg); t2.textContent = nm; }
+        var ti = el('title', {}, tg); ti.textContent = (fp.id === 'erkely' ? 'Erkély (kint)' : fp.n) + ': ' + (rt.t == null ? 'nincs friss mérés' : fmt(rt.t) + ' °C') + (fp.id === 'erkely' ? '' : ', cél ' + target() + ' °C') + (rt.n > 1 ? ' (' + rt.n + ' hőmérő átlaga)' : '');
+      });
+    });
+    // 4. tűk széttolása: egymástól és a címkéktől (a szaggatott vonal a valódi helyükre mutat)
+    var rep = tagBoxes.concat(fixed.filter(function (b) { return b[2] - b[0] < 5000 && b[3] - b[1] < 5000; }));
+    for (var it = 0; it < 60; it++) {
       var moved = false;
       for (var i = 0; i < P.length; i++) for (var j = i + 1; j < P.length; j++) {
         var A = P[i], B = P[j], dx = B.x - A.x, dy = B.y - A.y, dd = Math.hypot(dx, dy), need = 2 * R + 4 * k;
@@ -383,24 +487,43 @@
           A.x -= dx / dd * push; A.y -= dy / dd * push; B.x += dx / dd * push; B.y += dy / dd * push; moved = true;
         }
       }
+      P.forEach(function (q) {
+        rep.forEach(function (b) {
+          var cx = Math.max(b[0], Math.min(q.x, b[2])), cy = Math.max(b[1], Math.min(q.y, b[3])), ddx = q.x - cx, ddy = q.y - cy, dist = Math.hypot(ddx, ddy), need = R + 3 * k;
+          if (dist >= need) return;
+          if (dist < 0.01) {           // a középpont a dobozon belül: a legközelebbi szél felé
+            var dl = q.x - b[0], dr = b[2] - q.x, du = q.y - b[1], dn = b[3] - q.y, m = Math.min(dl, dr, du, dn);
+            if (m === du) q.y = b[1] - need; else if (m === dn) q.y = b[3] + need; else if (m === dl) q.x = b[0] - need; else q.x = b[2] + need;
+          } else { q.x += ddx / dist * (need - dist); q.y += ddy / dist * (need - dist); }
+          moved = true;
+        });
+      });
       if (!moved) break;
     }
+    // ha egy téli üresjáratú klíma-tű így sem fér el, inkább elmarad (az Eszközök listában megvan)
+    P = P.filter(function (q) { return q.d.role !== 'ac_ir' || !tagBoxes.some(function (b) { return q.x + R > b[0] && q.x - R < b[2] && q.y + R > b[1] && q.y - R < b[3]; }); });
     P.forEach(function (q) { take([q.x - R, q.y - R, q.x + R, q.y + R + 2.5 * k]); });
-    // 3. értékbuborékok
+    // 5. a tűk címkéi: név és érték (pl. „Dupla lámpa · 25 W”); ha nem fér el, csak az érték, ha az sem, a név elmarad
     P.forEach(function (q) {
-      if (!q.s.big) return;
-      var w = (q.s.big.length * 7.4 + 16) * k, h = 20 * k, c = [[q.x + R + 3 * k, q.y - h / 2], [q.x - R - 3 * k - w, q.y - h / 2], [q.x - w / 2, q.y - R - h - 3 * k], [q.x - w / 2, q.y + R + 5 * k],
-        [q.x + R + 3 * k, q.y - h - 8 * k], [q.x + R + 3 * k, q.y + 8 * k], [q.x - R - 3 * k - w, q.y - h - 8 * k], [q.x - R - 3 * k - w, q.y + 8 * k]];
-      var pick = best(c, function (z) { return [z[0], z[1], z[0] + w, z[1] + h]; });
-      q.vb = take([pick[0], pick[1], pick[0] + w, pick[1] + h]);
+      var full = pinLabel(q); if (!full) return;
+      var opts = [full]; if (q.s.big && full !== q.s.big) opts.push(q.s.big);
+      for (var oi = 0; oi < opts.length; oi++) {
+        var lb = opts[oi], w = (tw(lb, 12.5 * k) + 16 * k), h = 20 * k, g2 = 2.2;
+        var c = [[q.x + R + 3 * k, q.y - h / 2], [q.x - R - 3 * k - w, q.y - h / 2], [q.x - w / 2, q.y - R - h - 3 * k], [q.x - w / 2, q.y + R + 5 * k],
+          [q.x + R + 3 * k, q.y - h - 8 * k], [q.x + R + 3 * k, q.y + 8 * k], [q.x - R - 3 * k - w, q.y - h - 8 * k], [q.x - R - 3 * k - w, q.y + 8 * k],
+          [q.x - w / 2, q.y - R - h - 3 * k * g2 * 4], [q.x - w / 2, q.y + R + 5 * k * g2 * 3]];
+        var pick = best(c, function (z) { return [z[0], z[1], z[0] + w, z[1] + h]; }), bb = [pick[0], pick[1], pick[0] + w, pick[1] + h];
+        if (cost(bb) === 0 || oi === opts.length - 1 && q.s.big) { q.lbl = lb; q.vb = take(bb); return; }
+      }
     });
-    // 4. jelölők
-    ['lo', 'up'].forEach(function (f) {
+    // 6. jelölők
+    FL.forEach(function (f) {
       scene.floors[f].marks.forEach(function (m) {
         var fs = 11 * k, w = (m.t.length * 6.2 + 12) * k, h = 16 * k, ax = m.a[0], ay = m.a[1];
         var c = [[m.p[0], m.p[1] - h / 2 - 6 * k]];
-        [26, 44, 64, 86].forEach(function (r) { [-90, -45, -135, 0, 180, 45, 135, 90].forEach(function (a) { var t = a * Math.PI / 180; c.push([ax + Math.cos(t) * (r + w / 2) * k / k, ay + Math.sin(t) * r * k]); }); });
+        [26, 44, 64, 86].forEach(function (r) { [-90, -45, -135, 0, 180, 45, 135, 90].forEach(function (a) { var t = a * Math.PI / 180; c.push([ax + Math.cos(t) * (r + w / 2), ay + Math.sin(t) * r * k]); }); });
         var pick = best(c, function (z) { return [z[0] - w / 2, z[1] - h / 2, z[0] + w / 2, z[1] + h / 2]; });
+        if (cost([pick[0] - w / 2, pick[1] - h / 2, pick[0] + w / 2, pick[1] + h / 2]) > 0) return;     // ha mindenhol takarna, inkább nincs
         take([pick[0] - w / 2, pick[1] - h / 2, pick[0] + w / 2, pick[1] + h / 2]);
         var mg = el('g', {}, gl);
         el('line', { x1: r1(ax), y1: r1(ay), x2: r1(pick[0]), y2: r1(pick[1]), stroke: INK, 'stroke-width': r1(1.6 * k) }, mg);
@@ -409,10 +532,10 @@
         var t = el('text', { x: r1(pick[0]), y: r1(pick[1] + 4 * k), 'text-anchor': 'middle', class: 'mark', style: 'font-size:' + r1(fs) + 'px' }, mg); t.textContent = m.t;
       });
     });
-    // 5. szobanevek
-    ['lo', 'up'].forEach(function (f) {
+    // 7. sima szobanevek (ahol nincs hőfok-címke)
+    FL.forEach(function (f) {
       scene.floors[f].floors.forEach(function (fp) {
-        if (!fp.n || fp.id === 'erkely' || fp.id === 'lepcsohaz') return;
+        if (!fp.n || tagged[fp.id] || fp.id === 'erkely' || fp.id === 'lepcsohaz') return;
         var fs = 14 * k, w = tw(fp.n, fs), h = fs * 1.05, lx = fp.label[0], ly = fp.label[1];
         var c = [[0, 0], [0, -18], [0, 18], [-34, 0], [34, 0], [0, -34], [0, 34], [-30, -22], [30, 22], [30, -22], [-30, 22]], pick = null;
         for (var n = 0; n < c.length; n++) { var x = lx + c[n][0] * k, y = ly + c[n][1] * k, b = [x - w / 2, y - h / 2, x + w / 2, y + h / 2]; if (!hits(b)) { pick = [x, y, b]; break; } }
@@ -422,19 +545,21 @@
         t.textContent = fp.n;
       });
     });
-    // 6. tűk kirajzolása (a feliratok fölött)
+    // 8. tűk kirajzolása (a feliratok fölött): ikon a szerepkör szerint, sárga = ég, türkiz = a robot dolgozik
     P.forEach(function (q) {
-      var pn = q.pn, d = q.d, s = q.s, col = s.cls === 'off' ? '#8a8f9c' : ROLE_COL[d.role] || '#26a5c9', alert = s.cls === 'hot' || s.cls === 'cold';
-      var pg = el('g', { class: 'pin' + (st.sel === pn.id ? ' sel' : ''), tabindex: 0, role: 'button', 'data-pink': pn.id, 'aria-label': d.label + ': ' + s.txt }, gp);
-      el('line', { x1: r1(q.x), y1: r1(q.y), x2: r1(pn.base[0]), y2: r1(pn.base[1]), stroke: col, 'stroke-width': r1(2 * k), 'stroke-dasharray': r1(2 * k) + ' ' + r1(3 * k), opacity: 0.8 }, pg);
-      if (alert) el('circle', { class: 'ring', cx: r1(q.x), cy: r1(q.y), r: r1(R), style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
+      var pn = q.pn, d = q.d, s = q.s, pc = pinColors(d, s);
+      var pg = el('g', { class: 'pin' + (st.sel === pn.id ? ' sel' : '') + (pc.on ? ' lit' : ''), tabindex: 0, role: 'button', 'data-pink': pn.id, 'aria-label': d.label + ': ' + s.txt }, gp);
+      el('line', { x1: r1(q.x), y1: r1(q.y), x2: r1(pn.base[0]), y2: r1(pn.base[1]), stroke: INK, 'stroke-width': r1(1.8 * k), 'stroke-dasharray': r1(2 * k) + ' ' + r1(3 * k), opacity: 0.55 }, pg);
+      if (pc.on) el('circle', { class: 'glow', cx: r1(q.x), cy: r1(q.y), r: r1(R + 7 * k), fill: pc.glow }, pg);
+      if (pc.alert) el('circle', { class: 'ring', cx: r1(q.x), cy: r1(q.y), r: r1(R), style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
       el('circle', { class: 'dot', cx: r1(q.x), cy: r1(q.y + 2.5 * k), r: r1(R), fill: INK }, pg);
-      el('circle', { class: 'dot', cx: r1(q.x), cy: r1(q.y), r: r1(R), fill: alert ? (s.cls === 'hot' ? '#ff5a3c' : '#2f6fe4') : col, style: 'stroke-width:' + r1(3 * k) + 'px' }, pg);
-      var gt = el('text', { x: r1(q.x), y: r1(q.y + 4.5 * k), 'text-anchor': 'middle', 'font-size': r1((pn.id.length > 2 ? 10.5 : 12.5) * k), fill: '#ffffff' }, pg); gt.textContent = pn.id;
+      el('circle', { class: 'dot', cx: r1(q.x), cy: r1(q.y), r: r1(R), fill: pc.fill, style: 'stroke-width:' + r1(2.6 * k) + 'px' }, pg);
+      var is = 17 * k;
+      el('use', { href: '#pi-' + pinIcon(d), x: r1(q.x - is / 2), y: r1(q.y - is / 2), width: r1(is), height: r1(is), style: 'color:' + pc.ic + ';stroke-width:' + r1(2.3) }, pg);
       if (q.vb) {
         var b = q.vb, w = b[2] - b[0];
-        el('rect', { class: 'vbg', x: r1(b[0]), y: r1(b[1]), width: r1(w), height: r1(b[3] - b[1]), rx: r1(10 * k), fill: s.cls === 'hot' ? '#ffd9cc' : s.cls === 'cold' ? '#d6e6ff' : s.cls === 'off' ? '#e4e6ea' : '#ffffff', style: 'stroke-width:' + r1(2 * k) + 'px' }, pg);
-        var vt = el('text', { class: 'vt', x: r1(b[0] + w / 2), y: r1(b[1] + 14.5 * k), 'text-anchor': 'middle', fill: INK, style: 'font-size:' + r1(12.5 * k) + 'px' }, pg); vt.textContent = s.big;
+        el('rect', { class: 'vbg', x: r1(b[0]), y: r1(b[1]), width: r1(w), height: r1(b[3] - b[1]), rx: r1(10 * k), fill: s.cls === 'hot' ? '#ffd9cc' : s.cls === 'cold' ? '#d6e6ff' : pc.on ? '#fff3c4' : '#ffffff', style: 'stroke-width:' + r1(2 * k) + 'px' }, pg);
+        var vt = el('text', { class: 'vt', x: r1(b[0] + w / 2), y: r1(b[1] + 14.5 * k), 'text-anchor': 'middle', fill: INK, style: 'font-size:' + r1(12.5 * k) + 'px' }, pg); vt.textContent = q.lbl;
       }
       // a bojler fűt (C1 konnektor, kb. 1,8 kW): villám és felszálló hőhullám a tű fölött
       if (pn.id === 'C1') {
@@ -456,7 +581,7 @@
   // ---- nézet: illesztés, nagyítás, mozgatás -------------------------------------------------------------
   function contentBox() {
     var b = null;
-    ['lo', 'up'].forEach(function (f) {
+    visF().forEach(function (f) {
       var q = scene.floors[f].bbox;
       b = b ? { x0: Math.min(b.x0, q.x0), x1: Math.max(b.x1, q.x1), y0: Math.min(b.y0, q.y0), y1: Math.max(b.y1, q.y1) } : Object.assign({}, q);
     });
@@ -466,7 +591,7 @@
   // az iránytű és a dekor ne tolja el a középpontot (2026.11.15: ettől csúszott le telefonon a lakás).
   function houseBox() {
     var b = null;
-    ['lo', 'up'].forEach(function (f) {
+    visF().forEach(function (f) {
       var F = S.FLOORS[f], P = scene.floors[f].proj.P;
       F.rooms.forEach(function (r) {
         [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.d], [r.x + r.w, r.y + r.d]].forEach(function (c) {
@@ -483,7 +608,7 @@
     document.documentElement.style.setProperty('--toph', (($('top').offsetHeight || 60) + 16) + 'px');
     var b = houseBox(), W = world.clientWidth || 1440, H = world.clientHeight || 900, phone = W < 760;
     // hely a felső csempéknek és az alsó Pamutka-kártyának
-    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, topH = ($('top').offsetHeight || 60) + 14, top = phone ? topH : (wide ? 100 : 90), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
+    var wide = W >= 900, pw = wide ? ($('pam').offsetWidth || 328) + 24 : 0, topH = ($('top').offsetHeight || 60) + 14, top = phone ? topH + 46 : (wide ? 146 : 136), bottom = phone ? ($('pam').classList.contains('mini') ? 130 : 230) : (wide ? 64 : ($('pam').classList.contains('mini') ? 140 : 340)), left = phone ? 10 : (wide ? pw : 20), right = wide ? pw : 20;
     var aw = Math.max(200, W - left - right), ah = Math.max(200, H - top - bottom);
     var cw = b.x1 - b.x0 + 40, ch = b.y1 - b.y0 + 50, s = Math.min(aw / cw * (phone ? 1.08 : 1), ah / ch);
     var vw = W / s, vh = H / s, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -581,6 +706,8 @@
 
   // ---- kijelölés, info ----------------------------------------------------------------------------
   function select(pink) {
+    var pf = pinFloor(pink);
+    if (pf && st.floor !== 'both' && pf !== st.floor) { st.floor = pf; saveView(); st.vb = null; drawWorld(); floorBar(); }
     st.sel = st.sel === pink ? null : pink;
     drawPins(); list(); overview(); showInfo();
   }
@@ -829,7 +956,7 @@
   }
   function render() {
     $('demo').hidden = st.live; $('livepill').hidden = !st.live;
-    chips(); list(); pamutka(); overview(); drawPins(); showInfo(); toolbar(); offBtn();
+    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar();
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
@@ -1024,6 +1151,7 @@
       var p = cat.sp || catScreen(cat.fl, cat.x, cat.y), g = layer.cat;
       g.setAttribute('transform', 'translate(' + r1(p[0]) + ',' + r1(p[1]) + ') scale(' + r1(0.62 * k * 100) / 100 + ')');
       g.setAttribute('opacity', r1(cat.fade));
+      var cv = st.floor === 'both' || cat.fl === st.floor || catDrag.on; if ((g.style.display === 'none') === cv) g.style.display = cv ? '' : 'none';
       var cls = (cat.mode === 'jump' || cat.mode === 'land' ? 'walk ' + cat.mode : cat.mode) + (cat.goal && cat.mode !== 'held' && cat.mode !== 'wake' ? ' has-tip' : '') + (cat.talkUntil > Date.now() ? ' talk' : '');
       if (layer.drop) { var sh = catDrag.on && catDrag.land; layer.drop.setAttribute('opacity', sh ? '0.22' : '0'); if (sh) { layer.drop.setAttribute('cx', r1(catDrag.land.s[0])); layer.drop.setAttribute('cy', r1(catDrag.land.s[1])); layer.drop.setAttribute('rx', r1(26 * k)); layer.drop.setAttribute('ry', r1(8 * k)); } }
       if (g.getAttribute('class') !== cls) g.setAttribute('class', cls);
@@ -1379,7 +1507,7 @@
     if (/PGRST202|robot_cmd_enqueue/.test(m) && /not find|could not|schema cache/i.test(m)) return 'a robotvezérlés még nincs telepítve (014_robot_cmd.sql)';
     return m.slice(0, 120) || 'nem sikerült';
   }
-  function robName(p) { var d = st.devs.filter(function (x) { return x.pink === p; })[0]; return d ? d.label.replace(/^Robotporszívó /, 'Robot ') : p; }
+  function robName(p) { var d = st.devs.filter(function (x) { return x.pink === p; })[0]; return d ? d.label.replace(/^Robotporszívó /, 'Robot ').replace(/ \(.*\)$/, '') : p; }
   function robSend(p, k) {
     st.rob.cmd[p] = { cmd: k, status: 'queued' }; showInfo();
     if (!sb || !st.user) {                                   // demó: csak eljátsszuk
@@ -1562,6 +1690,11 @@
 
   // ---- gombok, billentyűk ----------------------------------------------------------------------------
   function on(id, ev, fn) { $(id).addEventListener(ev, fn); }
+  $('floorbar').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.hasAttribute('data-floor')) setFloor(b.getAttribute('data-floor'));
+    else if (b.hasAttribute('data-layer')) setLayer(b.getAttribute('data-layer'));
+  });
   on('b-edit', 'click', function () { if (!canEdit()) return; st.edit = !st.edit; if (st.edit) toast(st.user ? 'Szerkesztés: húzd a bútorokat, aztán Mentés.' : 'Demó szerkesztés: húzd a bútorokat (belépve menthető).', ''); toolbar(); drawItems('lo'); drawItems('up'); showInfo(); });
   on('b-undo', 'click', undo); on('b-redo', 'click', redo);
   on('b-reset', 'click', function () { if (!Object.keys(st.offs).length) return; pushUndo(JSON.parse(JSON.stringify(st.offs))); st.offs = {}; drawWorld(); markDirty(); });
