@@ -506,14 +506,20 @@
     }
     // ha egy téli üresjáratú klíma-tű így sem fér el, inkább elmarad (az Eszközök listában megvan)
     P = P.filter(function (q) { return q.d.role !== 'ac_ir' || !tagBoxes.some(function (b) { return q.x + R > b[0] && q.x - R < b[2] && q.y + R > b[1] && q.y - R < b[3]; }); });
-    var placedP = [];
-    P.forEach(function (q) {
-      var free = function (x, y) { var b = [x - R, y - R, x + R, y + R + 2.5 * k]; return !hits(b) && !placedP.some(function (o) { return b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]; }); };
+    // utolsó menet fontossági sorrendben: a fontosabb tű foglal előbb helyet; ha egy kevésbé fontos tű sehol nem fér
+    // el ütközés nélkül, elmarad (az Eszközök listában és a Vezérlés lapon megvan) (2026.11.20)
+    var prio = function (q) { var d = q.d, p = d.pink; if (d.role === 'robot') return 0; if (p === 'C1') return 1; if (/^C[678]$/.test(p)) return 5; if (d.role === 'plug') return plugOn(p) ? 2 : 3; if (d.role === 'thermo') return 2; if (d.role === 'breaker') return 4; if (d.role === 'pir') return 5; return 6; };
+    var placedP = [], keep = [];
+    P.slice().sort(function (a, b) { return prio(a) - prio(b); }).forEach(function (q) {
+      var free = function (x, y) { var b = [x - R, y - R, x + R, y + R + 2.5 * k]; return !hits(b) && !placedP.some(function (o) { return b[0] < o[2] + pad && b[2] > o[0] - pad && b[1] < o[3] + pad && b[3] > o[1] - pad; }); };
       if (!free(q.x, q.y)) {
-        outer: for (var rr = 1; rr <= 6; rr++) for (var a = 0; a < 360; a += 30) { var nx = q.x + Math.cos(a * Math.PI / 180) * R * 1.1 * rr, ny = q.y + Math.sin(a * Math.PI / 180) * R * 1.1 * rr; if (free(nx, ny)) { q.x = nx; q.y = ny; break outer; } }
+        var found = false;
+        outer: for (var rr = 1; rr <= 8; rr++) for (var a = 0; a < 360; a += 20) { var nx = q.x + Math.cos(a * Math.PI / 180) * R * 1.1 * rr, ny = q.y + Math.sin(a * Math.PI / 180) * R * 1.1 * rr; if (free(nx, ny)) { q.x = nx; q.y = ny; found = true; break outer; } }
+        if (!found && prio(q) >= 3) return;
       }
-      var bb = [q.x - R, q.y - R, q.x + R, q.y + R + 2.5 * k]; placedP.push(bb); take(bb);
+      var bb = [q.x - R, q.y - R, q.x + R, q.y + R + 2.5 * k]; placedP.push(bb); take(bb); keep.push(q);
     });
+    P = P.filter(function (q) { return keep.indexOf(q) >= 0; });
     // 5. a tűk címkéi: név és érték (pl. „Dupla lámpa · 25 W”). Soha nem fedhet mást (a tulaj, 2026.11.20):
     //    előbb közvetlenül a tű mellett, aztán távolabbi gyűrűkön összekötő vonallal; ha a teljes név sehol nem fér,
     //    csak az érték; ha az sem, a címke elmarad (az érték a Vezérlés lapon és a tű adatlapján megvan).
