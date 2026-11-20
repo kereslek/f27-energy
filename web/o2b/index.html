@@ -36,6 +36,55 @@ body.wide #info{top:150px}
   #info{top:calc(var(--toph,150px) + 46px)!important;max-height:calc(100% - var(--toph,150px) - 112px)!important}
   #toast{top:calc(var(--toph,150px) + 46px)}
 }
+
+/* B: Vezérlőpult (2026.11.20) */
+.vp .ovh{display:flex;align-items:center;gap:8px}
+.vptabs{display:flex;gap:3px;background:#efe4cc;border-radius:12px;padding:3px;margin:2px 0 8px}
+.vptabs button{all:unset;cursor:pointer;flex:1;text-align:center;padding:5px 2px;border-radius:9px;font:900 12px "Nunito",sans-serif;color:#7a6f57}
+.vptabs button[aria-pressed="true"]{background:#fffdf7;color:#1e2a44;box-shadow:0 1px 0 #1e2a44,0 0 0 2px #1e2a44}
+.vptabs button:focus-visible{outline:3px solid #ff4fa3}
+.vpscn{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.vsc{all:unset;box-sizing:border-box;cursor:pointer;border-radius:13px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font:900 11px/1.15 "Nunito",sans-serif;color:#fff;border:2.5px solid #1e2a44;box-shadow:0 3px 0 #1e2a44}
+.vsc .ib{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.25);display:grid;place-items:center}
+.vsc svg{width:18px;height:18px;stroke-width:2.3}
+.vsc.busy{opacity:.6}
+.vsc:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.s-esti{background:linear-gradient(160deg,#f2a541,#d9682b)}.s-film{background:linear-gradient(160deg,#5a6ee0,#3a3f9c)}.s-unnep{background:linear-gradient(160deg,#2fb383,#17795a)}.s-le{background:linear-gradient(160deg,#5b6378,#323849)}
+.vproom{margin-bottom:8px}
+.vrh{display:flex;align-items:center;gap:6px;font:900 13px "Nunito",sans-serif;color:#1e2a44;margin:2px 2px 5px}
+.vrh small{font-size:11px;color:#6b7280}
+.vrh .t{margin-left:auto;font:400 14px "Quest Display","Lilita One",sans-serif;color:#fff;border-radius:999px;padding:0 8px;background:#2fa56b}
+.vrh .t.hot{background:#ff7a45}.vrh .t.cold{background:#4f86e8}.vrh .t.out{background:#58627a}
+.vtiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.vtile{position:relative;min-width:0;box-sizing:border-box;cursor:pointer;background:#fffdf7;border:2.5px solid #1e2a44;border-radius:14px;box-shadow:0 3px 0 #1e2a44;padding:8px;min-height:84px;display:flex;flex-direction:column;gap:4px;color:#1e2a44}
+.vtile:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px}
+.vtile .tr{display:flex;align-items:center;gap:4px}
+.vtile .ic{width:30px;height:30px;border-radius:10px;background:#eef0f5;display:grid;place-items:center;flex:0 0 auto}
+.vtile .ic svg{width:18px;height:18px;stroke-width:2.3;color:#1e2a44}
+.vtile .stt{margin-left:auto;font:900 9.5px "Nunito",sans-serif;letter-spacing:.6px;padding:2px 6px;border-radius:999px;background:#eef0f5;color:#6b7280}
+.vtile .more{all:unset;cursor:pointer;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;color:#6b7280}
+.vtile .more svg{width:18px;height:18px}
+.vtile .more:hover{background:#eef0f5}.vtile .more:focus-visible{outline:3px solid #ff4fa3}
+.vtile .nm{font:900 12.5px/1.2 "Nunito",sans-serif}
+.vtile .sb{font:800 10.5px/1.25 "Nunito",sans-serif;color:#6b7280;overflow:hidden;text-overflow:ellipsis}
+.vtile.on{background:#fff3c4}.vtile.on .ic{background:#ffd23f}.vtile.on .stt{background:#1e2a44;color:#ffd23f}
+.vtile.run{background:#dcf4ee}.vtile.run .ic{background:#14a38b}.vtile.run .ic svg{color:#fff}.vtile.run .stt{background:#14a38b;color:#fff}
+.vtile.off{opacity:.55}
+.vpask{position:absolute;inset:-2px;border-radius:13px;background:#1e2a44;color:#fff7e6;padding:8px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;z-index:2;animation:vpop .15s ease-out}
+.vpask.wide{position:relative;inset:auto;margin:-2px 0 8px}
+.vpask p{margin:0;font:900 12.5px/1.3 "Nunito",sans-serif}
+.vpask small{display:block;font-weight:800;font-size:11px;color:#b9c3da}
+.vpask .row{display:flex;gap:5px}.vpask .btn{flex:1;min-height:30px;justify-content:center;box-shadow:none;border-width:2px}
+.vpask .btn.no{background:#36425f;color:#fff;border-color:#36425f}
+.vpask .btn.warn{background:#e8432f;color:#fff}
+@keyframes vpop{from{transform:scale(.96);opacity:0}}
+@media (prefers-reduced-motion:reduce){.vpask{animation:none}}
+.vpac{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:13px;border:2px dashed #b9b2a0;font:900 12px "Nunito",sans-serif;color:#1e2a44}
+.vpac small{display:block;font-weight:800;font-size:10.5px;color:#6b7280}
+.vpac .ic{width:28px;height:28px;border-radius:9px;background:#eef0f5;display:grid;place-items:center;flex:0 0 auto}
+.vpac svg{width:16px;height:16px;stroke-width:2.3}
+.vpac b{margin-left:auto;color:#6b7280}
+.vpac:focus-visible{outline:3px solid #ff4fa3}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=Baloo+2:wght@800&amp;family=Lilita+One&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">

@@ -1313,7 +1313,7 @@
     if (!on) s.cur_power = 0;
   }
   function switchPlug(p, on, confirmed) {
-    if (CTL_CONFIRM[p] && !confirmed) { st.ctl.ask = { p: p, on: on }; ctlRender(); return; }
+    if (!confirmed) { st.ctl.ask = { p: p, on: on }; ctlRender(); return; }   // minden kapcsolás megerősítéssel (2026.11.20)
     st.ctl.ask = null; st.ctl.busy[p] = true; ctlRender();
     callControl({ action: 'switch', pink: p, on: on, confirm: !!confirmed }).then(function (res) {
       st.ctl.busy[p] = false;
@@ -1427,7 +1427,8 @@
   }
   function askHtml(p) {
     var a = st.ctl.ask; if (!a || a.p !== p) return '';
-    return '<div class="ask">Biztos? A bojler adja a fenti meleg vizet. <button class="btn sm y" data-ctl="yes">Igen, ' + (a.on ? 'BE' : 'KI') + '</button><button class="btn sm" data-ctl="no">Mégse</button></div>';
+    var q = p === 'C1' ? 'Biztos? A bojler adja a fenti meleg vizet.' : (a.on ? 'Bekapcsolod: ' : 'Kikapcsolod: ') + esc(shortName(p)) + '?';
+    return '<div class="ask">' + q + ' <button class="btn sm y" data-ctl="yes">Igen, ' + (a.on ? 'BE' : 'KI') + '</button><button class="btn sm" data-ctl="no">Mégse</button></div>';
   }
   function rulesHtml(rules, withName, empty) {
     if (!rules.length) return empty == null ? '<div class="none">Nincs ismétlődő ütemezés.</div>' : empty;
@@ -1470,14 +1471,91 @@
       '<details class="own"><summary>Saját ütemezés…</summary>' + addFormHtml(p) + '</details></div>' +
       (CTL_CONFIRM[p] ? '<div class="ctln">A bojlert kézzel csak megerősítéssel lehet kapcsolni.</div>' : '') + '</div>';
   }
-  // B: Kapcsolók blokk
-  function switchesHtml() {
-    var ro = !canCtl();
-    return '<div class="ovs swb"><div class="ovh">' + (ro ? 'LÁMPÁK ÉS KONNEKTOROK' : 'KAPCSOLÓK <button class="mini lnk" data-ctl="sched">Heti időzítő</button>') + '</div>' +
-      (st.ctl.missing && !ro ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
-      (ro ? '' : '<div class="scn">' + SCENES.map(function (sc) { return '<button class="scb' + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-ctl="scene" data-id="' + sc.id + '"><b>' + sc.n + '</b><small>' + sc.d + '</small></button>'; }).join('') + '</div>') +
-      CTL_PINKS.filter(function (p) { return !hideOff(p); }).map(function (p) { return '<div class="swr' + (plugOnline(p) || !st.live ? '' : ' off') + '"><span class="dot' + (plugOn(p) ? ' on' : '') + '"></span><button class="nm" data-ctl="open" data-p="' + p + '">' + esc(shortName(p)) + '<small>' + (plugOnline(p) || !st.live ? (function () { var n = st.role === 'share' ? null : nextEvent(p); return n ? 'köv.: ' + whenText(n.at) + ' ' + (n.on ? 'BE' : 'KI') : p; })() : p + ' · offline') + '</small></button>' + swHtml(p) + '</div>' + askHtml(p); }).join('') + (ro ? '<div class="ctln">' + roClause() + '</div>' : '') + '</div>';
+  // B: Vezérlőpult (2026.11.20): szűrő (Mind / Lent / Fent / Most ég), jelenetek, szobánként csempék.
+  // Minden kapcsolás előtt megerősítés a csempén (a tulaj kérése); a ⋯ a teljes adatlapot nyitja.
+  var VP_LO = ['nappali', 'etkezo', 'halo', 'konyha', 'eloszoba', 'furdo_lent', 'erkely'], VP_UP = ['eloter', 'furdo_fent', 'kagylo', 'gyerek', 'lepcso_fent'];
+  var SCN_ICON = { esti: 'lamp', film: 'film', unnep: 'star', le: 'power' };
+  st.vp = { f: null, ask: null };
+  function vpFilter() { return st.vp.f || (st.floor === 'both' ? 'all' : st.floor); }
+  function robOn(p) { var r = st.latest[p]; return !!(r && r.online !== false && r.status && r.status.cleaning); }
+  function vpDevs() {
+    return CTL_PINKS.concat(['R1', 'R2']).filter(function (p) { return !hideOff(p) && devOf(p).room; });
   }
+  function vpSub(p) {
+    var d = devOf(p);
+    if (d.role === 'robot') return devState(d).txt;
+    if (!plugOnline(p) && st.live) return 'offline';
+    var r = st.latest[p], w = r ? watts(r.status) : null, n = st.role === 'share' ? null : nextEvent(p);
+    var a = plugOn(p) ? (w ? fmt(w, 0) + ' W' : 'BE') : 'KI';
+    if (p === 'C1' && plugOn(p)) a = w && w > 500 ? 'fűt · ' + fmt(w / 1000, 1) + ' kW' : 'felfűtve, tart';
+    return a + (n ? ' · köv. ' + whenText(n.at).replace(/^ma /, '') + ' ' + (n.on ? 'BE' : 'KI') : '');
+  }
+  function vpAskHtml(p) {
+    var d = devOf(p), on = d.role === 'robot' ? robOn(p) : plugOn(p), q, sm, yes, r = st.latest[p], w = r ? watts(r.status) : null;
+    if (d.role === 'robot') { q = on ? 'Szüneteltessem a takarítást?' : 'Indítsam a takarítást?'; sm = on ? 'Ott áll meg, ahol van.' : 'Végigmegy a szinten, utána hazamegy.'; yes = on ? 'Szünet' : 'Indítás'; }
+    else if (p === 'C1') { q = on ? 'Kikapcsolod a bojlert?' : 'Bekapcsolod a bojlert?'; sm = on ? 'A fenti meleg víz lassan lehűl.' : '1,8 kW, kb. 110 Ft/óra a felfűtésig.'; yes = on ? 'Kikapcsolom' : 'Bekapcsolom'; }
+    else { q = (on ? 'Kikapcsolod?' : 'Bekapcsolod?'); sm = shortName(p) + (on && w ? ', most ' + fmt(w, 0) + ' W' : ''); yes = on ? 'Kikapcsolom' : 'Bekapcsolom'; }
+    return '<div class="vpask" role="alertdialog" aria-label="Megerősítés"><p>' + esc(q) + '<small>' + esc(sm) + '</small></p><div class="row"><button type="button" class="btn sm no" data-vp="no">Mégse</button><button type="button" class="btn sm ' + (p === 'C1' && on ? 'warn' : 'y') + '" data-vp="yes" data-p="' + p + '">' + esc(yes) + '</button></div></div>';
+  }
+  function vpTile(p, ro) {
+    var d = devOf(p), isR = d.role === 'robot', on = isR ? robOn(p) : plugOn(p), off = isR ? !(st.latest[p] && st.latest[p].online !== false) && st.live : !plugOnline(p) && st.live;
+    var busy = isR ? !!(st.rob.cmd[p] && /queued|running/.test(st.rob.cmd[p].status)) : st.ctl.busy[p];
+    var cls = off ? ' off' : on ? (isR ? ' run' : ' on') : '', stt = off ? 'OFFLINE' : busy ? 'KAPCSOL…' : isR ? (on ? 'TAKARÍT' : 'DOKKBAN') : on ? 'BE' : 'KI';
+    var nm = isR ? robName(p) : shortName(p);
+    return '<div class="vtile' + cls + '" role="button" tabindex="0" data-vp="' + (ro || off ? 'more' : 'tile') + '" data-p="' + p + '" aria-label="' + esc(nm + ': ' + stt + (ro ? '' : ', koppints a kapcsoláshoz')) + '">' +
+      '<div class="tr"><span class="ic"><svg aria-hidden="true"><use href="#pi-' + pinIcon(d) + '"/></svg></span><span class="stt">' + stt + '</span>' +
+      '<button type="button" class="more" data-vp="more" data-p="' + p + '" aria-label="' + esc(nm) + ' adatlapja" title="Adatlap: időzítés, ütemezés, napló"><svg aria-hidden="true"><use href="#pi-dots"/></svg></button></div>' +
+      '<div class="nm">' + esc(nm) + '</div><div class="sb">' + esc(vpSub(p)) + '</div>' +
+      (st.vp.ask && st.vp.ask.k === 'p' && st.vp.ask.p === p ? vpAskHtml(p) : '') + '</div>';
+  }
+  function switchesHtml() {
+    var ro = !canCtl(), f = vpFilter(), all = vpDevs(), h = '';
+    var tabs = [['all', 'Mind'], ['lo', 'Lent'], ['up', 'Fent'], ['on', 'Most ég']];
+    h += '<div class="ovs vp"><div class="ovh">VEZÉRLÉS' + (ro ? '' : ' <button class="mini lnk" data-ctl="sched">Heti időzítő</button>') + '</div>' +
+      (st.ctl.missing && !ro ? '<div class="ctln">A kapcsolás még nincs telepítve (Actions: Kapcsolás telepítése).</div>' : '') +
+      '<div class="vptabs" role="group" aria-label="Szűrő">' + tabs.map(function (t) { return '<button type="button" data-vp="f" data-f="' + t[0] + '" aria-pressed="' + (f === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    if (!ro) {
+      h += '<div class="vpscn">' + SCENES.map(function (sc) { return '<button type="button" class="vsc s-' + sc.id + (st.ctl.busy.scene === sc.id ? ' busy' : '') + '" data-vp="scene" data-id="' + sc.id + '" title="' + esc(sc.d) + '"><span class="ib"><svg aria-hidden="true"><use href="#pi-' + (SCN_ICON[sc.id] || 'star') + '"/></svg></span>' + esc(sc.n) + '</button>'; }).join('') + '</div>';
+      var as = st.vp.ask && st.vp.ask.k === 'scene' ? SCENES.filter(function (x) { return x.id === st.vp.ask.id; })[0] : null;
+      if (as) h += '<div class="vpask wide" role="alertdialog" aria-label="Megerősítés"><p>' + esc(as.n) + '?<small>' + esc(as.set.map(function (x) { return shortName(x[0]) + ' ' + (x[1] ? 'BE' : 'KI'); }).join(', ')) + '. Egyenként, 3 mp-es szünettel.</small></p><div class="row"><button type="button" class="btn sm no" data-vp="no">Mégse</button><button type="button" class="btn sm y" data-vp="syes" data-id="' + as.id + '">Indítás</button></div></div>';
+    }
+    var rooms = (f === 'up' ? [] : VP_LO).concat(f === 'lo' ? [] : VP_UP), n = 0;
+    rooms.forEach(function (rid) {
+      var ps = all.filter(function (p) { return devOf(p).room === rid && (f !== 'on' || (devOf(p).role === 'robot' ? robOn(p) : plugOn(p))); });
+      if (!ps.length) return; n += ps.length;
+      var rt = roomTemp(rid), up = VP_UP.indexOf(rid) >= 0;
+      h += '<div class="vproom"><div class="vrh">' + esc(ROOM_NAMES[rid] || rid) + ' <small>' + (up ? 'fent' : 'lent') + '</small>' + (rt && rt.t != null ? '<span class="t ' + rt.c + '">' + fmt(rt.t) + '°</span>' : '') + '</div><div class="vtiles">' + ps.map(function (p) { return vpTile(p, ro); }).join('') + '</div></div>';
+    });
+    if (!n) h += '<div class="ctln">' + (f === 'on' ? 'Most semmi nem ég, és a robotok pihennek.' : 'Ezen a szinten nincs kapcsolható eszköz.') + '</div>';
+    if (f !== 'on') {
+      var acs = st.devs.filter(function (d) { return d.role === 'ac_ir' && (f === 'all' || (f === 'up') === (VP_UP.indexOf(d.room) >= 0)); });
+      if (acs.length) h += '<button type="button" class="vpac" data-vp="more" data-p="' + acs[0].pink + '"><span class="ic"><svg aria-hidden="true"><use href="#pi-snow"/></svg></span><span>' + acs.length + ' klíma: télen nem fűtünk vele<small>csak nyári hűtés · ' + esc(acs.map(function (d) { return ROOM_NAMES[d.room]; }).join(', ')) + '</small></span><b aria-hidden="true">›</b></button>';
+    }
+    if (ro) h += '<div class="ctln">' + roClause() + '</div>';
+    return h + '</div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-vp]') : null; if (!b) return;
+    var k = b.getAttribute('data-vp'), p = b.getAttribute('data-p');
+    e.stopPropagation();
+    if (k === 'f') { st.vp.f = b.getAttribute('data-f'); st.vp.ask = null; overview(); list(); return; }
+    if (k === 'more') { st.vp.ask = null; select(p); return; }
+    if (!canCtl()) { toast(roClause(), ''); return; }
+    if (k === 'tile') { st.vp.ask = st.vp.ask && st.vp.ask.p === p ? null : { k: 'p', p: p }; overview(); list(); var t = document.querySelector('.vtile[data-p="' + p + '"] [data-vp="yes"]'); if (t) t.focus(); return; }
+    if (k === 'scene') { var id = b.getAttribute('data-id'); st.vp.ask = st.vp.ask && st.vp.ask.id === id ? null : { k: 'scene', id: id }; overview(); list(); return; }
+    if (k === 'no') { st.vp.ask = null; overview(); list(); return; }
+    if (k === 'syes') { var sc = SCENES.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0]; st.vp.ask = null; if (sc && !st.ctl.busy.scene) runScene(sc); else { overview(); list(); } return; }
+    if (k === 'yes') {
+      st.vp.ask = null;
+      if (devOf(p).role === 'robot') robSend(p, robOn(p) ? 'pause' : 'start');
+      else switchPlug(p, !plugOn(p), true);
+      overview(); list();
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('vtile')) { e.preventDefault(); e.target.click(); }
+    if (e.key === 'Escape' && st.vp.ask) { st.vp.ask = null; overview(); list(); }
+  });
   // ---- robotporszívók vezérlése (014_robot_cmd.sql): a parancs a sorba kerül, az adatgyűjtő 10 mp-enként
   // felveszi és továbbítja a gyártói felhőnek (f27/robots.py watch). Csak a tulaj és a családtag küldhet.
   var RCMD = { start: 'Takarítás indul', pause: 'Szünet', dock: 'Haza a dokkba', find: 'Hol vagy? (hangjelzés)' };
