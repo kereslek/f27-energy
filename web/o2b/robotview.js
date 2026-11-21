@@ -104,7 +104,20 @@
     if (m.none) return '<div class="rv"><div class="rv-n">A robot még nem küldött térképet. Az adatgyűjtő óránként kéri le; az első takarítás után biztosan lesz.</div></div>';
     var src = m.png ? 'data:image/png;base64,' + m.png : m.svg;
     var ov = '<svg class="rv-ov" viewBox="0 0 ' + m.w + ' ' + m.h + '" preserveAspectRatio="none" aria-hidden="true">';
-    (m.rooms || []).forEach(function (r) { if (r.c) ov += '<text x="' + r.c[0] + '" y="' + r.c[1] + '" text-anchor="middle" class="rv-rn" style="font-size:' + Math.max(9, m.w / 32) + 'px">' + esc(r.name) + '</text>'; });
+    // szobanevek ütközésfigyeléssel: ha egy név fedne egy másikat vagy a robotot / dokkot, kicsit odébb kerül,
+    // ha sehol nem fér el, kimarad (a szoba a Szobák sorban akkor is megvan)
+    var fs = Math.max(9, m.w / 32), taken = [];
+    [m.robot, m.charger].forEach(function (q) { if (q) taken.push([q[0] - 14, q[1] - 14, q[0] + 14, q[1] + 14]); });
+    var hit = function (b) { return b[0] < 0 || b[2] > m.w || b[1] < 0 || b[3] > m.h || taken.some(function (o) { return b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]; }); };
+    (m.rooms || []).forEach(function (r) {
+      if (!r.c) return;
+      var w2 = String(r.name).length * fs * 0.56 / 2 + 3, h2 = fs * 0.62;
+      var tries = [[0, 0], [0, -fs * 1.2], [0, fs * 1.2], [-w2, 0], [w2, 0], [0, -fs * 2.2], [0, fs * 2.2]];
+      for (var i = 0; i < tries.length; i++) {
+        var x = r.c[0] + tries[i][0], y = r.c[1] + tries[i][1], b = [x - w2, y - h2, x + w2, y + h2];
+        if (!hit(b)) { taken.push(b); ov += '<text x="' + x.toFixed(1) + '" y="' + (y + fs * 0.35).toFixed(1) + '" text-anchor="middle" class="rv-rn" style="font-size:' + fs.toFixed(1) + 'px">' + esc(r.name) + '</text>'; return; }
+      }
+    });
     var drawn = m.src === 'roborock';                  // a Roborock képén a robot és a dokk már rajta van
     if (m.charger && !drawn) ov += '<g transform="translate(' + m.charger[0] + ',' + m.charger[1] + ')"><rect x="-7" y="-7" width="14" height="14" rx="3" fill="#2fa56b" stroke="#fff" stroke-width="2"/><path d="M-2 -4 L2 -1 L-1 0 L2 4" stroke="#fff" stroke-width="1.6" fill="none"/></g>';
     if (m.robot && !drawn) ov += '<g class="rv-bot" transform="translate(' + m.robot[0] + ',' + m.robot[1] + ')"><circle r="12" fill="#14a38b" opacity=".25" class="rv-pulse"/><circle r="7.5" fill="#14a38b" stroke="#fff" stroke-width="2.5"/></g>';

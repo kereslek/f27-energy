@@ -911,7 +911,7 @@
         h += '<div class="ctl"><div class="ctlrow"><span class="nowst ' + (on ? 'on' : '') + '">' + (st.ctl.busy[p] ? 'Kapcsol…' : on ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) + (canCtl() ? '' : '<div class="ctln">' + roClause() + '</div>') + '</div>';
       } else if (d.role !== 'robot') h += '<div class="ddbig"><small>MOST</small><span class="' + s.cls + '">' + esc(s.big || s.txt) + '</span>' + (d.role === 'thermo' && d.room !== 'erkely' ? '<em>cél ' + target() + ' °C</em>' : '') + '</div>';
       h += ddKpis(d, c.mh);
-      if (d.role === 'robot') h += robotCard(d);
+      if (d.role === 'robot') h += '<button type="button" class="rvgo" data-rvgo="' + p + '"><svg width="18" height="18" aria-hidden="true"><use href="#pi-grid"/></svg>Robot-nézet: térkép és vezérlés</button>' + robotCard(d);
       if (d.role === 'pir' && window.O2BMotion && st.role !== 'share') { moLoad(p); h += O2BMotion.mini(); }
       else if (d.role !== 'ac_ir' && d.role !== 'pir' && d.role !== 'ir_hub') h += ddChart(d, c.mh);
       if (CTL_PINKS.indexOf(p) >= 0) h += nextHtml(p);
@@ -920,7 +920,7 @@
     } else if (st.dtab === 'wk' && window.O2BMotion) { moLoad(p); h += O2BMotion.weeks(); }
     else if (st.dtab === 'sch') h += ddSched(p);
     else if (st.dtab === 'set') h += ddSettings(d);
-    else if (st.dtab === 'map' && d.role === 'robot' && window.O2BRobotView) { rvLoad(p, 'map'); h += O2BRobotView.mapHtml(p, ago); }
+    else if (st.dtab === 'map' && d.role === 'robot' && window.O2BRobotView) { rvLoad(p, 'map'); h += O2BRobotView.mapHtml(p, ago) + '<button type="button" class="rvgo" data-rvgo="' + p + '">Teljes robot-nézet ›</button>'; }
     else if (st.dtab === 'log' && d.role === 'robot' && window.O2BRobotView) { rvLoad(p, 'log'); h += '<div class="sub">Takarítások</div>' + O2BRobotView.logHtml(p); }
     else if (st.dtab === 'log') h += (CTL_PINKS.indexOf(p) >= 0 ? '<div class="sub">Kapcsolások</div>' + ddLogHtml(d, c.log) : '') + (d.role === 'robot' ? robotCard(d) : '<div class="sub">Mérések óránként</div>' + ddMeasLog(d, c.mh));
     return h + '</div>';
@@ -939,6 +939,35 @@
     if (!window.O2BMotion) return;
     if (O2BMotion.onClick(e, showInfo, function (t) { st.dtab = t; showInfo(); var b = document.querySelector('#info [data-dtab="' + t + '"]'); if (b) b.focus(); })) e.stopPropagation();
   });
+  // ---- A robot-mód: a babaház hátradől, a helyén a robot saját térképe és a vezérlés (✕ / Esc vissza)
+  st.rm = null;
+  function rmOpen(p) {
+    if (innerWidth <= 760 && typeof setTab === 'function' && st.tab !== 'home') setTab('home');
+    st.rm = p; $('app').classList.add('robo'); $('robomode').hidden = false;
+    st.sel = null; $('info').hidden = true; rmRender();
+    var x = $('b-rmx'); if (x) setTimeout(function () { x.focus(); }, 50);
+  }
+  function rmClose() {
+    if (!st.rm) return; var p = st.rm; st.rm = null;
+    $('app').classList.remove('robo'); $('robomode').hidden = true; drawOverlay();
+    var b = document.querySelector('[data-rvgo="' + p + '"]'); if (b) b.focus();
+  }
+  function rmRender() {
+    if (!st.rm || $('robomode').hidden) return;
+    var p = st.rm, d = devOf(p), s = (st.latest[p] && st.latest[p].status) || {}, ds = devState(d), run = robOn(p);
+    $('rmtitle').textContent = robName(p);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rm]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-rm') === p); });
+    if (window.O2BRobotView) { rvLoad(p, 'map'); $('rmmap').innerHTML = O2BRobotView.mapHtml(p, ago); }
+    var bat = typeof s.battery === 'number' ? s.battery + '%' : '--', area = s.area_m2 != null ? Math.round(s.area_m2) + ' m²' : '--', mins = s.minutes != null ? Math.round(s.minutes) + ' perc' : '--';
+    $('rmhud').innerHTML = '<div class="rmst' + (run ? ' run' : '') + '">' + esc(ds.txt) + '</div>' +
+      '<div class="rmstat"><div><small>Akku</small><b>' + bat + '</b></div><div><small>Terület</small><b>' + area + '</b></div><div><small>Idő</small><b>' + mins + '</b></div></div>' + robotCard(d);
+  }
+  document.addEventListener('click', function (e) {
+    var g = e.target.closest && e.target.closest('[data-rvgo]'); if (g) { e.stopPropagation(); rmOpen(g.getAttribute('data-rvgo')); return; }
+    var m = e.target.closest && e.target.closest('[data-rm]'); if (m) { e.stopPropagation(); st.rm = m.getAttribute('data-rm'); rmRender(); return; }
+    if (e.target.id === 'b-rmx') { e.stopPropagation(); rmClose(); }
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && st.rm) { e.preventDefault(); rmClose(); } });
   function infoOpen(box) {
     box.insertAdjacentHTML('beforeend', '<button class="btn ib sm ix" type="button" aria-label="Bezárás">✕</button>');
     box.querySelector('.ix').addEventListener('click', function () { st.sel = null; box.hidden = true; drawItems('lo'); drawItems('up'); drawOverlay(); list(); });
@@ -947,6 +976,7 @@
   function showInfo() {
     var box = $('info');
     if ($('rsheet') && !$('rsheet').hidden && typeof robSheet === 'function') robSheet();
+    if (st.rm) rmRender();
     if (!st.sel) { box.hidden = true; return; }
     if (st.sel.indexOf('p:') === 0) {
       var p = S.PIECES.filter(function (x) { return x.id === st.sel.slice(2); })[0];
@@ -1956,7 +1986,7 @@
   }
   function roomsHtml(p, pend, has) {
     var rs = robRooms(p), sel = st.rob.sel[p] || [], dreame = (devOf(p).label || '').indexOf('Dreame') >= 0;
-    if (!rs.length) return '<div class="sub">Szobák</div><div class="ctln">' + (dreame ? 'Szobánkénti takarítás: a Dreame szobái a Xiaomi-belépés után jönnek.' :
+    if (!rs.length) return '<div class="sub">Szobák</div><div class="ctln">' + (dreame ? 'A Dreame szobái a Térképen már látszanak; a szobánkénti indítás nála még nem megy, egész lakásra indul.' :
       'A robot még nem küldte el a szobáit (az adatgyűjtő a következő körben kéri le a térképéről).') + '</div>';
     var names = {}; rs.forEach(function (r) { names[r[0]] = r[1] || ('Szoba ' + r[0]); });
     return '<div class="sub">Szobák <small>(a robot saját térképéről)</small></div><div class="rrooms" role="group" aria-label="Szobák kijelölése">' +
@@ -2332,7 +2362,7 @@
   function robSheet() {
     $('rbody').innerHTML = ['R1', 'R2'].map(function (p) {
       var d = devOf(p), s = devState(d), run = robOn(p);
-      return '<div class="robk' + (run ? ' run' : '') + '"><div class="rh"><span class="ric"><svg aria-hidden="true"><use href="#pi-robot"/></svg></span><span>' + esc(robName(p)) + '<small>' + esc((VP_UP.indexOf(d.room) >= 0 ? 'fent' : 'lent') + ' · ' + s.txt) + '</small></span></div>' + robotCard(d) + '</div>';
+      return '<div class="robk' + (run ? ' run' : '') + '"><div class="rh"><span class="ric"><svg aria-hidden="true"><use href="#pi-robot"/></svg></span><span>' + esc(robName(p)) + '<small>' + esc((VP_UP.indexOf(d.room) >= 0 ? 'fent' : 'lent') + ' · ' + s.txt) + '</small></span></div><button type="button" class="rvgo" data-rvgo="' + p + '">Robot-nézet ›</button>' + robotCard(d) + '</div>';
     }).join('') || '<div class="ctln">Nincs robot.</div>';
   }
   // Otthon képernyő: Pamutka egy sorban (a legfontosabb tanács), koppintásra a Pamutka lap

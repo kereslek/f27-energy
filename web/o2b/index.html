@@ -324,6 +324,36 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 .ask .btn{min-height:28px;font-size:11.5px;padding:0 9px}.btn.y{background:#ffe066}
 .rob .sub{font-weight:900;font-size:12px;margin:8px 0 5px}.rob .btn[disabled]{opacity:.45;cursor:not-allowed}
 .rst{margin-top:7px;padding:6px 8px;border-radius:9px;border:2px solid #1e2a44;background:#fff7df;font-size:12px}.rst small{display:block;color:#7a5a2e;margin-top:2px}
+
+/* A robot-mód (2026.11.21, a tulaj választása az „O2B robot-nézet” mockupokból): a babaház hátradől és elhalványul,
+   a helyén a robot saját térképe és a vezérlés. Rács: a térkép és a panel külön oszlopban, nem fedik egymást. */
+#world{transition:transform .9s cubic-bezier(.6,.05,.2,1),opacity .7s ease,filter .7s ease;transform-origin:50% 60%}
+#app.robo #world{transform:perspective(1400px) rotateX(48deg) scale(.78) translateY(10%);opacity:.12;filter:blur(2px);pointer-events:none}
+#app.robo #labels,#app.robo #pins,#app.robo #cat{opacity:0;pointer-events:none}
+#robomode{position:absolute;z-index:7;left:12px;right:12px;top:150px;bottom:12px;display:flex;flex-direction:column;gap:10px;background:#f6f1e4;border:4px solid #1e2a44;border-radius:22px;box-shadow:0 6px 0 #1e2a44;padding:12px;color:#1e2a44;animation:rmIn .55s ease .35s both}
+#robomode[hidden]{display:none}
+@keyframes rmIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#world{transition:none}#robomode{animation:none}}
+body.wide #robomode{left:calc(var(--pw) + 28px);right:calc(var(--pw) + 28px);top:150px}
+.rmh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rmh b{font-family:"Quest Display","Lilita One",sans-serif;font-weight:400;font-size:22px;margin-right:auto;min-width:0}
+.rmseg{display:inline-flex;gap:2px;background:#e8e1cf;border-radius:12px;padding:3px}
+.rmseg button{font:900 13px "Nunito",sans-serif;border:0;background:none;color:#5d6478;padding:6px 12px;border-radius:9px;cursor:pointer;min-height:32px}
+.rmseg button[aria-pressed="true"]{background:#1e2a44;color:#ffe066}
+.rmb{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr);gap:12px}
+.rmmap{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:safe center;overflow:auto}
+.rmmap .rv-map{max-height:100%}
+.rmhud{min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.rmstat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.rmstat div{background:#fffdf8;border:2.5px solid #1e2a44;border-radius:13px;box-shadow:0 3px 0 #1e2a44;padding:6px 9px;min-width:0}
+.rmstat small{display:block;font:900 10px "Nunito",sans-serif;letter-spacing:.7px;color:#6b7488;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rmstat b{font-family:"Quest Display",sans-serif;font-weight:400;font-size:20px;white-space:nowrap}
+.rmst{font-weight:900;font-size:13px}.rmst.run{color:#0f7f6c}
+.rmhud .ctl{margin:0}
+@media (max-width:900px){.rmb{grid-template-columns:1fr;grid-template-rows:auto auto;overflow-y:auto;align-content:start}.rmmap{display:block;overflow:visible;min-height:auto}.rmhud{overflow:visible}}
+@media (max-width:760px){#robomode{left:6px;right:6px;top:var(--toph,150px);bottom:calc(70px + env(safe-area-inset-bottom,0px));padding:10px;border-width:3px}.rmh b{font-size:19px}}
+.rvgo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:6px 0 2px;border:0;border-radius:13px;padding:9px 12px;font:900 14px "Nunito",sans-serif;background:#14a38b;color:#fff;cursor:pointer;box-shadow:0 4px 0 #0b6b5a}
+.rvgo:active{transform:translateY(2px);box-shadow:0 2px 0 #0b6b5a}
 .rv{display:flex;flex-direction:column;gap:8px;margin-top:6px}.rv-n{font-size:12px;color:#6b7488}
 .rv-map{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#eef1f6;border:2px solid #1e2a44}
 .rv-map img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;image-rendering:auto}
@@ -733,6 +763,11 @@ body.wide #pamhero{display:none}
   </div>
 
   <div id="info" hidden></div>
+  <section id="robomode" hidden role="dialog" aria-label="Robot-nézet">
+    <header class="rmh"><b id="rmtitle">Robot-nézet</b><div class="rmseg" role="group" aria-label="Melyik robot"><button type="button" data-rm="R1" aria-pressed="true">Lent</button><button type="button" data-rm="R2" aria-pressed="false">Fent</button></div>
+      <button class="btn ib sm" id="b-rmx" type="button" aria-label="Bezárás: vissza a házhoz (Esc)" title="Vissza a házhoz (Esc)">✕</button></header>
+    <div class="rmb"><div class="rmmap" id="rmmap"></div><div class="rmhud" id="rmhud"></div></div>
+  </section>
 
   <aside id="ov" aria-label="Áttekintés">
     <div class="ovtitle">Áttekintés <span class="src demo" id="ovsrc">DEMÓ</span></div>
