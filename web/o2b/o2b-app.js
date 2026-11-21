@@ -764,6 +764,7 @@
     if (ctl) return [['ov', 'Áttekintés', 'home'], ['sch', 'Időzítés', 'clock'], ['set', 'Beállítások', 'gear'], ['log', 'Napló', 'list']];
     if (d.role === 'robot') return [['ov', 'Áttekintés', 'home'], ['set', 'Beállítások', 'gear'], ['log', 'Napló', 'list']];
     if (d.role === 'thermo' || d.role === 'breaker') return [['ov', 'Áttekintés', 'home'], ['set', 'Beállítások', 'gear'], ['log', 'Napló', 'list']];
+    if (d.role === 'pir' && window.O2BMotion && st.role !== 'share') return [['ov', 'Áttekintés', 'home'], ['wk', 'Hetek', 'grid'], ['set', 'Beállítások', 'gear']];
     return [['ov', 'Áttekintés', 'home'], ['set', 'Beállítások', 'gear']];
   }
   function ddLoad(p) {
@@ -909,11 +910,13 @@
       } else if (d.role !== 'robot') h += '<div class="ddbig"><small>MOST</small><span class="' + s.cls + '">' + esc(s.big || s.txt) + '</span>' + (d.role === 'thermo' && d.room !== 'erkely' ? '<em>cél ' + target() + ' °C</em>' : '') + '</div>';
       h += ddKpis(d, c.mh);
       if (d.role === 'robot') h += robotCard(d);
+      if (d.role === 'pir' && window.O2BMotion && st.role !== 'share') { moLoad(p); h += O2BMotion.mini(); }
       else if (d.role !== 'ac_ir' && d.role !== 'pir' && d.role !== 'ir_hub') h += ddChart(d, c.mh);
       if (CTL_PINKS.indexOf(p) >= 0) h += nextHtml(p);
       if (p === 'C1' && window.F27Boiler && boilA()) h += '<button type="button" class="bsub big" data-boil="1">' + esc(F27Boiler.sub(boilA())) + ' · Bojler-napló ›</button>';
       if (d.role === 'ac_ir') h += '<div class="ctln">Télen nem fűtünk vele (a gázkazán az alapfűtés). IR-ről vezérelt, ezért az állapotát nem küldi vissza.</div>';
-    } else if (st.dtab === 'sch') h += ddSched(p);
+    } else if (st.dtab === 'wk' && window.O2BMotion) { moLoad(p); h += O2BMotion.weeks(); }
+    else if (st.dtab === 'sch') h += ddSched(p);
     else if (st.dtab === 'set') h += ddSettings(d);
     else if (st.dtab === 'log') h += (CTL_PINKS.indexOf(p) >= 0 ? '<div class="sub">Kapcsolások</div>' + ddLogHtml(d, c.log) : '') + (d.role === 'robot' ? robotCard(d) : '<div class="sub">Mérések óránként</div>' + ddMeasLog(d, c.mh));
     return h + '</div>';
@@ -923,6 +926,12 @@
     e.stopPropagation();
     if (t.hasAttribute('data-dtab')) { st.dtab = t.getAttribute('data-dtab'); showInfo(); var b = document.querySelector('#info [data-dtab="' + st.dtab + '"]'); if (b) b.focus(); }
     else { setLayer(t.getAttribute('data-ddlay')); showInfo(); }
+  });
+  // mozgás-statisztika (motion.js): M3 az Áttekintésen, M1 + M2 a Hetek fülön
+  function moLoad(p) { O2BMotion.load({ sb: sb, user: st.user, role: st.role, pink: p, done: function () { if (st.sel === p) showInfo(); } }); }
+  document.addEventListener('click', function (e) {
+    if (!window.O2BMotion) return;
+    if (O2BMotion.onClick(e, showInfo, function (t) { st.dtab = t; showInfo(); var b = document.querySelector('#info [data-dtab="' + t + '"]'); if (b) b.focus(); })) e.stopPropagation();
   });
   function infoOpen(box) {
     box.insertAdjacentHTML('beforeend', '<button class="btn ib sm ix" type="button" aria-label="Bezárás">✕</button>');

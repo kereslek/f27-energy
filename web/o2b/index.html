@@ -324,6 +324,29 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 .ask .btn{min-height:28px;font-size:11.5px;padding:0 9px}.btn.y{background:#ffe066}
 .rob .sub{font-weight:900;font-size:12px;margin:8px 0 5px}.rob .btn[disabled]{opacity:.45;cursor:not-allowed}
 .rst{margin-top:7px;padding:6px 8px;border-radius:9px;border:2px solid #1e2a44;background:#fff7df;font-size:12px}.rst small{display:block;color:#7a5a2e;margin-top:2px}
+.mo{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.mo-k{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.mo-k div{background:#eef0f5;border-radius:11px;padding:6px 9px;min-width:0}
+.mo-k small{display:block;font-size:10.5px;font-weight:900;letter-spacing:.6px;color:#6b7488;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-k b{font-family:var(--disp,"Quest Display"),system-ui;font-weight:400;font-size:20px;font-variant-numeric:tabular-nums}.mo-k em{font-style:normal;font-size:11.5px;font-weight:800;margin-left:5px;color:#6b7488}.mo-k em.up{color:#b8341c}.mo-k em.dn{color:#2f6fe4}
+.mo-sp{width:100%;height:auto;display:block}.mo-l{font-size:11.5px;color:#6b7488;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.mo-l i{display:inline-block;width:14px;height:8px;border-radius:3px}.mo-l i.b{background:#8a7fe0}.mo-l i.d{border-top:2px dashed #6b7488;height:0;width:16px;border-radius:0}.mo-l i.d2{background:#cfd3df}
+.mo-more{align-self:flex-start}.mo-n{font-size:12.5px;color:#6b7488}
+.mo-seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:#eef0f5;border-radius:11px;padding:3px;align-self:flex-start}
+.mo-seg button{font:inherit;border:0;background:none;cursor:pointer;padding:6px 11px;border-radius:8px;font-weight:900;font-size:12.5px;color:#56607a;min-height:32px}
+.mo-seg button[aria-pressed="true"]{background:#1e2a44;color:#ffd23f}.mo-seg button:disabled{opacity:.45;cursor:default}.mo-seg.sm button{font-size:12px;padding:5px 9px}
+.mo-wk{display:flex;align-items:center;gap:8px}.mo-wk b{flex:1;text-align:center;font-weight:900;font-size:14px}.mo-wk b small{display:block;font-weight:700;font-size:11.5px;color:#6b7488}
+.mo-nav{font:inherit;border:2px solid #1e2a44;background:#fff;border-radius:10px;width:36px;height:36px;font-weight:900;font-size:18px;cursor:pointer}.mo-nav:disabled{opacity:.3;cursor:default}
+.mo-hmw{overflow-x:auto}.mo-hm{display:grid;grid-template-columns:26px repeat(24,minmax(9px,1fr));gap:2px;min-width:300px;font-variant-numeric:tabular-nums}
+.mo-hm .dl{font-size:10.5px;font-weight:900;color:#6b7488;align-self:center}.mo-hm .hh{font-size:9.5px;color:#6b7488}
+.mo-hm .c{border:0;padding:0;aspect-ratio:1;border-radius:3px;cursor:pointer;min-width:0}.mo-hm .c:disabled{cursor:default}
+.mo-hm .c.sel,.mo-hm .c:focus-visible{outline:2px solid #1e2a44;outline-offset:1px}
+.mo-leg{display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7488;flex-wrap:wrap}.mo-leg i{width:13px;height:10px;border-radius:2px;display:inline-block}
+.mo-tip{font-size:12.5px;color:#3b4560;min-height:18px}
+.mo-ps{display:flex;flex-direction:column;gap:8px}.mo-ps .row{display:grid;grid-template-columns:86px 1fr 46px;gap:8px;align-items:center;font-size:12.5px}
+.mo-ps .row>span:first-child{font-weight:800}.mo-ps small{display:block;font-weight:600;color:#6b7488;font-size:10.5px}
+.mo-ps .bars{display:flex;flex-direction:column;gap:3px}.mo-ps .bars i{display:block;height:10px;border-radius:5px}.mo-ps .bars i.a{background:#8a7fe0}.mo-ps .bars i.b{background:#cfd3df}
+.mo-ps .n{text-align:right;font-weight:900;font-variant-numeric:tabular-nums}
+.mo-cat{font-size:11.5px;background:#e6e2ff;color:#3d3592;border-radius:10px;padding:7px 9px;line-height:1.4}
 .rparts{display:flex;flex-direction:column;gap:5px;margin:4px 0 6px}.rpart{display:grid;grid-template-columns:minmax(0,9.5em) 1fr auto;gap:8px;align-items:center;font-size:12.5px;font-weight:700}
 .rpart i{height:9px;border-radius:5px;background:#e6e8ef;overflow:hidden;display:block}.rpart i b{display:block;height:100%;background:#2fa56b}
 .rpart.warn i b{background:#f0a531}.rpart.bad i b{background:#d9452b}.rpart em{font-style:normal;font-variant-numeric:tabular-nums;white-space:nowrap}.rpart.bad em{color:#b8341c}
@@ -772,6 +795,7 @@ body.wide #info{top:150px}
 <script src="../vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script src="o2b-scene.js"></script>
+<script src="motion.js"></script>
 <script src="o2b-app.js"></script>
 </body>
 </html>
