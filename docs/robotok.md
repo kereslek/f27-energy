@@ -53,3 +53,17 @@ a titkos kulccsal), ezért a parancs a `robot_cmd` sorba kerül (`supabase/migra
 egyszerre egy függő parancs, óránként legfeljebb 30, a 3 percnél régebbi függő parancs lejár,
 két parancs között legalább 3 mp (CLAUDE.md 9. fejezet). A kártya mutatja az állapotot (elküldve,
 végrehajtja, kész, hiba), utána friss robotállapotot tölt.
+
+## Szobánkénti takarítás (zónák)
+
+- **R2 (Roborock S7): kész.** A robot a saját térképéről adja a szobáit (szegmens-azonosító + a Roborock
+  appban adott név). Az adatgyűjtő minden körben lekéri (`GET_ROOM_MAPPING`), és a robot állapotába teszi
+  (`device_status.status.rooms`, csak a Supabase-ben, RLS mögött; a publikus logba név nem kerül).
+- A térképen a robot kártyáján (telefonon: Robotok fül) a **Szobák** sorban kijelölsz egy vagy több
+  szobát, **Kijelöltek takarítása**, megerősítés („Takarítsa ezeket: …?”), és a parancs a szokásos
+  robot-sorba megy (`rooms`, a szegmensek listájával; `APP_SEGMENT_CLEAN`, egyszeri ismétléssel).
+- Telepítés: `supabase/migrations/015_robot_rooms.sql` (Actions > „Supabase séma futtatása”, O2B).
+- A szobák neve és határa a Roborock appban állítható (Térkép szerkesztése > Szobák). Ha ott átnevezed,
+  a térképen a következő gyűjtési körben frissül.
+- **R1 (Dreame Z10 Pro): még nem.** A Dreame is tud szobát (MIoT szegmens-takarítás), de a szobalista a
+  titkosított térképadatban van, és ehhez először a Xiaomi-belépésnek kell működnie (most 70016-tal elutasítja).

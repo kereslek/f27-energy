@@ -51,7 +51,7 @@ GAP_S = 3.0
 DREAME_PROPS = {"state": (2, 1), "error": (2, 2), "battery": (3, 1), "charging": (3, 2),
                 "status": (4, 1), "minutes": (4, 2), "area_m2": (4, 3)}
 DREAME_ACTIONS = {"start": (2, 1), "pause": (2, 2), "dock": (3, 1), "find": (7, 1)}   # find: "itt vagyok" hang
-COMMANDS = ("start", "pause", "dock", "find")
+COMMANDS = ("start", "pause", "dock", "find", "rooms")      # rooms: szobánkénti takarítás (015_robot_rooms.sql)
 CMD_TTL_S = 180                                       # a 3 percnél régebbi függő parancs lejár (014_robot_cmd.sql)
 # a Dreame állapotkódjai (siid 2, piid 1) -> egységes állapot
 DREAME_STATE = {1: "cleaning", 2: "idle", 3: "paused", 4: "error", 5: "returning", 6: "charging",
@@ -113,6 +113,31 @@ def _rr_state(s) -> str:
     return name or "unknown"
 
 
+async def _rr_rooms(d) -> list[list] | None:
+    """A robot saját térképének szobái: [[szegmens, név], ...] (a név a Roborock appból). Hiba esetén None.
+
+    A nevek csak a Supabase-be mennek (RLS), a publikus logba soha."""
+    try:
+        tr = d.v1_properties.rooms
+        await tr.refresh()
+        return [[int(r.segment_id), (r.name or "")[:40]] for r in (tr.rooms or []) if r.segment_id is not None][:24] or None
+    except Exception:                                  # noqa: BLE001 (régi firmware, nincs térkép)
+        return None
+
+
+def room_args(args) -> list[int]:
+    """A 'rooms' parancs paramétere: 1-16 szegmens-azonosító (egész, 1-9999), ismétlés nélkül."""
+    if not isinstance(args, list) or not 1 <= len(args) <= 16:
+        raise ValueError("jelölj ki 1-16 szobát")
+    out = []
+    for a in args:
+        if isinstance(a, bool) or not isinstance(a, int) or not 0 < a < 10000:
+            raise ValueError("hibás szoba-azonosító")
+        if a not in out:
+            out.append(a)
+    return out
+
+
 async def rr_status(auth: dict) -> list[dict]:
     dm, devs = await _rr_devices(auth)
     out = []
@@ -124,14 +149,25 @@ async def rr_status(auth: dict) -> list[dict]:
             out.append({"id": d.duid, "name": d.name, "state": state, "cleaning": state in CLEANING,
                         "battery": st.battery, "charging": state in ("charging", "charged"),
                         "area_m2": st.square_meter_clean_area, "minutes": round((st.clean_time or 0) / 60),
-                        "error": st.error_code_name if st.error_code else None, "src": "roborock"})
+                        "error": st.error_code_name if st.error_code else None, "src": "roborock",
+                        "rooms": await _rr_rooms(d)})
     finally:
         await dm.close()
     return out
 
 
-async def rr_command(auth: dict, cmd: str) -> None:
+async def rr_command(auth: dict, cmd: str, args=None) -> None:
     from roborock import RoborockCommand
+    if cmd == "rooms":
+        params = [{"segments": room_args(args), "repeat": 1}]
+        dm, devs = await _rr_devices(auth)
+        try:
+            if not devs:
+                raise RuntimeError("nincs Roborock robot a fiókban")
+            await devs[0].v1_properties.command.send(RoborockCommand.APP_SEGMENT_CLEAN, params)
+        finally:
+            await dm.close()
+        return
     c = {"start": RoborockCommand.APP_START, "pause": RoborockCommand.APP_PAUSE, "dock": RoborockCommand.APP_CHARGE,
          "find": RoborockCommand.FIND_ME}[cmd]
     dm, devs = await _rr_devices(auth)
@@ -211,12 +247,14 @@ def collect(sb: SupabaseRest) -> int:
     rows = []
     for p, s in got.items():
         status = {k: s.get(k) for k in ("state", "cleaning", "battery", "charging", "area_m2", "minutes", "error", "src")}
+        if s.get("rooms"):
+            status["rooms"] = s["rooms"]
         rows.append({"pink": p, "online": s.get("online", True) and s["state"] != "offline", "status": status})
     sb.insert("device_status", rows)
     return len(rows)
 
 
-def command(sb: SupabaseRest, pink: str, cmd: str) -> None:
+def command(sb: SupabaseRest, pink: str, cmd: str, args=None) -> None:
     if pink not in ROBOTS or cmd not in COMMANDS:
         raise ValueError("ismeretlen robot vagy parancs")
     src = ROBOTS[pink]["src"]
@@ -224,7 +262,9 @@ def command(sb: SupabaseRest, pink: str, cmd: str) -> None:
     if not auth:
         raise RuntimeError("ehhez a robothoz még nincs belépés")
     if src == "roborock":
-        asyncio.run(rr_command(auth, cmd))
+        asyncio.run(rr_command(auth, cmd, args))
+    elif cmd == "rooms":
+        raise RuntimeError("a szobánkénti takarítás a Dreame-nél még nincs kész")
     else:
         mi_command(auth, cmd)
     time.sleep(GAP_S)                               # kapcsolási szabály: utána legalább 3 mp szünet
@@ -241,7 +281,10 @@ def _age_s(ts: str) -> float:
 
 def run_queue(sb: SupabaseRest) -> int:
     """A függő parancsok végrehajtása sorban (egyszerre egy, utána 3 mp). Visszaadja a végrehajtottak számát."""
-    rows = sb.select("robot_cmd", "id,pink,cmd,created_at", status="eq.queued", order="id.asc", limit="5")
+    try:
+        rows = sb.select("robot_cmd", "id,pink,cmd,args,created_at", status="eq.queued", order="id.asc", limit="5")
+    except SupabaseError:                            # a 015_robot_rooms.sql még nem futott: nincs args oszlop
+        rows = sb.select("robot_cmd", "id,pink,cmd,created_at", status="eq.queued", order="id.asc", limit="5")
     done = 0
     for r in rows:
         rid = f"eq.{r['id']}"
@@ -252,7 +295,7 @@ def run_queue(sb: SupabaseRest) -> int:
         if not sb.update("robot_cmd", {"status": "running"}, id=rid, status="eq.queued"):
             continue                                # közben más felvette
         try:
-            command(sb, r["pink"], r["cmd"])
+            command(sb, r["pink"], r["cmd"], r.get("args"))
             sb.update("robot_cmd", {"status": "done", "done_at": now_iso()}, id=rid)
             print(f"Robot-parancs: {r['pink']} {r['cmd']} OK")
         except Exception as e:                       # noqa: BLE001

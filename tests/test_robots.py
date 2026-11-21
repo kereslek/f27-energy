@@ -215,7 +215,7 @@ class RobotQueueTest(unittest.TestCase):
         sb = QueueSb([{"id": 1, "pink": "R2", "cmd": "find", "status": "queued", "created_at": self.now(5)},
                       {"id": 2, "pink": "R1", "cmd": "dock", "status": "queued", "created_at": self.now(2)}])
         seen = []
-        with mock.patch.object(robots, "command", side_effect=lambda s, p, c: seen.append((p, c))), \
+        with mock.patch.object(robots, "command", side_effect=lambda s, p, c, a=None: seen.append((p, c))), \
                 mock.patch.object(robots, "collect", return_value=1), mock.patch.object(robots.time, "sleep"), redirect_stdout(io.StringIO()):
             self.assertEqual(robots.run_queue(sb), 2)
         self.assertEqual(seen, [("R2", "find"), ("R1", "dock")])
@@ -249,3 +249,65 @@ class RobotQueueTest(unittest.TestCase):
             robots.watch(sb, 60, every=10)
         self.assertGreaterEqual(clock[0], 60)
         self.assertEqual(buf.getvalue().count("014_robot_cmd"), 1)        # egyszer szól, nem spamel
+
+
+class RoomCleanTest(unittest.TestCase):
+    """Szobánkénti takarítás (015_robot_rooms.sql): szobák az állapotba, 'rooms' parancs a szegmensekkel."""
+
+    def test_room_args_validation(self):
+        self.assertEqual(robots.room_args([16, 17, 16]), [16, 17])
+        for bad in ([], None, "16", [True], [0], [10000], ["16"], list(range(1, 18))):
+            with self.assertRaises(ValueError):
+                robots.room_args(bad)
+
+    def test_rooms_command_sends_segment_clean(self):
+        import asyncio
+        sent = []
+
+        class Cmd:
+            async def send(self, c, params=None):
+                sent.append((str(c), params))
+
+        class Dev:
+            v1_properties = type("P", (), {"command": Cmd()})()
+
+        class Dm:
+            async def close(self):
+                pass
+
+        async def fake_devices(auth):
+            return Dm(), [Dev()]
+        with mock.patch.object(robots, "_rr_devices", side_effect=fake_devices):
+            asyncio.run(robots.rr_command({}, "rooms", [18, 16]))
+        self.assertEqual(len(sent), 1)
+        self.assertIn("app_segment_clean", sent[0][0].lower())
+        self.assertEqual(sent[0][1], [{"segments": [18, 16], "repeat": 1}])
+
+    def test_dreame_rooms_not_yet(self):
+        sb = FakeSb({"xiaomi": {"service_token": "x"}})
+        with mock.patch.object(robots, "mi_command", side_effect=AssertionError("nem hívható")), \
+                self.assertRaises(RuntimeError):
+            robots.command(sb, "R1", "rooms", [1])
+
+    def test_collect_stores_rooms_in_status(self):
+        sb = FakeSb({"roborock": {"email": "x"}})
+        st = {"state": "charging", "cleaning": False, "battery": 90, "charging": True, "area_m2": 0, "minutes": 0,
+              "error": None, "src": "roborock", "rooms": [[16, "Előtér"], [17, "Kagyló szoba"]]}
+
+        async def fake_status(auth):
+            return [st]
+        with mock.patch.object(robots, "rr_status", side_effect=fake_status):
+            self.assertEqual(robots.collect(sb), 1)
+        row = sb.inserts[0][1][0]
+        self.assertEqual(row["status"]["rooms"], [[16, "Előtér"], [17, "Kagyló szoba"]])
+
+    def test_queue_passes_args_and_log_has_no_room_names(self):
+        from datetime import datetime, timezone
+        sb = QueueSb([{"id": 3, "pink": "R2", "cmd": "rooms", "args": [16, 17], "status": "queued",
+                       "created_at": datetime.now(timezone.utc).isoformat()}])
+        seen, buf = [], io.StringIO()
+        with mock.patch.object(robots, "command", side_effect=lambda s, p, c, a=None: seen.append((p, c, a))), \
+                mock.patch.object(robots, "collect", return_value=1), mock.patch.object(robots.time, "sleep"), redirect_stdout(buf):
+            robots.run_queue(sb)
+        self.assertEqual(seen, [("R2", "rooms", [16, 17])])
+        self.assertIn("R2 rooms OK", buf.getvalue())
