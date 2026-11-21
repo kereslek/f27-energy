@@ -406,6 +406,18 @@ def main(argv: list[str]) -> int:
             print(f"Xiaomi: OK, {n} Dreame robot")
         elif what == "status":
             print(f"Robotok: {collect(sb)} jelentett")
+            try:                                     # a robotok saját térképe óránként egyszer (f27/robot_map.py)
+                from .robot_map import collect_maps
+                for k, v in collect_maps(sb).items():
+                    print(f"Térkép {k}: {v}")
+            except Exception as e:                   # noqa: BLE001
+                print(f"Térkép: HIBA ({type(e).__name__})")
+        elif what == "terkep":                     # azonnali térkép-lekérés (Robotok bejelentkezése workflow)
+            from .robot_map import collect_maps
+            res = collect_maps(sb, force=True)
+            for k, v in res.items():
+                print(f"Térkép {k}: {v}")
+            return 0 if all(v.startswith("OK") for v in res.values()) else 1
         elif what == "cmd":
             command(sb, argv[1], argv[2])
             print("Parancs elküldve.")
@@ -434,7 +446,7 @@ def main(argv: list[str]) -> int:
         elif what == "watch":
             watch(sb, float(argv[1]) if len(argv) > 1 else 600)
         else:
-            print("Használat: roborock-kod | roborock | xiaomi | xiaomi-kod | status | queue | watch [mp] | cmd R1|R2 start|pause|dock|find")
+            print("Használat: roborock-kod | roborock | xiaomi | xiaomi-kod | status | terkep | queue | watch [mp] | cmd R1|R2 start|pause|dock|find")
             return 2
     except KeyError as e:
         print(f"HIBA: hiányzó secret: {e.args[0]}")

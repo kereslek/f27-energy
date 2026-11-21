@@ -16,7 +16,7 @@ on:
       lepes:
         description: "Mit csináljon"
         type: choice
-        options: [roborock-kod, roborock, xiaomi, xiaomi-kod, r2-teszt, r1-teszt]
+        options: [roborock-kod, roborock, xiaomi, xiaomi-kod, r2-teszt, r1-teszt, terkep]
         default: roborock-kod
       kod:
         description: "A kapott kód (roborock vagy xiaomi-kod lépéshez)"
@@ -42,11 +42,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: Könyvtárak
-        run: pip install -q python-roborock
+        run: pip install -q python-roborock vacuum-map-parser-dreame
       - name: Adatbázis (012_robots.sql, O2B)
         env:
           TARGET: o2b
           SQL_FILE: supabase/migrations/012_robots.sql
+        run: python -m f27.migrate
+      - name: Adatbázis (016_robot_map.sql, O2B)
+        env:
+          TARGET: o2b
+          SQL_FILE: supabase/migrations/016_robot_map.sql
         run: python -m f27.migrate
       - name: Kód maszkolása
         # A kódot az esemény JSON-ből olvassuk, így a lépés fejléce sem írja ki; utána minden logban ***.

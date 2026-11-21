@@ -39,7 +39,7 @@ jobs:
           python-version: "3.12"
       - name: Robotporszívó-könyvtárak (O2B; ha nem sikerül, a gyűjtés enélkül megy)
         continue-on-error: true
-        run: pip install -q python-roborock
+        run: pip install -q python-roborock vacuum-map-parser-dreame
       - name: Adatgyűjtés (10 percenként, kb. 1 órán át)
         env:
           TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
