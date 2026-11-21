@@ -18,9 +18,8 @@ window.addEventListener('message', (e) => {
 
 function chrome() {
   const up = rob === 'R2';
-  $('badge').hidden = !up;
   $('rtag').textContent = '· ' + rob + ' · 4K · 60';
-  $('l1').textContent = 'O2B · ' + (up ? 'fent' : 'lent') + ' · ' + (data && data.name ? data.name : rob);
+  $('l1').textContent = 'O2B · ' + (up ? 'Fent' : 'lent') + ' · ' + (data && data.name ? data.name : rob);
   const b = data && num(data.battery) ? Math.max(0, Math.min(100, data.battery)) : null;
   if (b != null) { $('hp').style.width = b + '%'; $('cap').textContent = 'AKKU ' + Math.round(b) + '%'; }
   else $('cap').textContent = 'AKKU (szimulált)';
@@ -47,7 +46,7 @@ function sub(who, txt) {
   }
   say.classList.toggle('on', !!who);
 }
-const LINES = [
+const LINES_LO = [
   [1.0, 4.4, 'C', 'Nyal, nyal… ne zavarj, épp mosakszom.'],
   [5.6, 8.6, 'R1', 'Takarítás folyamatban. Kérem, ne álljon az útba.'],
   [9.3, 10.9, 'C', 'Mrrr? Te meg ki vagy?'],
@@ -60,9 +59,31 @@ const LINES = [
   [35.4, 38.8, 'C', 'Nyúúújtóóózom… ez nagyon fontos munka.']
 ];
 
+// emelet (R2): a feliratok a robot és Pamutka tényleges időzítéséhez igazodnak (floorInfo().ev)
+function linesUp(ev) {
+  const { S1, L1, S2, L2, NAP0, WAKE, tKag, tGy, tBath, tStair } = ev;
+  return [
+    [0.4, 2.0, 'R1', 'Elhagyom a dokkot. Takarítás: emelet.'],
+    [2.4, Math.max(2.6, S1 - 1.0), 'C', 'Nyal, nyal… várj, a farkam is kell.'],
+    [S1 + 0.2, S1 + 2.0, 'C', 'Ez az én emeletem.'],
+    [S1 + 2.0, S1 + L1 - 0.1, 'R1', 'Akadály az előtérben. Megvárom, amíg elmész.'],
+    [S1 + L1 + 0.8, S1 + L1 + 3.0, 'C', 'Hmpf. Megyek aludni, ne zavarj.'],
+    [tKag, tKag + 2.6, 'R1', 'Kagyló szoba: két monitor, sok kábel. Óvatosan.'],
+    [tStair, tStair + 2.6, 'R1', 'A lépcsőnél a szakadásérzékelő szól. Oda nem megyek.'],
+    [tGy, tGy + 2.4, 'R1', 'Gyerekszoba: szőnyeg, plüssök, tornagyűrű. Szuper.'],
+    [NAP0 + 1.0, NAP0 + 3.2, 'C', 'Zzz… ez a zöld szőnyeg az enyém.'],
+    [NAP0 + 3.4, NAP0 + 5.6, 'R1', 'Alvó macska. Kikerülöm, harminc centivel.'],
+    [tBath, tBath + 2.6, 'R1', 'Fürdő: csúszós csempe. Csak a küszöbig megyek.'],
+    [S2 - 0.6, S2 + 1.4, 'C', 'Megint te? Csak átsétálok az előtéren.'],
+    [S2 + 1.4, S2 + L2 + 0.4, 'R1', 'Elsőbbség a macskáé. Utána hazamegyek.'],
+    [S2 + L2 + 2.2, S2 + L2 + 5.4, 'C', 'Nyúúújtóóózom… az emelet nekem hajnalban a legjobb.']
+  ].filter(l => l[1] > l[0]);
+}
+let LINES = LINES_LO, UPI = null;
 const mini = $('mini').getContext('2d'), trail = [];
 function hudUpdate(s, T) {
   const t = s.t % s.loop;
+  if (UPI) { const p = s.rob.p, R = UPI.rooms.find(r => p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1); if (R && $('v1').textContent !== R.n) $('v1').textContent = R.n; }
   const real = data && num(data.area_m2), run = !data || data.cleaning;
   const area = real ? data.area_m2 : s.area;
   $('v2').textContent = fmt(area, 1) + ' m²';
@@ -79,9 +100,16 @@ function hudUpdate(s, T) {
   // GTA-szerű radar: a robot iránya felfelé, a térkép forog
   const Wm = 440, Hm = 290, sc = 62; mini.save(); mini.fillStyle = '#3d4a3a'; mini.fillRect(0, 0, Wm, Hm);
   mini.translate(Wm / 2, Hm * 0.62); mini.rotate(s.rob.h + Math.PI); mini.translate(-s.rob.p.x * sc, -s.rob.p.z * sc);
-  mini.fillStyle = '#8c9a86'; mini.fillRect(0, 0, 4.4 * sc, 6.2 * sc); mini.fillRect(0, 6.35 * sc, 4.45 * sc, 4.7 * sc);
-  mini.fillStyle = '#6d7a68'; [[0.15, 1.9, 0.95, 2.5], [0.15, 4.15, 1.75, 0.95], [4.0, 0.95, 0.4, 4.5], [0.05, 0.3, 0.45, 1.0], [1.74, 7.2, 0.96, 1.9]].forEach(([x, z, w, d]) => mini.fillRect(x * sc, z * sc, w * sc, d * sc));
-  mini.strokeStyle = '#1d211c'; mini.lineWidth = 6; mini.strokeRect(0, 0, 4.4 * sc, 6.2 * sc);
+  if (UPI) {
+    mini.fillStyle = '#8c9a86'; UPI.rooms.forEach(r => { mini.fillStyle = r.c; mini.fillRect(r.x0 * sc, r.z0 * sc, (r.x1 - r.x0) * sc, (r.z1 - r.z0) * sc); });
+    mini.fillStyle = '#5d6a58'; UPI.furn.forEach(([x, z, w, d]) => mini.fillRect(x * sc, z * sc, w * sc, d * sc));
+    mini.strokeStyle = '#1d211c'; mini.lineWidth = 5; UPI.rooms.forEach(r => mini.strokeRect(r.x0 * sc, r.z0 * sc, (r.x1 - r.x0) * sc, (r.z1 - r.z0) * sc));
+    mini.fillStyle = '#2b2f2a'; mini.fillRect(0.25 * sc, 7.4 * sc, 1.0 * sc, 2.6 * sc);
+  } else {
+    mini.fillStyle = '#8c9a86'; mini.fillRect(0, 0, 4.4 * sc, 6.2 * sc); mini.fillRect(0, 6.35 * sc, 4.45 * sc, 4.7 * sc);
+    mini.fillStyle = '#6d7a68'; [[0.15, 1.9, 0.95, 2.5], [0.15, 4.15, 1.75, 0.95], [4.0, 0.95, 0.4, 4.5], [0.05, 0.3, 0.45, 1.0], [1.74, 7.2, 0.96, 1.9]].forEach(([x, z, w, d]) => mini.fillRect(x * sc, z * sc, w * sc, d * sc));
+    mini.strokeStyle = '#1d211c'; mini.lineWidth = 6; mini.strokeRect(0, 0, 4.4 * sc, 6.2 * sc);
+  }
   trail.push([s.rob.p.x, s.rob.p.z]); if (trail.length > 1200) trail.shift(); if (t < 0.15) trail.length = 0;
   mini.strokeStyle = 'rgba(150,240,170,.55)'; mini.lineWidth = 0.34 * sc; mini.lineCap = 'round'; mini.beginPath(); trail.forEach(([x, z], i) => i ? mini.lineTo(x * sc, z * sc) : mini.moveTo(x * sc, z * sc)); mini.stroke();
   mini.fillStyle = '#ffb347'; mini.strokeStyle = '#1a1a1a'; mini.lineWidth = 3; mini.beginPath(); mini.arc(s.cat.p.x * sc, s.cat.p.z * sc, 11, 0, 7); mini.fill(); mini.stroke();
@@ -96,10 +124,18 @@ async function main() {
   let sc;
   try { sc = await import('./scene.js'); }
   catch (e) { const m = $('msg'); m.style.display = 'flex'; m.textContent = 'A 3D nézet ezen az eszközön nem indult el (WebGL szükséges).'; try { parent.postMessage({ type: 'pov-error' }, location.origin); } catch (_) {} return; }
+  sc.setFloor(rob === 'R2' ? 'up' : 'lo');
+  if (rob === 'R2') { UPI = sc.floorInfo(); LINES = linesUp(UPI.ev); $('v1').textContent = 'Előtér'; }
   sc.setMode('p2');
+  window.__sc = sc;
   let q = 1;
   const small = Math.min(innerWidth, innerHeight) < 600 || (matchMedia && matchMedia('(pointer:coarse)').matches && innerWidth < 900);
   if (small) { q = 0.6; sc.setQuality(q); }
+  if (qs.get('still') === '1') { // teszt: egy rögzített képkocka a megadott időpontban (?t=másodperc), q = 1
+    const T0 = parseFloat(qs.get('t') || '0') || 0; q = parseFloat(qs.get('q') || '1') || 1; sc.setQuality(q);
+    const s = sc.frame(T0, 1.0); sc.frame(T0, 0.016); const s2 = sc.frame(T0, 0.016); hudUpdate(s2, T0); window.__pov = { T: T0, q, still: true }; window.__still = true; void s;
+    window.__renderAt = (tt) => { sc.frame(tt, 1.0); sc.frame(tt, 0.016); hudUpdate(sc.frame(tt, 0.016), tt); }; return;
+  }
   let T = 0, last = performance.now(), fpsN = 0, fpsT = last, t0 = last, checked = small;
   function loop(now) {
     requestAnimationFrame(loop);
