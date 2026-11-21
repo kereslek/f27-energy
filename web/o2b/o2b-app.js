@@ -526,6 +526,11 @@
     P.forEach(function (q) {
       var full = pinLabel(q); if (!full) return;
       var opts = [full]; if (q.s.big && full !== q.s.big) opts.push(q.s.big);
+      if (st.quiet && st.sel !== q.d.pink) {                  // kísérleti csendes nézet (?csend=1): név csak koppintásra
+        var act = q.d.role === 'robot' ? robOn(q.d.pink) : q.d.role === 'plug' ? plugOn(q.d.pink) : false;
+        if (!act || !q.s.big || q.d.role === 'thermo') return;
+        opts = [q.s.big];
+      }
       for (var oi = 0; oi < opts.length; oi++) {
         var lb = opts[oi], w = (tw(lb, 12.5 * k) + 16 * k), h = 20 * k, c = [];
         c.push([q.x + R + 3 * k, q.y - h / 2, 0], [q.x - R - 3 * k - w, q.y - h / 2, 0], [q.x - w / 2, q.y - R - h - 3 * k, 0], [q.x - w / 2, q.y + R + 5 * k, 0],
@@ -545,7 +550,7 @@
     // téli üresjáratú klíma-tű, amelyre egy másik tű címkéje került: elmarad (az Eszközök listában megvan)
     P = P.filter(function (q) { return q.d.role !== 'ac_ir' || !P.some(function (o) { return o.vb && q.x + R > o.vb[0] && q.x - R < o.vb[2] && q.y + R > o.vb[1] && q.y - R < o.vb[3]; }); });
     // 6. jelölők
-    FL.forEach(function (f) {
+    if (!st.quiet) FL.forEach(function (f) {
       scene.floors[f].marks.forEach(function (m) {
         var fs = 11 * k, w = (m.t.length * 6.2 + 12) * k, h = 16 * k, ax = m.a[0], ay = m.a[1];
         var c = [[m.p[0], m.p[1] - h / 2 - 6 * k]];
@@ -1876,6 +1881,7 @@
   var RST = { queued: 'elküldve, az adatgyűjtő pár másodpercen belül továbbítja…', running: 'a robot megkapta, végrehajtja…', done: 'kész',
     error: 'nem sikerült', expired: 'lejárt (az adatgyűjtő nem vette fel 3 percen belül)' };
   st.rob = { cmd: {}, ask: null, sel: {} };
+  st.quiet = /[?&]csend=1/.test(location.search);
   function robHas(p) { var r = st.latest[p]; return !st.user || !!(r && r.ts); }
   function robotCard(d) {
     if (d.role !== 'robot' || st.role === 'share') return '';
