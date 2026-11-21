@@ -101,3 +101,12 @@ class ComfortHourlyTargetTest(unittest.TestCase):
         r = O.comfort(D)["rows"][0]
         self.assertGreater(r["dev"], O.COLD_DEV)                          # régen: átlag 21,2 < 22-1,5 -> "Hideg"
         self.assertLess(r["dev"], O.HOT_DEV)
+
+
+def test_csak_egy_esti_level_o2b():
+    """A tulaj kérése (2026.11.21): az O2B-ről csak egy esti levél jöjjön, a hosszabb (digest_o2b).
+    Az ideiglenes elemcsere-levelet a gyűjtő már nem küldi."""
+    import pathlib
+    src = pathlib.Path(__file__).resolve().parent.parent.joinpath("f27", "collect.py").read_text(encoding="utf-8")
+    assert "battery_email(" not in src
+    assert "run_digest(sb)" in src
