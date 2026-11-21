@@ -911,7 +911,7 @@
         h += '<div class="ctl"><div class="ctlrow"><span class="nowst ' + (on ? 'on' : '') + '">' + (st.ctl.busy[p] ? 'Kapcsol…' : on ? 'BEKAPCSOLVA' : 'KIKAPCSOLVA') + '</span>' + swHtml(p, true) + '</div>' + askHtml(p) + (canCtl() ? '' : '<div class="ctln">' + roClause() + '</div>') + '</div>';
       } else if (d.role !== 'robot') h += '<div class="ddbig"><small>MOST</small><span class="' + s.cls + '">' + esc(s.big || s.txt) + '</span>' + (d.role === 'thermo' && d.room !== 'erkely' ? '<em>cél ' + target() + ' °C</em>' : '') + '</div>';
       h += ddKpis(d, c.mh);
-      if (d.role === 'robot') h += '<button type="button" class="rvgo" data-rvgo="' + p + '"><svg width="18" height="18" aria-hidden="true"><use href="#pi-grid"/></svg>Robot-nézet: térkép és vezérlés</button>' + robotCard(d);
+      if (d.role === 'robot') h += '<button type="button" class="rvgo pov" data-pov="' + p + '"><svg width="18" height="18" aria-hidden="true"><use href="#pi-robot"/></svg>Porszívó-szem: a robot szemével (szimulált)</button>' + '<button type="button" class="rvgo" data-rvgo="' + p + '"><svg width="18" height="18" aria-hidden="true"><use href="#pi-grid"/></svg>Robot-nézet: térkép és vezérlés</button>' + robotCard(d);
       if (d.role === 'pir' && window.O2BMotion && st.role !== 'share') { moLoad(p); h += O2BMotion.mini(); }
       else if (d.role !== 'ac_ir' && d.role !== 'pir' && d.role !== 'ir_hub') h += ddChart(d, c.mh);
       if (CTL_PINKS.indexOf(p) >= 0) h += nextHtml(p);
@@ -956,6 +956,7 @@
     if (!st.rm || $('robomode').hidden) return;
     var p = st.rm, d = devOf(p), s = (st.latest[p] && st.latest[p].status) || {}, ds = devState(d), run = robOn(p);
     $('rmtitle').textContent = robName(p);
+    var pb = $('b-rmpov'); if (pb) pb.setAttribute('data-pov', p);
     Array.prototype.forEach.call(document.querySelectorAll('[data-rm]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-rm') === p); });
     if (window.O2BRobotView) { rvLoad(p, 'map'); $('rmmap').innerHTML = O2BRobotView.mapHtml(p, ago); }
     var bat = typeof s.battery === 'number' ? s.battery + '%' : '--', area = s.area_m2 != null ? Math.round(s.area_m2) + ' m²' : '--', mins = s.minutes != null ? Math.round(s.minutes) + ' perc' : '--';
@@ -1311,7 +1312,7 @@
   }
   function render() {
     $('demo').hidden = st.live; $('livepill').hidden = !st.live;
-    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar(); if (typeof tabRender === 'function') tabRender();
+    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar(); if (typeof tabRender === 'function') tabRender(); povSync();
   }
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
@@ -1459,6 +1460,7 @@
   // leugrik a lépcső tetejére, és lesétál a fokokon.
   function catScreen(fl, x, y, z) { var P = scene.floors[fl].proj.P; return P(x, y, z == null ? S.stairZ(fl, x, y) : z); }
   function catStep(ts) {
+    if (POV.p) { cat.last = ts; requestAnimationFrame(catStep); return; }   // a Porszívó-szem alatt a babaház áll (GPU/CPU spórolás)
     var dt = Math.min(100, ts - (cat.last || ts)); cat.last = ts;
     var R = S.CAT_ROUTE, n = R.length, k = uiK();
     if (catDrag.on) {                                  // kézben: a mutató alatt lóg, az árnyéka a padlón
@@ -1835,6 +1837,85 @@
   st.vp = { f: null, ask: null };
   function vpFilter() { return st.vp.f || (st.floor === 'both' ? 'all' : st.floor); }
   function robOn(p) { var r = st.latest[p]; return !!(r && r.online !== false && r.status && r.status.cleaning); }
+  // ---- Porszívó-szem: 3D nézet (szimulált kép) a pov/ oldalon, iframe-ben; csak megnyitáskor jön létre
+  var POV = { p: null, opener: null, f: null, DKEY: 'o2b.povNo' };
+  function povNoGet() { try { return JSON.parse(sessionStorage.getItem(POV.DKEY) || '{}') || {}; } catch (e) { return {}; } }
+  function povNoSet(o) { try { sessionStorage.setItem(POV.DKEY, JSON.stringify(o)); } catch (e) {} }
+  function robKnown(p) { var r = st.latest[p]; return !!(r && r.status); }
+  function povRunning() { return ['R1', 'R2'].filter(function (p) { return devOf(p) && robOn(p); }); }
+  function povData(p) {
+    var d = devOf(p), s = (st.latest[p] && st.latest[p].status) || {};
+    return { type: 'pov-data', p: p, name: robName(p), state: s.state || '', stateTxt: d ? devState(d).txt : '', cleaning: robOn(p),
+      battery: typeof s.battery === 'number' ? s.battery : null, area_m2: s.area_m2 != null && isFinite(+s.area_m2) ? +s.area_m2 : null, minutes: s.minutes != null && isFinite(+s.minutes) ? +s.minutes : null };
+  }
+  function povSend() {
+    if (!POV.p || !POV.f || !POV.f.contentWindow) return;
+    try { POV.f.contentWindow.postMessage(povData(POV.p), location.origin); } catch (e) {}
+  }
+  function povOpen(p, opener) {
+    if (!p || POV.p) { if (p && POV.p && p !== POV.p) { POV.p = p; POV.f.src = 'pov/index.html?r=' + p; } return; }
+    POV.p = p; POV.opener = opener || document.activeElement;
+    var no = povNoGet(); no[p] = 1; povNoSet(no);
+    var box = $('povbox'), f = document.createElement('iframe');
+    f.title = 'Porszívó-szem: ' + robName(p) + ' (szimulált 3D kép)'; f.setAttribute('allow', 'fullscreen'); f.setAttribute('referrerpolicy', 'no-referrer');
+    f.src = 'pov/index.html?r=' + p; f.addEventListener('load', povSend);
+    box.appendChild(f); POV.f = f; $('povov').hidden = false; document.body.classList.add('povon');
+    var x = $('b-povx'); if (x) x.focus();
+    povSync();
+  }
+  function povClose() {
+    if (!POV.p) return;
+    var f = POV.f, op = POV.opener; POV.p = null; POV.f = null; POV.opener = null;
+    if (f) { try { f.src = 'about:blank'; } catch (e) {} f.remove(); }
+    $('povov').hidden = true; $('povbox').innerHTML = ''; document.body.classList.remove('povon');
+    if (op && op.focus && document.contains(op)) try { op.focus(); } catch (e) {}
+  }
+  // a futó robotokról szóló kártya és csempe; elutasítás: robotonként, amíg az le nem áll és újra nem indul
+  function povSync() {
+    var no = povNoGet(), ch = false;
+    ['R1', 'R2'].forEach(function (p) { if (no[p] && robKnown(p) && !robOn(p)) { delete no[p]; ch = true; } });
+    if (ch) povNoSet(no);
+    var run = povRunning(), ask = run.filter(function (p) { return !no[p]; }), box = $('povask');
+    if (box) {
+      if (!ask.length || POV.p) box.hidden = true;
+      else {
+        box.hidden = false; box.setAttribute('data-for', ask.join(','));
+        $('povtx').textContent = ask.length > 1 ? 'R1 és R2 is takarít most · Megnézed a szemükkel?' : ask[0] + ' takarít most · Megnézed a szemével?';
+        var go = $('povgo'); go.innerHTML = ''; go.setAttribute('data-p', ask[0]);
+        ask.forEach(function (p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm y'; b.setAttribute('data-povgo', p); b.textContent = ask.length > 1 ? 'Megnézem: ' + p : 'Megnézem'; go.appendChild(b); });
+        var n = document.createElement('button'); n.type = 'button'; n.className = 'btn sm'; n.id = 'b-povno'; n.textContent = 'Most nem'; go.appendChild(n);
+      }
+    }
+    var c = $('c-pov');
+    if (c) {
+      if (!run.length) c.hidden = true;
+      else { c.hidden = false; var p0 = run[0]; c.setAttribute('data-p', p0); c.querySelector('.cv').textContent = run.map(function (p) { return p + ' takarít'; }).join(' · '); }
+    }
+    povSend();
+  }
+  function povDismiss() {
+    var no = povNoGet(); ($('povask').getAttribute('data-for') || '').split(',').forEach(function (p) { if (p) no[p] = 1; });
+    povNoSet(no); $('povask').hidden = true;
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-pov],[data-povgo],#b-povno,#b-povx,#b-povaskx,#c-pov'); if (!t) return;
+    e.stopPropagation();
+    if (t.id === 'b-povx') { povClose(); return; }
+    if (t.id === 'b-povno' || t.id === 'b-povaskx') { povDismiss(); return; }
+    var p = t.getAttribute('data-pov') || t.getAttribute('data-povgo') || t.getAttribute('data-p');
+    povOpen(p, t); if ($('povask')) povSync();
+  }, true);
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !POV.f || e.source !== POV.f.contentWindow) return;
+    var m = e.data; if (!m) return;
+    if (m.type === 'pov-close') povClose(); else if (m.type === 'pov-ready') povSend();
+  });
+  // Esc: előbb a Porszívó-szem, aztán a kártya (gépelés közben is)
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (POV.p) { e.preventDefault(); e.stopImmediatePropagation(); povClose(); return; }
+    if ($('povask') && !$('povask').hidden) { povDismiss(); }
+  }, true);
   function vpDevs() {
     return CTL_PINKS.concat(['R1', 'R2']).filter(function (p) { return !hideOff(p) && devOf(p).room; });
   }
@@ -2362,7 +2443,7 @@
   function robSheet() {
     $('rbody').innerHTML = ['R1', 'R2'].map(function (p) {
       var d = devOf(p), s = devState(d), run = robOn(p);
-      return '<div class="robk' + (run ? ' run' : '') + '"><div class="rh"><span class="ric"><svg aria-hidden="true"><use href="#pi-robot"/></svg></span><span>' + esc(robName(p)) + '<small>' + esc((VP_UP.indexOf(d.room) >= 0 ? 'fent' : 'lent') + ' · ' + s.txt) + '</small></span></div><button type="button" class="rvgo" data-rvgo="' + p + '">Robot-nézet ›</button>' + robotCard(d) + '</div>';
+      return '<div class="robk' + (run ? ' run' : '') + '"><div class="rh"><span class="ric"><svg aria-hidden="true"><use href="#pi-robot"/></svg></span><span>' + esc(robName(p)) + '<small>' + esc((VP_UP.indexOf(d.room) >= 0 ? 'fent' : 'lent') + ' · ' + s.txt) + '</small></span></div><button type="button" class="rvgo pov" data-pov="' + p + '">Porszívó-szem ›</button><button type="button" class="rvgo" data-rvgo="' + p + '">Robot-nézet ›</button>' + robotCard(d) + '</div>';
     }).join('') || '<div class="ctln">Nincs robot.</div>';
   }
   // Otthon képernyő: Pamutka egy sorban (a legfontosabb tanács), koppintásra a Pamutka lap

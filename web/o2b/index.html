@@ -707,6 +707,28 @@ body.wide #pamhero{display:none}
   #floorbar .fddb{min-height:38px;padding:0 9px}
   .fmenu{position:fixed;left:8px!important;right:8px!important;top:auto;min-width:0}
 }
+
+/* Porszívó-szem */
+.rvgo.pov{background:#7a6fb0;box-shadow:0 4px 0 #4f4687}
+.rmpov{font:900 13px "Nunito",sans-serif;border:0;border-radius:11px;background:#7a6fb0;color:#fff;padding:6px 12px;min-height:32px;cursor:pointer;box-shadow:0 3px 0 #4f4687}
+.povchip{font:inherit;text-align:left;cursor:pointer;color:inherit;background:#e6f7f2;position:relative}
+.povchip .ck{display:flex;align-items:center;gap:6px}
+.povchip .ck::before{content:"";width:9px;height:9px;border-radius:50%;background:#14a38b;animation:povp 1.3s ease-out infinite}
+@keyframes povp{0%{box-shadow:0 0 0 0 rgba(20,163,139,.7)}100%{box-shadow:0 0 0 9px rgba(20,163,139,0)}}
+#povask{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:calc(100% - 24px);padding:9px 46px 9px 12px;border-radius:18px;background:#fbf1dc;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;font:800 13px/1.3 "Nunito",sans-serif;color:#1e2a44}
+#povask[hidden]{display:none}
+#povask .pvdot{width:11px;height:11px;border-radius:50%;background:#14a38b;flex:0 0 auto;animation:povp 1.3s ease-out infinite}
+#povask .pvtx{min-width:0}
+#povask .pvbt{display:inline-flex;gap:6px;flex-wrap:wrap}
+#povask .x{position:absolute;right:6px;top:6px}
+body.wide #povask{left:calc(var(--pw) + 28px);transform:none;bottom:12px;max-width:calc(100% - 2 * var(--pw) - 56px)}
+@media (max-width:760px){#povask{left:8px;right:8px;transform:none;max-width:none;bottom:calc(132px + env(safe-area-inset-bottom,0px));z-index:7}}
+body.povon #app{visibility:hidden}
+#povov{position:fixed;inset:0;z-index:60;background:#0d0d0f}
+#povov[hidden]{display:none}
+#povbox,#povbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+#b-povx{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top));width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:rgba(14,16,20,.72);color:#fff;font:900 20px/1 system-ui;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center}
+#b-povx:hover,#b-povx:focus-visible{background:#d9302a;outline:none}
 </style>
 </head>
 <body>
@@ -722,6 +744,7 @@ body.wide #pamhero{display:none}
       <div class="chip" id="c-pow"><span class="ck">FOGYASZTÁS MOST</span><span class="cv">--</span><span class="cs"></span></div>
       <div class="chip" id="c-mot"><span class="ck">UTOLSÓ MOZGÁS</span><span class="cv">--</span><span class="cs"></span></div>
       <div class="chip" id="c-sun"><span class="ck">NAP</span><span class="cv">--</span><span class="cs"></span></div>
+      <button type="button" class="chip povchip" id="c-pov" hidden aria-label="Porszívó-szem: egy robot takarít, megnézem a szemével"><span class="ck">PORSZÍVÓ-SZEM</span><span class="cv"></span><span class="cs">megnézem a szemével</span></button>
       <div class="chip" id="c-bat" hidden><span class="ck">ELEMCSERE</span><span class="cv"></span><span class="cs"></span></div>
     </div>
     <div id="acts">
@@ -765,6 +788,7 @@ body.wide #pamhero{display:none}
   <div id="info" hidden></div>
   <section id="robomode" hidden role="dialog" aria-label="Robot-nézet">
     <header class="rmh"><b id="rmtitle">Robot-nézet</b><div class="rmseg" role="group" aria-label="Melyik robot"><button type="button" data-rm="R1" aria-pressed="true">Lent</button><button type="button" data-rm="R2" aria-pressed="false">Fent</button></div>
+      <button type="button" class="rmpov" id="b-rmpov" data-pov="R1">Porszívó-szem</button>
       <button class="btn ib sm" id="b-rmx" type="button" aria-label="Bezárás: vissza a házhoz (Esc)" title="Vissza a házhoz (Esc)">✕</button></header>
     <div class="rmb"><div class="rmmap" id="rmmap"></div><div class="rmhud" id="rmhud"></div></div>
   </section>
@@ -841,6 +865,11 @@ body.wide #pamhero{display:none}
     <span class="tx" id="pstx">Miaú!</span>
     <button class="btn sm y" id="b-pstrip" type="button">Mutasd</button>
   </div>
+  <div id="povask" hidden role="dialog" aria-label="Porszívó-szem javaslat" data-for="">
+    <span class="pvdot" aria-hidden="true"></span><span class="pvtx" id="povtx"></span>
+    <span class="pvbt" id="povgo"></span>
+    <button class="btn ib sm x" id="b-povaskx" type="button" aria-label="Bezárás: most nem kérem">✕</button>
+  </div>
   <nav id="tabbar" aria-label="Fülek">
     <button type="button" data-tab="home" aria-current="page"><svg aria-hidden="true"><use href="#pi-home"/></svg><span>Otthon</span></button>
     <button type="button" data-tab="ctl"><svg aria-hidden="true"><use href="#pi-grid"/></svg><span>Vezérlés</span></button>
@@ -904,5 +933,9 @@ body.wide #pamhero{display:none}
 <script src="motion.js"></script>
 <script src="robotview.js"></script>
 <script src="o2b-app.js"></script>
+<div id="povov" hidden role="dialog" aria-modal="true" aria-label="Porszívó-szem">
+  <div id="povbox"></div>
+  <button id="b-povx" type="button" aria-label="Bezárás: Porszívó-szem (Esc)" title="Bezárás (Esc)">✕</button>
+</div>
 </body>
 </html>

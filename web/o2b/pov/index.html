@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Porszívó-szem</title>
+<link rel="preload" href="../../fonts/QuestDisplay-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:"Quest Display";src:url("../../fonts/QuestDisplay-Regular.woff2") format("woff2");font-display:block}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:#0d0d0f;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+#stage{position:fixed;inset:0;background:#0d0d0f}
+#gl{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hud{position:absolute;inset:0;pointer-events:none;font:600 13px/1.2 system-ui,sans-serif;color:#fff}
+/* felső sor: bezárás | REC | m² */
+.top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;gap:10px;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left))}
+#x{pointer-events:auto;flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:rgba(14,16,20,.72);color:#fff;font:900 20px/1 system-ui;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+#x:hover,#x:focus-visible{background:#d9302a;outline:none}
+.rec{margin:12px auto 0;font:700 12px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.4);padding:6px 10px;border-radius:8px;white-space:nowrap}
+.rec i{width:9px;height:9px;border-radius:50%;background:#ff3b30;display:inline-block;animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.money{margin-left:auto;text-align:right;flex:0 0 auto}
+.money b{display:block;font:400 clamp(20px,3.6vw,38px)/1 "Quest Display",system-ui;color:#9ef0a6;-webkit-text-stroke:2px #0b0d0a;paint-order:stroke fill;text-shadow:0 2px 0 #0b0d0a,0 0 12px rgba(0,0,0,.6)}
+.money small{display:block;margin-top:4px;font:800 clamp(9px,1.1vw,12px)/1 system-ui;letter-spacing:1.5px;text-shadow:0 1px 3px #000}
+/* bal oszlop: őszinte felirat és jelvény */
+.tags{position:absolute;left:max(12px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 52px);display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:min(60%,420px)}
+.tag{background:rgba(14,16,20,.62);border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:5px 9px;font:700 11px/1.25 system-ui;letter-spacing:.2px}
+.tag.warn{background:rgba(120,70,10,.8);border-color:#ffb347;color:#ffe9c4}
+/* alsó sor: radar | felirat | terület */
+.bot{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:0 max(12px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.radar{flex:0 0 auto;width:clamp(120px,22vw,300px)}
+.radar canvas{width:100%;aspect-ratio:440/290;display:block;border-radius:6px;border:2px solid rgba(0,0,0,.65);box-shadow:0 4px 16px rgba(0,0,0,.45)}
+.bars{display:flex;gap:4px;margin-top:4px}.bars i{flex:1;height:8px;background:rgba(0,0,0,.6);border:1px solid rgba(0,0,0,.7);display:block}
+.bars u{display:block;height:100%;text-decoration:none}.hp u{background:linear-gradient(#7fd46a,#4f9c3d)}.ar u{background:linear-gradient(#6fb4f0,#3f7fc4)}
+.cap{margin-top:3px;font:800 10px/1 system-ui;letter-spacing:1px;text-shadow:0 1px 3px #000}
+.area{text-align:right;text-shadow:0 2px 0 #000,0 0 8px rgba(0,0,0,.7);min-width:0}
+.area b{display:block;font:400 clamp(16px,2.6vw,28px)/1.05 "Quest Display",system-ui;letter-spacing:.5px}
+.area small{font:700 clamp(9px,1vw,12px)/1.2 system-ui;opacity:.9;letter-spacing:.4px}
+.sub{position:absolute;left:50%;bottom:calc(7.5% + env(safe-area-inset-bottom));transform:translateX(-50%);width:max-content;max-width:min(52%,640px);text-align:center;color:#fff;font:700 clamp(12px,1.75vw,19px)/1.3 system-ui;text-shadow:0 2px 0 #000,0 0 6px #000,1px 1px 0 #000,-1px -1px 0 #000;opacity:0;transition:opacity .3s}
+.sub.on{opacity:1}.sub .r{color:#7fd0ff}.sub .c{color:#ffc46b}
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font:700 16px/1.4 system-ui;background:#0d0d0f}
+@media (max-width:760px),(max-aspect-ratio:1/1){
+  .radar{width:clamp(104px,34vw,170px)}
+  .area{max-width:50%}
+  .sub{bottom:calc(env(safe-area-inset-bottom) + 120px + 8%);max-width:92%}
+  .rec{font-size:10px;padding:5px 7px;gap:5px;margin-top:14px}
+  .rec .xt{display:none}
+}
+@media (prefers-reduced-motion:reduce){.rec i{animation:none}}
+</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js","three/addons/":"../../vendor/three/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl" width="1280" height="720"></canvas>
+  <div class="hud" id="hud">
+    <div class="top">
+      <button id="x" type="button" aria-label="Bezárás: vissza a lakáshoz (Esc)" title="Bezárás (Esc)">✕</button>
+      <div class="rec" id="rec"><i></i><span id="tc">REC 00:00:00</span><span class="xt" id="rtag">· R1 · 4K · 60</span></div>
+      <div class="money" id="money"><b id="v2">0,0 m²</b><small id="l2">TAKARÍTVA</small></div>
+    </div>
+    <div class="tags">
+      <div class="tag" id="honest">szimulált kép · a robotnak nincs kamerája</div>
+      <div class="tag warn" id="badge" hidden>SZEMLÉLTETŐ · a felső szint 3D-je még készül</div>
+    </div>
+    <div class="sub" id="say"></div>
+    <div class="bot">
+      <div class="radar"><canvas id="mini" width="440" height="290"></canvas><div class="bars"><i class="hp"><u id="hp"></u></i><i class="ar"><u id="ar"></u></i></div><div class="cap" id="cap">AKKU --</div></div>
+      <div class="area" id="area"><b id="v1">Nappali</b><small id="l1">O2B · lent · R1</small></div>
+    </div>
+  </div>
+  <div id="msg" role="alert"></div>
+</div>
+<script type="module" src="pov.js"></script>
+</body>
+</html>
