@@ -1188,3 +1188,27 @@ class TestBookings(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_iker_es_kategoria_alapjan():
+    """2026.11.21: két azonos nevű hőmérő (T1, T8 twin_of T1): a régebbi T1, az újabb T8;
+    a szerepkör egyetlen szabad eszköze a fallback-os helyre kerül (a név nem kell hozzá)."""
+    from f27.discover import match_devices
+    cfg = [
+        {"pink": "T1", "role": "thermo", "match": ["hőmérő - nappali"], "exact": "Hőmérő - nappali", "exclude": ["nappali 2"]},
+        {"pink": "T8", "role": "thermo", "match": ["hőmérő - nappali 2"], "exact": "Hőmérő - nappali 2", "twin_of": "T1"},
+        {"pink": "K1", "role": "ac_ir", "match": ["klíma - nappali"]},
+        {"pink": "K4", "role": "ac_ir", "match": ["klíma - gyerekszoba"], "fallback": True},
+    ]
+    devs = [
+        {"id": "b", "name": "Hőmérő - nappali", "category": "wsdcg", "create_time": 200},
+        {"id": "a", "name": "Hőmérő - nappali", "category": "wsdcg", "create_time": 100},
+        {"id": "k", "name": "Klíma - nappali", "category": "infrared_ac"},
+        {"id": "x", "name": "Klíma - valami más", "category": "infrared_ac"},
+    ]
+    r = match_devices(devs, cfg, {"thermo": ["wsdcg"], "ac_ir": ["infrared_ac"]})
+    assert r.mapping["T1"]["id"] == "a" and r.mapping["T8"]["id"] == "b" and not r.conflicts
+    assert r.mapping["K4"]["id"] == "x" and r.by_category["K4"] == "kategória"
+    # ha két szabad klíma van, nem találgat
+    r2 = match_devices(devs + [{"id": "y", "name": "Klíma - harmadik", "category": "infrared_ac"}], cfg, {"thermo": ["wsdcg"], "ac_ir": ["infrared_ac"]})
+    assert "K4" not in r2.mapping

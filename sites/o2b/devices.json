@@ -21,11 +21,11 @@
     {"pink": "T5", "role": "thermo", "room": "kagylo",      "label": "Hőmérő, kagyló szoba", "match": ["hőmérő - kagyló"],      "exact": "Hőmérő - kagyló szoba"},
     {"pink": "T6", "role": "thermo", "room": "gyerek",      "label": "Hőmérő, gyerekszoba",  "match": ["hőmérő - gyermeki szoba", "hőmérő - gyerekszoba"], "exact": "Hőmérő - gyermeki szoba"},
     {"pink": "T7", "role": "thermo", "room": "erkely",      "label": "Hőmérő, erkély (télikert, kint)", "match": ["télikert"], "outdoor": true},
-    {"pink": "T8", "role": "thermo", "room": "nappali",     "label": "Hőmérő, nappali (2.)", "match": ["hőmérő - nappali 2"], "exact": "Hőmérő - nappali 2"},
+    {"pink": "T8", "role": "thermo", "room": "nappali",     "label": "Hőmérő, nappali (2.)", "match": ["hőmérő - nappali 2"], "exact": "Hőmérő - nappali 2", "twin_of": "T1"},
     {"pink": "K1", "role": "ac_ir",  "room": "nappali",     "label": "Klíma, nappali (lenti multi-split)",  "match": ["klíma - nappali"],     "exact": "Klíma - Nappali"},
     {"pink": "K2", "role": "ac_ir",  "room": "halo",        "label": "Klíma, hálószoba (lenti multi-split)", "match": ["klíma - hálószoba"],  "exact": "Klíma - hálószoba"},
     {"pink": "K3", "role": "ac_ir",  "room": "kagylo",      "label": "Klíma, kagyló szoba (tetőn lévő multi-split)", "match": ["klíma - kagyló"], "exact": "Klíma - Kagyló"},
-    {"pink": "K4", "role": "ac_ir",  "room": "gyerek",      "label": "Klíma, gyerekszoba (tetőn lévő multi-split)", "match": ["klíma - gyermeki szoba", "klíma - gyerekszoba"]},
+    {"pink": "K4", "role": "ac_ir",  "room": "gyerek",      "label": "Klíma, gyerekszoba (tetőn lévő multi-split)", "match": ["klíma - gyermeki szoba", "klíma - gyerekszoba"], "fallback": true},
     {"pink": "C1", "role": "plug",   "room": "furdo_fent",  "label": "Emeleti bojler (meleg víz)", "match": ["emeleti bojler"],  "exact": "Emeleti bojler (meleg víz)"},
     {"pink": "C2", "role": "plug",   "room": "etkezo",      "label": "Dupla lámpa (étkező, a tükörnél)", "match": ["dupla állólámpa"], "exact": "Dupla állólámpa (új)"},
     {"pink": "C3", "role": "plug",   "room": "nappali",     "label": "TV led",               "match": ["tv led"],              "exact": "TV led"},
@@ -38,7 +38,7 @@
     {"pink": "IR1", "role": "ir_hub", "room": "nappali",    "label": "IR-távirányító, nappali",     "match": ["smart ir - nappali"],   "exact": "Smart IR - Nappali"},
     {"pink": "IR2", "role": "ir_hub", "room": "halo",       "label": "IR-távirányító, hálószoba",   "match": ["smart ir - hálószoba"], "exact": "Smart IR - Hálószoba"},
     {"pink": "IR3", "role": "ir_hub", "room": "kagylo",     "label": "IR-távirányító, kagyló szoba", "match": ["smart ir - kagyló"],   "exact": "Smart IR - Kagyló"},
-    {"pink": "IR4", "role": "ir_hub", "room": "gyerek",     "label": "IR-távirányító, gyerekszoba", "match": ["smart ir - gyermeki szoba", "smart ir - gyerekszoba"]},
+    {"pink": "IR4", "role": "ir_hub", "room": "gyerek",     "label": "IR-távirányító, gyerekszoba", "match": ["smart ir - gyermeki szoba", "smart ir - gyerekszoba"], "fallback": true},
     {"pink": "M1", "role": "pir",    "room": "lepcso_fent", "label": "Mozgásérzékelő (lépcső teteje, a legfelső foknál)",       "match": ["infrared detector", "mozgás"]}
   ],
   "fixed": [

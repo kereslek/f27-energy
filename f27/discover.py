@@ -56,6 +56,7 @@ def home_of(d: dict):
 class MatchResult:
     mapping: dict = field(default_factory=dict)            # pink -> device
     conflicts: dict = field(default_factory=dict)          # pink -> [device, ...]
+    by_category: dict = field(default_factory=dict)        # pink -> 'iker' / 'kategória' (nem név szerint párosítva)
     unmatched: list = field(default_factory=list)          # F27 otthon párosítatlan eszközei
     home_filter: bool = False                              # volt-e otthon-azonosító
     other_home_count: int = 0                              # más otthonok eszközei (darab)
@@ -123,6 +124,27 @@ def match_devices(devices: list[dict], config: list[dict], role_categories: dict
                 res.category_mismatch[p] = d.get("category") or "?"
         elif len(cands) > 1:
             res.conflicts[p] = cands   # az ütköző eszközök nem számítanak párosítatlannak
+    # Iker-eszközök (2026.11.21): ha ugyanazon a néven két eszköz van (pl. két „Hőmérő - nappali”), és a
+    # konfigban a második hely `twin_of`-fal az elsőre mutat, a régebbi az első helyre, az újabb a másodikra kerül.
+    for c in config:
+        a0 = c.get("twin_of")
+        if not a0 or c["pink"] in res.mapping or a0 not in res.conflicts or len(res.conflicts[a0]) != 2:
+            continue
+        old, new = sorted(res.conflicts.pop(a0), key=lambda d: (d.get("create_time") or 0, d.get("id") or ""))
+        res.mapping[a0], res.mapping[c["pink"]] = old, new
+        res.by_category[a0] = res.by_category[c["pink"]] = "iker"
+    # Kategória alapján (2026.11.21): ha egy szerepkör kategóriájából pontosan egy párosítatlan eszköz maradt az
+    # otthonban, és ennek a szerepkörnek pontosan egy `fallback`-os helye üres, az kapja (a név nem kell hozzá).
+    for c in config:
+        if not c.get("fallback") or c["pink"] in res.mapping or c["pink"] in res.conflicts:
+            continue
+        allowed = set(role_categories.get(c.get("role", ""), []))
+        free = [d for d in unassigned if d.get("category") in allowed]
+        open_slots = [x for x in config if x.get("fallback") and x.get("role") == c.get("role") and x["pink"] not in res.mapping]
+        if len(free) == 1 and len(open_slots) == 1:
+            res.mapping[c["pink"]] = free[0]
+            unassigned = [d for d in unassigned if d is not free[0]]
+            res.by_category[c["pink"]] = "kategória"
     res.unmatched = unassigned
     return res
 
@@ -153,6 +175,8 @@ def summary_lines(config: list[dict], res: MatchResult, total: int) -> list[str]
             r = "OK"
             if p in res.category_mismatch:
                 r += f" (kategória: {res.category_mismatch[p]})"
+            if p in res.by_category:
+                r += " (iker, a régebbi az első)" if res.by_category[p] == "iker" else " (kategória alapján, egyetlen szabad eszköz)"
         elif p in res.conflicts:
             cats = ", ".join(sorted(d.get("category") or "?" for d in res.conflicts[p]))
             r = f"ÜTKÖZÉS ({len(res.conflicts[p])}): kategóriák: {cats}"

@@ -1765,7 +1765,9 @@
   }
   // B: Vezérlőpult (2026.11.20): szűrő (Mind / Lent / Fent / Most ég), jelenetek, szobánként csempék.
   // Minden kapcsolás előtt megerősítés a csempén (a tulaj kérése); a ⋯ a teljes adatlapot nyitja.
-  var VP_LO = ['nappali', 'etkezo', 'halo', 'konyha', 'eloszoba', 'furdo_lent', 'erkely'], VP_UP = ['eloter', 'furdo_fent', 'kagylo', 'gyerek', 'lepcso_fent'];
+  // a lépcső fényei (C4) a Vezérlőpulton saját „Lépcső” csoportban (a tulaj, 2026.11.21), a térképen az étkezőben
+  var VP_GROUP = { C4: 'lepcso_lent' };
+  var VP_LO = ['nappali', 'etkezo', 'lepcso_lent', 'halo', 'konyha', 'eloszoba', 'furdo_lent', 'erkely'], VP_UP = ['eloter', 'furdo_fent', 'kagylo', 'gyerek', 'lepcso_fent'];
   var SCN_ICON = { esti: 'lamp', film: 'film', unnep: 'star', le: 'power' };
   st.vp = { f: null, ask: null };
   function vpFilter() { return st.vp.f || (st.floor === 'both' ? 'all' : st.floor); }
@@ -1814,10 +1816,10 @@
     }
     var rooms = (f === 'up' ? [] : VP_LO).concat(f === 'lo' ? [] : VP_UP), n = 0;
     rooms.forEach(function (rid) {
-      var ps = all.filter(function (p) { return devOf(p).room === rid && (f !== 'on' || (devOf(p).role === 'robot' ? robOn(p) : plugOn(p))); });
+      var ps = all.filter(function (p) { return (VP_GROUP[p] || devOf(p).room) === rid && (f !== 'on' || (devOf(p).role === 'robot' ? robOn(p) : plugOn(p))); });
       if (!ps.length) return; n += ps.length;
-      var rt = roomTemp(rid), up = VP_UP.indexOf(rid) >= 0;
-      h += '<div class="vproom"><div class="vrh">' + esc(ROOM_NAMES[rid] || rid) + ' <small>' + (up ? 'fent' : 'lent') + '</small>' + (rt && rt.t != null ? '<span class="t ' + rt.c + '">' + fmt(rt.t) + '°</span>' : '') + '</div><div class="vtiles">' + ps.map(function (p) { return vpTile(p, ro); }).join('') + '</div></div>';
+      var rt = rid === 'lepcso_lent' ? null : roomTemp(rid), up = VP_UP.indexOf(rid) >= 0;
+      h += '<div class="vproom"><div class="vrh">' + esc(rid === 'lepcso_lent' ? 'Lépcső' : ROOM_NAMES[rid] || rid) + ' <small>' + (up ? 'fent' : 'lent') + '</small>' + (rt && rt.t != null ? '<span class="t ' + rt.c + '">' + fmt(rt.t) + '°</span>' : '') + '</div><div class="vtiles">' + ps.map(function (p) { return vpTile(p, ro); }).join('') + '</div></div>';
     });
     if (!n) h += '<div class="ctln">' + (f === 'on' ? 'Most semmi nem ég, és a robotok pihennek.' : 'Ezen a szinten nincs kapcsolható eszköz.') + '</div>';
     if (f !== 'on') {
