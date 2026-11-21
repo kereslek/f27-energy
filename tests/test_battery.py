@@ -246,3 +246,14 @@ class BatteryEmailTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_esti_doboz_szint_es_napok():
+    """2026.11.21: az ELEMCSERE doboz a szintet is mutatja (százalék, vagy a hőmérőnél szint és „% nincs”)."""
+    from datetime import date
+    from f27.battery import digest_lines
+    rows = [{"pink": "T3", "label": "Hőmérő, hálószoba", "level": "due14", "eta_lo": 5, "eta_hi": 12, "value": "low", "kind": "state"},
+            {"pink": "M1", "label": "Mozgásérzékelő", "level": "due30", "eta_lo": 20, "eta_hi": 30, "value": "14", "kind": "pct"}]
+    out = digest_lines(rows, date(2026, 11, 21))
+    assert "alacsony szint (% nincs) · kb. 5-12 nap" in out[0]
+    assert "14% · kb. 20-30 nap" in out[1]

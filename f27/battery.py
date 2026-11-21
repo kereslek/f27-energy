@@ -359,8 +359,22 @@ def digest_lines(rows: list[dict], today: date) -> list[str]:
     for r in hot:
         fc = {"level": r["level"], "eta_lo": r.get("eta_lo"), "eta_hi": r.get("eta_hi")}
         mark = "!!" if r["level"] in ("dead", "offline", "due14") else " ."
-        out.append(f"{mark} {r.get('label') or r['pink']}: {eta_text(fc, today)}")
+        ch = charge_text(r)
+        out.append(f"{mark} {r.get('label') or r['pink']}: {ch + ' · ' if ch else ''}{eta_text(fc, today)}")
     return out
+
+
+LEVEL_HU = {"high": "magas", "middle": "közepes", "low": "alacsony"}
+
+
+def charge_text(r: dict) -> str:
+    """Az elem szintje: százalék, ha az eszköz ad; a Wi-Fi hőmérőknél a szint és „% nincs” (2026.11.21)."""
+    v = r.get("value")
+    if v is None or v == "":
+        return ""
+    if r.get("kind") == "pct" or str(v).isdigit():
+        return f"{v}%"
+    return f"{LEVEL_HU[v]} szint (% nincs)" if v in LEVEL_HU else ""
 
 
 MAIL_HOUR = 20           # a telephely helyi ideje szerint, mint az F27 esti levele
@@ -382,7 +396,7 @@ def battery_email(sb: SupabaseRest, now: datetime | None = None, environ=None, s
     try:
         if sb.select("alert_log", "id", rule_key=f"eq.{key}", limit="1"):
             return res
-        rows = sb.select("battery_status", "pink,label,level,eta_lo,eta_hi")
+        rows = sb.select("battery_status", "*")
     except SupabaseError as e:
         if e.code in MISSING_TABLE:
             return res

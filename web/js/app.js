@@ -1829,7 +1829,7 @@
       if (!rows.length) return { show: false };
       rows.sort(function (x, y) { return order[x.level] - order[y.level] || (x.eta_lo || 0) - (y.eta_lo || 0); });
       var when = function (r) {
-        if (B) return B.when(r);
+        if (B) return B.full ? B.full(r) : B.when(r);   // szint + becsült napok (2026.11.21)
         return r.level === 'dead' ? 'lemerült, cseréld most' : r.eta_lo == null ? 'hamarosan' : 'kb. ' + r.eta_lo + '-' + r.eta_hi + ' nap';
       };
       var r0 = rows[0], hot = r0.level !== 'due30';

@@ -115,7 +115,7 @@ def build(sb: SupabaseRest, cfg: dict, now: datetime) -> dict:
                 todo.append(f"Nyitva jelez, de {int((now - t).total_seconds() // 3600)} órája nem jelentett (lehet régi jelzés): {name}")
             else:
                 todo.append(f"Nyitva: {name}")
-    bat = _safe(lambda: sb.select("battery_status", "pink,label,level,eta_lo,eta_hi"), None)
+    bat = _safe(lambda: sb.select("battery_status", "*"), None)
     for pink in (BATTERY_SENSORS if bat is None else ()):     # régi út: amíg nincs 008_battery.sql
         d = snap.get(pink)
         b = battery_of(d["status"]) if d else None

@@ -161,7 +161,7 @@ class Data:
         self.hourly = s(lambda: self._hourly(sb, _day0(self.today - timedelta(days=31)), pinks), None)
         self.logs = s(lambda: sb.select("alert_log", "ts,rule_key,kind,text,channels", ts=f"gte.{self.t0.isoformat()}", order="ts.asc", limit="200"), None)
         self.alerts = [r for r in s(lambda: sb.select("alert_state", "rule_key,active,last_text"), []) or [] if r.get("active")]
-        self.bat = s(lambda: sb.select("battery_status", "pink,label,level,eta_lo,eta_hi"), []) or []
+        self.bat = s(lambda: sb.select("battery_status", "*"), []) or []
         self.wx = {str(r["day"])[:10]: r for r in s(lambda: sb.select("weather_daily", "day,t_avg,hdd", day=f"gte.{(self.today - timedelta(days=8)).isoformat()}"), []) or []}
         self.fc = s(lambda: sb.select("weather_hourly", "ts,temp", ts=f"gte.{_day0(self.today + timedelta(days=1)).isoformat()}",
                                       order="ts.asc", limit="48"), []) or []

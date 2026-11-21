@@ -154,11 +154,30 @@
     if (r.eta_lo == null) return 'hamarosan';
     return r.eta_lo <= 0 ? 'bármikor, legkésőbb ' + day(r.eta_hi) : 'kb. ' + r.eta_lo + '-' + r.eta_hi + ' nap (' + day(r.eta_lo) + '-' + day(r.eta_hi) + ')';
   }
+  // az elem szintje szövegben: százalék, ha az eszköz ad (Zigbee, mozgásérzékelő); a Wi-Fi hőmérők csak
+  // magas / közepes / alacsony szintet jelentenek, ott a szint és „% nincs” (nem találunk ki százalékot) (2026.11.21)
+  var LV = { high: 'magas', middle: 'közepes', low: 'alacsony' };
+  function charge(r) {
+    if (!r) return 'nincs elemadat';
+    if (typeof r.value === 'number') return r.value + '%';
+    if (LV[r.value]) return LV[r.value] + ' szint (% nincs)';
+    return r.level === 'offline' ? 'nem jelentkezik' : 'nincs elemadat';
+  }
+  // teljes sor: szint + becsült hátralévő napok, pl. „45% · kb. 20-30 nap” vagy „közepes szint (% nincs) · kb. 40-60 nap”
+  function full(r, nowMs) {
+    if (!r) return 'nincs elemadat';
+    var c = charge(r);
+    if (r.level === 'dead') return (typeof r.value === 'number' ? r.value + '%, ' : '') + 'lemerült, cseréld most';
+    if (r.level === 'offline') return 'nem jelentkezik' + (LV[r.value] ? ' (utoljára ' + LV[r.value] + ' szint)' : '') + ', valószínűleg elem kell';
+    if (r.eta_lo == null) return c + ' · becslés még nincs (kevés adat)';
+    var n = r.eta_lo <= 0 ? 'bármikor, legfeljebb ' + Math.max(1, r.eta_hi) + ' nap' : 'kb. ' + r.eta_lo + '-' + r.eta_hi + ' nap';
+    return c + ' · ' + n;
+  }
   function due(rows) {
     return (rows || []).filter(function (r) { return ORDER[r.level] != null && ORDER[r.level] <= 3; })
       .sort(function (a, b) { return ORDER[a.level] - ORDER[b.level] || (a.eta_lo || 0) - (b.eta_lo || 0); });
   }
 
   root.F27Battery = { build: build, merge: merge, fetchHistory: fetchHistory, forecast: forecast, reading: reading,
-    when: when, due: due, ORDER: ORDER, CHEM_BY_ROLE: CHEM_BY_ROLE };
+    when: when, due: due, charge: charge, full: full, ORDER: ORDER, CHEM_BY_ROLE: CHEM_BY_ROLE };
 })(typeof window !== 'undefined' ? window : this);

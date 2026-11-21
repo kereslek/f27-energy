@@ -885,7 +885,7 @@
     if (ctl || d.role === 'robot') rows.push(['Ki kapcsolhatja', 'tulaj és családtag' + (st.user ? '; te: ' + (ROLES[st.role] || st.role) : '; demó'), '']);
     rows.push([d.role === 'thermo' ? 'Hőfok a térképen' : 'Látszik a térképen', 'a ' + layN + ' réteggel', '<button class="mini" type="button" role="switch" data-ddlay="' + lay + '" aria-checked="' + !!st.layers[lay] + '">' + (st.layers[lay] ? 'BE' : 'KI') + '</button>']);
     rows.push(['Offline eszközök a térképen', st.showOff ? 'látszanak' : 'rejtve', '<button class="mini" type="button" data-off="1">' + (st.showOff ? 'Elrejt' : 'Mutasd') + '</button>']);
-    if (BAT && (d.role === 'thermo' || d.role === 'pir')) rows.push(['Elem', (d.role === 'thermo' ? '2 × AAA alkáli' : 'CR2032') + (b ? ' · ' + BAT.when(b) : ''), '']);
+    if (BAT && (d.role === 'thermo' || d.role === 'pir')) rows.push(['Elem', (d.role === 'thermo' ? '2 × AAA alkáli' : 'CR2032') + ' · ' + BAT.full(b), '']);
     if (p === 'C1') rows.push(['Bojler-napló', 'mai kWh, hőtartás, zuhanyok', '<button class="mini" type="button" data-boil="1">Megnyit</button>']);
     rows.push(['Szoba és szint', (ROOM_NAMES[d.room] || d.room || '--') + ', ' + (pinFloor(p) === 'up' ? 'fent' : 'lent'), '']);
     rows.push(['Típus', ROLE_NAME[d.role] || d.role, '']);
@@ -1036,9 +1036,9 @@
     var due = BAT ? BAT.due(st.bat) : [];
     if (due.length) {
       var r0 = due[0], hot = r0.level !== 'due30';
-      chip('c-bat', r0.label || r0.pink, BAT.when(r0) + (due.length > 1 ? ' · +' + (due.length - 1) : ''), hot ? 'hot' : 'warn');
+      chip('c-bat', r0.label || r0.pink, BAT.full(r0) + (due.length > 1 ? ' · +' + (due.length - 1) : ''), hot ? 'hot' : 'warn');
       $('c-bat').querySelector('.ck').textContent = 'ELEMCSERE' + (due.length > 1 ? ' · ' + due.length : '');
-      $('c-bat').title = 'Elemcsere: ' + due.map(function (r) { return (r.label || r.pink) + ': ' + BAT.when(r) + (r.basis ? ' [' + r.basis + ']' : ''); }).join('; ') +
+      $('c-bat').title = 'Elemcsere: ' + due.map(function (r) { return (r.label || r.pink) + ': ' + BAT.full(r) + ', ' + BAT.when(r) + (r.basis ? ' [' + r.basis + ']' : ''); }).join('; ') +
         '. A dashboard számolja a merülés üteméből és az elem típusából (hőmérő: 2 × AAA, mozgásérzékelő: CR2032).';
     } else $('c-bat').hidden = true;
     var on = st.devs.filter(function (d) { return st.latest[d.pink] && st.latest[d.pink].online !== false; }).length;
@@ -1106,11 +1106,12 @@
       }
     });
     var off = st.devs.filter(function (d) { return d.role === 'thermo' && st.latest[d.pink] && st.latest[d.pink].online === false; });
-    if (off.length) out.push([off.length + ' hőmérő offline (' + off.map(function (d) { return ROOM_NAMES[d.room]; }).join(', ') + '): valószínűleg elem kell bele.', off[0].room, off[0].pink, 'orange']);
+    var batOf = function (p) { return (st.bat || []).filter(function (x) { return x.pink === p; })[0]; };
+    if (off.length) out.push([off.length + ' hőmérő nem jelentkezik, valószínűleg elem kell bele: ' + off.map(function (d) { var b = batOf(d.pink); return '<b>' + ROOM_NAMES[d.room] + '</b>' + (b && b.value != null ? ' (utoljára ' + esc(BAT.charge(b)).replace(' (% nincs)', '') + ')' : ''); }).join(', ') + '.', off[0].room, off[0].pink, 'orange']);
     (st.bat || []).forEach(function (b) {
       if (b.level === 'due14' || b.level === 'dead') {
         var dv = st.devs.filter(function (d) { return d.pink === b.pink; })[0];
-        out.push(['Elemcsere: <b>' + esc(b.label || b.pink) + '</b>' + (b.level === 'dead' ? ', most.' : ', két héten belül.'), dv ? (dv.room === 'lepcso_fent' ? 'eloter' : dv.room) : null, b.pink, b.level === 'dead' ? 'red' : 'orange']);
+        out.push(['Elemcsere: <b>' + esc(b.label || b.pink) + '</b>, ' + esc(BAT.full(b)) + '.', dv ? (dv.room === 'lepcso_fent' ? 'eloter' : dv.room) : null, b.pink, b.level === 'dead' ? 'red' : 'orange']);
       }
     });
     return out;
@@ -1235,7 +1236,7 @@
         (bsub ? '<button type="button" class="bsub" data-boil="1" title="Bojler-napló: mennyit ment ma, mit jelent, mihez képest">' + esc(bsub) + ' ›</button>' : '');
     }).join('');
     var due = BAT ? BAT.due(st.bat) : [];
-    var bats = due.length ? due.map(function (r) { return '<div class="br ' + r.level + '"><b>' + esc(r.label || r.pink) + '</b><span>' + esc(BAT.when(r)) + '</span></div>'; }).join('')
+    var bats = due.length ? due.map(function (r) { return '<div class="br ' + r.level + '"><b>' + esc(r.label || r.pink) + '</b><span>' + esc(BAT.full(r)) + '</span></div>'; }).join('')
       : '<div class="br ok">Minden elem rendben.</div>';
     var nOff = offCount();
     box.innerHTML = (nOff && !st.showOff ? '<div class="offnote">' + nOff + ' offline eszköz elrejtve <button class="mini lnk" data-off="1">Mutasd</button></div>' : '') +
@@ -2163,7 +2164,7 @@
         var hum = ds.map(function (d) { var r = st.latest[d.pink]; return r && r.status && typeof r.status.va_humidity === 'number' ? r.status.va_humidity : null; }).filter(function (x) { return x != null; })[0];
         var b = (st.bat || []).filter(function (x) { return ds.some(function (d) { return d.pink === x.pink; }); })[0], bl = b && BAT && BAT.ORDER[b.level] <= 3;
         var why = rid === 'erkely' ? 'kint' : rt.c === 'hot' ? 'melegebb a célnál' : rt.c === 'cold' ? 'hidegebb a célnál' : rt.c === 'na' ? 'nincs friss mérés' : 'a célon';
-        h += '<button type="button" class="hrow" data-hpink="' + d0.pink + '"><span>' + esc(ROOM_NAMES[rid] || rid) + '<small>' + why + (hum != null ? ' · pára ' + hum + ' %' : '') + (rt.n > 1 ? ' · ' + rt.n + ' hőmérő' : '') + (bl ? ' · elem kell!' : '') + '</small></span><span class="t ' + rt.c + '">' + (rt.t == null ? '--' : fmt(rt.t) + '°') + '</span></button>';
+        h += '<button type="button" class="hrow" data-hpink="' + d0.pink + '"><span>' + esc(ROOM_NAMES[rid] || rid) + '<small>' + why + (hum != null ? ' · pára ' + hum + ' %' : '') + (rt.n > 1 ? ' · ' + rt.n + ' hőmérő' : '') + '</small><small>elem: ' + esc(BAT.full(b)) + (bl ? ' ⚠' : '') + '</small></span><span class="t ' + rt.c + '">' + (rt.t == null ? '--' : fmt(rt.t) + '°') + '</span></button>';
       });
     });
     h += '<div class="ctln">A gázkazánt a Computherm termosztát kapcsolja (az étkezőben mér); ezt még nem látjuk, a hőmérők mutatják a hatását.</div>';
