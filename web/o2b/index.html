@@ -525,7 +525,7 @@ body.wide #info{top:150px}
   #tabbar button:focus-visible{outline:3px solid #ff4fa3}
   #pam{display:none}
   #acts #b-dev{display:none}
-  #pstrip{display:flex;align-items:center;gap:8px;position:absolute;left:8px;right:8px;bottom:calc(122px + env(safe-area-inset-bottom,0px));z-index:5;padding:6px 8px;border-radius:16px;background:#fbf1dc;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;cursor:pointer}
+  #pstrip{display:flex;align-items:center;gap:8px;position:absolute;left:8px;right:8px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:5;padding:6px 8px;border-radius:16px;background:#fbf1dc;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;cursor:pointer}
   #pstrip .pface{width:34px;height:34px;flex:0 0 auto;border-radius:10px;background:#dfe9fb;display:grid;place-items:center}
   #pstrip .pface svg{width:30px;height:30px}
   #pstrip .tx{flex:1;min-width:0;font:800 12px/1.3 "Nunito",sans-serif;color:#1e2a44;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -614,6 +614,48 @@ body.wide #info{top:150px}
 
 /* a feliratok nem fogják el a kattintást: alattuk Pamutka és a bútorok elérhetők (2026.11.21) */
 #labels{pointer-events:none}
+
+/* P2 (2026.11.21): egyetlen vezérlősáv: szint, Rétegek menü, Több menü */
+.fdd{position:relative}
+#floorbar .fddb{background:#fffdf7;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;border-radius:15px;min-height:38px;padding:0 12px}
+#floorbar .fddb[aria-expanded="true"]{background:#1e2a44;color:#ffe066}
+#floorbar .fddb i{font-style:normal;font-size:11px;opacity:.7}
+.fmenu{position:absolute;top:calc(100% + 8px);left:0;z-index:8;min-width:250px;background:#fffdf7;border:3px solid #1e2a44;border-radius:15px;box-shadow:0 6px 0 #1e2a44,0 18px 40px -12px rgba(0,0,0,.5);padding:6px;display:flex;flex-direction:column;gap:2px}
+.fmenu.r{left:auto;right:0}
+.fmenu[hidden]{display:none}
+#floorbar .fmenu button{width:100%;padding:7px 10px;min-height:40px;border-radius:10px;justify-content:flex-start;gap:9px;font-size:13.5px}
+#floorbar .fmenu button:hover{background:#f0ece0}
+#floorbar .fmenu button[aria-pressed="true"]{background:#1e2a44;color:#ffe066}
+#floorbar .fmenu button[aria-pressed="false"] svg{opacity:.45}
+.fmenu button span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.fmenu button small{font-weight:700;font-size:11px;opacity:.75;white-space:normal;text-align:left}
+#moremenu .btn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;min-height:40px;border-radius:10px;font:900 13.5px "Nunito",sans-serif;color:#1e2a44}
+#moremenu .btn:hover{background:#f0ece0}#moremenu .btn[aria-pressed="true"]{background:#1e2a44;color:#ffe066}
+#moremenu .btn[aria-pressed="true"] svg *{stroke:#ffe066}
+#moremenu .btn .lbl{display:inline!important}
+#moremenu .mzoom{display:flex;align-items:center;gap:6px;padding:6px 10px;font:900 13.5px "Nunito",sans-serif;color:#1e2a44;border-top:2px dashed #e0d9c6;margin-top:3px}
+#moremenu .mzoom span{flex:1}
+#moremenu .mzoom .btn{width:40px;min-height:36px;justify-content:center;border:2.5px solid #1e2a44;padding:0;font-size:18px}
+#moremenu .offn{margin-left:auto}
+#moremenu #rotdeg{order:3;margin-left:auto;font-weight:800;opacity:.75}
+/* P4: a nagy macska a térképen sétál, a panel aljáról kikerül; a jobb panel fülekkel */
+body.wide #pamhero{display:none}
+.ovtabs{display:flex;gap:3px;background:#f0ece0;border-radius:12px;padding:3px;margin:2px 0 10px}
+.ovtabs button{flex:1;font:900 13px "Nunito",sans-serif;border:0;background:none;color:#5d6478;padding:7px 4px;border-radius:9px;cursor:pointer}
+.ovtabs button[aria-selected="true"]{background:#1e2a44;color:#ffe066}
+.ovtabs button:focus-visible{outline:3px solid #ff4fa3}
+@media (max-width:760px){
+  /* P3: a csempék egy húzható sorban, a figyelmeztetés elöl; a szint és a menük egy sorban */
+  #chips{display:flex!important;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;pointer-events:auto;grid-template-columns:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  #chips::-webkit-scrollbar{display:none}
+  #chips .chip{flex:0 0 auto}
+  #c-bat{order:-1}
+  #floorbar{flex-wrap:nowrap}
+  #floorbar .fddb span{display:none}
+  #floorbar .fddb #laylbl{display:inline}
+  #floorbar .fddb{min-height:38px;padding:0 9px}
+  .fmenu{position:fixed;left:8px!important;right:8px!important;top:auto;min-width:0}
+}
 </style>
 </head>
 <body>
@@ -654,10 +696,18 @@ body.wide #info{top:150px}
       <button type="button" data-floor="up" aria-pressed="false">Fent</button>
       <button type="button" data-floor="both" aria-pressed="false" title="Mindkét szint, babaházként">Ház</button>
     </div>
-    <div class="flay" role="group" aria-label="Rétegek">
-      <button type="button" data-layer="heat" aria-pressed="true" title="Hőtérkép: a szobák a célhőfokhoz képest színezve"><svg aria-hidden="true"><use href="#pi-thermo"/></svg><span>Hőtérkép</span></button>
-      <button type="button" data-layer="dev" aria-pressed="true" title="Lámpák, konnektorok, klímák"><svg aria-hidden="true"><use href="#pi-bulb"/></svg><span>Eszközök</span></button>
-      <button type="button" data-layer="rob" aria-pressed="true" title="Robotporszívók"><svg aria-hidden="true"><use href="#pi-robot"/></svg><span>Robotok</span></button>
+    <div class="fdd">
+      <button type="button" class="fddb" id="b-lay" aria-label="Rétegek" aria-haspopup="true" aria-expanded="false" aria-controls="laymenu" title="Mi látszódjon a térképen"><svg aria-hidden="true"><use href="#pi-grid"/></svg><span id="laylbl">Rétegek</span><i aria-hidden="true">▾</i></button>
+      <div class="fmenu" id="laymenu" hidden role="group" aria-label="Rétegek">
+        <button type="button" data-layer="heat" aria-pressed="true"><svg aria-hidden="true"><use href="#pi-thermo"/></svg><span>Hőtérkép<small>a szobák színe a célhoz képest</small></span></button>
+        <button type="button" data-layer="dev" aria-pressed="true"><svg aria-hidden="true"><use href="#pi-bulb"/></svg><span>Eszközök<small>lámpák, konnektorok, klímák</small></span></button>
+        <button type="button" data-layer="rob" aria-pressed="true"><svg aria-hidden="true"><use href="#pi-robot"/></svg><span>Robotok<small>porszívók és dokkjuk</small></span></button>
+        <button type="button" data-layer="lbl" aria-pressed="false"><svg aria-hidden="true"><use href="#pi-list"/></svg><span>Minden felirat<small>eszköznevek és jelölők; alapból csak ami ég</small></span></button>
+      </div>
+    </div>
+    <div class="fdd">
+      <button type="button" class="fddb" id="b-more" aria-label="Több: szerkesztés, offline, forgatás, nagyítás" aria-haspopup="true" aria-expanded="false" aria-controls="moremenu" title="Szerkesztés, offline eszközök, forgatás, nagyítás"><svg aria-hidden="true"><use href="#pi-dots"/></svg><span>Több</span><i aria-hidden="true">▾</i></button>
+      <div class="fmenu r" id="moremenu" hidden role="group" aria-label="Több"><div class="mzoom"><span>Nagyítás</span></div></div>
     </div>
   </div>
 
