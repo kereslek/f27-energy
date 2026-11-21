@@ -67,3 +67,16 @@ végrehajtja, kész, hiba), utána friss robotállapotot tölt.
   a térképen a következő gyűjtési körben frissül.
 - **R1 (Dreame Z10 Pro): még nem.** A Dreame is tud szobát (MIoT szegmens-takarítás), de a szobalista a
   titkosított térképadatban van, és ehhez először a Xiaomi-belépésnek kell működnie (most 70016-tal elutasítja).
+
+## Térkép, takarítási napló, időzítés (2026.11.21)
+
+- **Térkép:** az adatgyűjtő óránként lekéri mindkét robot saját térképét (R2: python-roborock, R1: Xiaomi felhő +
+  vacuum-map-parser-dreame) a `robot_map` táblába (`016_robot_map.sql`, csak tulaj és családtag olvassa).
+  A robot kártyáján a **Térkép** fül mutatja (szobanevek, robot, dokk). Azonnali lekérés: Actions >
+  „Robotok bejelentkezése (O2B)” > `terkep`.
+- **Napló:** a kártya **Napló** fülén az elmúlt 30 nap takarításai (kb. kezdet és vég, perc, m²), 14 napos sáv,
+  heti összesítő; a 10 perces állapotmintákból, mindkét robotra.
+- **Késleltetett és időzített indítás:** a kártyán „+30 perc / +1 / +2 / +4 óra” vagy pontos időpont (ha már
+  elmúlt, holnap), egész lakás vagy a kijelölt szobák, mindig megerősítéssel. Robotonként legfeljebb 3 függő
+  időzítő, 1 perc és 7 nap között, ✕-szel törölhető. Az adatgyűjtő 10 mp-en belül indítja; ha épp nem fut,
+  15 percig vár, utána lejár (`017_robot_timer.sql`).

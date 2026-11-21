@@ -311,3 +311,31 @@ class RoomCleanTest(unittest.TestCase):
             robots.run_queue(sb)
         self.assertEqual(seen, [("R2", "rooms", [16, 17])])
         self.assertIn("R2 rooms OK", buf.getvalue())
+
+
+class RobotTimerTest(unittest.TestCase):
+    """Időzített indítás (017_robot_timer.sql): a gyűjtő csak a lejárt időzítőt veszi fel, a késettet 15 perc után lejártatja."""
+
+    def now(self, ago=0):
+        from datetime import datetime, timedelta, timezone
+        return (datetime.now(timezone.utc) - timedelta(seconds=ago)).isoformat()
+
+    def test_due_filter_and_timer_ttl(self):
+        sb = QueueSb([{"id": 1, "pink": "R1", "cmd": "start", "status": "queued", "kind": "timer",
+                       "created_at": self.now(7200), "due_at": self.now(120)},
+                      {"id": 2, "pink": "R2", "cmd": "rooms", "args": [16], "status": "queued", "kind": "timer",
+                       "created_at": self.now(7200), "due_at": self.now(3600)}])
+        calls = {}
+        orig = sb.select
+        def sel(table, columns="*", **f):
+            calls.update(f)
+            return orig(table, columns, **f)
+        sb.select = sel
+        seen = []
+        with mock.patch.object(robots, "command", side_effect=lambda s, p, c, a=None: seen.append((p, c))), \
+                mock.patch.object(robots, "collect", return_value=1), mock.patch.object(robots.time, "sleep"), redirect_stdout(io.StringIO()) as buf:
+            robots.run_queue(sb)
+        self.assertTrue(calls.get("due_at", "").startswith("lte."))
+        self.assertEqual(seen, [("R1", "start")])            # 2 perce lejárt: fut
+        self.assertEqual(sb.cmds[1]["status"], "expired")    # 1 órája lejárt, a gyűjtő nem futott: lejár
+        self.assertIn("(időzített) OK", buf.getvalue())

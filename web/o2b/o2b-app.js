@@ -1908,6 +1908,52 @@
       return '<div class="rpart ' + c + '"><span>' + PART_NAMES[k] + '</span><i><b style="width:' + v + '%"></b></i><em>' + v + '%' + (v <= 10 ? ' · csere' : v <= 25 ? ' · hamarosan' : '') + '</em></div>';
     }).join('') + '</div>';
   }
+  // késleltetett és időzített indítás (017_robot_timer.sql; a tulaj kérése 2026.11.21): egész lakás vagy a kijelölt
+  // szobák, 1 perc és 7 nap között, robotonként legfeljebb 3; az adatgyűjtő 10 mp-en belül indítja
+  function tmLoad(p) {
+    if (!sb || !st.user) { st.rob.tm[p] = st.rob.tm[p] || []; return; }
+    if (st.rob.tmAt[p] && Date.now() - st.rob.tmAt[p] < 60000) return;
+    st.rob.tmAt[p] = Date.now();
+    sb.from('robot_cmd').select('id,cmd,args,due_at').eq('pink', p).eq('kind', 'timer').eq('status', 'queued').order('due_at', { ascending: true }).then(function (r) {
+      st.rob.tm[p] = r.error ? null : (r.data || []).filter(function (x) { return Date.parse(x.due_at) > Date.now() - 15 * 60000; });
+      if (r.error && /kind|due_at|42703/.test(r.error.message || '')) st.rob.tm[p] = 'missing';
+      showInfo();
+    });
+  }
+  function tmWhen(t) {
+    var d = new Date(t), now = new Date(), tom = new Date(now); tom.setDate(now.getDate() + 1);
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), mins = Math.round((t - Date.now()) / 60000);
+    var day = d.toDateString() === now.toDateString() ? 'ma' : d.toDateString() === tom.toDateString() ? 'holnap' : (d.getMonth() + 1) + '.' + ('0' + d.getDate()).slice(-2) + '.';
+    return day + ' ' + hm + (mins > 0 && mins < 24 * 60 ? ' (' + (mins < 60 ? mins + ' perc' : Math.floor(mins / 60) + ' óra' + (mins % 60 ? ' ' + mins % 60 + ' perc' : '')) + ' múlva)' : '');
+  }
+  function tmWhat(p, x) {
+    if (x.cmd !== 'rooms') return 'egész lakás';
+    var nm = {}; robRooms(p).forEach(function (r) { nm[r[0]] = r[1]; });
+    return (x.args || []).map(function (id) { return nm[id] || ('szoba ' + id); }).join(', ');
+  }
+  function timerHtml(p, has) {
+    tmLoad(p);
+    var list = st.rob.tm[p], sel = st.rob.sel[p] || [], ask = st.rob.tmAsk && st.rob.tmAsk.p === p ? st.rob.tmAsk : null;
+    var h = '<div class="sub">Időzített indítás</div>';
+    if (list === 'missing') return h + '<div class="ctln">Az időzítés még nincs telepítve (017_robot_timer.sql).</div>';
+    var dis = !has || (Array.isArray(list) && list.length >= 3) ? ' disabled' : '';
+    h += '<div class="rtm"><div class="rtm-what">' + (sel.length ? 'Kijelölt szobák: <b>' + esc(tmWhat(p, { cmd: 'rooms', args: sel })) + '</b>' : 'Egész lakás <small>(fent jelölhetsz ki szobákat)</small>') + '</div>' +
+      '<div class="ctlq">' + [[30, '+30 perc'], [60, '+1 óra'], [120, '+2 óra'], [240, '+4 óra']].map(function (x) { return '<button type="button" class="btn sm" data-rob="tmq" data-p="' + p + '" data-min="' + x[0] + '"' + dis + '>' + x[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="rtm-at"><label for="tm-' + p + '">Időpontban</label><input type="time" id="tm-' + p + '" value="' + (st.rob.tmVal && st.rob.tmVal[p] || '') + '"' + dis + '><button type="button" class="btn sm" data-rob="tmat" data-p="' + p + '"' + dis + '>Beállítom</button><small>ha már elmúlt, holnap</small></div></div>';
+    if (ask) h += '<div class="ask">Induljon <b>' + esc(tmWhen(ask.t)) + '</b>: ' + esc(ask.args ? tmWhat(p, { cmd: 'rooms', args: ask.args }) : 'egész lakás') + '? <button type="button" class="btn sm y" data-rob="tmyes" data-p="' + p + '">Igen, időzítem</button><button type="button" class="btn sm" data-rob="tmno" data-p="' + p + '">Mégse</button></div>';
+    if (Array.isArray(list) && list.length) h += '<div class="rtm-list">' + list.map(function (x) { return '<div class="rtm-row"><span><b>' + esc(tmWhen(Date.parse(x.due_at))) + '</b> · ' + esc(tmWhat(p, x)) + '</span><button type="button" class="btn ib sm" data-rob="tmdel" data-p="' + p + '" data-id="' + x.id + '" aria-label="Időzítő törlése">✕</button></div>'; }).join('') + '</div>';
+    else if (Array.isArray(list)) h += '<div class="ctln">Nincs időzített indítás.</div>';
+    return h;
+  }
+  function tmSend(p, t, args) {
+    var row = { id: 'd' + Date.now(), cmd: args ? 'rooms' : 'start', args: args || null, due_at: new Date(t).toISOString() };
+    if (!sb || !st.user) { st.rob.tm[p] = (st.rob.tm[p] || []).concat([row]).sort(function (a, b) { return Date.parse(a.due_at) - Date.parse(b.due_at); }); showInfo(); toast(robName(p) + ': időzítve ' + tmWhen(t) + ' (demó)', 'ok'); return; }
+    var q = { p_pink: p, p_cmd: row.cmd, p_due: row.due_at }; if (args) q.p_args = args;
+    sb.rpc('robot_cmd_enqueue', q).then(function (res) {
+      if (res.error) { toast(robName(p) + ': ' + robErr(res.error), 'err'); return; }
+      st.rob.tmAt[p] = 0; tmLoad(p); toast(robName(p) + ': időzítve ' + tmWhen(t), 'ok');
+    });
+  }
   function roomsHtml(p, pend, has) {
     var rs = robRooms(p), sel = st.rob.sel[p] || [], dreame = (devOf(p).label || '').indexOf('Dreame') >= 0;
     if (!rs.length) return '<div class="sub">Szobák</div><div class="ctln">' + (dreame ? 'Szobánkénti takarítás: a Dreame szobái a Xiaomi-belépés után jönnek.' :
@@ -1921,7 +1967,7 @@
   }
   var RST = { queued: 'elküldve, az adatgyűjtő pár másodpercen belül továbbítja…', running: 'a robot megkapta, végrehajtja…', done: 'kész',
     error: 'nem sikerült', expired: 'lejárt (az adatgyűjtő nem vette fel 3 percen belül)' };
-  st.rob = { cmd: {}, ask: null, sel: {} };
+  st.rob = { cmd: {}, ask: null, sel: {}, tm: {}, tmAt: {} };
   function robHas(p) { var r = st.latest[p]; return !st.user || !!(r && r.ts); }
   function robotCard(d) {
     if (d.role !== 'robot' || st.role === 'share') return '';
@@ -1932,7 +1978,7 @@
     return '<div class="ctl rob"><div class="sub">Vezérlés</div><div class="ctlq">' +
       (s.cleaning ? btn('pause', 'Szünet', true) : btn('start', 'Indítás', true)) + btn('dock', 'Haza a dokkba') + btn('find', 'Hol vagy?') + '</div>' +
       (st.rob.ask === p ? '<div class="ask">Biztosan elindítod a takarítást? <button type="button" class="btn sm y" data-rob="yes" data-p="' + p + '">Igen, indulhat</button><button type="button" class="btn sm" data-rob="no" data-p="' + p + '">Mégse</button></div>' : '') +
-      roomsHtml(p, pend, has) + partsHtml(p) +
+      roomsHtml(p, pend, has) + timerHtml(p, has) + partsHtml(p) +
       (c ? '<div class="rst ' + c.status + '" role="status"><b>' + esc(RCMD[c.cmd]) + ':</b> ' + esc(RST[c.status] || c.status) + (c.note ? '<small>' + esc(c.note) + '</small>' : '') + '</div>' : '') +
       '<div class="ctln">' + (has ? 'A parancsot az adatgyűjtő továbbítja, általában 10-20 mp alatt. Egyszerre egy parancs mehet.' : 'Ehhez a robothoz még nincs belépés (Actions: Robotok bejelentkezése).') + '</div></div>';
   }
@@ -1981,6 +2027,26 @@
     e.stopPropagation();
     var k = b.getAttribute('data-rob'), p = b.getAttribute('data-p');
     if (!canCtl()) { toast(roClause(), ''); return; }
+    if (k === 'tmq' || k === 'tmat') {
+      var t;
+      if (k === 'tmq') t = Date.now() + (+b.getAttribute('data-min')) * 60000;
+      else {
+        var v = ($('tm-' + p) || {}).value || ''; if (!/^\d\d:\d\d$/.test(v)) { toast('Adj meg egy időpontot (óra:perc).', 'err'); return; }
+        st.rob.tmVal = st.rob.tmVal || {}; st.rob.tmVal[p] = v;
+        var d = new Date(); d.setHours(+v.slice(0, 2), +v.slice(3, 5), 0, 0); if (d.getTime() < Date.now() + 60000) d.setDate(d.getDate() + 1);
+        t = d.getTime();
+      }
+      var sl = (st.rob.sel[p] || []).slice();
+      st.rob.tmAsk = { p: p, t: t, args: sl.length ? sl : null }; showInfo(); return;
+    }
+    if (k === 'tmno') { st.rob.tmAsk = null; showInfo(); return; }
+    if (k === 'tmyes') { var a = st.rob.tmAsk; st.rob.tmAsk = null; if (a) { if (a.args) st.rob.sel[p] = []; tmSend(p, a.t, a.args); } showInfo(); return; }
+    if (k === 'tmdel') {
+      var id = b.getAttribute('data-id');
+      if (!sb || !st.user) { st.rob.tm[p] = (st.rob.tm[p] || []).filter(function (x) { return String(x.id) !== id; }); showInfo(); return; }
+      sb.rpc('robot_cmd_cancel', { p_id: +id }).then(function (res) { if (res.error) toast(robName(p) + ': ' + robErr(res.error), 'err'); else toast(robName(p) + ': időzítő törölve', 'ok'); st.rob.tmAt[p] = 0; tmLoad(p); });
+      return;
+    }
     if (k === 'pick') {
       var seg = +b.getAttribute('data-seg'), sl = st.rob.sel[p] = (st.rob.sel[p] || []).slice(), i = sl.indexOf(seg);
       if (i >= 0) sl.splice(i, 1); else if (sl.length < 16) sl.push(seg);

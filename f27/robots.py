@@ -54,6 +54,7 @@ DREAME_PROPS = {"state": (2, 1), "error": (2, 2), "battery": (3, 1), "charging":
 DREAME_PARTS = {"main_brush": (9, 2), "side_brush": (10, 2), "filter": (11, 1)}
 DREAME_ACTIONS = {"start": (2, 1), "pause": (2, 2), "dock": (3, 1), "find": (7, 1)}   # find: "itt vagyok" hang
 COMMANDS = ("start", "pause", "dock", "find", "rooms")      # rooms: szobánkénti takarítás (015_robot_rooms.sql)
+TIMER_TTL_S = 15 * 60                                 # az időzített indítás ennyit vár a gyűjtőre (017_robot_timer.sql)
 CMD_TTL_S = 180                                       # a 3 percnél régebbi függő parancs lejár (014_robot_cmd.sql)
 # a Dreame állapotkódjai (siid 2, piid 1) -> egységes állapot
 DREAME_STATE = {1: "cleaning", 2: "idle", 3: "paused", 4: "error", 5: "returning", 6: "charging",
@@ -308,15 +309,21 @@ def _age_s(ts: str) -> float:
 
 def run_queue(sb: SupabaseRest) -> int:
     """A függő parancsok végrehajtása sorban (egyszerre egy, utána 3 mp). Visszaadja a végrehajtottak számát."""
-    try:
-        rows = sb.select("robot_cmd", "id,pink,cmd,args,created_at", status="eq.queued", order="id.asc", limit="5")
-    except SupabaseError:                            # a 015_robot_rooms.sql még nem futott: nincs args oszlop
-        rows = sb.select("robot_cmd", "id,pink,cmd,created_at", status="eq.queued", order="id.asc", limit="5")
+    try:                                             # 017: időzített parancs (kind = timer) csak a due_at után
+        rows = sb.select("robot_cmd", "id,pink,cmd,args,created_at,kind,due_at", status="eq.queued",
+                         due_at=f"lte.{now_iso()}", order="due_at.asc", limit="5")
+    except SupabaseError:
+        try:                                         # a 017 még nem futott
+            rows = sb.select("robot_cmd", "id,pink,cmd,args,created_at", status="eq.queued", order="id.asc", limit="5")
+        except SupabaseError:                        # a 015 sem: nincs args oszlop
+            rows = sb.select("robot_cmd", "id,pink,cmd,created_at", status="eq.queued", order="id.asc", limit="5")
     done = 0
     for r in rows:
         rid = f"eq.{r['id']}"
-        if _age_s(r["created_at"]) > CMD_TTL_S:
-            sb.update("robot_cmd", {"status": "expired", "done_at": now_iso(), "note": "nem vette fel a gyűjtő 3 percen belül"},
+        timer = r.get("kind") == "timer"
+        if _age_s(r.get("due_at") or r["created_at"]) > (TIMER_TTL_S if timer else CMD_TTL_S):
+            sb.update("robot_cmd", {"status": "expired", "done_at": now_iso(),
+                                    "note": "az időzítő lejárt, a gyűjtő nem futott" if timer else "nem vette fel a gyűjtő 3 percen belül"},
                       id=rid, status="eq.queued")
             continue
         if not sb.update("robot_cmd", {"status": "running"}, id=rid, status="eq.queued"):
@@ -324,7 +331,7 @@ def run_queue(sb: SupabaseRest) -> int:
         try:
             command(sb, r["pink"], r["cmd"], r.get("args"))
             sb.update("robot_cmd", {"status": "done", "done_at": now_iso()}, id=rid)
-            print(f"Robot-parancs: {r['pink']} {r['cmd']} OK")
+            print(f"Robot-parancs: {r['pink']} {r['cmd']}{' (időzített)' if timer else ''} OK")
         except Exception as e:                       # noqa: BLE001
             sb.update("robot_cmd", {"status": "error", "done_at": now_iso(),
                                     "note": f"{type(e).__name__}: {_mask(str(e))}"[:200]}, id=rid)
