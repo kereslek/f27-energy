@@ -268,6 +268,7 @@ A LUXION érintőkapcsoló **közvetlenül** kapcsolja a 3 × 1000 W-ot (kb. 13 
 
 - Nyelv: magyar, élénk, közvetlen hangnem.
 - **Soha ne használj em dash-t (gondolatjelet) semmilyen kimenetben.**
+- **Használati keret (a tulaj állandó szabálya, 2026.11.21, ez az érvényes):** minden 5 órás használati ablaknak legfeljebb a **90%-át** használd, utána állj meg rendezetten (commit, push, állapotjegyzet a 15. fejezetbe), és a következő ablak nyitásakor folytasd ugyanonnan. **A heti tokenkeret 75%-át soha ne lépd túl**, csak ha a tulaj kifejezetten kéri. A tulaj munkamenetenként külön keretet, token- és modell-utasítást adhat: az mindig felülírja ezt.
 - **Munkamenet-keret:** egy 5 órás használati ablaknak legfeljebb a 85%-át használd (hacsak a tulaj másképp nem kéri). A tulaj kérése (2026.11.15): ha maradt befejezetlen feladat, a 2026.11.14-15-i munkamenet 95%-nál álljon meg, a következő 5 órás ablak 90%-nál, és a következő ablakban folytassa ugyanonnan. Ha közeledik a határ, zárd le a munkát rendezetten (commit, push, rövid állapotjegyzet a 15. fejezetbe), és a következő sessionben folytasd ugyanonnan. Ez a tulaj általános munkastílusa, nem csak ennél a projektnél.
 
 ## 14. Adatvédelem és működés (publikus repó)
