@@ -1119,6 +1119,11 @@
         out.push(['Elemcsere: <b>' + esc(b.label || b.pink) + '</b>, ' + esc(BAT.full(b)) + '.', dv ? (dv.room === 'lepcso_fent' ? 'eloter' : dv.room) : null, b.pink, b.level === 'dead' ? 'red' : 'orange']);
       }
     });
+    ['R1', 'R2'].forEach(function (p) {                         // robot kopóalkatrész 10% alatt
+      var pt = st.user ? robParts(p) : null; if (!pt) return;
+      var low = Object.keys(PART_NAMES).filter(function (k) { return typeof pt[k] === 'number' && pt[k] <= 10; });
+      if (low.length) out.push(['<b>' + esc(robName(p)) + '</b>: ' + low.map(function (k) { return PART_NAMES[k].toLowerCase() + ' ' + pt[k] + '%'; }).join(', ') + ', ideje cserélni vagy tisztítani.', devOf(p).room, p, 'orange']);
+    });
     return out;
   }
   // D: Pamutka (2026.11.20): egy buborék a legfontosabb gondról forintban, a ház állapota (gyűrű + 3 sáv),
@@ -1867,6 +1872,20 @@
     if (Array.isArray(s.rooms) && s.rooms.length) return s.rooms;
     return !st.user ? (DEMO_ROOMS[p] || []) : [];
   }
+  var PART_NAMES = { main_brush: 'Főkefe', side_brush: 'Oldalkefe', filter: 'Szűrő', sensor: 'Szenzorok (tisztítás)' };
+  var DEMO_PARTS = { R1: { main_brush: 62, side_brush: 35, filter: 8 }, R2: { main_brush: 71, side_brush: 44, filter: 52, sensor: 12 } };
+  function robParts(p) {
+    var s = (st.latest[p] && st.latest[p].status) || {};
+    return s.parts && typeof s.parts === 'object' ? s.parts : (!st.user ? DEMO_PARTS[p] || null : null);
+  }
+  function partsHtml(p) {
+    var pt = robParts(p); if (!pt) return '';
+    var ks = Object.keys(PART_NAMES).filter(function (k) { return typeof pt[k] === 'number'; }); if (!ks.length) return '';
+    return '<div class="sub">Kopóalkatrészek <small>(hátralévő élet)</small></div><div class="rparts">' + ks.map(function (k) {
+      var v = pt[k], c = v <= 10 ? 'bad' : v <= 25 ? 'warn' : 'ok';
+      return '<div class="rpart ' + c + '"><span>' + PART_NAMES[k] + '</span><i><b style="width:' + v + '%"></b></i><em>' + v + '%' + (v <= 10 ? ' · csere' : v <= 25 ? ' · hamarosan' : '') + '</em></div>';
+    }).join('') + '</div>';
+  }
   function roomsHtml(p, pend, has) {
     var rs = robRooms(p), sel = st.rob.sel[p] || [], dreame = (devOf(p).label || '').indexOf('Dreame') >= 0;
     if (!rs.length) return '<div class="sub">Szobák</div><div class="ctln">' + (dreame ? 'Szobánkénti takarítás: a Dreame szobái a Xiaomi-belépés után jönnek.' :
@@ -1892,7 +1911,7 @@
     return '<div class="ctl rob"><div class="sub">Vezérlés</div><div class="ctlq">' +
       (s.cleaning ? btn('pause', 'Szünet', true) : btn('start', 'Indítás', true)) + btn('dock', 'Haza a dokkba') + btn('find', 'Hol vagy?') + '</div>' +
       (st.rob.ask === p ? '<div class="ask">Biztosan elindítod a takarítást? <button type="button" class="btn sm y" data-rob="yes" data-p="' + p + '">Igen, indulhat</button><button type="button" class="btn sm" data-rob="no" data-p="' + p + '">Mégse</button></div>' : '') +
-      roomsHtml(p, pend, has) +
+      roomsHtml(p, pend, has) + partsHtml(p) +
       (c ? '<div class="rst ' + c.status + '" role="status"><b>' + esc(RCMD[c.cmd]) + ':</b> ' + esc(RST[c.status] || c.status) + (c.note ? '<small>' + esc(c.note) + '</small>' : '') + '</div>' : '') +
       '<div class="ctln">' + (has ? 'A parancsot az adatgyűjtő továbbítja, általában 10-20 mp alatt. Egyszerre egy parancs mehet.' : 'Ehhez a robothoz még nincs belépés (Actions: Robotok bejelentkezése).') + '</div></div>';
   }

@@ -50,6 +50,8 @@ GAP_S = 3.0
 # Dreame miot (dreame.vacuum.p2028, Z10 Pro): (siid, piid) tulajdonságok, (siid, aiid) műveletek
 DREAME_PROPS = {"state": (2, 1), "error": (2, 2), "battery": (3, 1), "charging": (3, 2),
                 "status": (4, 1), "minutes": (4, 2), "area_m2": (4, 3)}
+# kopóalkatrészek a Dreame MIoT-specifikációjából: hátralévő élet %; ha egy modell nem ismeri, kimarad
+DREAME_PARTS = {"main_brush": (9, 2), "side_brush": (10, 2), "filter": (11, 1)}
 DREAME_ACTIONS = {"start": (2, 1), "pause": (2, 2), "dock": (3, 1), "find": (7, 1)}   # find: "itt vagyok" hang
 COMMANDS = ("start", "pause", "dock", "find", "rooms")      # rooms: szobánkénti takarítás (015_robot_rooms.sql)
 CMD_TTL_S = 180                                       # a 3 percnél régebbi függő parancs lejár (014_robot_cmd.sql)
@@ -138,6 +140,26 @@ def room_args(args) -> list[int]:
     return out
 
 
+async def _rr_parts(d) -> dict | None:
+    """Kopóalkatrészek hátralévő élete százalékban (főkefe, oldalkefe, szűrő, szenzorok). Hiba esetén None."""
+    try:
+        from roborock.const import (FILTER_REPLACE_TIME, MAIN_BRUSH_REPLACE_TIME, SENSOR_DIRTY_REPLACE_TIME,
+                                    SIDE_BRUSH_REPLACE_TIME)
+        tr = d.v1_properties.consumables
+        await tr.refresh()
+        out = {}
+        for key, attr, life in (("main_brush", "main_brush_work_time", MAIN_BRUSH_REPLACE_TIME),
+                                ("side_brush", "side_brush_work_time", SIDE_BRUSH_REPLACE_TIME),
+                                ("filter", "filter_work_time", FILTER_REPLACE_TIME),
+                                ("sensor", "sensor_dirty_time", SENSOR_DIRTY_REPLACE_TIME)):
+            v = getattr(tr, attr, None)
+            if isinstance(v, (int, float)):
+                out[key] = max(0, min(100, round(100 - 100 * v / life)))
+        return out or None
+    except Exception:                                  # noqa: BLE001
+        return None
+
+
 async def rr_status(auth: dict) -> list[dict]:
     dm, devs = await _rr_devices(auth)
     out = []
@@ -150,7 +172,7 @@ async def rr_status(auth: dict) -> list[dict]:
                         "battery": st.battery, "charging": state in ("charging", "charged"),
                         "area_m2": st.square_meter_clean_area, "minutes": round((st.clean_time or 0) / 60),
                         "error": st.error_code_name if st.error_code else None, "src": "roborock",
-                        "rooms": await _rr_rooms(d)})
+                        "rooms": await _rr_rooms(d), "parts": await _rr_parts(d)})
     finally:
         await dm.close()
     return out
@@ -200,15 +222,17 @@ def mi_status(auth: dict) -> list[dict]:
     out = []
     for d in mi_vacuums(auth):
         did = d["did"]
-        res = xiaomi_cloud.get_props(auth, XIAOMI_COUNTRY, [{"did": did, "siid": s, "piid": p} for s, p in DREAME_PROPS.values()])
+        res = xiaomi_cloud.get_props(auth, XIAOMI_COUNTRY, [{"did": did, "siid": s, "piid": p}
+                                                            for s, p in list(DREAME_PROPS.values()) + list(DREAME_PARTS.values())])
         by = {(r.get("siid"), r.get("piid")): r.get("value") for r in res if r.get("code") == 0}
         vals = {k: by.get(sp) for k, sp in DREAME_PROPS.items()}
+        parts = {k: by[sp] for k, sp in DREAME_PARTS.items() if isinstance(by.get(sp), (int, float)) and 0 <= by[sp] <= 100}
         online = bool(d.get("isOnline", True))
         state = DREAME_STATE.get(vals.get("state"), "unknown") if online else "offline"
         out.append({"id": did, "name": d.get("name"), "state": state, "cleaning": state in CLEANING,
                     "battery": vals.get("battery"), "charging": vals.get("charging") in (1, 5),
                     "area_m2": vals.get("area_m2"), "minutes": vals.get("minutes"),
-                    "error": vals.get("error") or None, "src": "xiaomi", "online": online})
+                    "error": vals.get("error") or None, "src": "xiaomi", "online": online, "parts": parts or None})
     return out
 
 
@@ -247,10 +271,13 @@ def collect(sb: SupabaseRest) -> int:
     rows = []
     for p, s in got.items():
         status = {k: s.get(k) for k in ("state", "cleaning", "battery", "charging", "area_m2", "minutes", "error", "src")}
-        if s.get("rooms"):
-            status["rooms"] = s["rooms"]
+        for k in ("rooms", "parts"):
+            if s.get(k):
+                status[k] = s[k]
         rows.append({"pink": p, "online": s.get("online", True) and s["state"] != "offline", "status": status})
     sb.insert("device_status", rows)
+    for p, s in got.items():                         # a publikus logba csak darabszám, név soha
+        print(f"Robot {p}: {s.get('state')}, szobák: {len(s.get('rooms') or [])}, kopóalkatrész-adat: {len(s.get('parts') or {})}")
     return len(rows)
 
 

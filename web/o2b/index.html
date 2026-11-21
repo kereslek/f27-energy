@@ -324,6 +324,9 @@ body.wide #pamhero svg{width:min(210px,18vw);height:min(210px,18vw);overflow:vis
 .ask .btn{min-height:28px;font-size:11.5px;padding:0 9px}.btn.y{background:#ffe066}
 .rob .sub{font-weight:900;font-size:12px;margin:8px 0 5px}.rob .btn[disabled]{opacity:.45;cursor:not-allowed}
 .rst{margin-top:7px;padding:6px 8px;border-radius:9px;border:2px solid #1e2a44;background:#fff7df;font-size:12px}.rst small{display:block;color:#7a5a2e;margin-top:2px}
+.rparts{display:flex;flex-direction:column;gap:5px;margin:4px 0 6px}.rpart{display:grid;grid-template-columns:minmax(0,9.5em) 1fr auto;gap:8px;align-items:center;font-size:12.5px;font-weight:700}
+.rpart i{height:9px;border-radius:5px;background:#e6e8ef;overflow:hidden;display:block}.rpart i b{display:block;height:100%;background:#2fa56b}
+.rpart.warn i b{background:#f0a531}.rpart.bad i b{background:#d9452b}.rpart em{font-style:normal;font-variant-numeric:tabular-nums;white-space:nowrap}.rpart.bad em{color:#b8341c}
 .rrooms{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}.rroom{font:inherit;font-size:12.5px;font-weight:700;padding:6px 10px;border-radius:999px;border:2px solid #1e2a44;background:#fff;color:#1e2a44;cursor:pointer;min-height:32px}
 .rroom.on{background:#14a38b;color:#fff}.rroom:disabled{opacity:.5;cursor:default}.sub small{font-weight:400;color:#6b7280}
 .rst.done{background:#e3f7e5}.rst.error,.rst.expired{background:#ffe3df}.rst.queued,.rst.running{background:#eef3ff}
