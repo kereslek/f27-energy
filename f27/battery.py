@@ -242,6 +242,16 @@ def plan(devs: dict, latest: dict, rows: dict, today: date) -> tuple[list[dict],
     return upserts, pushes
 
 
+ROW_DEFAULTS = {"samples": [], "lifetimes": [], "notified": {}}
+
+
+def uniform_rows(rows: list[dict]) -> list[dict]:
+    """A tömeges upsert minden sorában ugyanazok a kulcsok kellenek (különben PGRST102). Egy új, offline
+    eszköz sora hiányos (nincs még kind, samples stb.): a hiányzó mezők az oszlop alapértékét kapják."""
+    keys = set().union(*(r.keys() for r in rows)) if rows else set()
+    return [{k: r.get(k, ROW_DEFAULTS.get(k)) for k in keys} for r in rows]
+
+
 DEAD_DAILY = 10          # lemerült elem: az első 10 napon naponta egy push (legfeljebb 10)
 DEAD_WEEKLY_UNTIL = 40   # utána hetente egy, az első push után 40 napig; aztán nincs több push
                           # (a tulaj kérése, 2026.11.14: ennyi után "értette, de nem érdekli";
@@ -329,6 +339,7 @@ def run_battery(sb: SupabaseRest, now: datetime | None = None, environ=None, sen
     stamp = now.isoformat(timespec="seconds")
     for row in upserts:
         row["updated_at"] = stamp
+    upserts = uniform_rows(upserts)
     try:
         if upserts:
             try:

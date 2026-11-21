@@ -257,3 +257,14 @@ def test_esti_doboz_szint_es_napok():
     out = digest_lines(rows, date(2026, 11, 21))
     assert "alacsony szint (% nincs) · kb. 5-12 nap" in out[0]
     assert "14% · kb. 20-30 nap" in out[1]
+
+
+def test_uniform_rows_new_offline_device():
+    """Új, offline eszköz hiányos sora mellett is egyforma kulcsok (különben PGRST102, 2026.11.21)."""
+    from f27.battery import uniform_rows
+    full = {"pink": "T1", "kind": "state", "value": "high", "samples": [1], "lifetimes": [], "notified": {}, "level": "ok"}
+    new = {"pink": "T8", "level": "offline", "notified": {}}
+    out = uniform_rows([full, new])
+    assert set(out[0]) == set(out[1]) == set(full)
+    assert out[1]["samples"] == [] and out[1]["lifetimes"] == [] and out[1]["kind"] is None
+    assert out[0]["samples"] == [1]
