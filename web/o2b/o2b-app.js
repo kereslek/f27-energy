@@ -764,7 +764,7 @@
   function ddTabs(d) {
     var ctl = CTL_PINKS.indexOf(d.pink) >= 0;
     if (ctl) return [['ov', 'Áttekintés', 'home'], ['sch', 'Időzítés', 'clock'], ['set', 'Beállítások', 'gear'], ['log', 'Napló', 'list']];
-    if (d.role === 'robot') return [['ov', 'Áttekintés', 'home'], ['set', 'Beállítások', 'gear'], ['log', 'Napló', 'list']];
+    if (d.role === 'robot') return [['ov', 'Áttekintés', 'home'], ['map', 'Térkép', 'grid'], ['log', 'Napló', 'list'], ['set', 'Beállítások', 'gear']];
     if (d.role === 'thermo' || d.role === 'breaker') return [['ov', 'Áttekintés', 'home'], ['set', 'Beállítások', 'gear'], ['log', 'Napló', 'list']];
     if (d.role === 'pir' && window.O2BMotion && st.role !== 'share') return [['ov', 'Áttekintés', 'home'], ['wk', 'Hetek', 'grid'], ['set', 'Beállítások', 'gear']];
     return [['ov', 'Áttekintés', 'home'], ['set', 'Beállítások', 'gear']];
@@ -920,6 +920,8 @@
     } else if (st.dtab === 'wk' && window.O2BMotion) { moLoad(p); h += O2BMotion.weeks(); }
     else if (st.dtab === 'sch') h += ddSched(p);
     else if (st.dtab === 'set') h += ddSettings(d);
+    else if (st.dtab === 'map' && d.role === 'robot' && window.O2BRobotView) { rvLoad(p, 'map'); h += O2BRobotView.mapHtml(p, ago); }
+    else if (st.dtab === 'log' && d.role === 'robot' && window.O2BRobotView) { rvLoad(p, 'log'); h += '<div class="sub">Takarítások</div>' + O2BRobotView.logHtml(p); }
     else if (st.dtab === 'log') h += (CTL_PINKS.indexOf(p) >= 0 ? '<div class="sub">Kapcsolások</div>' + ddLogHtml(d, c.log) : '') + (d.role === 'robot' ? robotCard(d) : '<div class="sub">Mérések óránként</div>' + ddMeasLog(d, c.mh));
     return h + '</div>';
   }
@@ -929,6 +931,8 @@
     if (t.hasAttribute('data-dtab')) { st.dtab = t.getAttribute('data-dtab'); showInfo(); var b = document.querySelector('#info [data-dtab="' + st.dtab + '"]'); if (b) b.focus(); }
     else { setLayer(t.getAttribute('data-ddlay')); showInfo(); }
   });
+  // robot térkép és takarítási napló (robotview.js)
+  function rvLoad(p, what) { O2BRobotView.load({ sb: sb, user: st.user, role: st.role, pink: p, done: function () { if (st.sel === p) showInfo(); } }, what); }
   // mozgás-statisztika (motion.js): M3 az Áttekintésen, M1 + M2 a Hetek fülön
   function moLoad(p) { O2BMotion.load({ sb: sb, user: st.user, role: st.role, pink: p, done: function () { if (st.sel === p) showInfo(); } }); }
   document.addEventListener('click', function (e) {
