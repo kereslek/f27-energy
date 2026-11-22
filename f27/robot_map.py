@@ -20,6 +20,10 @@ import urllib.request
 from datetime import datetime, timezone
 
 MAP_EVERY_S = 55 * 60
+LIVE_EVERY_S = 60                  # takarítás közben ilyen gyakran frissül a robot helye és útvonala (018_robot_live.sql)
+LIVE_CHECK_S = 30                  # ilyen gyakran nézzük meg az állapotból, takarít-e valamelyik robot
+MAX_PATH = 400                     # az útvonal legfeljebb ennyi pont
+LIVE_COLS = ("path", "pos_at", "bbox")
 MAX_SIDE = 900                     # a PNG hosszabb oldala legfeljebb ennyi képpont (méret és adatforgalom miatt)
 
 
@@ -28,6 +32,30 @@ class MapError(Exception):
 
 
 # ---- közös: MapData -> a térkép JSON-ja ---------------------------------------------------------------
+def _bbox(img) -> list[int] | None:
+    """A kép nem üres részének befoglalója [x0, y0, x1, y1] képpontban: az átlátszatlan képpontok, ha a háttér
+    átlátszó; ha a kép végig átlátszatlan, a sarok színétől eltérők."""
+    try:
+        from PIL import Image, ImageChops
+        rgba = img.convert("RGBA")
+        b = rgba.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
+        if b is None or b == (0, 0, rgba.size[0], rgba.size[1]):
+            rgb = rgba.convert("RGB")
+            d = ImageChops.difference(rgb, Image.new("RGB", rgb.size, rgb.getpixel((0, 0)))).convert("L")
+            b = d.point(lambda v: 255 if v > 12 else 0).getbbox() or b
+        return [int(v) for v in b] if b else None
+    except Exception:                                   # noqa: BLE001
+        return None
+
+
+def downsample(pts: list, n: int = MAX_PATH) -> list:
+    """Egyenletesen ritkít legfeljebb n pontra; az első és az utolsó pont megmarad."""
+    if len(pts) <= n:
+        return pts
+    step = (len(pts) - 1) / (n - 1)
+    return [pts[round(i * step)] for i in range(n)]
+
+
 def _png(img) -> tuple[str, int, int, float]:
     """PIL kép -> (base64 PNG, szélesség, magasság, kicsinyítés aránya)."""
     w, h = img.size
@@ -46,6 +74,19 @@ def _pt(md, p, k: float) -> list[float] | None:
     return [round(q.x * k, 1), round(q.y * k, 1)]
 
 
+def _path(md, k: float) -> list[list[float]]:
+    """A takarítás útvonala (python-roborock: MapData.path.path, Dreame-elemző: MapData.path) képpontban."""
+    pa = getattr(md, "path", None) if md is not None else None
+    subs = getattr(pa, "path", None) or []
+    out: list[list[float]] = []
+    for sub in subs:
+        for p in sub:
+            q = _pt(md, p, k)
+            if q is not None and (not out or out[-1] != q):
+                out.append(q)
+    return downsample(out)
+
+
 def from_map_data(md, img=None, png_bytes: bytes | None = None, src: str = "") -> dict:
     """A gyártói MapData-ból a robot_map sor. img: PIL kép; png_bytes: kész PNG (Roborock)."""
     if img is None and png_bytes:
@@ -55,7 +96,11 @@ def from_map_data(md, img=None, png_bytes: bytes | None = None, src: str = "") -
         img = md.image.data
     if img is None:
         raise MapError("nincs kép a térképben")
-    b64, w, h, k = _png(img.convert("RGBA") if img.mode not in ("RGB", "RGBA") else img)
+    img = img.convert("RGBA") if img.mode not in ("RGB", "RGBA") else img
+    b64, w, h, k = _png(img)
+    bb = _bbox(img)
+    if bb and k < 1.0:
+        bb = [round(v * k) for v in bb]
     rooms = []
     for rid, r in sorted(((md.rooms or {}) if md is not None else {}).items()):
         c = None
@@ -67,7 +112,8 @@ def from_map_data(md, img=None, png_bytes: bytes | None = None, src: str = "") -
         rooms.append({"id": int(rid), "name": (getattr(r, "name", None) or "")[:40], "c": c})
     return {"png": b64, "w": w, "h": h, "rooms": rooms[:40],
             "robot": _pt(md, getattr(md, "vacuum_position", None), k) if md is not None else None,
-            "charger": _pt(md, getattr(md, "charger", None), k) if md is not None else None, "src": src}
+            "charger": _pt(md, getattr(md, "charger", None), k) if md is not None else None, "src": src,
+            "path": _path(md, k) if md is not None else [], "bbox": bb}
 
 
 # ---- R2: Roborock -------------------------------------------------------------------------------------
@@ -167,6 +213,28 @@ def _age_s(ts: str | None) -> float:
     return (datetime.now(timezone.utc) - datetime.fromisoformat(ts.replace("Z", "+00:00"))).total_seconds()
 
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+_live_cols_ok = True        # a 018_robot_live.sql lefutott-e (az első PGRST204 után kikapcsol, a térkép így sem sérül)
+
+
+def _put_map(sb, row: dict) -> None:
+    """Teljes sor írása; ha a 018 oszlopai még hiányoznak, nélkülük (a óránkénti térkép nem állhat le miatta)."""
+    global _live_cols_ok
+    from .supa import SupabaseError
+    if _live_cols_ok:
+        try:
+            sb.upsert("robot_map", [row], on_conflict="pink")
+            return
+        except SupabaseError as e:
+            if e.code not in ("PGRST204", "42703"):
+                raise
+            _live_cols_ok = False
+    sb.upsert("robot_map", [{k: v for k, v in row.items() if k not in LIVE_COLS}], on_conflict="pink")
+
+
 def collect_maps(sb, force: bool = False) -> dict:
     """Óránként egyszer mindkét robot térképe. Visszaad: {pink: 'OK, N szoba' | 'HIBA ...' | 'friss'}."""
     from .robots import auth_get
@@ -187,11 +255,109 @@ def collect_maps(sb, force: bool = False) -> dict:
             continue
         try:
             row = fn(auth)
-            row.update({"pink": pink, "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
-            sb.upsert("robot_map", [row], on_conflict="pink")
-            out[pink] = f"OK, {len(row['rooms'])} szoba, {row['w']}x{row['h']} px"
+            now = _now_iso()
+            row.update({"pink": pink, "updated_at": now, "pos_at": now})
+            _put_map(sb, row)
+            out[pink] = f"OK, {len(row['rooms'])} szoba, {row['w']}x{row['h']} px, útvonal: {len(row.get('path') or [])} pont"
         except MapError as e:
             out[pink] = f"HIBA: {e}"
         except Exception as e:                          # noqa: BLE001 (a log publikus: csak a hiba fajtája)
             out[pink] = f"HIBA ({type(e).__name__})"
     return out
+
+
+# ---- élő követés takarítás közben (a `watch` hívja) ------------------------------------------------------
+LIVE_STATES = {"cleaning", "mopping", "returning", "building_map", "remote"}      # mint robots.CLEANING
+_FETCH = {"R2": ("roborock", lambda a: asyncio.run(rr_map(a))), "R1": ("xiaomi", mi_map)}
+
+
+def live_patch(row: dict, stored: dict | None) -> tuple[dict, bool]:
+    """Az élő sorból az írandó rész: ha a kép mérete a tároltéval egyezik, csak a hely és az útvonal (a PNG nem megy
+    újra, percenként nagy volna), különben a teljes sor. Visszaad: (sor, teljes-e)."""
+    now = _now_iso()
+    if stored and stored.get("w") == row.get("w") and stored.get("h") == row.get("h"):
+        return {"robot": row.get("robot"), "charger": row.get("charger"), "path": row.get("path") or [],
+                "bbox": row.get("bbox"), "pos_at": now}, False
+    return dict(row, updated_at=now, pos_at=now), True
+
+
+class LiveTracker:
+    """Takarítás közben a robot térképét percenként frissíti (nem óránként). Minden hiba nem végzetes; a log
+    csak darabszám: robotonként egy sor, amikor a követés véget ér."""
+
+    def __init__(self, fetch=None, clock=time.monotonic):
+        self.fetch, self.clock = fetch or _fetch_live, clock
+        self.last: dict[str, float] = {}
+        self.chk = -1e9
+        self.active: set[str] = set()
+        self.n: dict[str, list[int]] = {}               # pink -> [sikeres, hibás]
+
+    def cleaning(self, sb) -> set[str]:
+        """Az utolsó ismert állapot szerint melyik robot takarít (30 mp-ig gyorsítótárból)."""
+        now = self.clock()
+        if now - self.chk < LIVE_CHECK_S:
+            return self.active
+        self.chk = now
+        rows = sb.select("device_status", "pink,status,ts", pink="in.(R1,R2)", order="ts.desc", limit="6")
+        seen, act = set(), set()
+        for r in rows:
+            if r["pink"] in seen:
+                continue
+            seen.add(r["pink"])
+            if (r.get("status") or {}).get("state") in LIVE_STATES and _age_s(r.get("ts")) < 3 * 3600:
+                act.add(r["pink"])
+        for p in self.active - act:                       # véget ért: egyetlen összegző sor
+            ok, bad = self.n.pop(p, [0, 0])
+            print(f"Élő követés {p}: vége, {ok} frissítés, {bad} hiba")
+        self.active = act
+        return act
+
+    def invalidate(self) -> None:
+        self.chk = -1e9
+
+    def tick(self, sb) -> dict[str, str]:
+        """Egy kör: a takarító robotok közül azok térképe, amelyiknek lejárt a 60 mp-e."""
+        from .robots import auth_get
+        out: dict[str, str] = {}
+        for pink in sorted(self.cleaning(sb)):
+            now = self.clock()
+            if now - self.last.get(pink, -1e9) < LIVE_EVERY_S:
+                continue
+            self.last[pink] = now
+            cnt = self.n.setdefault(pink, [0, 0])
+            try:
+                out[pink] = "OK" if self._one(sb, pink, auth_get) else "nincs belépés"
+                if out[pink] == "OK":
+                    cnt[0] += 1
+            except Exception as e:                        # noqa: BLE001 (a log publikus: csak a hiba fajtája)
+                cnt[1] += 1
+                out[pink] = f"HIBA ({type(e).__name__})"
+        return out
+
+    def _one(self, sb, pink: str, auth_get) -> bool:
+        global _live_cols_ok
+        from .supa import SupabaseError
+        src, _ = _FETCH[pink]
+        auth = auth_get(sb, src)
+        if not auth or (src == "xiaomi" and not auth.get("service_token")):
+            return False
+        row = self.fetch(pink, auth)
+        row["pink"] = pink
+        stored = (sb.select("robot_map", "pink,w,h", pink=f"eq.{pink}") or [None])[0]
+        patch, full = live_patch(row, stored)
+        if full:
+            _put_map(sb, patch)
+            return True
+        if not _live_cols_ok:
+            return True                                   # a 018 nincs telepítve: nincs hová írni
+        try:
+            sb.update("robot_map", patch, pink=f"eq.{pink}")
+        except SupabaseError as e:
+            if e.code not in ("PGRST204", "42703"):
+                raise
+            _live_cols_ok = False
+        return True
+
+
+def _fetch_live(pink: str, auth: dict) -> dict:
+    return _FETCH[pink][1](auth)

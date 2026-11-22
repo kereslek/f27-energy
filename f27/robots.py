@@ -350,9 +350,16 @@ def watch(sb: SupabaseRest, seconds: float, every: float = 10.0) -> None:
     """A gyűjtő körei között: `seconds` másodpercig 10 mp-enként felveszi a dashboard parancsait.
     Soha nem tér vissza korábban (a hívó ciklus ezzel tartja a 10 perces ütemet)."""
     end, warned = time.monotonic() + seconds, False
+    try:
+        from .robot_map import LiveTracker
+        live = LiveTracker()                         # takarítás közben percenként friss hely és útvonal (018_robot_live.sql)
+    except Exception:                                # noqa: BLE001
+        live = None
+    live_warned = False
     while True:
         try:
-            run_queue(sb)
+            if run_queue(sb) and live:
+                live.invalidate()                    # egy parancs után friss állapot van: azonnal újra nézzük
         except SupabaseError as e:
             if not warned:
                 print(f"Robot-parancsok: a sor nem olvasható ({e.code or e.status}); lefutott a 014_robot_cmd.sql?")
@@ -361,6 +368,13 @@ def watch(sb: SupabaseRest, seconds: float, every: float = 10.0) -> None:
             if not warned:
                 print(f"Robot-parancsok: HIBA ({type(e).__name__})")
                 warned = True
+        if live:
+            try:
+                live.tick(sb)
+            except Exception as e:                   # noqa: BLE001 (nem végzetes; a log publikus: csak a hiba fajtája)
+                if not live_warned:
+                    print(f"Élő követés: HIBA ({type(e).__name__})")
+                    live_warned = True
         left = end - time.monotonic()
         if left <= 0:
             return

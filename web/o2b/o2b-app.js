@@ -318,6 +318,9 @@
     layer.cat = el('g', { id: 'cat', class: 'walk', role: 'button', tabindex: 0, 'aria-label': 'Pamutka, a tanácsadó macska' }, world);
     layer.labels = el('g', { id: 'labels' }, world);
     layer.pins = el('g', { id: 'pins' }, world);
+    layer.robot = el('g', { id: 'robotlive', 'pointer-events': 'none' }, world);       // a robot élő mozgása (robotlive.js): a feliratok és a tűk alatt
+    world.insertBefore(layer.robot, layer.labels);
+    if (RL) RL.mount(layer.robot);
     buildCat(layer.cat);
     layer.cat.addEventListener('pointerdown', catDown);
     layer.cat.addEventListener('click', function (e) { e.stopPropagation(); if (catDrag.justDropped) { catDrag.justDropped = false; return; } catClick(); });
@@ -422,6 +425,7 @@
   // szoba-címkék a hőfokkal (Hőtérkép réteg), a tűk név- és értékcímkéi, jelölők (Savio, Computherm),
   // végül a sima szobanevek; ami sehová nem fér, az a sima szobanév, és azt elrejtjük.
   function drawOverlay() {
+    if (RL && layer.robot) RL.refresh();                       // nagyítás, szint- és rétegváltás után a jelölő méretét és láthatóságát igazítja
     if (!scene || !layer.labels || !layer.pins) return;
     var k = uiK(), gl = layer.labels, gp = layer.pins, obst = st.obst = [], pad = 2 * k, FL = visF();
     gl.innerHTML = ''; gp.innerHTML = '';
@@ -1312,8 +1316,71 @@
   }
   function render() {
     $('demo').hidden = st.live; $('livepill').hidden = !st.live;
-    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar(); if (typeof tabRender === 'function') tabRender(); povSync();
+    chips(); list(); pamutka(); overview(); updateHeat(); drawPins(); showInfo(); toolbar(); offBtn(); floorBar(); if (typeof tabRender === 'function') tabRender(); povSync(); rlSync();
   }
+
+
+  // ---- a robot élő mozgása a babaházon (web/js/robotlive.js) -------------------------------------------------
+  // Takarítás közben a robot saját térképéről (robot_map: hely, útvonal) a jelölő simán mozog a szintjén; a dokkban
+  // álló robot a tűjénél marad, mint eddig. Valódi adat csak tulajnak és családtagnak (a tábla RLS-e); belépés nélkül és
+  // a bemutató linken egy szimulált útvonal mutatja, hogyan néz ki. Kézi finomhangolás: window.O2B_ROBOT_CALIB.
+  var RCAL = window.O2B_ROBOT_CALIB || {};        // { R2: { rot: 0..3, mirror: bool, box: [x0, y0, x1, y1] (méter), dx, dy, anchor: false } }
+  var RLENV = {
+    P: function (fl) { return scene && scene.floors[fl] ? scene.floors[fl].proj.P : null; },
+    show: function (p, fl) { return !!st.layers.rob && visF().indexOf(fl) >= 0; },
+    k: function () { return st.vb ? uiK() : 1; }
+  };
+  var RL = window.RobotLive ? window.RobotLive.create(RLENV) : null;
+  var rlRows = {}, rlBusy = false, rlAt = 0, rlNew = true, rlT0 = {};
+  var RL_ROUTE = {
+    R2: [[3.0, 6.3], [3.0, 5.2], [1.7, 5.2], [1.7, 3.9], [0.4, 3.9], [0.4, 0.5], [1.9, 0.5], [1.9, 3.9], [1.7, 5.0], [3.3, 5.0], [3.3, 3.9], [4.2, 3.9], [4.2, 0.5],
+      [2.8, 0.5], [2.8, 3.9], [3.3, 4.9], [4.3, 5.5], [4.3, 6.3], [5.3, 6.3], [4.3, 6.5], [3.0, 6.5]],
+    R1: [[3.9, 5.5], [3.9, 4.5], [0.5, 4.5], [0.5, 3.4], [3.9, 3.4], [3.9, 2.3], [0.5, 2.3], [0.5, 1.0], [3.9, 1.0]]
+  };
+  var RL_SIM = null;
+  function rlPlan(p) {
+    var pn = S.PINS[p]; if (!pn) return null;
+    return { fl: pn[0], rooms: S.FLOORS[pn[0]].rooms.filter(function (r) { return !r.open && r.id !== 'lepcsohaz'; }), dock: [pn[1], pn[2]] };
+  }
+  function rlSimOn() { return !sb || !st.user || st.role === 'share'; }
+  function rlCanRead() { return !!(sb && st.user && ['owner', 'member'].indexOf(st.role) >= 0); }
+  function rlDemoTick(p) {
+    var pl = rlPlan(p); if (!RL || !pl || !RL_ROUTE[p]) return;
+    RL_SIM = RL_SIM || {}; var sm = RL_SIM[p] = RL_SIM[p] || window.RobotLive.sim(RL_ROUTE[p], 0.4);
+    var t0 = rlT0[p] = rlT0[p] || Date.now() - 45000, t = (Date.now() - t0) / 1000, path = [];
+    for (var a = Math.max(0, t - 120); a < t; a += 1.5) path.push(sm.at(a));
+    RL.setPlan(p, pl, sm.at(t), path, Date.now(), { sim: true });
+  }
+  function rlApply(p) {
+    var row = rlRows[p], pl = rlPlan(p); if (!RL || !row || !pl) return;
+    var at = Date.parse(row.pos_at || row.updated_at || '') || 0;
+    if (Date.now() - at > 15 * 60000) { RL.setActive(p, false); return; }       // régi hely: a robot a tűjénél marad
+    RL.setActive(p, true); RL.setMap(p, row, pl, RCAL[p]);
+  }
+  function rlPoll() {
+    if (!rlCanRead()) return;
+    var gap = ['R1', 'R2'].some(function (p) { return devOf(p) && robOn(p); }) ? 30000 : 600000, now = Date.now();
+    if (rlBusy || now - rlAt < gap - 1500) return;
+    rlBusy = true; rlAt = now;
+    sb.from('robot_map').select('pink,w,h,rooms,robot,charger,src,updated_at' + (rlNew ? ',path,pos_at,bbox' : '')).then(function (r) {
+      rlBusy = false;
+      if (r.error) { if (rlNew) { rlNew = false; rlAt = 0; rlPoll(); } return; }          // a 018_robot_live.sql még nem futott: csak a hely, útvonal nélkül
+      (r.data || []).forEach(function (x) { rlRows[x.pink] = x; });
+      rlSync();
+    }, function () { rlBusy = false; });
+  }
+  function rlSync() {
+    if (!RL) return;
+    ['R1', 'R2'].forEach(function (p) {
+      var on = !!devOf(p) && robOn(p);
+      if (!on) { RL.setActive(p, false); delete rlT0[p]; return; }
+      if (rlSimOn()) { RL.setActive(p, true); rlDemoTick(p); return; }
+      if (!rlCanRead()) { RL.setActive(p, false); return; }
+      rlApply(p); rlPoll();
+    });
+  }
+  setInterval(function () { if (!RL) return; if (rlSimOn()) rlSync(); else rlPoll(); }, 2000);
+  window.__o2brl = { RL: RL, rows: rlRows, sync: rlSync };
 
   // ---- Pamutka: sétál a lakásban, szundít, és odamegy, ahol gond van ----------------------------------------
   var cat = { i: 0, fl: 'lo', x: 2.3, y: -1.0, mode: 'sleep', wait: 4000, goal: null, face: 1, fs: 1, tilt: 0, v: 0, jump: null, sp: null, last: 0, fade: 1, dir: 1, next: null };

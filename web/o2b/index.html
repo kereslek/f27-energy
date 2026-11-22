@@ -29,6 +29,9 @@ body{position:fixed;inset:0;touch-action:none}
 @keyframes drift{0%{transform:translateX(0)}100%{transform:translateX(60px)}}
 @keyframes tw{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes rlp{0%,100%{opacity:1}50%{opacity:.25}}
+.rl-dot.live{animation:rlp 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.rl-dot.live{animation:none}}
 @keyframes pulse{0%{transform:scale(1);opacity:.85}100%{transform:scale(1.9);opacity:0}}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.6px)}}
 @keyframes legA{0%,100%{transform:rotate(24deg)}50%{transform:rotate(-24deg)}}
@@ -939,6 +942,7 @@ body.povon #app{visibility:hidden}
 <script src="o2b-scene.js"></script>
 <script src="motion.js"></script>
 <script src="robotview.js"></script>
+<script src="../js/robotlive.js"></script>
 <script src="o2b-app.js"></script>
 <div id="povov" hidden role="dialog" aria-modal="true" aria-label="Porszívó-szem">
   <div id="povbox"></div>
