@@ -128,6 +128,8 @@ async function main() {
   if (rob === 'R2') { UPI = sc.floorInfo(); LINES = linesUp(UPI.ev); $('v1').textContent = 'Előtér'; }
   sc.setMode('p2');
   window.__sc = sc;
+  let gone = false; window.__povDispose = () => { if (gone) return; gone = true; try { sc.dispose(); } catch (e) {} };
+  addEventListener('pagehide', window.__povDispose);
   let q = 1;
   const small = Math.min(innerWidth, innerHeight) < 600 || (matchMedia && matchMedia('(pointer:coarse)').matches && innerWidth < 900);
   if (small) { q = 0.6; sc.setQuality(q); }
@@ -140,7 +142,9 @@ async function main() {
   }
   let T = 0, last = performance.now(), fpsN = 0, fpsT = last, t0 = last, checked = small || lite, nextLite = 0;
   function loop(now) {
+    if (gone) return;
     requestAnimationFrame(loop);
+    if (gone) return;
     if (document.hidden) { last = now; return; }
     if (lite && now < nextLite) return; if (lite) nextLite = now + 330;
     const dt = Math.min(lite ? 0.4 : 0.05, (now - last) / 1000); last = now; T += dt;

@@ -1133,3 +1133,10 @@ window.__dbg = (t, az, d, h, look = 0.15) => {
   const aa = az > 5 ? ctr + (az - 6) : a; camera.position.set(c.x + Math.cos(aa) * d, h, c.z - Math.sin(aa) * d); camera.lookAt(c.x, look, c.z);
   bokeh.enabled = false; robotRig.visible = false; renderer.shadowMap.needsUpdate = true; rStr.value = 0.55; composer.render(0.016); robotRig.visible = true;
 };
+
+// bezáráskor: a grafikus erőforrások azonnali felszabadítása (sok megnyitás után se fogyjon el a WebGL-kontextus)
+export function dispose() {
+  try { scene.traverse(o => { if (o.geometry) o.geometry.dispose(); const m = o.material; (Array.isArray(m) ? m : m ? [m] : []).forEach(x => { for (const k in x) { const v = x[k]; if (v && v.isTexture) v.dispose(); } x.dispose(); }); }); } catch (e) {}
+  try { composer.dispose && composer.dispose(); } catch (e) {}
+  try { renderer.dispose(); renderer.forceContextLoss(); } catch (e) {}
+}

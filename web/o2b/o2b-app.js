@@ -1855,7 +1855,7 @@
   // ?povlite=1 a dashboard címében: a tesztek könnyített 3D-t kérnek (az éles nézetet nem érinti)
   function povSrc(p) { return 'pov/index.html?r=' + p + (/[?&]povlite=1/.test(location.search) ? '&lite=1' : ''); }
   function povOpen(p, opener) {
-    if (!p || POV.p) { if (p && POV.p && p !== POV.p) { POV.p = p; POV.f.src = povSrc(p); } return; }
+    if (!p || POV.p) { if (p && POV.p && p !== POV.p) { POV.p = p; try { POV.f.contentWindow.__povDispose && POV.f.contentWindow.__povDispose(); } catch (e) {} POV.f.src = povSrc(p); } return; }
     POV.p = p; POV.opener = opener || document.activeElement;
     var no = povNoGet(); no[p] = 1; povNoSet(no);
     var box = $('povbox'), f = document.createElement('iframe');
@@ -1868,7 +1868,7 @@
   function povClose() {
     if (!POV.p) return;
     var f = POV.f, op = POV.opener; POV.p = null; POV.f = null; POV.opener = null;
-    if (f) { try { f.src = 'about:blank'; } catch (e) {} f.remove(); }
+    if (f) { try { f.contentWindow && f.contentWindow.__povDispose && f.contentWindow.__povDispose(); } catch (e) {} try { f.src = 'about:blank'; } catch (e) {} f.remove(); }
     $('povov').hidden = true; $('povbox').innerHTML = ''; document.body.classList.remove('povon');
     if (op && op.focus && document.contains(op)) try { op.focus(); } catch (e) {}
   }
