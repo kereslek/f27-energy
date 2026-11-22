@@ -1009,7 +1009,7 @@
     $('viewonly').hidden = !(st.user && st.role && st.role !== 'owner');
     $('app').classList.toggle('editing', st.edit);
     $('b-save').hidden = !owner; $('b-saveas').hidden = !owner; $('layouts').hidden = !owner || !st.layouts.length; $('b-def').hidden = !owner || !st.current;
-    $('savest').textContent = owner ? (dirty ? 'Nem mentett változás' : st.current ? 'Mentve: ' + st.current.name : '') : (st.edit && !st.user ? 'Demó: belépve menthető' : '');
+    $('savest').textContent = !st.edit ? '' : owner ? (dirty ? 'Nem mentett változás' : st.current ? 'Mentve: ' + st.current.name : '') : (st.edit && !st.user ? 'Demó: belépve menthető' : '');
     var sel = $('layouts');
     if (owner) {
       sel.innerHTML = '<option value="">Elrendezések…</option>' + st.layouts.map(function (l) { return '<option value="' + esc(l.id) + '"' + (st.current && st.current.id === l.id ? ' selected' : '') + '>' + esc(l.name) + (l.is_default ? ' ★' : '') + '</option>'; }).join('');
@@ -1918,6 +1918,24 @@
     if (POV.p) { e.preventDefault(); e.stopImmediatePropagation(); povClose(); return; }
     if ($('povask') && !$('povask').hidden) { povDismiss(); }
   }, true);
+
+  // ---- új verzió: a telepítés version.txt-t ír; ha a nyitva hagyott oldal régebbi, szólunk (✕ / Esc zárja)
+  (function () {
+    var meta = document.querySelector('meta[name="app-version"]'), mine = meta && meta.content, shut = false;
+    if (!mine || mine === 'dev') return;
+    function check() {
+      if (shut || document.hidden) return;
+      fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (v) {
+        v = (v || '').trim(); if (v && v !== mine && $('newver')) $('newver').hidden = false;
+      }).catch(function () {});
+    }
+    setInterval(check, 5 * 60 * 1000); document.addEventListener('visibilitychange', check); setTimeout(check, 20000);
+    document.addEventListener('click', function (e) {
+      if (e.target.id === 'b-newver') location.reload();
+      else if (e.target.id === 'b-newverx') { shut = true; $('newver').hidden = true; }
+    });
+    window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('newver') && !$('newver').hidden) { shut = true; $('newver').hidden = true; } });
+  })();
   function vpDevs() {
     return CTL_PINKS.concat(['R1', 'R2']).filter(function (p) { return !hideOff(p) && devOf(p).room; });
   }

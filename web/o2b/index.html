@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="hu">
 <head>
+<meta name="app-version" content="dev">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="robots" content="noindex, nofollow">
@@ -68,7 +69,12 @@ body{position:fixed;inset:0;touch-action:none}
 .pin .vt{font-family:"Nunito",sans-serif;font-weight:900;font-size:12px}
 
 /* Pamutka */
-#cat{cursor:pointer}
+#cat{cursor:pointer;outline:none}
+#cat:focus-visible .body{filter:drop-shadow(0 0 2px #ffd23f) drop-shadow(0 0 4px #ffd23f)}
+.pin:focus{outline:none}
+#newver{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;background:#1e2a44;color:#fff7e6;border:3px solid #ffd23f;border-radius:14px;padding:8px 10px 8px 14px;font:800 14px "Nunito",sans-serif;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+#newver[hidden]{display:none}
+#newver .x{background:transparent;border:0;color:#fff7e6;font:900 18px sans-serif;cursor:pointer;padding:2px 6px}
 #app.editing #cat{opacity:.6}
 #cat{touch-action:none}
 @keyframes boilzap{0%,100%{transform:scale(1)}40%{transform:scale(1.14) rotate(-6deg)}55%{transform:scale(.96)}}
@@ -798,6 +804,7 @@ body.povon #app{visibility:hidden}
     <div id="ovbody"></div>
   </aside>
 
+  <div id="newver" role="dialog" aria-label="Új verzió" hidden><span>Frissült a dashboard.</span><button type="button" class="btn sm y" id="b-newver">Újratöltés</button><button type="button" class="x" id="b-newverx" aria-label="Bezárás: új verzió">✕</button></div>
   <div id="tools">
     <span class="vopill" id="viewonly" hidden title="Belépve csak a tulajdonos szerkeszthet">CSAK MEGTEKINTÉS</span>
     <span class="savest" id="savest"></span>
