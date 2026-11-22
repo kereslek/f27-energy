@@ -90,8 +90,8 @@ export function buildUp(C) {
   // ---------- textúrák ----------
   function lamTex() { // világos szürkés tölgy laminált padló: 4 deszkasor, véletlen hosszak
     const Wd = 512, Ht = 1536, [c, g] = cv(Wd, Ht), [cb, gb] = cv(Wd, Ht), [cr, gr] = cv(Wd, Ht);
-    g.fillStyle = '#b4aca0'; g.fillRect(0, 0, Wd, Ht); gb.fillStyle = '#000'; gb.fillRect(0, 0, Wd, Ht); gr.fillStyle = '#c0c0c0'; gr.fillRect(0, 0, Wd, Ht);
-    const cw = Wd / 4, tones = ['#bdb5a8', '#b3ab9e', '#c3bbae', '#aea697', '#b8b0a2', '#c0b8aa'];
+    g.fillStyle = '#b6b3ad'; g.fillRect(0, 0, Wd, Ht); gb.fillStyle = '#000'; gb.fillRect(0, 0, Wd, Ht); gr.fillStyle = '#c0c0c0'; gr.fillRect(0, 0, Wd, Ht);
+    const cw = Wd / 4, tones = ['#bcb9b2', '#b2afa8', '#c3c0b9', '#aba8a1', '#b8b5ae', '#bfbcb4'];
     for (let col = 0; col < 4; col++) {
       let y = -rnd() * 600;
       while (y < Ht) {
@@ -118,8 +118,8 @@ export function buildUp(C) {
     g.fillStyle = '#ecebe8'; g.fillRect(0, 0, S, S);
     for (let k = 0; k < 90; k++) { const gr = g.createRadialGradient(rnd() * S, rnd() * S, 4, rnd() * S, rnd() * S, 80 + rnd() * 160); gr.addColorStop(0, `rgba(${200 + rnd() * 30},${200 + rnd() * 25},${196 + rnd() * 25},0.18)`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, S, S); }
     g.lineCap = 'round';
-    for (let k = 0; k < 18; k++) {
-      const gold = rnd() > 0.45; g.strokeStyle = gold ? `rgba(190,150,84,${0.5 + rnd() * 0.45})` : `rgba(100,100,108,${0.3 + rnd() * 0.35})`; g.lineWidth = 2.5 + rnd() * 8;
+    for (let k = 0; k < 34; k++) {
+      const gold = rnd() > 0.4; g.strokeStyle = gold ? `rgba(176,132,64,${0.65 + rnd() * 0.35})` : `rgba(86,86,96,${0.4 + rnd() * 0.35})`; g.lineWidth = 3 + rnd() * 10;
       g.beginPath(); let x = rnd() * S, y = rnd() * S * 0.2, a = 1.2 + rnd() * 0.6; g.moveTo(x, y);
       for (let t = 0; t < 14; t++) { a += (rnd() - 0.5) * 0.9; x += Math.cos(a) * 80; y += Math.sin(a) * 80; g.lineTo(x, y); } g.stroke();
       if (gold) { g.lineWidth *= 0.35; g.strokeStyle = 'rgba(255,240,210,0.5)'; g.stroke(); }
@@ -317,7 +317,7 @@ export function buildUp(C) {
   twinSpot(1.0, 2.2, 4.72); twinSpot(3.3, 2.2, 4.72);
   { const g = new THREE.Group(); g.position.set(2.3, 2.0, 4.72); g.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.08, 14), M.black, [0, 0, 0.05])); const b = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), M.bulb); b.position.set(0, -0.02, 0.09); g.add(b); room.add(g); }
   const pl = (c, i, x, y, z, d = 0) => { const l = new THREE.PointLight(c, i, d, 2); l.position.set(x, y, z); scene.add(l); return l; };
-  pl('#ffd9a8', 1.5, 2.0, 2.3, 5.5); pl('#ffe0b8', 0.9, 3.6, 2.3, 6.3); pl('#ffe1bc', 0.9, 1.0, 2.0, 2.4); pl('#ffe0b0', 0.9, 3.4, 2.1, 2.4); pl('#fff0e0', 0.8, 5.4, 2.3, 6.35); pl('#ffe8c8', 0.6, 1.0, 2.2, 8.4);
+  pl('#ffd9a8', 1.5, 2.0, 2.3, 5.5); pl('#ffe0b8', 0.9, 3.6, 2.3, 6.3); pl('#ffe1bc', 0.9, 1.0, 2.0, 2.4); pl('#ffe0b0', 0.9, 3.4, 2.1, 2.4); pl('#fff2e2', 1.7, 5.4, 2.3, 6.35); pl('#fff2e2', 0.9, 6.1, 2.0, 6.0); pl('#ffe8c8', 0.6, 1.0, 2.2, 8.4);
   scene.add(new THREE.HemisphereLight('#ffffff', '#cdbfa8', 0.38));
   const sun = new THREE.DirectionalLight('#ffc98f', 3.6);
   sun.position.set(2.4, 3.0, -4.4); sun.target.position.set(2.5, 0, 3.4); scene.add(sun, sun.target);
