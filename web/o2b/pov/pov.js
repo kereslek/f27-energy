@@ -131,16 +131,19 @@ async function main() {
   let q = 1;
   const small = Math.min(innerWidth, innerHeight) < 600 || (matchMedia && matchMedia('(pointer:coarse)').matches && innerWidth < 900);
   if (small) { q = 0.6; sc.setQuality(q); }
+  const lite = qs.get('lite') === '1';   // teszt: könnyített 3D (negyed felbontás, tükröződés és AO nélkül, kb. 3 kép/mp)
+  if (lite) { q = 0.25; sc.setQuality(q); }
   if (qs.get('still') === '1') { // teszt: egy rögzített képkocka a megadott időpontban (?t=másodperc), q = 1
     const T0 = parseFloat(qs.get('t') || '0') || 0; q = parseFloat(qs.get('q') || '1') || 1; sc.setQuality(q);
     const s = sc.frame(T0, 1.0); sc.frame(T0, 0.016); const s2 = sc.frame(T0, 0.016); hudUpdate(s2, T0); window.__pov = { T: T0, q, still: true }; window.__still = true; void s;
     window.__renderAt = (tt) => { sc.frame(tt, 1.0); sc.frame(tt, 0.016); hudUpdate(sc.frame(tt, 0.016), tt); }; return;
   }
-  let T = 0, last = performance.now(), fpsN = 0, fpsT = last, t0 = last, checked = small;
+  let T = 0, last = performance.now(), fpsN = 0, fpsT = last, t0 = last, checked = small || lite, nextLite = 0;
   function loop(now) {
     requestAnimationFrame(loop);
     if (document.hidden) { last = now; return; }
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
+    if (lite && now < nextLite) return; if (lite) nextLite = now + 330;
+    const dt = Math.min(lite ? 0.4 : 0.05, (now - last) / 1000); last = now; T += dt;
     const s = sc.frame(T, dt); hudUpdate(s, T);
     if (!checked) {
       fpsN++;

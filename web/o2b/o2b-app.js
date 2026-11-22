@@ -1852,13 +1852,15 @@
     if (!POV.p || !POV.f || !POV.f.contentWindow) return;
     try { POV.f.contentWindow.postMessage(povData(POV.p), location.origin); } catch (e) {}
   }
+  // ?povlite=1 a dashboard címében: a tesztek könnyített 3D-t kérnek (az éles nézetet nem érinti)
+  function povSrc(p) { return 'pov/index.html?r=' + p + (/[?&]povlite=1/.test(location.search) ? '&lite=1' : ''); }
   function povOpen(p, opener) {
-    if (!p || POV.p) { if (p && POV.p && p !== POV.p) { POV.p = p; POV.f.src = 'pov/index.html?r=' + p; } return; }
+    if (!p || POV.p) { if (p && POV.p && p !== POV.p) { POV.p = p; POV.f.src = povSrc(p); } return; }
     POV.p = p; POV.opener = opener || document.activeElement;
     var no = povNoGet(); no[p] = 1; povNoSet(no);
     var box = $('povbox'), f = document.createElement('iframe');
     f.title = 'Porszívó-szem: ' + robName(p) + ' (szimulált 3D kép)'; f.setAttribute('allow', 'fullscreen'); f.setAttribute('referrerpolicy', 'no-referrer');
-    f.src = 'pov/index.html?r=' + p; f.addEventListener('load', povSend);
+    f.src = povSrc(p); f.addEventListener('load', povSend);
     box.appendChild(f); POV.f = f; $('povov').hidden = false; document.body.classList.add('povon');
     var x = $('b-povx'); if (x) x.focus();
     povSync();
