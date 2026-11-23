@@ -62,6 +62,71 @@ DREAME_STATE = {1: "cleaning", 2: "idle", 3: "paused", 4: "error", 5: "returning
                 13: "charged", 14: "upgrading", 15: "dust_collecting", 16: "remote", 17: "smart_charging"}
 CLEANING = {"cleaning", "mopping", "returning", "building_map", "remote"}
 
+# ---- hibák: magyar szöveg és teendő (a tulaj kérése, 2026.11.23: elakadásról push) ----------------------
+# A Dreame (siid 2, piid 2) számot ad, a Roborock nevet (python-roborock RoborockErrorCode). A szám-tábla
+# csak a biztosan ismert kódokat tartalmazza; a többinél kulcsszó alapján (Roborock) vagy általános szöveg.
+DREAME_ERRORS = {1: "drop", 2: "cliff", 3: "bumper", 4: "tilted", 5: "bumper", 6: "drop", 7: "sensor", 8: "bin",
+                 9: "tank", 10: "tank", 11: "bin_full", 12: "brush", 13: "side_brush", 14: "fan", 15: "wheel",
+                 16: "wheel", 17: "stuck", 18: "stuck", 19: "dock", 20: "battery", 21: "dock"}
+ERR_KINDS = [  # (kulcs, kulcsszavak a gyártói névben, szöveg, teendő)
+    ("stuck", ("stuck", "trapped", "suffocate", "blocked", "jammed_wheel"), "elakadt, nem tud továbbmenni",
+     "Nézd meg, hol áll (Hol vagy? = hangjelzés), szabadítsd ki, és tedd vissza a padlóra vagy a dokkba."),
+    ("drop", ("drop", "suspend", "lifted"), "a kerekei a levegőben (felemelték vagy beakadt)",
+     "Tedd le sík padlóra, utána indítsd újra vagy küldd haza."),
+    ("wheel", ("wheel",), "a kereke beakadt",
+     "Nézd meg a kerekeket (haj, kábel, zokni), tisztítsd meg, utána indítsd újra."),
+    ("side_brush", ("side_brush", "side brush"), "az oldalkefe beakadt",
+     "Vedd le az oldalkefét, szedd le róla a hajat, tedd vissza."),
+    ("brush", ("main_brush", "brush"), "a főkefe beakadt",
+     "Vedd ki a főkefét, tisztítsd meg (haj, macskaszőr), tedd vissza."),
+    ("cliff", ("cliff",), "a szakadékérzékelő jelez",
+     "Töröld le az alsó érzékelőket, és tedd a robotot távolabb a lépcsőtől."),
+    ("bumper", ("bumper",), "az ütköző beragadt",
+     "Nyomkodd meg körben az ütközőt, nézd meg, nem szorult-e be valami."),
+    ("tilted", ("tilt", "gesture"), "megdőlt, nem áll vízszintesen",
+     "Tedd le sík padlóra."),
+    ("sensor", ("lidar", "laser", "lds", "optical", "sensor", "camera", "vision", "visual"), "a lézertorony vagy egy érzékelő hibát jelez",
+     "Töröld le a lézertornyot és az érzékelőket, nézd meg, nem akadt-e meg a torony."),
+    ("bin_full", ("full",), "tele a portartály", "Ürítsd ki a portartályt."),
+    ("bin", ("dustbin", "bin", "strainer", "filter"), "a portartály vagy a szűrő nincs a helyén",
+     "Tedd vissza rendesen a portartályt és a szűrőt."),
+    ("tank", ("tank", "water", "mop"), "víztartály vagy mop gond", "Nézd meg a víztartályt és a mopot."),
+    ("fan", ("fan",), "a ventilátor hibát jelez", "Ürítsd a tartályt, tisztítsd a szűrőt; ha marad, az app ír többet."),
+    ("battery", ("battery", "low_power"), "lemerült az akkuja", "Tedd a dokkra töltődni."),
+    ("dock", ("dock", "charg", "return"), "nem találja a dokkot vagy nem tölt",
+     "Nézd meg, áll-e a dokk, van-e áram, és nincs-e előtte akadály; tedd rá kézzel."),
+    ("nogo", ("nogo", "no_go", "forbidden", "restricted", "virtual"), "tiltott zónába került",
+     "Tedd ki a tiltott zónából, vagy nézd meg a zónákat az appban."),
+]
+
+
+def error_info(src: str, raw) -> dict | None:
+    """A gyártói hibakódból: {'key', 'text', 'fix', 'raw'}; nincs hiba: None. Tiszta függvény (tesztelhető)."""
+    if raw in (None, "", 0, "0", "none", "None") or raw is False:
+        return None
+    rid = str(raw)[:60]
+    if src == "xiaomi":
+        try:
+            code = int(raw)
+        except (TypeError, ValueError):
+            code = None
+        if code == 0:
+            return None
+        key = DREAME_ERRORS.get(code) if code is not None else None
+        if key is None:
+            return {"key": f"code{rid}", "text": f"hibát jelez (Dreame hibakód {rid})",
+                    "fix": "Nézd meg a robotot; a Xiaomi Home app pontosan kiírja, mi a gond.", "raw": rid}
+    else:
+        n = rid.lower().replace("-", "_")
+        if n in ("none", "no_error", "ok"):
+            return None
+        key = next((k for k, words, _t, _f in ERR_KINDS if any(w in n for w in words)), None)
+        if key is None:
+            return {"key": "other_" + re.sub(r"[^a-z0-9_]", "", n)[:30], "text": "hibát jelez (" + rid.replace("_", " ") + ")",
+                    "fix": "Nézd meg a robotot; a Roborock app pontosan kiírja, mi a gond.", "raw": rid}
+    _k, _w, text, fix = next(e for e in ERR_KINDS if e[0] == key)
+    return {"key": key, "text": text, "fix": fix, "raw": rid}
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -237,13 +302,30 @@ def mi_status(auth: dict) -> list[dict]:
     return out
 
 
-def mi_command(auth: dict, cmd: str) -> None:
+# szobánkénti takarítás a Dreame-nél: start-custom (siid 4, aiid 1), állapot (piid 1) = 18 (szegmens),
+# takarítási paraméterek (piid 10): {"selects": [[szegmens, ismétlés, szívóerő, víz, sorrend], ...]}
+DREAME_SEGMENT = (4, 1)
+
+
+def dreame_segment_in(segments: list[int]) -> list[dict]:
+    sel = [[seg, 1, 1, 2, i + 1] for i, seg in enumerate(segments)]      # 1x, normál szívás, közepes víz
+    return [{"piid": 1, "value": 18}, {"piid": 10, "value": json.dumps({"selects": sel}, separators=(",", ":"))}]
+
+
+def mi_command(auth: dict, cmd: str, args=None) -> None:
     from . import xiaomi_cloud
     vs = mi_vacuums(auth)
     if not vs:
         raise RuntimeError("nincs Dreame robot a Xiaomi fiókban")
-    s, a = DREAME_ACTIONS[cmd]
-    xiaomi_cloud.action(auth, XIAOMI_COUNTRY, vs[0]["did"], s, a)
+    if cmd == "rooms":
+        s, a = DREAME_SEGMENT
+        res = xiaomi_cloud.action(auth, XIAOMI_COUNTRY, vs[0]["did"], s, a, dreame_segment_in(room_args(args)))
+    else:
+        s, a = DREAME_ACTIONS[cmd]
+        res = xiaomi_cloud.action(auth, XIAOMI_COUNTRY, vs[0]["did"], s, a)
+    code = ((res or {}).get("result") or {}).get("code") if isinstance((res or {}).get("result"), dict) else None
+    if code not in (None, 0):
+        raise RuntimeError(f"a Dreame elutasította a parancsot (kód {code})")
 
 
 # ---- állapot a Supabase-be ---------------------------------------------------------------------------
@@ -269,17 +351,117 @@ def collect(sb: SupabaseRest) -> int:
         return 0
     sb.upsert("devices", [{"pink": p, "role": "robot", "room": ROBOTS[p]["room"], "label": ROBOTS[p]["label"]} for p in got],
               on_conflict="pink")
+    maps = map_rooms(sb)
+    try:                                             # az előző állapot: ebből derül ki, új-e a hiba (push csak egyszer)
+        prev = {r["pink"]: (r.get("status") or {}) for r in sb.select("device_latest", "pink,status", pink="in.(R1,R2)")}
+    except Exception:                                # noqa: BLE001
+        prev = None
     rows = []
     for p, s in got.items():
         status = {k: s.get(k) for k in ("state", "cleaning", "battery", "charging", "area_m2", "minutes", "error", "src")}
+        ei = error_info(s.get("src") or ROBOTS[p]["src"], s.get("error"))
+        if not ei and s.get("state") == "error":       # hibaállapot kód nélkül
+            ei = {"key": "error", "text": "hibát jelez", "fix": "Nézd meg a robotot; a gyártó appja pontosan kiírja, mi a gond."}
+        if ei:
+            status.update(error_key=ei["key"], error_text=ei["text"], error_fix=ei["fix"])
+        rooms = merge_rooms(s.get("rooms"), maps.get(p))
+        if rooms:
+            s["rooms"] = rooms
         for k in ("rooms", "parts"):
             if s.get(k):
                 status[k] = s[k]
         rows.append({"pink": p, "online": s.get("online", True) and s["state"] != "offline", "status": status})
     sb.insert("device_status", rows)
+    rows_by = {r["pink"]: r for r in rows}
     for p, s in got.items():                         # a publikus logba csak darabszám, név soha
-        print(f"Robot {p}: {s.get('state')}, szobák: {len(s.get('rooms') or [])}, kopóalkatrész-adat: {len(s.get('parts') or {})}")
+        print(f"Robot {p}: {s.get('state')}, hiba: {'igen' if rows_by[p]['status'].get('error_key') else 'nincs'}, "
+              f"szobák: {len(s.get('rooms') or [])}, kopóalkatrész-adat: {len(s.get('parts') or {})}")
+    try:
+        n = notify_errors(sb, prev, rows_by) if prev is not None else 0
+        if n:
+            print(f"Robot-hiba push: {n}")
+    except Exception as e:                           # noqa: BLE001 (a push nem viheti el a gyűjtést)
+        print(f"Robot-hiba push: HIBA ({type(e).__name__})")
     return len(rows)
+
+
+def map_rooms(sb: SupabaseRest) -> dict[str, list]:
+    """A robotok saját térképének szobái (robot_map, 016): {pink: [[id, név], ...]}; hiba esetén üres."""
+    try:
+        rows = sb.select("robot_map", "pink,rooms")
+    except Exception:                                # noqa: BLE001 (régi séma, nincs tábla)
+        return {}
+    out = {}
+    for r in rows or []:
+        rs = [[int(x["id"]), (x.get("name") or "")[:40]] for x in (r.get("rooms") or [])
+              if isinstance(x, dict) and isinstance(x.get("id"), int) and 0 < x["id"] < 10000]
+        if rs:
+            out[r.get("pink")] = rs
+    return out
+
+
+def merge_rooms(own, from_map) -> list | None:
+    """A robot saját szobalistája (név az appból) kiegészítve a térkép szobáival (ami onnan hiányzik).
+    A Roborock csak az elnevezett szobákat adja, a Dreame semmit: így mindkettőnél minden szoba választható."""
+    out: dict[int, str] = {}
+    for lst in (own or [], from_map or []):
+        for r in lst:
+            if isinstance(r, (list, tuple)) and len(r) >= 2 and isinstance(r[0], int) and not isinstance(r[0], bool):
+                if not out.get(r[0]):
+                    out[r[0]] = str(r[1] or "")[:40]
+    return [[k, v] for k, v in out.items()][:24] or None
+
+
+# ---- hiba-értesítés (push): egy push, amikor a hiba megjelenik, és egy, amikor megszűnik -------------------
+# Az állapot a device_status-ban van (error_key): az előző sorhoz mérünk, így a gyűjtő újraindulása
+# sem küld újra pusht, és nem kell külön tábla.
+def plan_error_pushes(prev: dict, rows: dict[str, dict]) -> list[dict]:
+    """Tiszta függvény: az előző és a mostani robotállapotból a küldendő pushok listája."""
+    out = []
+    for p, r in rows.items():
+        st, old = r.get("status") or {}, (prev or {}).get(p) or {}
+        key, was = st.get("error_key"), old.get("error_key")
+        if key and key != was:
+            out.append({"pink": p, "kind": "error", "text": st.get("error_text") or "hibát jelez",
+                        "fix": st.get("error_fix") or "", "battery": st.get("battery")})
+        elif was and not key and st.get("state") not in (None, "offline", "unknown"):
+            out.append({"pink": p, "kind": "ok", "text": "újra rendben", "fix": "", "battery": st.get("battery")})
+    return out
+
+
+def push_message(p: dict) -> dict:
+    from .site import SITE
+    name = {"R1": "R1 (lent)", "R2": "R2 (fent)"}.get(p["pink"], p["pink"])
+    if p["kind"] == "ok":
+        title = f"{SITE.tag}: a robotporszívó {name} újra rendben"
+        body = f"{SITE.tag}: a robotporszívó {name} hibája megszűnt."
+        return {"title": title, "body": body + "\n\nTérkép: " + SITE.map_url, "plain": title + "\n" + body,
+                "priority": "low", "tags": "white_check_mark"}
+    title = f"{SITE.tag}: a robotporszívó {name} {p['text']}"
+    body = f"{title}.\nTeendő: {p['fix']}" + (f"\nAkku: {p['battery']}%" if isinstance(p.get("battery"), (int, float)) else "")
+    body += "\nA térképen a robot kártyáján: Hol vagy? (hangjelzés), Haza a dokkba, Indítás."
+    return {"title": title, "body": body + "\n\nTérkép: " + SITE.map_url, "plain": title + "\n" + body,
+            "priority": "high", "tags": "warning,robot"}
+
+
+def notify_errors(sb: SupabaseRest, prev: dict, rows: dict[str, dict], environ=None, senders: dict | None = None) -> int:
+    """A robot hibájáról push (ntfy, a riasztások csatornái szerint). Visszaadja az elküldött pushok számát."""
+    from .alerts import SENDERS, channels_ready, dispatch, merge_config
+    environ = os.environ if environ is None else environ
+    pushes = plan_error_pushes(prev, rows)
+    if not pushes:
+        return 0
+    try:
+        srow = sb.select("alert_settings", "config", id="eq.1")
+        cfg = merge_config(srow[0].get("config") if srow else None)
+    except Exception:                                # noqa: BLE001
+        cfg = merge_config(None)
+    channels = [c for c in channels_ready(cfg, environ) if c in SENDERS]
+    sent = 0
+    for p in pushes:
+        if channels and dispatch(push_message(p), channels, environ, dict(SENDERS, **(senders or {})), []):
+            sent += 1
+    return sent
 
 
 def command(sb: SupabaseRest, pink: str, cmd: str, args=None) -> None:
@@ -291,10 +473,8 @@ def command(sb: SupabaseRest, pink: str, cmd: str, args=None) -> None:
         raise RuntimeError("ehhez a robothoz még nincs belépés")
     if src == "roborock":
         asyncio.run(rr_command(auth, cmd, args))
-    elif cmd == "rooms":
-        raise RuntimeError("a szobánkénti takarítás a Dreame-nél még nincs kész")
     else:
-        mi_command(auth, cmd)
+        mi_command(auth, cmd, args)
     time.sleep(GAP_S)                               # kapcsolási szabály: utána legalább 3 mp szünet
 
 

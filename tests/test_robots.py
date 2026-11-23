@@ -283,11 +283,12 @@ class RoomCleanTest(unittest.TestCase):
         self.assertIn("app_segment_clean", sent[0][0].lower())
         self.assertEqual(sent[0][1], [{"segments": [18, 16], "repeat": 1}])
 
-    def test_dreame_rooms_not_yet(self):
+    def test_dreame_rooms_bad_args_rejected(self):
         sb = FakeSb({"xiaomi": {"service_token": "x"}})
-        with mock.patch.object(robots, "mi_command", side_effect=AssertionError("nem hívható")), \
-                self.assertRaises(RuntimeError):
-            robots.command(sb, "R1", "rooms", [1])
+        with mock.patch.object(robots, "mi_vacuums", return_value=[{"did": "d1"}]), \
+                mock.patch.object(xiaomi_cloud, "action", side_effect=AssertionError("nem hívható")), \
+                self.assertRaises(ValueError):
+            robots.command(sb, "R1", "rooms", ["x"])
 
     def test_collect_stores_rooms_in_status(self):
         sb = FakeSb({"roborock": {"email": "x"}})
@@ -339,3 +340,70 @@ class RobotTimerTest(unittest.TestCase):
         self.assertEqual(seen, [("R1", "start")])            # 2 perce lejárt: fut
         self.assertEqual(sb.cmds[1]["status"], "expired")    # 1 órája lejárt, a gyűjtő nem futott: lejár
         self.assertIn("(időzített) OK", buf.getvalue())
+
+
+class ErrorPushTest(unittest.TestCase):
+    """Elakadás és hiba: magyar szöveg, push egyszer a megjelenéskor, egyszer a megszűnéskor (2026.11.23)."""
+
+    def test_error_info(self):
+        self.assertIsNone(robots.error_info("xiaomi", 0))
+        self.assertIsNone(robots.error_info("roborock", None))
+        self.assertEqual(robots.error_info("xiaomi", 17)["key"], "stuck")
+        self.assertEqual(robots.error_info("roborock", "robot_trapped")["key"], "stuck")
+        self.assertEqual(robots.error_info("roborock", "main_brush_jammed")["key"], "brush")
+        self.assertEqual(robots.error_info("roborock", "side_brush_error")["key"], "side_brush")
+        self.assertEqual(robots.error_info("roborock", "wheels_suspended")["key"], "drop")
+        odd = robots.error_info("xiaomi", 999)
+        self.assertIn("999", odd["text"])
+        self.assertTrue(odd["fix"])
+
+    def test_plan_pushes(self):
+        err = {"R1": {"status": {"state": "error", "error_key": "stuck", "error_text": "elakadt", "error_fix": "x"}}}
+        ok = {"R1": {"status": {"state": "idle"}}}
+        self.assertEqual([p["kind"] for p in robots.plan_error_pushes({"R1": {}}, err)], ["error"])
+        self.assertEqual(robots.plan_error_pushes({"R1": {"error_key": "stuck"}}, err), [])      # már szóltunk
+        self.assertEqual([p["kind"] for p in robots.plan_error_pushes({"R1": {"error_key": "stuck"}}, ok)], ["ok"])
+        self.assertEqual(robots.plan_error_pushes({"R1": {"error_key": "stuck"}}, {"R1": {"status": {"state": "offline"}}}), [])
+        self.assertEqual(robots.plan_error_pushes({}, ok), [])
+
+    def test_push_message_has_fix_and_site(self):
+        m = robots.push_message({"pink": "R1", "kind": "error", "text": "elakadt", "fix": "Szabadítsd ki.", "battery": 40})
+        self.assertIn("R1", m["title"]); self.assertIn("Szabadítsd ki.", m["body"]); self.assertEqual(m["priority"], "high")
+        self.assertNotIn("—", m["body"])
+
+    def test_collect_marks_error_and_pushes_once(self):
+        sb = FakeSb({"xiaomi": {"user_id": "1", "service_token": "t", "ssecurity": "s"}})
+        mi = [{"id": "did", "name": "Dreame", "state": "idle", "cleaning": False, "battery": 40, "charging": False,
+               "area_m2": 3, "minutes": 5, "error": 17, "src": "xiaomi", "online": True}]
+        sent = []
+        with mock.patch.object(robots, "mi_status", return_value=mi), \
+                mock.patch.dict("f27.alerts.SENDERS", {"push": lambda msg, env: sent.append(msg)}), \
+                mock.patch.dict(os.environ, {"NTFY_TOPIC": "t"}), redirect_stdout(io.StringIO()) as out:
+            robots.collect(sb)
+        st = sb.inserts[-1][1][0]["status"]
+        self.assertEqual(st["error_key"], "stuck"); self.assertIn("elakadt", st["error_text"])
+        self.assertIn("hiba: igen", out.getvalue())
+        self.assertEqual(len(sent), 1)
+
+    def test_merge_rooms(self):
+        self.assertEqual(robots.merge_rooms([[16, "Előtér"], [17, ""]], [[17, "Kagyló"], [18, ""], [16, "x"]]),
+                         [[16, "Előtér"], [17, "Kagyló"], [18, ""]])
+        self.assertIsNone(robots.merge_rooms(None, None))
+
+    def test_dreame_segment_params(self):
+        p = robots.dreame_segment_in([3, 5])
+        self.assertEqual(p[0], {"piid": 1, "value": 18})
+        self.assertEqual(p[1]["piid"], 10)
+        self.assertIn('"selects":[[3,1,1,2,1],[5,1,1,2,2]]', p[1]["value"])
+
+    def test_dreame_rooms_command(self):
+        sb = FakeSb({"xiaomi": {"user_id": "1", "service_token": "t", "ssecurity": "s"}})
+        with mock.patch.object(robots, "mi_vacuums", return_value=[{"did": "d1"}]), \
+                mock.patch.object(xiaomi_cloud, "action", return_value={"code": 0, "result": {"code": 0}}) as act, \
+                mock.patch.object(robots.time, "sleep"):
+            robots.command(sb, "R1", "rooms", [3])
+        self.assertEqual(act.call_args.args[3:5], (4, 1))
+        with mock.patch.object(robots, "mi_vacuums", return_value=[{"did": "d1"}]), \
+                mock.patch.object(xiaomi_cloud, "action", return_value={"code": 0, "result": {"code": -4004}}), \
+                mock.patch.object(robots.time, "sleep"), self.assertRaises(RuntimeError):
+            robots.command(sb, "R1", "rooms", [3])

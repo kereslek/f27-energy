@@ -78,7 +78,7 @@ jobs:
               AIRBNB_ICAL_URL= BOOKING_ICAL_URL= \
                 python -m f27.collect || echo "::warning::Az O2B $n. köre hibával zárult."
               # robotporszívók (R1 Dreame lent, R2 Roborock fent): csak ha volt bejelentkezés (f27/robots.py)
-              SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+              F27_SITE_CONFIG=sites/o2b/site.json SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
                 timeout 120 python -m f27.robots status || echo "::warning::A robotok lekérése hibával zárult."
             fi
             echo "::endgroup::"
@@ -86,7 +86,7 @@ jobs:
             # a körök között: a dashboard robot-parancsai (014_robot_cmd.sql) 10 mp-enként; ha nem megy, sima várakozás
             t0=$(date +%s)
             if [ -n "$O2B_SUPABASE_URL" ] && [ -n "$O2B_SUPABASE_SECRET_KEY" ]; then
-              SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+              F27_SITE_CONFIG=sites/o2b/site.json SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
                 timeout 660 python -m f27.robots watch 600 || echo "::warning::A robot-parancsok figyelése megszakadt."
             fi
             rest=$(( t0 + 600 - $(date +%s) ))

@@ -80,3 +80,14 @@ végrehajtja, kész, hiba), utána friss robotállapotot tölt.
   elmúlt, holnap), egész lakás vagy a kijelölt szobák, mindig megerősítéssel. Robotonként legfeljebb 3 függő
   időzítő, 1 perc és 7 nap között, ✕-szel törölhető. Az adatgyűjtő 10 mp-en belül indítja; ha épp nem fut,
   15 percig vár, utána lejár (`017_robot_timer.sql`).
+
+## Elakadás és hiba (2026.11.23)
+
+- A gyűjtő minden körben (10 percenként, takarítás közben a parancsfigyelő is) megnézi a robot hibakódját, és magyarra fordítja: mi a baj és mit tegyél.
+- **Push** (ntfy, ugyanaz a csatorna, mint a riasztásoké): egyszer, amikor a hiba megjelenik („R1 (lent) elakadt…”, teendővel), és egyszer, amikor megszűnik.
+- A térképen a robot kártyáján piros doboz: Hol vagy? (hangjelzés), Haza a dokkba, Folytatás (megerősítéssel). A robotot kézzel kell kiszabadítani, távolról csak hangjelzést, hazaküldést és újraindítást lehet adni.
+
+## Szobák és időzítés mindkét robotnál
+
+- Kártya > Szobák: jelöld ki a szobákat, „Kijelöltek takarítása”, megerősítés. Az R1-nél (Dreame) is működik.
+- Kártya > Időzített indítás: +30 perc, +1, +2, +4 óra vagy időpont; ha előtte szobákat jelöltél ki, csak azokat takarítja.

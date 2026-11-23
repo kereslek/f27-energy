@@ -246,5 +246,5 @@ def get_props(auth: dict, country: str, params: list[dict]) -> list[dict]:
     return request(auth, country, "/miotspec/prop/get", {"params": params}).get("result") or []
 
 
-def action(auth: dict, country: str, did: str, siid: int, aiid: int) -> dict:
-    return request(auth, country, "/miotspec/action", {"params": {"did": did, "siid": siid, "aiid": aiid, "in": []}})
+def action(auth: dict, country: str, did: str, siid: int, aiid: int, params: list | None = None) -> dict:
+    return request(auth, country, "/miotspec/action", {"params": {"did": did, "siid": siid, "aiid": aiid, "in": params or []}})

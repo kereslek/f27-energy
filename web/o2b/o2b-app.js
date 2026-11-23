@@ -105,8 +105,9 @@
         idle: 'áll', error: 'HIBA', mopping: 'mos', drying: 'szárít', washing: 'mopot mos', dust_collecting: 'port ürít', upgrading: 'frissít' };
       var rt = RS[s.state] || s.state || '--', bat = typeof s.battery === 'number' ? s.battery + '%' : '';
       var extra = s.cleaning && s.area_m2 != null ? ' · ' + fmt(+s.area_m2, 0) + ' m², ' + (s.minutes || 0) + ' perc' : '';
-      return { txt: rt + (bat ? ' · ' + bat : '') + extra + (s.error ? ' · ' + s.error : ''), cls: s.state === 'error' ? 'hot' : s.cleaning ? 'on' : '',
-        big: s.state === 'error' ? 'HIBA' : s.cleaning ? rt + (bat ? ' ' + bat : '') : null };
+      var bad = !!(s.error_key || s.state === 'error');
+      return { txt: (bad ? 'HIBA: ' + (s.error_text || s.error || 'hibát jelez') + ' · ' : rt) + (bat ? (bad ? '' : ' · ') + bat : '') + extra, cls: bad ? 'hot' : s.cleaning ? 'on' : '',
+        big: bad ? 'ELAKADT' : s.cleaning ? rt + (bat ? ' ' + bat : '') : null };
     }
     return { txt: off ? 'offline' : 'online', cls: off ? 'off' : '', big: null };
   }
@@ -1170,6 +1171,10 @@
         out.push(['Elemcsere: <b>' + esc(b.label || b.pink) + '</b>, ' + esc(BAT.full(b)) + '.', dv ? (dv.room === 'lepcso_fent' ? 'eloter' : dv.room) : null, b.pink, b.level === 'dead' ? 'red' : 'orange']);
       }
     });
+    ['R1', 'R2'].forEach(function (p) {                         // robot elakadt vagy hibát jelez: elöl, pirossal
+      var e = st.user && devOf(p) ? robErrOf(p) : null;
+      if (e) out.unshift(['<b>' + esc(robName(p)) + '</b> ' + esc(e.text) + '. ' + esc(e.fix), devOf(p).room, p, 'red']);
+    });
     ['R1', 'R2'].forEach(function (p) {                         // robot kopóalkatrész 10% alatt
       var pt = st.user ? robParts(p) : null; if (!pt) return;
       var low = Object.keys(PART_NAMES).filter(function (k) { return typeof pt[k] === 'number' && pt[k] <= 10; });
@@ -2184,7 +2189,7 @@
   function vpTile(p, ro) {
     var d = devOf(p), isR = d.role === 'robot', on = isR ? robOn(p) : plugOn(p), off = isR ? !(st.latest[p] && st.latest[p].online !== false) && st.live : !plugOnline(p) && st.live;
     var busy = isR ? !!(st.rob.cmd[p] && /queued|running/.test(st.rob.cmd[p].status)) : st.ctl.busy[p];
-    var cls = off ? ' off' : on ? (isR ? ' run' : ' on') : '', stt = off ? 'OFFLINE' : busy ? 'KAPCSOL…' : isR ? (on ? 'TAKARÍT' : 'DOKKBAN') : on ? 'BE' : 'KI';
+    var cls = off ? ' off' : on ? (isR ? ' run' : ' on') : '', stt = off ? 'OFFLINE' : busy ? 'KAPCSOL…' : isR ? (robErrOf(d.pink) ? 'ELAKADT' : on ? 'TAKARÍT' : robState(d.pink)) : on ? 'BE' : 'KI';
     var nm = isR ? robName(p) : shortName(p);
     var asking = !!(st.vp.ask && st.vp.ask.k === 'p' && st.vp.ask.p === p);
     return '<div class="vtile' + cls + (asking ? ' asking' : '') + '" role="button" tabindex="0" data-vp="' + (ro || off ? 'more' : 'tile') + '" data-p="' + p + '" aria-label="' + esc(nm + ': ' + stt + (ro ? '' : ', koppints a kapcsoláshoz')) + '">' +
@@ -2245,11 +2250,48 @@
   // felveszi és továbbítja a gyártói felhőnek (f27/robots.py watch). Csak a tulaj és a családtag küldhet.
   var RCMD = { start: 'Takarítás indul', pause: 'Szünet', dock: 'Haza a dokkba', find: 'Hol vagy? (hangjelzés)', rooms: 'Szobatakarítás' };
   // szobák a robot saját térképéről (015_robot_rooms.sql): [[szegmens, név], ...]; demóban kitalált lista
-  var DEMO_ROOMS = { R2: [[16, 'Előtér'], [17, 'Kagyló szoba'], [18, 'Gyerekszoba'], [19, 'Fürdő']] };
+  var DEMO_ROOMS = { R2: [[16, 'Előtér'], [17, 'Kagyló szoba'], [18, 'Gyerekszoba'], [19, 'Fürdő']],
+    R1: [[1, 'Nappali'], [2, 'Étkező'], [3, 'Konyha'], [4, 'Előszoba'], [5, 'Hálószoba']] };
+  // a gyűjtő a robot saját listáját kiegészíti a térkép szobáival (a Dreame nem ad nevet, a Roborock csak az
+  // elnevezetteket); ami név nélkül jön, az a kalibrált térképen elfoglalt helye szerint kap nevet (pl. Nappali)
   function robRooms(p) {
+    var s = (st.latest[p] && st.latest[p].status) || {}, own = Array.isArray(s.rooms) ? s.rooms : [];
+    var row = typeof rlRows !== 'undefined' ? rlRows[p] : null, seen = {}, out = [];
+    own.concat(((row && row.rooms) || []).map(function (r) { return [r.id, r.name || '']; })).forEach(function (r) {
+      if (!Array.isArray(r) || typeof r[0] !== 'number') return;
+      if (seen[r[0]] != null) { if (!out[seen[r[0]]][1] && r[1]) out[seen[r[0]]][1] = r[1]; return; }
+      seen[r[0]] = out.length; out.push([r[0], r[1] || '']);
+    });
+    if (!out.length) return !st.user ? (DEMO_ROOMS[p] || []) : [];
+    var pl = typeof rlPlan === 'function' ? rlPlan(p) : null, cal = null, used = {};
+    if (row && pl && window.RobotLive) { try { cal = window.RobotLive.calibrate(row, pl, RCAL[p]); } catch (e) { cal = null; } }
+    out.forEach(function (r) { if (r[1]) used[r[1]] = 1; });
+    return out.map(function (r) {
+      if (r[1]) return r;
+      var nm = '', mr = row && (row.rooms || []).filter(function (x) { return x.id === r[0] && x.c; })[0];
+      if (cal && mr) {
+        var q = cal.toPlan(mr.c[0], mr.c[1]), hit = pl.rooms.filter(function (z) { return q[0] >= z.x - 0.2 && q[0] <= z.x + z.w + 0.2 && q[1] >= z.y - 0.2 && q[1] <= z.y + z.d + 0.2; })[0];
+        if (hit && ROOM_NAMES[hit.id]) { nm = ROOM_NAMES[hit.id]; for (var k = 2; used[nm]; k++) nm = ROOM_NAMES[hit.id] + ' ' + k; used[nm] = 1; }
+      }
+      return [r[0], nm || 'Szoba ' + r[0]];
+    });
+  }
+  // elakadás, hiba (a gyűjtő magyarul adja: error_text, error_fix; 2026.11.23)
+  function robState(p) {                         // a csempe címkéje: ne mondjon dokkot, ha a robot nem ott áll
     var s = (st.latest[p] && st.latest[p].status) || {};
-    if (Array.isArray(s.rooms) && s.rooms.length) return s.rooms;
-    return !st.user ? (DEMO_ROOMS[p] || []) : [];
+    return { charging: 'TÖLT', charged: 'DOKKBAN', docked: 'DOKKBAN', paused: 'SZÜNETEL', idle: 'ÁLL', returning: 'HAZAMEGY' }[s.state] || 'DOKKBAN';
+  }
+  function robErrOf(p) {
+    var r = st.latest[p], s = (r && r.status) || {};
+    if (!r || r.online === false) return null;
+    if (s.error_key || s.state === 'error') return { text: s.error_text || 'hibát jelez' + (s.error ? ' (' + s.error + ')' : ''), fix: s.error_fix || 'Nézd meg a robotot; a gyártó appja pontosan kiírja, mi a gond.' };
+    return null;
+  }
+  function robErrHtml(p, btn) {
+    var e = robErrOf(p); if (!e) return '';
+    return '<div class="rerr" role="alert"><b>⚠ ' + esc(robName(p)) + ' ' + esc(e.text) + '</b><span>' + esc(e.fix) + '</span>' +
+      '<div class="ctlq">' + btn('find', 'Hol vagy? (hangjelzés)', true) + btn('dock', 'Haza a dokkba') + btn('start', 'Folytatás') + '</div>' +
+      '<small>A robotot kézzel kell kiszabadítani; a Folytatás csak utána segít. Ha megszűnt a hiba, pusht is kapsz.</small></div>';
   }
   var PART_NAMES = { main_brush: 'Főkefe', side_brush: 'Oldalkefe', filter: 'Szűrő', sensor: 'Szenzorok (tisztítás)' };
   var DEMO_PARTS = { R1: { main_brush: 62, side_brush: 35, filter: 8 }, R2: { main_brush: 71, side_brush: 44, filter: 52, sensor: 12 } };
@@ -2312,9 +2354,8 @@
     });
   }
   function roomsHtml(p, pend, has) {
-    var rs = robRooms(p), sel = st.rob.sel[p] || [], dreame = (devOf(p).label || '').indexOf('Dreame') >= 0;
-    if (!rs.length) return '<div class="sub">Szobák</div><div class="ctln">' + (dreame ? 'A Dreame szobái a Térképen már látszanak; a szobánkénti indítás nála még nem megy, egész lakásra indul.' :
-      'A robot még nem küldte el a szobáit (az adatgyűjtő a következő körben kéri le a térképéről).') + '</div>';
+    var rs = robRooms(p), sel = st.rob.sel[p] || [];
+    if (!rs.length) return '<div class="sub">Szobák</div><div class="ctln">A robot még nem küldte el a szobáit (az adatgyűjtő óránként kéri le a térképéről).</div>';
     var names = {}; rs.forEach(function (r) { names[r[0]] = r[1] || ('Szoba ' + r[0]); });
     return '<div class="sub">Szobák <small>(a robot saját térképéről)</small></div><div class="rrooms" role="group" aria-label="Szobák kijelölése">' +
       rs.map(function (r) { var on = sel.indexOf(r[0]) >= 0; return '<button type="button" class="rroom' + (on ? ' on' : '') + '" data-rob="pick" data-p="' + p + '" data-seg="' + r[0] + '" aria-pressed="' + on + '"' + (pend || !has ? ' disabled' : '') + '>' + (on ? '✓ ' : '') + esc(names[r[0]]) + '</button>'; }).join('') + '</div>' +
@@ -2332,7 +2373,7 @@
     var p = d.pink, c = st.rob.cmd[p], s = (st.latest[p] && st.latest[p].status) || {};
     var pend = !!(c && (c.status === 'queued' || c.status === 'running')), has = robHas(p);
     function btn(k, label, y) { return '<button type="button" class="btn sm' + (y ? ' y' : '') + '" data-rob="' + k + '" data-p="' + p + '"' + (pend || !has ? ' disabled' : '') + '>' + label + '</button>'; }
-    return '<div class="ctl rob"><div class="sub">Vezérlés</div><div class="ctlq">' +
+    return '<div class="ctl rob">' + robErrHtml(p, btn) + '<div class="sub">Vezérlés</div><div class="ctlq">' +
       (s.cleaning ? btn('pause', 'Szünet', true) : btn('start', 'Indítás', true)) + btn('dock', 'Haza a dokkba') + btn('find', 'Hol vagy?') + '</div>' +
       (st.rob.ask === p ? '<div class="ask">Biztosan elindítod a takarítást? <button type="button" class="btn sm y" data-rob="yes" data-p="' + p + '">Igen, indulhat</button><button type="button" class="btn sm" data-rob="no" data-p="' + p + '">Mégse</button></div>' : '') +
       roomsHtml(p, pend, has) + timerHtml(p, has) + partsHtml(p) +
