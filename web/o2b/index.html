@@ -724,14 +724,35 @@ body.wide #pamhero{display:none}
 .povchip .ck{display:flex;align-items:center;gap:6px}
 .povchip .ck::before{content:"";width:9px;height:9px;border-radius:50%;background:#14a38b;animation:povp 1.3s ease-out infinite}
 @keyframes povp{0%{box-shadow:0 0 0 0 rgba(20,163,139,.7)}100%{box-shadow:0 0 0 9px rgba(20,163,139,0)}}
-#povask{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:calc(100% - 24px);padding:9px 46px 9px 12px;border-radius:18px;background:#fbf1dc;border:3px solid #1e2a44;box-shadow:0 4px 0 #1e2a44;font:800 13px/1.3 "Nunito",sans-serif;color:#1e2a44}
-#povask[hidden]{display:none}
-#povask .pvdot{width:11px;height:11px;border-radius:50%;background:#14a38b;flex:0 0 auto;animation:povp 1.3s ease-out infinite}
-#povask .pvtx{min-width:0}
-#povask .pvbt{display:inline-flex;gap:6px;flex-wrap:wrap}
-#povask .x{position:absolute;right:6px;top:6px}
-body.wide #povask{left:calc(var(--pw) + 28px);transform:none;bottom:12px;max-width:calc(100% - 2 * var(--pw) - 56px)}
-@media (max-width:760px){#povask{left:8px;right:8px;transform:none;max-width:none;bottom:calc(132px + env(safe-area-inset-bottom,0px));z-index:7}}
+/* Porszívó-szem kis módban: pip (asztal) és peek (telefon); ugyanaz az iframe, csak más méret */
+#povov.pip{inset:auto;right:12px;bottom:12px;width:clamp(240px,22vw,320px);height:auto;aspect-ratio:16/9;z-index:9;border:3px solid #1e2a44;border-radius:16px;overflow:hidden;box-shadow:0 5px 0 #1e2a44,0 10px 24px rgba(0,0,0,.35)}
+body.wide #povov.pip{right:calc(var(--pw) + 28px)}
+#povov.peek{inset:auto;left:8px;right:8px;bottom:calc(132px + env(safe-area-inset-bottom,0px));height:112px;z-index:7;border:3px solid #1e2a44;border-radius:18px;background:#fbf1dc;box-shadow:0 4px 0 #1e2a44;overflow:hidden}
+#povov.peek #povbox{inset:6px auto 6px 6px;width:46%;height:auto;border-radius:12px;overflow:hidden;background:#0d0d0f}
+#povov.pip #povbox iframe,#povov.peek #povbox iframe{pointer-events:none}
+#povdrag{display:none;position:absolute;inset:0;z-index:1;touch-action:none;cursor:grab;background:transparent}
+#povov.pip #povdrag,#povov.peek #povdrag{display:block}
+#povov.pip #povdrag:active{cursor:grabbing}
+#povpeektx{display:none}
+#povov.peek #povpeektx{display:flex;flex-direction:column;justify-content:center;gap:4px;position:absolute;left:calc(46% + 18px);right:44px;top:0;bottom:0;color:#1e2a44;font:800 14px/1.25 "Nunito",sans-serif;pointer-events:none}
+#povov.peek #povpeektx span{font-weight:700;font-size:12px;opacity:.75}
+#povov.pip #b-povx,#povov.peek #b-povx{left:auto;right:6px;top:6px;width:30px;height:30px;font-size:14px;border-width:2px;z-index:3}
+#povov.peek #b-povx{background:#fff;color:#1e2a44;border-color:#1e2a44}
+#b-povexp{display:none;position:absolute;right:42px;top:6px;width:30px;height:30px;border-radius:50%;border:2px solid #fff;background:rgba(14,16,20,.72);color:#fff;font:900 15px/1 system-ui;cursor:pointer;z-index:3;align-items:center;justify-content:center}
+#povov.pip #b-povexp{display:flex}
+#b-povexp:hover,#b-povexp:focus-visible{background:#14a38b;outline:none}
+.povbub{position:absolute;z-index:4;display:flex;align-items:center;gap:6px;font:900 12.5px/1 "Nunito",sans-serif;color:#1e2a44;background:#fff;border:3px solid #1e2a44;border-radius:999px;padding:7px 12px 7px 9px;box-shadow:0 3px 0 #1e2a44;cursor:pointer;white-space:nowrap;animation:povbob 1.8s ease-in-out infinite}
+.povbub[hidden]{display:none}
+.povbub::after{content:"";position:absolute;left:var(--tx,50%);bottom:-9px;width:12px;height:12px;background:#fff;border:3px solid #1e2a44;border-top:0;border-left:0;transform:translateX(-50%) rotate(45deg)}
+.povbub.below::after{bottom:auto;top:-9px;transform:translateX(-50%) rotate(225deg)}
+.povbub.side::after{display:none}
+.povbub .pe{font-size:15px}
+.povbub.mini{width:38px;height:34px;padding:0;justify-content:center;border-radius:50%}
+.povbub.mini .pt{display:none}
+.povbub:hover,.povbub:focus-visible{background:#e6f7f2;outline:none}
+@keyframes povbob{0%,100%{margin-top:0}50%{margin-top:-4px}}
+@media (max-width:760px){.povbub{font-size:11.5px;padding:6px 10px 6px 8px}}
+@media (prefers-reduced-motion:reduce){.povbub{animation:none}}
 body.povon #app{visibility:hidden}
 #povov{position:fixed;inset:0;z-index:60;background:#0d0d0f}
 #povov[hidden]{display:none}
@@ -875,11 +896,6 @@ body.povon #app{visibility:hidden}
     <span class="tx" id="pstx">Miaú!</span>
     <button class="btn sm y" id="b-pstrip" type="button">Mutasd</button>
   </div>
-  <div id="povask" hidden role="dialog" aria-label="Porszívó-szem javaslat" data-for="">
-    <span class="pvdot" aria-hidden="true"></span><span class="pvtx" id="povtx"></span>
-    <span class="pvbt" id="povgo"></span>
-    <button class="btn ib sm x" id="b-povaskx" type="button" aria-label="Bezárás: most nem kérem">✕</button>
-  </div>
   <nav id="tabbar" aria-label="Fülek">
     <button type="button" data-tab="home" aria-current="page"><svg aria-hidden="true"><use href="#pi-home"/></svg><span>Otthon</span></button>
     <button type="button" data-tab="ctl"><svg aria-hidden="true"><use href="#pi-grid"/></svg><span>Vezérlés</span></button>
@@ -946,6 +962,9 @@ body.povon #app{visibility:hidden}
 <script src="o2b-app.js"></script>
 <div id="povov" hidden role="dialog" aria-modal="true" aria-label="Porszívó-szem">
   <div id="povbox"></div>
+  <div id="povdrag" tabindex="0" role="button" aria-label="Porszívó-szem: kinyitás teljes nézetben (húzd arrébb, vagy koppints)"></div>
+  <div id="povpeektx" aria-hidden="true"></div>
+  <button id="b-povexp" type="button" aria-label="Kinyitás: Porszívó-szem teljes nézetben" title="Kinyitás">⤢</button>
   <button id="b-povx" type="button" aria-label="Bezárás: Porszívó-szem (Esc)" title="Bezárás (Esc)">✕</button>
 </div>
 </body>

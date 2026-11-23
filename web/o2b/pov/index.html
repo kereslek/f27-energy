@@ -48,8 +48,15 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0d0d0f;color:#fff;fon
   .rec{font-size:10px;padding:5px 7px;gap:5px;margin-top:14px}
   .rec .xt{display:none}
 }
+.tag.nv{background:rgba(6,40,12,.82);border-color:#46ff6e;color:#b6ffc4}
+.tag.dusk{background:rgba(110,56,24,.78);border-color:#ffb36b;color:#ffe2c4}
+.pipb{position:absolute;left:8px;bottom:6px;display:none;align-items:center;gap:6px;font:800 11px/1 system-ui;text-shadow:0 1px 3px #000;background:rgba(0,0,0,.45);padding:4px 7px;border-radius:7px;pointer-events:none}
+.pipb i{width:7px;height:7px;border-radius:50%;background:#ff3b30;display:inline-block;animation:blink 1.2s steps(2) infinite}
+html.compact #hud>.top,html.compact #hud>.tags,html.compact #hud>.sub,html.compact #hud>.bot{display:none}
+html.compact .pipb{display:flex}
 @media (prefers-reduced-motion:reduce){.rec i{animation:none}}
 </style>
+<script src="../../js/sun.js"></script>
 <script type="importmap">{"imports":{"three":"../../vendor/three/build/three.module.js","three/addons/":"../../vendor/three/examples/jsm/"}}</script>
 </head>
 <body>
@@ -63,6 +70,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0d0d0f;color:#fff;fon
     </div>
     <div class="tags">
       <div class="tag" id="honest">szimulált kép · a robotnak nincs kamerája</div>
+      <div class="tag" id="ltag">Nappal</div>
+      <div class="tag warn" id="livenote" hidden></div>
     </div>
     <div class="sub" id="say"></div>
     <div class="bot">
@@ -70,6 +79,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0d0d0f;color:#fff;fon
       <div class="area" id="area"><b id="v1">Nappali</b><small id="l1">O2B · lent · R1</small></div>
     </div>
   </div>
+  <div class="pipb" id="pipb"><i></i><span id="pipt">élő</span></div>
   <div id="msg" role="alert"></div>
 </div>
 <script type="module" src="pov.js"></script>

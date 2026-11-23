@@ -13,8 +13,60 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preven
 window.addEventListener('message', (e) => {
   if (e.origin !== location.origin || e.source !== parent) return;
   const m = e.data; if (!m || m.type !== 'pov-data') return;
-  data = m; if (m.p === 'R1' || m.p === 'R2') rob = m.p; chrome();
+  data = m; if (m.p === 'R1' || m.p === 'R2') rob = m.p; chrome(); applyData();
 });
+// a szülő a kis (pip / peek) és a teljes mód között vált: kis módban kevesebb képpont és kép/mp, kompakt HUD
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || e.source !== parent) return;
+  const m = e.data; if (!m || m.type !== 'pov-mode') return;
+  setMode2(m.mode === 'pip' || m.mode === 'peek' ? m.mode : 'full');
+});
+let MODE2 = 'full', fpsMs = 0, qFull = 1, scRef = null;
+function setMode2(md) {
+  MODE2 = md; document.documentElement.classList.toggle('compact', md !== 'full');
+  fpsMs = md === 'pip' ? 100 : md === 'peek' ? 125 : 0;
+  if (scRef && qs.get('lite') !== '1' && qs.get('still') !== '1') { const q = md === 'full' ? qFull : 0.3; scRef.setQuality(q); if (window.__pov) window.__pov.q = q; }
+  try { window.__povMode = md; } catch (e) {}
+}
+const ROOM_IN = { erkely: 'az Erkélyen', nappali: 'a Nappaliban', etkezo: 'az Étkezőben', halo: 'a Hálószobában', furdo_lent: 'a lenti Fürdőben', eloszoba: 'az Előszobában', kamra: 'a Kamrában', konyha: 'a Konyhában',
+  eloter: 'az Előtérben', kagylo: 'a Kagyló szobában', gyerek: 'a Gyerekszobában', furdo_fent: 'a fenti Fürdőben', lepcso_fent: 'a Lépcsőn', lepcsohaz: 'a Lépcsőn' };
+let livePathOk = false, noteTxt = '';
+function lightInputs() {
+  const d = data || {}, F = window.F27Sun;
+  let alt = d.sunAlt, az = d.sunAz;
+  if (!num(alt) && F) { const q = F.pos(Date.now(), 47.48, 19.04); alt = q.alt; az = q.az; }
+  const lamps = {}; (d.lamps || []).forEach((l) => { if (l && l.id) lamps[l.id] = !!l.on; });
+  const o = { sunAlt: alt, sunAz: az, cloud: num(d.cloud) ? d.cloud : 0.4, planNorth: num(d.planNorth) ? d.planNorth : 68, lamps };
+  if (qs.has('alt')) o.sunAlt = +qs.get('alt'); if (qs.has('az')) o.sunAz = +qs.get('az'); if (qs.has('cloud')) o.cloud = +qs.get('cloud');
+  if (qs.has('lamps')) { o.lamps = {}; qs.get('lamps').split(',').forEach((k) => { if (k) o.lamps[k] = true; }); }
+  if (qs.has('light')) o.force = { day: 'N1', dusk: 'N2', night: 'N3', nv: 'N5' }[qs.get('light')] || qs.get('light');
+  if (window.__lightForce) Object.assign(o, window.__lightForce);
+  return o;
+}
+function applyData() {
+  if (!scRef) return;
+  const st = scRef.applyLighting(lightInputs()), lt = $('ltag');
+  const LN = { tv: 'TV led', c2: 'dupla lámpa', c3: 'TV led', c4: 'lépcső', stair: 'lépcső', C2: 'dupla lámpa', C3: 'TV led', C4: 'lépcső' };
+  lt.textContent = st.label + (st.mode === 'N3' && st.lampsOn.length ? ' · ég: ' + st.lampsOn.map(function (k) { return LN[k] || k; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ') : '');
+  lt.className = 'tag' + (st.mode === 'N5' ? ' nv' : st.mode === 'N2' ? ' dusk' : '');
+  window.__light = st;
+  const d = data || {}, run = !!d.cleaning;
+  livePathOk = !!(run && d.livePath && scRef.setLive({ path: d.livePath, floor: rob === 'R2' ? 'up' : 'lo', delay: 60 }));
+  if (!(run && d.livePath)) scRef.setLive(null);
+  const h = $('honest'), nt = $('livenote');
+  if (livePathOk) {
+    h.textContent = d.sim ? 'szimulált kép és útvonal (demó), kb. 1 perc késéssel' : 'szimulált kép · a robot valódi útvonalán, kb. 1 perc késéssel';
+    nt.hidden = true; noteTxt = '';
+  } else {
+    h.textContent = 'szimulált kép · a robotnak nincs kamerája';
+    const where = d.roomId && ROOM_IN[d.roomId] ? ROOM_IN[d.roomId] : null;
+    const lp = d.livePath && d.livePath.length >= 2 ? d.livePath[d.livePath.length - 1] : null;
+    if (run && lp && !scRef.modelledAt(lp[0], lp[1], rob === 'R2' ? 'up' : 'lo')) { noteTxt = where ? 'A robot most ' + where + ' jár, ott még nincs 3D' : 'A robot most olyan helyen jár, ahol még nincs 3D'; }
+    else noteTxt = '';
+    nt.textContent = noteTxt; nt.hidden = !noteTxt;
+  }
+  $('pipt').textContent = rob + (livePathOk ? ' · élő útvonal' : ' · szimulált');
+}
 
 function chrome() {
   const up = rob === 'R2';
@@ -81,8 +133,15 @@ function linesUp(ev) {
 }
 let LINES = LINES_LO, UPI = null;
 const mini = $('mini').getContext('2d'), trail = [];
+function liveLine(s) {
+  const c = s.cat && s.cat.pose;
+  if (s.inFront && s.dist < 1.3) return ['R1', 'Macska az úton. Lassítok, kikerülöm.'];
+  if (s.dist < 1.7) { if (c === 'groom') return ['C', 'Nyal, nyal… ne zavarj.']; if (c === 'lie') return ['C', 'Zzz… ez az én helyem.']; if (c === 'stretch') return ['C', 'Nyúúújtóóózom…']; if (c === 'sit') return ['C', 'Mrrr? Te meg ki vagy?']; }
+  return null;
+}
 function hudUpdate(s, T) {
   const t = s.t % s.loop;
+  if (MODE2 !== 'full') { if (UPI) { const p = s.rob.p, R = UPI.rooms.find(r => p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1); if (R) $('v1').textContent = R.n; } return; }
   if (UPI) { const p = s.rob.p, R = UPI.rooms.find(r => p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1); if (R && $('v1').textContent !== R.n) $('v1').textContent = R.n; }
   const real = data && num(data.area_m2), run = !data || data.cleaning;
   const area = real ? data.area_m2 : s.area;
@@ -96,6 +155,7 @@ function hudUpdate(s, T) {
   // felirat: takarítás közben a forgatókönyv, egyébként az állapot (a "returning" is állapotsor)
   const returning = data && /return|dock|going/i.test(String(data.state || ''));
   if (data && (!run || returning)) sub('R1', STATE_LINE(data));
+  else if (s.live) { const L = liveLine(s); if (L) sub(L[0], L[1]); else sub('', ''); }
   else { const L = LINES.find((l) => t >= l[0] && t < l[1]); if (L) sub(L[2], L[3]); else sub('', ''); }
   // GTA-szerű radar: a robot iránya felfelé, a térkép forog
   const Wm = 440, Hm = 290, sc = 62; mini.save(); mini.fillStyle = '#3d4a3a'; mini.fillRect(0, 0, Wm, Hm);
@@ -127,31 +187,33 @@ async function main() {
   sc.setFloor(rob === 'R2' ? 'up' : 'lo');
   if (rob === 'R2') { UPI = sc.floorInfo(); LINES = linesUp(UPI.ev); $('v1').textContent = 'Előtér'; }
   sc.setMode('p2');
-  window.__sc = sc;
+  window.__sc = sc; scRef = sc; applyData();
   let gone = false; window.__povDispose = () => { if (gone) return; gone = true; try { sc.dispose(); } catch (e) {} };
   addEventListener('pagehide', window.__povDispose);
   let q = 1;
   const small = Math.min(innerWidth, innerHeight) < 600 || (matchMedia && matchMedia('(pointer:coarse)').matches && innerWidth < 900);
-  if (small) { q = 0.6; sc.setQuality(q); }
+  if (small) { q = 0.6; sc.setQuality(q); } qFull = q;
   const lite = qs.get('lite') === '1';   // teszt: könnyített 3D (negyed felbontás, tükröződés és AO nélkül, kb. 3 kép/mp)
-  if (lite) { q = 0.25; sc.setQuality(q); }
+  if (lite) { q = 0.25; sc.setQuality(q); qFull = q; }
+  { const m0 = qs.get('m'); if (m0 === 'pip' || m0 === 'peek') setMode2(m0); }
   if (qs.get('still') === '1') { // teszt: egy rögzített képkocka a megadott időpontban (?t=másodperc), q = 1
     const T0 = parseFloat(qs.get('t') || '0') || 0; q = parseFloat(qs.get('q') || '1') || 1; sc.setQuality(q);
     const s = sc.frame(T0, 1.0); sc.frame(T0, 0.016); const s2 = sc.frame(T0, 0.016); hudUpdate(s2, T0); window.__pov = { T: T0, q, still: true }; window.__still = true; void s;
     window.__renderAt = (tt) => { sc.frame(tt, 1.0); sc.frame(tt, 0.016); hudUpdate(sc.frame(tt, 0.016), tt); }; return;
   }
-  let T = 0, last = performance.now(), fpsN = 0, fpsT = last, t0 = last, checked = small || lite, nextLite = 0;
+  let T = 0, last = performance.now(), fpsN = 0, fpsT = last, t0 = last, checked = small || lite, nextLite = 0, nextAt = 0;
   function loop(now) {
     if (gone) return;
     requestAnimationFrame(loop);
     if (gone) return;
     if (document.hidden) { last = now; return; }
+    if (fpsMs && now < nextAt) return; if (fpsMs) nextAt = now + fpsMs;
     if (lite && now < nextLite) return; if (lite) nextLite = now + 330;
-    const dt = Math.min(lite ? 0.4 : 0.05, (now - last) / 1000); last = now; T += dt;
+    const dt = Math.min(lite ? 0.4 : fpsMs ? 0.2 : 0.05, (now - last) / 1000); last = now; T += dt;
     const s = sc.frame(T, dt); hudUpdate(s, T);
     if (!checked) {
       fpsN++;
-      if (now - t0 > 3000) { checked = true; if (fpsN * 1000 / (now - t0) < 24) { q = 0.6; sc.setQuality(q); } }
+      if (now - t0 > 3000) { if (fpsMs) { t0 = now; fpsN = 0; } else { checked = true; if (fpsN * 1000 / (now - t0) < 24) { q = 0.6; qFull = q; sc.setQuality(q); } } }
     }
     window.__pov = { T, q, fps: fpsN };
   }

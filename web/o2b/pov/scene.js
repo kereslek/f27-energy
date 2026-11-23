@@ -35,6 +35,12 @@ const envTex = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
 scene.environment = envTex;
 
 // ---------- segédek ----------
+// fényregiszter: a világításhoz (applyLighting) a fények és fényes anyagok kategóriánként
+const LG = { lights: [], mats: [] };
+function regL(cat, l) { LG.lights.push({ cat, l, base: l.intensity }); return l; }
+function regM(cat, m, prop = 'color') { LG.mats.push({ cat, m, prop, base: prop === 'color' ? m.color.clone() : m[prop] }); return m; }
+const SUNL = { value: new THREE.Vector3(0.45, -0.7, 0.55).normalize() };   // a napfény haladási iránya (a kévék és a por ebből torzulnak)
+const SKYMODE = {};
 let seed = 7;
 function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
 function cv(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
@@ -162,18 +168,22 @@ function chevronTex() {
   }
   return tex(c, [1, 1]);
 }
-function skyTex() {
+function skyTex(mode = 'day') {
   const [c, g] = cv(1024, 512);
+  const GR = { day: ['#6f95c8', '#f3c9a0', '#ffd9a6', '#ffe8c8'], dusk: ['#2f4378', '#a45f86', '#f09a62', '#ffd08a'], night: ['#04060d', '#0a1226', '#12203d', '#1b2c4c'], over: ['#9aa7b6', '#b9c1cb', '#cdd2d8', '#dadde0'] }[mode];
+  const dim = { day: 0, over: 0.12, dusk: 0.42, night: 0.8 }[mode], lit = { day: 0.2, over: 0.2, dusk: 0.5, night: 0.62 }[mode];
   const gr = g.createLinearGradient(0, 0, 0, 512);
-  gr.addColorStop(0, '#6f95c8'); gr.addColorStop(0.45, '#f3c9a0'); gr.addColorStop(0.7, '#ffd9a6'); gr.addColorStop(1, '#ffe8c8');
+  gr.addColorStop(0, GR[0]); gr.addColorStop(0.45, GR[1]); gr.addColorStop(0.7, GR[2]); gr.addColorStop(1, GR[3]);
   g.fillStyle = gr; g.fillRect(0, 0, 1024, 512);
+  if (mode === 'night') for (let k = 0; k < 90; k++) { g.fillStyle = `rgba(255,255,245,${0.2 + rnd() * 0.6})`; g.fillRect(rnd() * 1024, rnd() * 230, 1.6, 1.6); }
   for (let k = 0; k < 9; k++) { // szemközti bérházak ablakokkal
     const x = k * 120 - 20 + rnd() * 30, w = 110 + rnd() * 40, h = 190 + rnd() * 150;
     g.fillStyle = ['#c9a88a', '#b89c84', '#d6bfa0', '#a98f7c'][k % 4]; g.fillRect(x, 512 - h, w, h);
     g.fillStyle = 'rgba(90,60,40,0.5)'; g.fillRect(x, 512 - h, w, 8);
-    for (let wy = 512 - h + 24; wy < 470; wy += 38) for (let wx = x + 10; wx < x + w - 20; wx += 28) { g.fillStyle = rnd() > 0.8 ? '#ffd890' : '#4d5866'; g.fillRect(wx, wy, 14, 22); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(wx - 2, wy + 22, 18, 2); }
+    for (let wy = 512 - h + 24; wy < 470; wy += 38) for (let wx = x + 10; wx < x + w - 20; wx += 28) { g.fillStyle = rnd() > 1 - lit ? '#ffd890' : '#4d5866'; g.fillRect(wx, wy, 14, 22); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(wx - 2, wy + 22, 18, 2); }
   }
   for (let k = 0; k < 900; k++) { const x = rnd() * 1024, y = 230 + rnd() * 300, r = 10 + rnd() * 34; g.fillStyle = `rgba(${40 + rnd() * 40},${80 + rnd() * 50},${35 + rnd() * 25},${0.35 + rnd() * 0.4})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+  if (dim > 0) { g.fillStyle = mode === 'night' ? `rgba(4,8,22,${dim})` : mode === 'dusk' ? `rgba(40,30,70,${dim})` : `rgba(130,140,155,${dim})`; g.globalCompositeOperation = 'source-over'; g.fillRect(0, 250, 1024, 262); }
   return tex(c);
 }
 function artTex() {
@@ -283,7 +293,7 @@ const MAT = {
   walnut: std({ color: '#4a2f1f', roughness: 0.45, env: 0.5 }),
   glass: phys({ color: '#d9e6ee', roughness: 0.05, transmission: 0.0, transparent: true, opacity: 0.18, env: 1.2 }),
   velvet: phys({ color: '#24402f', roughness: 0.85, sheen: 1, sheenColor: new THREE.Color('#5f8a6c'), sheenRoughness: 0.4 }),
-  sheer: std({ color: '#fbf8f2', roughness: 0.9, transparent: true, opacity: 0.55, side: THREE.DoubleSide, emissive: '#fff3dd', emissiveIntensity: 0.08 }),
+  sheer: regM('fake', std({ color: '#fbf8f2', roughness: 0.9, transparent: true, opacity: 0.55, side: THREE.DoubleSide, emissive: '#fff3dd', emissiveIntensity: 0.08 }), 'emissiveIntensity'),
   grey: phys({ color: '#8d8f93', roughness: 0.9, sheen: 0.6, sheenColor: new THREE.Color('#c9ccd1') }),
   boucle: phys({ color: '#ece6da', roughness: 1, sheen: 1, sheenColor: new THREE.Color('#ffffff'), sheenRoughness: 0.6 }),
   sage: phys({ color: '#7d8f73', roughness: 0.9, sheen: 0.6, sheenColor: new THREE.Color('#b8c9ae') }),
@@ -385,11 +395,11 @@ const coveMat = std({ color: '#f1efea', roughness: 0.9 });
 add(bx(0, 0, RX, cove, coveY, 0.22, coveMat, false)); add(bx(0, RZ - cove, RX, cove, coveY, 0.22, coveMat, false));
 add(bx(0, 0, cove, RZ, coveY, 0.22, coveMat, false)); add(bx(RX - cove, 0, cove, RZ, coveY, 0.22, coveMat, false));
 const ledMat = new THREE.MeshBasicMaterial({ color: '#ffd59a' });
-ledMat.color.multiplyScalar(2.2);
+ledMat.color.multiplyScalar(2.2); regM('cove', ledMat);
 [[cove, cove, RX - 2 * cove, 0.02], [cove, RZ - cove - 0.02, RX - 2 * cove, 0.02], [cove, cove, 0.02, RZ - 2 * cove], [RX - cove - 0.02, cove, 0.02, RZ - 2 * cove]]
   .forEach(([x, z, w, d]) => add(bx(x, z, w, d, coveY - 0.02, 0.02, ledMat, false)));
-rectLight('#ffcf8f', 2.2, RX - 1, 0.25, [RX / 2, RH - 0.05, cove + 0.1], [RX / 2, 0, cove + 0.6]);
-rectLight('#ffcf8f', 2.2, RX - 1, 0.25, [RX / 2, RH - 0.05, RZ - cove - 0.1], [RX / 2, 0, RZ - cove - 0.6]);
+regL('cove', rectLight('#ffcf8f', 2.2, RX - 1, 0.25, [RX / 2, RH - 0.05, cove + 0.1], [RX / 2, 0, cove + 0.6]));
+regL('cove', rectLight('#ffcf8f', 2.2, RX - 1, 0.25, [RX / 2, RH - 0.05, RZ - cove - 0.1], [RX / 2, 0, RZ - cove - 0.6]));
 
 // ---------- ablakok, erkélyajtó, kint ----------
 sky = new THREE.Mesh(new THREE.PlaneGeometry(9, 4.5), new THREE.MeshBasicMaterial({ map: skyTex(), toneMapped: true }));
@@ -434,21 +444,21 @@ add(bx(0.7, 0.1, 3.6, 0.03, RH - 0.1, 0.03, MAT.black, false));
 for (let i = 0; i < 14; i++) add(bx(3.0 + i * 0.055, 0.06, 0.04, 0.08, 0.14, 0.58, MAT.white));
 
 // ---------- fények ----------
-const hemi = new THREE.HemisphereLight('#cfe0ff', '#5a4a3c', 0.42); scene.add(hemi);
+const hemi = new THREE.HemisphereLight('#cfe0ff', '#5a4a3c', 0.42); scene.add(hemi); regL('hemi', hemi);
 sun = new THREE.DirectionalLight('#ffc98f', 6.0);
 sun.position.set(0.4, 2.3, -4.2); sun.target.position.set(2.9, 0, 2.2); scene.add(sun, sun.target);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 0.5, far: 12 }); sun.shadow.radius = 3;
 SUND = new THREE.Vector3().subVectors(sun.target.position, sun.position).normalize();
 // ablakfény: puha területfény a nyílásokban
-rectLight('#dbe8ff', 2.6, 2.7, 1.8, [2.45, 1.6, 0.05], [2.45, 1.0, 3]);
+regL('win', rectLight('#dbe8ff', 2.6, 2.7, 1.8, [2.45, 1.6, 0.05], [2.45, 1.0, 3]));
 // mennyezeti dupla gyűrű
 const ring = new THREE.Group(); ring.position.set(2.2, RH - 0.65, 3.1); scene.add(ring);
-const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff1d6').multiplyScalar(3) });
+const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff1d6').multiplyScalar(3) }); regM('ceil', ringMat);
 const r1 = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.018, 12, 80), ringMat); r1.rotation.x = Math.PI / 2 - 0.12; ring.add(r1);
 const r2 = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.018, 12, 80), ringMat); r2.rotation.x = Math.PI / 2 + 0.25; r2.position.x = 0.12; ring.add(r2);
 { const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.6), MAT.steel); rod.position.y = 0.32; ring.add(rod); }
-const ringL = new THREE.PointLight('#ffe2b8', 3.2, 0, 2); ringL.position.set(2.2, RH - 0.75, 3.1); scene.add(ringL);
+const ringL = new THREE.PointLight('#ffe2b8', 3.2, 0, 2); ringL.position.set(2.2, RH - 0.75, 3.1); scene.add(ringL); regL('ceil', ringL);
 
 // ---------- bútorok (fotók szerint) ----------
 // L-alakú kordbársony kanapé a nyugati falnál, a heverő rész a déli végén nyúlik a szobába
@@ -504,10 +514,10 @@ add(bx(RX - 0.06, 1.85, 0.04, 1.5, 1.05, 0.86, MAT.tv));
 const scr = mesh(new THREE.PlaneGeometry(1.44, 0.8), std({ color: '#0a0c10', roughness: 0.08, metalness: 0.2, env: 1.4, emissive: '#ffffff', emissiveMap: tvTex(), emissiveIntensity: 0.9 }), [RX - 0.061, 1.48, 2.6], false, false); scr.rotation.y = -Math.PI / 2; add(scr);
 add(bx(RX - 0.4, 0.95, 0.38, 4.5, 0.3, 0.4, MAT.white));
 const front = mesh(new THREE.PlaneGeometry(4.5, 0.34), MAT.chevron, [RX - 0.401, 0.5, 3.2], false, true); front.rotation.y = -Math.PI / 2; add(front);
-const led2 = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffc77a').multiplyScalar(2.6) });
+const led2 = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffc77a').multiplyScalar(2.6) }); regM('tv', led2);
 add(bx(RX - 0.38, 0.97, 0.02, 4.46, 0.29, 0.01, led2, false));
-rectLight('#ffbf70', 2.4, 4.4, 0.1, [RX - 0.3, 0.28, 3.2], [RX - 0.3, 0, 3.2]);
-rectLight('#ffbf70', 0.8, 4.4, 0.12, [RX - 0.4, 0.29, 3.2], [RX - 1.4, 0, 3.2]);
+regL('tv', rectLight('#ffbf70', 2.4, 4.4, 0.1, [RX - 0.3, 0.28, 3.2], [RX - 0.3, 0, 3.2]));
+regL('tv', rectLight('#ffbf70', 0.8, 4.4, 0.12, [RX - 0.4, 0.29, 3.2], [RX - 1.4, 0, 3.2]));
 // dekor a pulton: kis lámpa, váza, könyv
 add(mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.22, 24), std({ color: '#ece6da', roughness: 0.4 }), [RX - 0.2, 0.81, 1.2]));
 add(mesh(new THREE.SphereGeometry(0.08, 24, 16), std({ color: '#e7e2d9', roughness: 0.3 }), [RX - 0.22, 0.78, 4.8]));
@@ -547,7 +557,7 @@ room.add(arm); aoBlob(3.55, 0.75, 0.9, 0.9);
 add(mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.03, 32), MAT.walnut, [0.35, 0.015, 5.55]));
 add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5, 10), MAT.walnut, [0.35, 0.76, 5.55]));
 const shade = mesh(new THREE.CylinderGeometry(0.17, 0.26, 0.32, 32, 1, true), std({ color: '#f6eedb', roughness: 0.9, side: THREE.DoubleSide, emissive: '#ffd9a0', emissiveIntensity: 1.2 }), [0.35, 1.58, 5.55], false); add(shade);
-const lampL = new THREE.PointLight('#ffcf90', 1.6, 0, 2); lampL.position.set(0.35, 1.5, 5.55); scene.add(lampL);
+const lampL = new THREE.PointLight('#ffcf90', 1.6, 0, 2); lampL.position.set(0.35, 1.5, 5.55); scene.add(lampL); regL('floor', lampL); regM('floor', shade.material, 'emissiveIntensity');
 // kép a kanapé fölött, klíma
 const art = mesh(new THREE.PlaneGeometry(0.62, 0.95), std({ map: artTex(), roughness: 0.7 }), [0.0, 1.55, 3.4], false); art.rotation.y = Math.PI / 2; add(art);
 add(bx(-0.01, 3.08, 0.03, 0.68, 1.2, 0.99, std({ color: '#b48a5a', roughness: 0.5 }), false));
@@ -558,13 +568,13 @@ const rugB = mesh(new THREE.BoxGeometry(2.6, 0.012, 2.8), MAT.rugB, [2.25, 0.006
 add(bx(1.74, 7.2, 0.96, 1.9, 0.72, 0.05, MAT.oak)); add(bx(1.82, 7.3, 0.8, 0.05, 0, 0.72, MAT.black)); add(bx(1.82, 8.95, 0.8, 0.05, 0, 0.72, MAT.black));
 shellChair(1.4, 7.75, -Math.PI / 2); shellChair(1.4, 8.55, -Math.PI / 2); shellChair(3.05, 7.75, Math.PI / 2); shellChair(3.05, 8.55, Math.PI / 2); shellChair(2.22, 6.95, 0);
 add(bx(0.05, 7.05, 0.45, 1.6, 0, 0.82, MAT.black));
-for (const z of [7.25, 8.45]) { add(mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.24, 24), std({ color: '#f5f0e6', emissive: '#ffdca8', emissiveIntensity: 1.5 }), [0.25, 1.06, z], false)); }
-const dl = new THREE.PointLight('#ffd49c', 2.2, 0, 2); dl.position.set(0.4, 1.3, 7.8); scene.add(dl);
+for (const z of [7.25, 8.45]) { regM('c2', add(mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.24, 24), std({ color: '#f5f0e6', emissive: '#ffdca8', emissiveIntensity: 1.5 }), [0.25, 1.06, z], false)).material, 'emissiveIntensity'); }
+const dl = new THREE.PointLight('#ffd49c', 2.2, 0, 2); dl.position.set(0.4, 1.3, 7.8); scene.add(dl); regL('c2', dl);
 add(bx(0.02, 7.1, 0.05, 1.5, 1.3, 0.8, MAT.black)); add(bx(0.06, 7.17, 0.01, 1.36, 1.37, 0.66, std({ color: '#9aa4ad', roughness: 0.02, metalness: 1, env: 1.5 }), false));
 // fehér lépcső fehér korláttal
 for (let i = 0; i < 12; i++) add(bx(0.1 + (11 - i) * 0.225, 9.62, 0.225, 1.3, i * 0.25, 0.25, MAT.white));
 for (let i = 0; i < 12; i++) add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 8), MAT.white, [0.2 + (11 - i) * 0.225, i * 0.25 + 0.7, 9.6]));
-const dl2 = new THREE.PointLight('#ffe4c0', 1.2, 0, 2); dl2.position.set(2.2, 2.4, 8.2); scene.add(dl2);
+const dl2 = new THREE.PointLight('#ffe4c0', 1.2, 0, 2); dl2.position.set(2.2, 2.4, 8.2); scene.add(dl2); regL('ceil', dl2);
 // apró részletek robot-magasságban
 const sock = std({ color: '#f4f3ef', roughness: 0.35 });
 add(bx(-0.005, 1.7, 0.012, 0.08, 0.3, 0.08, sock, false)); add(bx(RX - 0.008, 5.0, 0.012, 0.08, 0.3, 0.08, sock, false)); add(bx(2.6, RZ - 0.008, 0.08, 0.012, 0.3, 0.08, sock, false));
@@ -609,33 +619,9 @@ add(bx(3.83, 5.95, 0.36, 0.22, 0, 0.1, MAT.black));
 
 // ---------- napsugár: fénykéve + porszemek ----------
 beams = new THREE.Group(); scene.add(beams);
-function beam(x0, x1, y0, y1) {
-  const c = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => new THREE.Vector3(x, y, 0.0));
-  const f = c.map(v => { const t = v.y / -SUND.y; return v.clone().addScaledVector(SUND, Math.min(t, 6)); });
-  const pos = [], al = [];
-  const quad = (a, b, cc, d, aa, ab) => { pos.push(...a.toArray(), ...b.toArray(), ...cc.toArray(), ...a.toArray(), ...cc.toArray(), ...d.toArray()); al.push(aa, aa, ab, aa, ab, ab); };
-  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; quad(c[i], c[j], f[j], f[i], 1, 0.1); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('a', new THREE.Float32BufferAttribute(al, 1));
-  const m = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { op: { value: 0.018 } },
-    vertexShader: 'attribute float a; varying float va; void main(){ va=a; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-    fragmentShader: 'uniform float op; varying float va; void main(){ gl_FragColor=vec4(1.0,0.82,0.55,1.0)*op*va; }'
-  });
-  beams.add(new THREE.Mesh(g, m));
-}
-beam(2.02, 2.88, 0.05, 2.55); beam(1.2, 1.9, 0.95, 2.55); beam(3.0, 3.75, 0.95, 2.55);
-const DUSTN = 700, dustG = new THREE.BufferGeometry(), dustP = new Float32Array(DUSTN * 3), dustS = new Float32Array(DUSTN);
-for (let i = 0; i < DUSTN; i++) {
-  const v = new THREE.Vector3(1.2 + rnd() * 2.6, 0.02 + rnd() * 2.5, 0.05); v.addScaledVector(SUND, rnd() * (v.y / -SUND.y));
-  dustP.set([v.x, v.y, v.z], i * 3); dustS[i] = rnd();
-}
-dustG.setAttribute('position', new THREE.BufferAttribute(dustP, 3)); dustG.setAttribute('s', new THREE.BufferAttribute(dustS, 1));
-dustM = new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { t: { value: 0 } },
-  vertexShader: 'attribute float s; uniform float t; varying float vs; void main(){ vec3 p=position; p.x+=sin(t*0.3+s*20.)*0.05; p.y+=sin(t*0.2+s*13.)*0.04; vs=0.5+0.5*sin(t*1.5+s*30.); vec4 mv=modelViewMatrix*vec4(p,1.); gl_PointSize=clamp(9.0/-mv.z,1.0,14.0)*(0.6+s); gl_Position=projectionMatrix*mv; }',
-  fragmentShader: 'varying float vs; void main(){ float d=length(gl_PointCoord-0.5); gl_FragColor=vec4(1.0,0.86,0.62,1.)*smoothstep(0.5,0.0,d)*0.55*vs; }'
-});
-dust = new THREE.Points(dustG, dustM); scene.add(dust); reflHide.push(beams, dust);
+const SHL = makeShafts(null, beams);
+SHL.beam(2.02, 2.88, 0.05, 2.55); SHL.beam(1.2, 1.9, 0.95, 2.55); SHL.beam(3.0, 3.75, 0.95, 2.55);
+{ const d = SHL.dust(1.2, 3.8, 0.05, RZ, 2.5); dust = d.points; dustM = d.mat; reflHide.push(beams, dust); }
 // por a padlón (amit a robot felszív)
 for (let i = 0; i < 160; i++) { const o = mesh(new THREE.SphereGeometry(0.0015 + rnd() * 0.0025, 5, 4), std({ color: rnd() > 0.4 ? '#e6dfd2' : '#9a8f80', roughness: 1 }), [0.9 + rnd() * 3.2, 0.003, 0.6 + rnd() * 5.2], false, false); add(o); crumbs.push(o); }
 bunnies.forEach(o => crumbs.push(o));
@@ -848,13 +834,14 @@ export function setFloor(f) {
   if (BUILT) return BUILT;
   BUILT = f === 'up' ? 'up' : 'lo'; FL = FLOORCFG[BUILT];
   if (BUILT === 'up') {
-    const r = buildUp({ scene, room, add, mesh, bx, rbox, std, phys, tex, cv, rnd, aoBlob, rectLight, installReflector, reflHide, makeShafts,
+    const r = buildUp({ scene, room, add, mesh, bx, rbox, std, phys, tex, cv, rnd, aoBlob, rectLight, installReflector, reflHide, makeShafts, regL, regM,
       T: { plasterTex, skyTex } });
     ({ sun, SUND, beams, dust, dustM, sky } = r); crumbs.push(...r.crumbs); FL.obst = r.obst;
     const stops = FL.stopsFor(FL.stopWps.map(([x, z]) => nominalTime(FL.pts, x, z)));
     setPath(FL.pts, stops.map(a => a.slice()));
   } else { buildLo(); setPath(FL.pts, FL.stops); }
   CAT_KEYS = FL.keys();
+  LIGHT.sunBase = sun.intensity; LIGHT.sunTarget = sun.target.position.clone(); LIGHT.floor = BUILT;
   if (PENDQ != null) setQuality(PENDQ);
   renderer.shadowMap.needsUpdate = true;
   return BUILT;
@@ -862,27 +849,26 @@ export function setFloor(f) {
 function ensure() { if (!BUILT) setFloor('lo'); }
 export function floorInfo() { ensure(); return { floor: BUILT, rooms: FL.rooms || null, plan: FL.plan || null, furn: FL.furn || null, obst: FL.obst || null, ev: (BUILT === 'up' ? UPCFG.ev : null) }; }
 // napsugár-kévék és porszemek (az emelet használja; a nappali a saját, eredeti kódját)
-function makeShafts(SD, group) {
+function makeShafts(_SD, group) {
   return {
     beam(x0, x1, y0, y1) {
       const c = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => new THREE.Vector3(x, y, 0.0));
-      const f = c.map(v => { const t = v.y / -SD.y; return v.clone().addScaledVector(SD, Math.min(t, 6)); });
-      const pos = [], al = [];
-      const quad = (a, b, cc, d, aa, ab) => { pos.push(...a.toArray(), ...b.toArray(), ...cc.toArray(), ...a.toArray(), ...cc.toArray(), ...d.toArray()); al.push(aa, aa, ab, aa, ab, ab); };
-      for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; quad(c[i], c[j], f[j], f[i], 1, 0.1); }
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('a', new THREE.Float32BufferAttribute(al, 1));
-      const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { op: { value: 0.018 } },
-        vertexShader: 'attribute float a; varying float va; void main(){ va=a; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+      const pos = [], al = [], far = [];
+      const quad = (a, b, cc, d, aa, ab) => { [a, b, cc, a, cc, d].forEach((v, i) => { pos.push(v[0].x, v[0].y, v[0].z); far.push(v[1]); al.push(i === 0 || i === 1 || i === 3 ? aa : ab); }); };
+      for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; quad([c[i], 0], [c[j], 0], [c[j], 1], [c[i], 1], 1, 0.1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('a', new THREE.Float32BufferAttribute(al, 1)); g.setAttribute('far', new THREE.Float32BufferAttribute(far, 1));
+      const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { op: { value: 0.018 }, uL: SUNL },
+        vertexShader: 'attribute float a; attribute float far; uniform vec3 uL; varying float va; void main(){ va=a; vec3 p=position; if(far>0.5){ p+=uL*min(p.y/max(-uL.y,0.05),6.0); } gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.); }',
         fragmentShader: 'uniform float op; varying float va; void main(){ gl_FragColor=vec4(1.0,0.82,0.55,1.0)*op*va; }' });
       group.add(new THREE.Mesh(g, m));
     },
     dust(x0, x1, z0, z1, ymax) {
-      const N = 700, g = new THREE.BufferGeometry(), P = new Float32Array(N * 3), Sx = new Float32Array(N);
-      for (let i = 0; i < N; i++) { const v = new THREE.Vector3(x0 + rnd() * (x1 - x0), 0.02 + rnd() * ymax, 0.05); v.addScaledVector(SD, rnd() * (v.y / -SD.y)); v.z = Math.min(v.z, z1); P.set([v.x, v.y, v.z], i * 3); Sx[i] = rnd(); }
-      g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('s', new THREE.BufferAttribute(Sx, 1));
-      const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { t: { value: 0 } },
-        vertexShader: 'attribute float s; uniform float t; varying float vs; void main(){ vec3 p=position; p.x+=sin(t*0.3+s*20.)*0.05; p.y+=sin(t*0.2+s*13.)*0.04; vs=0.5+0.5*sin(t*1.5+s*30.); vec4 mv=modelViewMatrix*vec4(p,1.); gl_PointSize=clamp(9.0/-mv.z,1.0,14.0)*(0.6+s); gl_Position=projectionMatrix*mv; }',
-        fragmentShader: 'varying float vs; void main(){ float d=length(gl_PointCoord-0.5); gl_FragColor=vec4(1.0,0.86,0.62,1.)*smoothstep(0.5,0.0,d)*0.55*vs; }' });
+      const N = 700, g = new THREE.BufferGeometry(), P = new Float32Array(N * 3), Sx = new Float32Array(N), Rr = new Float32Array(N);
+      for (let i = 0; i < N; i++) { P.set([x0 + rnd() * (x1 - x0), 0.02 + rnd() * ymax, 0.05], i * 3); Sx[i] = rnd(); Rr[i] = rnd(); }
+      g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('s', new THREE.BufferAttribute(Sx, 1)); g.setAttribute('r', new THREE.BufferAttribute(Rr, 1));
+      const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { t: { value: 0 }, uL: SUNL, zmax: { value: z1 }, k: { value: 1 } },
+        vertexShader: 'attribute float s; attribute float r; uniform float t; uniform vec3 uL; uniform float zmax; varying float vs; void main(){ vec3 p=position; p+=uL*(r*p.y/max(-uL.y,0.05)); p.z=min(p.z,zmax); p.x+=sin(t*0.3+s*20.)*0.05; p.y+=sin(t*0.2+s*13.)*0.04; vs=0.5+0.5*sin(t*1.5+s*30.); vec4 mv=modelViewMatrix*vec4(p,1.); gl_PointSize=clamp(9.0/-mv.z,1.0,14.0)*(0.6+s); gl_Position=projectionMatrix*mv; }',
+        fragmentShader: 'uniform float k; varying float vs; void main(){ float d=length(gl_PointCoord-0.5); gl_FragColor=vec4(1.0,0.86,0.62,1.)*smoothstep(0.5,0.0,d)*0.55*vs*k; }' });
       const points = new THREE.Points(g, mat); scene.add(points); return { points, mat };
     }
   };
@@ -907,8 +893,8 @@ function catAt(t, robotPos) {
   const speed = walking ? b.p.distanceTo(a.p) / (b.t - a.t) * (ke < 0.5 ? 4 * k : 4 * (1 - k)) * 0.5 : 0;
   return { p, h, pose: walking ? 'walk' : a.pose, speed, nextPose: b.pose, k };
 }
-function poseCat(t, dt, robotPos, camPos) {
-  const c = catAt(t, robotPos), S = catState, blend = 1 - Math.exp(-dt * 5);
+function poseCat(t, dt, robotPos, camPos, live) {
+  const c = live ? liveCatAt(t, robotPos) : catAt(t, robotPos), S = catState, blend = 1 - Math.exp(-dt * 5);
   S.p.copy(c.p); S.h = lerpA(S.h, c.h, dt > 0.5 ? 1 : 1 - Math.exp(-dt * 6));
   const tgt = { sit: c.pose === 'sit' ? 1 : 0, lie: c.pose === 'lie' ? 1 : 0, stretch: c.pose === 'stretch' ? 1 : 0, groom: c.pose === 'groom' ? 1 : 0 };
   for (const k in tgt) S[k] = dt > 0.5 ? tgt[k] : S[k] + (tgt[k] - S[k]) * blend;
@@ -994,9 +980,9 @@ function dirtTex() {
 }
 const GRADE = {
   uniforms: { tDiffuse: { value: null }, tDirt: { value: dirtTex() }, t: { value: 0 }, mode: { value: 1 }, ca: { value: 0 }, barrel: { value: 0 }, vig: { value: 0.35 }, grain: { value: 0.03 },
-    mb: { value: 0 }, flare: { value: 0 }, lp: { value: new THREE.Vector2(0.5, 0.5) }, dirtA: { value: 0 }, aspect: { value: W / H }, contrast: { value: 1.2 } },
+    mb: { value: 0 }, nv: { value: 0 }, flare: { value: 0 }, lp: { value: new THREE.Vector2(0.5, 0.5) }, dirtA: { value: 0 }, aspect: { value: W / H }, contrast: { value: 1.2 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-  fragmentShader: `uniform sampler2D tDiffuse, tDirt; uniform float t,ca,barrel,vig,grain,mb,flare,dirtA,aspect,contrast; uniform vec2 lp; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse, tDirt; uniform float t,ca,barrel,vig,grain,mb,nv,flare,dirtA,aspect,contrast; uniform vec2 lp; varying vec2 vUv;
     float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
     float lum(vec3 c){ return dot(c,vec3(0.2126,0.7152,0.0722)); }
     void main(){
@@ -1026,6 +1012,8 @@ const GRADE = {
       float l=lum(c); c=mix(vec3(l),c,1.12);
       c=mix(c*vec3(0.88,0.98,1.1), c*vec3(1.07,1.0,0.9), smoothstep(0.02,0.55,l));   // hideg árnyék, meleg fény
       c=pow(max(c/0.2,0.),vec3(contrast))*0.2*1.18;
+      if(nv>0.5){ float l2=lum(c); l2=pow(clamp(l2*1.25,0.,1.5),0.85); vec3 gr=vec3(0.07,1.0,0.2)*l2*1.15+vec3(0.0,0.012,0.0);
+        float scan=0.94+0.06*sin(vUv.y*620.+t*40.); float nz=h(vUv*vec2(960.,540.)*1.3+t*7.); c=gr*scan; c+=(nz-0.5)*0.09*vec3(0.15,1.0,0.25); c*=1.0-0.45*smoothstep(0.08,0.6,r2*2.4); }
       c+=(h(vUv*vec2(960.,540.)+t)-0.5)*grain;
       gl_FragColor=vec4(c,1.);
     }`
@@ -1075,7 +1063,7 @@ const tmpV = new THREE.Vector3();
 let area = 0, prevP = null;
 export function frame(t, dt) {
   ensure();
-  const r = robAt(t), c = CFG[MODE];
+  const LV = LIVE.ok, r = LV ? liveRob(dt) : robAt(t), c = CFG[MODE];
   // kamera a robot orrán: rezgés a padló szerint (parketta: durvább, szőnyeg: puha)
   const dx = FL.rug[2] - Math.abs(r.p.x - FL.rug[0]), dz = FL.rug[3] - Math.abs(r.p.z - FL.rug[1]), rk = THREE.MathUtils.smoothstep(Math.min(dx, dz), 0, 0.1);
   const go = r.stop ? 0.12 : r.v / SPEED, amp = (1 - rk * 0.78) * go * c.shake;
@@ -1088,7 +1076,7 @@ export function frame(t, dt) {
   // porszemek a padlón: amit a robot elér, eltűnik
   crumbs.forEach(o => { if (o.visible && Math.hypot(o.position.x - r.p.x, o.position.z - r.p.z) < 0.17) o.visible = false; });
   if (t < 0.2) crumbs.forEach(o => o.visible = true);
-  const cs = poseCat(t, dt, r.p, camera.position);
+  const cs = poseCat(t, dt, r.p, camera.position, LV);
   dustM.uniforms.t.value = t;
   // akadály: a macska a robot előtt
   const toCat = cat.position.clone().sub(r.p);
@@ -1112,15 +1100,165 @@ export function frame(t, dt) {
     const fd = rect && dist < 3 ? camera.position.distanceTo(cat.position) : 1.5;
     bokeh.enabled = c.bokeh; bokeh.uniforms.focus.value = fd;
     bloom.strength = c.bloom; Object.assign(grade.uniforms, {}); grade.uniforms.t.value = t % 10; grade.uniforms.ca.value = c.ca; grade.uniforms.barrel.value = c.barrel; grade.uniforms.vig.value = c.vig; grade.uniforms.grain.value = c.grain;
-    grade.uniforms.mb.value = c.mb * (r.stop ? 0 : r.v / SPEED); grade.uniforms.dirtA.value = c.dirt; grade.uniforms.contrast.value = c.contrast;
+    grade.uniforms.mb.value = c.mb * (r.stop ? 0 : r.v / SPEED); grade.uniforms.dirtA.value = c.dirt; grade.uniforms.contrast.value = c.contrast; grade.uniforms.nv.value = LIGHT.nv;
     rStr.value = QUAL.refl ? c.refl : 0; gtao.enabled = QUAL.ao; after.uniforms.damp.value = c.after; after.enabled = c.after > 0;
-    tmpV.set(FL.rays[0], FL.rays[1], FL.rays[2]).project(camera); const onS = tmpV.z < 1 && Math.abs(tmpV.x) < 1.6 && Math.abs(tmpV.y) < 1.6;
-    { const WN = FL.wins.reduce((a, b) => Math.hypot(b[0] - camera.position.x, b[2] - camera.position.z) < Math.hypot(a[0] - camera.position.x, a[2] - camera.position.z) ? b : a); const w = tmpV.clone().set(WN[0], WN[1], WN[2]).project(camera); grade.uniforms.lp.value.set((w.x + 1) / 2, (w.y + 1) / 2); grade.uniforms.flare.value = c.flare * (FL.flareGain ?? 1) * (w.z < 1 && Math.abs(w.x) < 1.35 && Math.abs(w.y) < 1.35 ? 1 : 0); }
-    rays.uniforms.lp.value.set((tmpV.x + 1) / 2, (tmpV.y + 1) / 2); rays.uniforms.amt.value = onS ? (FL.raysGain ?? 1) * c.rays * (1 - Math.min(1, Math.hypot(tmpV.x, tmpV.y) / 1.6)) : 0;
+    tmpV.copy(camera.position).addScaledVector(SUNDIR, 14).project(camera); const onS = tmpV.z < 1 && Math.abs(tmpV.x) < 1.6 && Math.abs(tmpV.y) < 1.6;
+    { const WN = FL.wins.reduce((a, b) => Math.hypot(b[0] - camera.position.x, b[2] - camera.position.z) < Math.hypot(a[0] - camera.position.x, a[2] - camera.position.z) ? b : a); const w = tmpV.clone().set(WN[0], WN[1], WN[2]).project(camera); grade.uniforms.lp.value.set((w.x + 1) / 2, (w.y + 1) / 2); grade.uniforms.flare.value = c.flare * LIGHT.flare * (FL.flareGain ?? 1) * (w.z < 1 && Math.abs(w.x) < 1.35 && Math.abs(w.y) < 1.35 ? 1 : 0); }
+    rays.uniforms.lp.value.set((tmpV.x + 1) / 2, (tmpV.y + 1) / 2); rays.uniforms.amt.value = onS ? LIGHT.ray * (FL.raysGain ?? 1) * c.rays * (1 - Math.min(1, Math.hypot(tmpV.x, tmpV.y) / 1.6)) : 0;
     renderer.shadowMap.needsUpdate = true;
     composer.render(dt);
   }
-  return { t, rob: r, cat: cs, dist, inFront, rect, area, loop: LOOP, robPts: ROB_PTS };
+  return { t, rob: r, cat: cs, dist, inFront, rect, area, loop: LOOP, robPts: ROB_PTS, live: LV };
+}
+
+// ================= világítás: valódi nap, felhő és a ténylegesen égő lámpák =================
+// Módok: N1 nappal (nap > 6 fok), N2 alkonyat (-4..6), N3 este/éjjel (< -4) csak az égő konnektoros lámpákkal,
+// N5 éjjellátó (sötét van és egyik konnektoros lámpa sem ég). Amit nem konnektoron kapcsolnak (mennyezeti, állólámpa),
+// azt nem tudjuk, ezért kikapcsoltnak vesszük (őszinte alapérték).
+const LIGHT = { mode: 'N1', label: 'Nappal', nv: 0, ray: 1, flare: 1, sunK: 0, sunBase: 6, sunTarget: null, floor: null, lamps: [] };
+const SUNDIR = new THREE.Vector3(0, 1, 0);
+const NVL = new THREE.PointLight('#e6ffe6', 0, 7, 2); camera.add(NVL);
+const ENVB = new Map();
+const LABELS = { N1: 'Nappal', N2: 'Alkonyat', N3: 'Este', N5: 'Éjjellátó' };
+function skyFor(k) {
+  if (!SKYMODE[k]) { const s0 = seed; seed = 4242; SKYMODE[k] = skyTex(k); seed = s0; }
+  return SKYMODE[k];
+}
+export function applyLighting(inp = {}) {
+  ensure();
+  const MU = THREE.MathUtils, num = (v, d) => (v != null && isFinite(v) ? +v : d);
+  if (!SKYMODE.day) SKYMODE.day = sky.material.map;
+  const force = inp.force && /^N[1235]$/.test(inp.force) ? inp.force : null;
+  let alt = num(inp.sunAlt, force ? { N1: 35, N2: 2, N3: -20, N5: -20 }[force] : 25);
+  const az = num(inp.sunAz, 240), cloud = MU.clamp(num(inp.cloud, 0.4), 0, 1), pn = num(inp.planNorth, 68) * Math.PI / 180;
+  const lamps = inp.lamps || {};
+  const rel = BUILT === 'up' ? ['C4'] : ['C2', 'C3', 'C4'];
+  let mode = alt > 6 ? 'N1' : alt >= -4 ? 'N2' : 'N3';
+  if (mode === 'N3' && !rel.some(id => lamps[id])) mode = 'N5';
+  if (force) mode = force;
+  if (mode === 'N5' && alt > -4) alt = -20;
+  // a nap iránya a terv koordinátáiban (x kelet, z = a terv y-ja); a terv "fel" iránya az erkély felé, az észak ettől PLAN_NORTH fokkal jobbra
+  const nx = Math.sin(pn), ny = -Math.cos(pn), ex = Math.cos(pn), ey = Math.sin(pn), a = az * Math.PI / 180, ae = Math.max(alt, 1) * Math.PI / 180;
+  const hx = Math.cos(a) * nx + Math.sin(a) * ex, hy = Math.cos(a) * ny + Math.sin(a) * ey;
+  const toSun = new THREE.Vector3(hx * Math.cos(ae), Math.sin(ae), hy * Math.cos(ae)).normalize();
+  SUNDIR.copy(toSun); SUNL.value.copy(toSun).negate();
+  const dayK = MU.smoothstep(alt, -6, 14), sunK = MU.smoothstep(alt, -0.5, 9) * (0.55 + 0.45 * MU.smoothstep(alt, 4, 24)) * (1 - 0.9 * cloud);
+  const glow = 0.3 * MU.smoothstep(alt, -12, -1) * (1 - 0.5 * cloud), skyK = Math.max(0.03, dayK * (1 - 0.3 * cloud), glow);
+  sun.color.copy(new THREE.Color('#ff9650').lerp(new THREE.Color('#fff0d8'), MU.smoothstep(alt, 2, 28)));
+  sun.position.copy(LIGHT.sunTarget).addScaledVector(toSun, 9); sun.intensity = LIGHT.sunBase * sunK * 0.75;
+  const enters = SUNL.value.z > 0.12 && sunK > 0.25;
+  beams.visible = dust.visible = enters;
+  beams.children.forEach(m => { m.material.uniforms.op.value = 0.018 * MU.clamp(sunK * 1.3, 0, 1); }); dustM.uniforms.k.value = sunK;
+  LIGHT.ray = enters ? sunK : 0; LIGHT.flare = MU.clamp(sunK * 1.2 + (mode === 'N2' ? 0.25 : 0), 0, 1); LIGHT.sunK = sunK;
+  const winC = new THREE.Color('#5a74b8').lerp(new THREE.Color('#ffb48a'), MU.smoothstep(alt, -8, 0)).lerp(new THREE.Color('#dbe8ff'), MU.smoothstep(alt, 2, 14));
+  const on = { tv: !!lamps.C3, c2: !!lamps.C2, stair: !!lamps.C4 };
+  const nvm = mode === 'N5', kOf = (cat) => cat === 'win' ? skyK : cat === 'hemi' ? (nvm ? 0.7 : 0.08 + 0.92 * skyK) : cat === 'fake' ? skyK : cat in on ? (on[cat] ? 1 : 0) : 0;
+  LG.lights.forEach(o => { o.l.intensity = o.base * kOf(o.cat); if (o.cat === 'win') o.l.color.copy(winC); if (o.cat === 'hemi') o.l.color.copy(winC); });
+  LG.mats.forEach(o => { const k = kOf(o.cat); if (o.prop === 'color') o.m.color.copy(o.base).multiplyScalar(k); else o.m[o.prop] = o.base * k; });
+  const envK = mode === 'N5' ? 0.12 : 0.08 + 0.92 * skyK;
+  scene.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; ms.forEach(m => { if (m.isMeshStandardMaterial) { if (!ENVB.has(m)) ENVB.set(m, m.envMapIntensity); m.envMapIntensity = ENVB.get(m) * envK; } }); });
+  const skyM = mode === 'N1' ? (cloud > 0.7 ? 'over' : 'day') : mode === 'N2' ? 'dusk' : 'night';
+  sky.material.map = skyFor(skyM); sky.material.color.setScalar({ day: 2.4, over: 2.1, dusk: 2.0, night: 1.6 }[skyM]);
+  renderer.toneMappingExposure = { N1: 0.56 * (1 + 0.3 * cloud), N2: 0.78, N3: 1.0, N5: 1.1 }[mode];
+  LIGHT.nv = mode === 'N5' ? 1 : 0; NVL.intensity = 0;
+  LIGHT.mode = mode; LIGHT.label = LABELS[mode]; LIGHT.lamps = Object.keys(on).filter(k => on[k]);
+  renderer.shadowMap.needsUpdate = true;
+  return { mode, label: LIGHT.label, sunK, alt, az, cloud, nv: LIGHT.nv, lampsOn: LIGHT.lamps.slice(), sunDir: toSun.toArray().map(v => +v.toFixed(3)) };
+}
+export function lightState() { return { mode: LIGHT.mode, label: LIGHT.label, nv: LIGHT.nv, sunK: LIGHT.sunK, lampsOn: LIGHT.lamps.slice() }; }
+
+// ================= valódi útvonal: a kamera a robot tényleges nyomvonalát játssza vissza =================
+// A szülő oldal a robot térképéről kalibrált nyomvonalat küldi méterben (az alaprajz koordinátáiban); a kamera ezen halad robot-sebességgel,
+// kb. egy perccel lemaradva az élő helytől (setLive), a végén várakozik, és lassan követi az újabb pontokat.
+const LIVE = { ok: false, init: false, pts: [], cum: [], L: 0, s: 0, p: new THREE.Vector3(), h: 0, hInit: false, delay: 60 };
+export function modelledAt(x, z, floor = BUILT) {
+  if (floor === 'up') return UPCFG.rooms.some(r => r.id !== 'lepcso' && x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
+  return x >= 0.12 && x <= 4.28 && z >= 0.12 && z <= 6.08;
+}
+function chaikin(a, n) {
+  for (let k = 0; k < n; k++) {
+    const o = [a[0]];
+    for (let i = 0; i < a.length - 1; i++) { const p = a[i], q = a[i + 1]; o.push([0.75 * p[0] + 0.25 * q[0], 0.75 * p[1] + 0.25 * q[1]], [0.25 * p[0] + 0.75 * q[0], 0.25 * p[1] + 0.75 * q[1]]); }
+    o.push(a[a.length - 1]); a = o;
+  }
+  return a;
+}
+export function setLive(d) {
+  ensure();
+  const off = () => { LIVE.ok = false; return false; };
+  if (!d || !Array.isArray(d.path) || d.path.length < 2 || d.floor !== BUILT) return off();
+  const raw = d.path.filter(q => q && isFinite(q[0]) && isFinite(q[1])), dd = [raw[0]];
+  for (let i = 1; i < raw.length; i++) if (Math.hypot(raw[i][0] - dd[dd.length - 1][0], raw[i][1] - dd[dd.length - 1][1]) > 0.04) dd.push(raw[i]);
+  if (dd.length < 2 || !modelledAt(dd[dd.length - 1][0], dd[dd.length - 1][1])) return off();
+  let i0 = dd.length - 1; while (i0 > 0 && modelledAt(dd[i0 - 1][0], dd[i0 - 1][1])) i0--;
+  const run = dd.slice(i0); if (run.length < 2) return off();
+  const pts = chaikin(run, 2), cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const L = cum[cum.length - 1]; if (L < 0.3) return off();
+  LIVE.delay = isFinite(d.delay) ? d.delay : 60;
+  let s = null;
+  if (LIVE.init) { // a mostani helyzet vetítése az új nyomvonalra (folytonosság a frissítések között)
+    let bd = 1e9;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i][0], az = pts[i][1], bx2 = pts[i + 1][0], bz = pts[i + 1][1], vx = bx2 - ax, vz = bz - az, l2 = vx * vx + vz * vz || 1e-9;
+      const u = MU_clamp(((LIVE.p.x - ax) * vx + (LIVE.p.z - az) * vz) / l2, 0, 1), dx = ax + vx * u - LIVE.p.x, dz = az + vz * u - LIVE.p.z, dist = Math.hypot(dx, dz);
+      if (dist < bd) { bd = dist; s = cum[i] + u * Math.sqrt(l2); }
+    }
+    if (bd > 0.8) s = null;
+  }
+  if (s == null) s = Math.max(0, L - SPEED * LIVE.delay);
+  LIVE.pts = pts; LIVE.cum = cum; LIVE.L = L; LIVE.s = Math.min(s, L); LIVE.ok = true;
+  if (!LIVE.init) { LIVE.init = true; const q = livePos(LIVE.s); LIVE.p.set(q[0], 0, q[1]); }
+  return true;
+}
+function MU_clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function livePos(s) {
+  const { pts, cum } = LIVE; let lo = 0, hi = cum.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; }
+  const seg = cum[hi] - cum[lo] || 1e-9, u = MU_clamp((s - cum[lo]) / seg, 0, 1);
+  return [pts[lo][0] + (pts[hi][0] - pts[lo][0]) * u, pts[lo][1] + (pts[hi][1] - pts[lo][1]) * u];
+}
+export function liveInfo() { return { ok: LIVE.ok, s: LIVE.s, L: LIVE.L, lag: LIVE.L - LIVE.s, p: [LIVE.p.x, LIVE.p.z] }; }
+function liveRob(dt) {
+  const L = LIVE, lag = L.L - L.s;
+  let v = SPEED;
+  if (lag > SPEED * 95) v = SPEED * 3; else if (lag > SPEED * 70) v = SPEED * 1.6;     // a késés kb. 60 s körül marad
+  if (lag < 1.0) v *= Math.max(0, lag);                                                // a végén lassan áll meg
+  if (lag <= 0.02) v = 0;
+  L.s = Math.min(L.L, L.s + v * Math.min(dt, 1.5));
+  const q = livePos(L.s); L.p.set(q[0], 0, q[1]);
+  const a = livePos(Math.max(0, L.s - 0.12)), b = livePos(Math.min(L.L, L.s + 0.18));
+  if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 0.05) { const tg = Math.atan2(b[0] - a[0], b[1] - a[1]); L.h = L.hInit && dt < 0.5 ? lerpA(L.h, tg, 1 - Math.exp(-dt * 6)) : tg; L.hInit = true; }
+  return { p: L.p.clone(), h: L.h, stop: v < 0.02, v };
+}
+// Pamutka az élő módban: egyszerű, a robottól független viselkedés a szobában (a forgatókönyv-kulcsok a szkriptelt útvonalhoz kötöttek)
+const LC = { init: false, floor: null, mode: 'rest', p: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), pose: 'groom', face: 0, tEnd: 0, t0: 0, t1: 0, seed: 99 };
+function lrnd() { LC.seed = (LC.seed * 16807) % 2147483647; return (LC.seed - 1) / 2147483646; }
+function roomIdAt(x, z) { if (BUILT !== 'up') return 'lo'; const R = UPCFG.rooms.find(r => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1); return R ? R.id : '?'; }
+function aheadClear(x, z) { // nem ül a robot útjába: a következő ~3 m nyomvonalától legalább 0,55 m
+  for (let s = LIVE.s; s <= Math.min(LIVE.L, LIVE.s + 3); s += 0.3) { const q = livePos(s); if (Math.hypot(q[0] - x, q[1] - z) < 0.55) return false; }
+  return true;
+}
+function liveCatAt(t, rp) {
+  const anchors = FL.pts.map(([x, z]) => new THREE.Vector3(x, 0, z));
+  const pick = (from, rmin, rmax) => {
+    const cand = anchors.filter(q => roomIdAt(q.x, q.z) === roomIdAt(rp.x, rp.z) && q.distanceTo(rp) > 0.9 && aheadClear(q.x, q.z) && (!from || (q.distanceTo(from) >= rmin && q.distanceTo(from) <= rmax)));
+    return cand.length ? cand[Math.floor(lrnd() * cand.length) % cand.length] : null;
+  };
+  const rest = () => { const P = ['sit', 'lie', 'groom', 'stretch', 'sit'][Math.floor(lrnd() * 5) % 5]; LC.mode = 'rest'; LC.pose = P; LC.face = P === 'groom' ? lrnd() * 6.28 : 'robot'; LC.tEnd = t + 6 + lrnd() * 8; };
+  if (!LC.init || LC.floor !== BUILT || t < LC.t0 - 1) {
+    const q = pick(null, 0, 9) || anchors[Math.floor(anchors.length / 2)]; LC.p.copy(q); LC.init = true; LC.floor = BUILT; LC.t0 = t; rest(); LC.pose = 'groom'; LC.tEnd = t + 4;
+  }
+  if (LC.mode === 'rest' && t >= LC.tEnd) {
+    const q = pick(LC.p, 0.7, 3.2);
+    if (q) { LC.mode = 'walk'; LC.a.copy(LC.p); LC.b.copy(q); LC.t0 = t; LC.t1 = t + Math.max(1.2, LC.a.distanceTo(LC.b) / 0.42); } else LC.tEnd = t + 3;
+  } else if (LC.mode === 'walk' && t >= LC.t1) { LC.p.copy(LC.b); rest(); }
+  if (LC.mode === 'walk') {
+    const k = MU_clamp((t - LC.t0) / (LC.t1 - LC.t0), 0, 1), ke = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, p = LC.a.clone().lerp(LC.b, ke);
+    return { p, h: Math.atan2(LC.b.x - LC.a.x, LC.b.z - LC.a.z) - Math.PI / 2, pose: 'walk', speed: 0.42 * (ke < 0.04 || ke > 0.96 ? 0.5 : 1) * 0.5, nextPose: 'walk', k };
+  }
+  const h = LC.face === 'robot' ? Math.atan2(rp.x - LC.p.x, rp.z - LC.p.z) - Math.PI / 2 : LC.face;
+  return { p: LC.p.clone(), h, pose: LC.pose, speed: 0, nextPose: LC.pose, k: 0 };
 }
 export function info() { ensure(); return { LOOP, ROB_PTS, floor: BUILT }; }
 setMode('p1');

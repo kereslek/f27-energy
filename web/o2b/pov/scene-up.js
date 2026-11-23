@@ -85,7 +85,7 @@ export const UPCFG = {
 };
 
 export function buildUp(C) {
-  const { scene, room, add, mesh, bx, rbox, std, phys, tex, cv, rnd, aoBlob, rectLight, installReflector, reflHide, T } = C;
+  const { scene, room, add, mesh, bx, rbox, std, phys, tex, cv, rnd, aoBlob, rectLight, installReflector, reflHide, T, regL, regM } = C;
 
   // ---------- textúrák ----------
   function lamTex() { // világos szürkés tölgy laminált padló: 4 deszkasor, véletlen hosszak
@@ -188,9 +188,11 @@ export function buildUp(C) {
     orange: std({ color: '#ff6a1f', roughness: 0.7 }),
     leaf: std({ color: '#3e6b35', roughness: 0.6, side: THREE.DoubleSide, env: 0.3 }),
     bulb: new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd9a0').multiplyScalar(3) }),
+    bulbS: new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd9a0').multiplyScalar(3) }),
     skyP: new THREE.MeshBasicMaterial({ map: T.skyTex(), toneMapped: true })
   };
   M.skyP.color.setScalar(2.4);
+  regM('ceil', M.bulb); regM('stair', M.bulbS); regM('fake', M.wall, 'emissiveIntensity'); regM('fake', M.ceil, 'emissiveIntensity');
   M.sageW = std({ color: '#6b8574', roughness: 0.9, env: 0.15 });
 
   // ---------- geometria-segédek ----------
@@ -283,7 +285,7 @@ export function buildUp(C) {
     const wl = std({ color: '#c9a064', roughness: 0.6 });
     beam([x0, y0 - 0.04, 5.3], [x1, y1 - 0.04, 5.3], 0.1, 0.07, wl); beam([x0, y0 - 0.04, 6.3], [x1, y1 - 0.04, 6.3], 0.1, 0.07, wl);
     beam([x0, y0 - 0.04, 5.3], [x0, y0 - 0.04, 6.3], 0.1, 0.07, wl); beam([x1, y1 - 0.04, 5.3], [x1, y1 - 0.04, 6.3], 0.1, 0.07, wl);
-    rectLight('#cfe0ff', 0.7, 0.9, 1.0, [3.45, f(3.45) - 0.05, 5.8], [3.2, 0, 5.4]);
+    regL('win', rectLight('#cfe0ff', 0.7, 0.9, 1.0, [3.45, f(3.45) - 0.05, 5.8], [3.2, 0, 5.4]));
   }
 
   // ---------- lábazat, ajtókeretek, ajtólapok ----------
@@ -316,15 +318,15 @@ export function buildUp(C) {
   }
   twinSpot(1.0, 2.2, 4.72); twinSpot(3.3, 2.2, 4.72);
   { const g = new THREE.Group(); g.position.set(2.3, 2.0, 4.72); g.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.08, 14), M.black, [0, 0, 0.05])); const b = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), M.bulb); b.position.set(0, -0.02, 0.09); g.add(b); room.add(g); }
-  const pl = (c, i, x, y, z, d = 0) => { const l = new THREE.PointLight(c, i, d, 2); l.position.set(x, y, z); scene.add(l); return l; };
-  pl('#ffd9a8', 1.5, 2.0, 2.3, 5.5); pl('#ffe0b8', 0.9, 3.6, 2.3, 6.3); pl('#ffe1bc', 0.9, 1.0, 2.0, 2.4); pl('#ffe0b0', 0.9, 3.4, 2.1, 2.4); pl('#fff2e2', 1.7, 5.4, 2.3, 6.35); pl('#fff2e2', 0.9, 6.1, 2.0, 6.0); pl('#ffe8c8', 0.6, 1.0, 2.2, 8.4);
-  scene.add(new THREE.HemisphereLight('#ffffff', '#cdbfa8', 0.38));
+  const pl = (c, i, x, y, z, d = 0, cat = 'ceil') => { const l = new THREE.PointLight(c, i, d, 2); l.position.set(x, y, z); scene.add(l); return regL(cat, l); };
+  pl('#ffd9a8', 1.5, 2.0, 2.3, 5.5); pl('#ffe0b8', 0.9, 3.6, 2.3, 6.3); pl('#ffe1bc', 0.9, 1.0, 2.0, 2.4); pl('#ffe0b0', 0.9, 3.4, 2.1, 2.4); pl('#fff2e2', 1.7, 5.4, 2.3, 6.35); pl('#fff2e2', 0.9, 6.1, 2.0, 6.0); pl('#ffe8c8', 0.6, 1.0, 2.2, 8.4, 0, 'stair');
+  { const hm = new THREE.HemisphereLight('#ffffff', '#cdbfa8', 0.38); scene.add(hm); regL('hemi', hm); }
   const sun = new THREE.DirectionalLight('#ffc98f', 3.6);
   sun.position.set(2.4, 3.0, -4.4); sun.target.position.set(2.5, 0, 3.4); scene.add(sun, sun.target);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
   Object.assign(sun.shadow.camera, { left: -4.5, right: 4.5, top: 4.5, bottom: -4.5, near: 0.5, far: 14 }); sun.shadow.radius = 3;
   const SUND = new THREE.Vector3().subVectors(sun.target.position, sun.position).normalize();
-  rectLight('#dbe8ff', 2.2, 0.9, 1.15, [1.45, 1.5, 0.08], [1.45, 0.9, 2.5]); rectLight('#dbe8ff', 2.2, 0.85, 1.15, [3.48, 1.5, 0.08], [3.48, 0.9, 2.5]);
+  regL('win', rectLight('#dbe8ff', 2.2, 0.9, 1.15, [1.45, 1.5, 0.08], [1.45, 0.9, 2.5])); regL('win', rectLight('#dbe8ff', 2.2, 0.85, 1.15, [3.48, 1.5, 0.08], [3.48, 0.9, 2.5]));
 
   // ================== KAGYLÓ SZOBA ==================
   // radiátor áttört fehér burkolattal az ablak alatt, rajta apró figurák
@@ -431,9 +433,9 @@ export function buildUp(C) {
     quad([0.25, -3.1, 10.0], [0.25, -3.1, 7.4], [0.25, 0, 10.0], shaft); quad([1.25, -3.1, 10.0], [1.25, -3.1, 7.4], [1.25, 0, 10.0], shaft);
     quad([0.25, -3.1, 10.0], [1.25, -3.1, 10.0], [0.25, 0, 10.0], shaft); quad([0.25, -3.1, 7.4], [1.25, -3.1, 7.4], [0.25, 0, 7.4], shaft);
     quad([0.25, -3.1, 7.4], [1.25, -3.1, 7.4], [0.25, -3.1, 10.0], std({ color: '#b8a98c', roughness: 0.9 }));
-    pl('#ffd29a', 3.2, 0.75, -1.2, 8.7, 6);
+    pl('#ffd29a', 3.2, 0.75, -1.2, 8.7, 6, 'stair');
     const ch = new THREE.Group(); ch.position.set(0.75, 2.7, 8.7); ch.add(mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.0, 5), M.black, [0, 0.5, 0])); ch.add(mesh(new THREE.SphereGeometry(0.035, 10, 8), M.black, [0, 0, 0]));
-    for (let i = 0; i < 8; i++) { const a = i * 0.785, e = 0.28 + (i % 2) * 0.1, ar = mesh(new THREE.CylinderGeometry(0.004, 0.004, e, 5), M.black, [Math.cos(a) * e / 2, (i % 3 - 1) * 0.07, Math.sin(a) * e / 2]); ar.rotation.z = Math.PI / 2; ar.rotation.y = -a; ch.add(ar); const b = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), M.bulb); b.position.set(Math.cos(a) * e, (i % 3 - 1) * 0.07, Math.sin(a) * e); ch.add(b); }
+    for (let i = 0; i < 8; i++) { const a = i * 0.785, e = 0.28 + (i % 2) * 0.1, ar = mesh(new THREE.CylinderGeometry(0.004, 0.004, e, 5), M.black, [Math.cos(a) * e / 2, (i % 3 - 1) * 0.07, Math.sin(a) * e / 2]); ar.rotation.z = Math.PI / 2; ar.rotation.y = -a; ch.add(ar); const b = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), M.bulbS); b.position.set(Math.cos(a) * e, (i % 3 - 1) * 0.07, Math.sin(a) * e); ch.add(b); }
     room.add(ch); }
   for (const [py, pz, c] of [[1.6, 8.0, '#c74b6a'], [1.5, 8.8, '#4a7ab0'], [1.65, 9.4, '#e0b04a']]) add(mesh(new THREE.BoxGeometry(0.03, 0.4, 0.3), std({ color: c, roughness: 0.7 }), [2.22, py, pz]));
   obst.push([0.0, 7.2, 0.3, 10.5], [0.2, 7.3, 1.3, 10.5]);
