@@ -83,6 +83,8 @@ OPENINGS = {"5": "Bejárati ajtó", "7": "Konyha ablak", "8": "Kis szoba ablak",
 WINDOWS = ("7", "8", "9", "10")
 THERMO_STALE = timedelta(hours=6)
 CONTACT_STALE = timedelta(hours=24)
+HYST_C = 0.3                       # hiszterézis: a már szóló hőfok-riasztás csak 0,3 fokkal a határ túloldalán szűnik meg
+STALE_CLOSE = timedelta(hours=12)  # ha egy aktív riasztás eszköze ennyi ideje nem ad adatot, csendben lezárjuk
 DEAD_BATTERY = 10
 STOVE_ON_W, AC_ON_W = 300, 100
 TEMP_CODES = ("va_temperature", "temp_current", "temperature")
@@ -313,11 +315,25 @@ def context_lines(snap: dict, now: datetime) -> list[str]:
 
 # ----------------------------------------------------------------------------- szabályok
 
-def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
+def _last_seen(snap: dict, pink: str) -> datetime | None:
+    d = snap.get(pink)
+    return last_report(d) if d else None
+
+
+def evaluate(cfg: dict, snap: dict, now: datetime, state: dict | None = None,
+             stale: dict | None = None) -> tuple[dict, set]:
     """Visszaad: (feltételek kulcsonként, ismeretlen kulcsok). Egy feltétel:
     {on, short, title, text(perc), rtext, minutes}. Ismeretlen: a szabály be van
-    kapcsolva, de nincs friss adat; ilyenkor az állapota változatlan marad."""
+    kapcsolva, de nincs friss adat; ilyenkor az állapota változatlan marad.
+    state: az előző kör (hiszterézis a hőfoknál); stale: ide kerül, mikor jött utoljára adat
+    az ismeretlen kulcsok eszközéről (a step ebből zárja le a régóta adat nélküli riasztást)."""
     conds, unknown = {}, set()
+    state = state or {}
+    stale = stale if stale is not None else {}
+
+    def was_on(key):
+        r = state.get(key) or {}
+        return bool(r.get("active") or r.get("since"))
     mins = cfg["minDuration"]["minutes"]
     for pink, name in THERMO.items():
         t = cfg["temps"][pink]
@@ -328,9 +344,12 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
             key = f"temp_{kind}:{pink}"
             if v is None:
                 unknown.add(key)
+                stale[key] = _last_seen(snap, pink)
                 continue
             thr = t[kind]
             on = v > thr if kind == "hi" else v < thr
+            if not on and was_on(key):                 # a határon ne villogjon: csak a sávon túl szűnik meg
+                on = v > thr - HYST_C if kind == "hi" else v < thr + HYST_C
             short = f"{name} {fmt_num(v, 1)} °C"
             limit = f"(határ {fmt_thr(thr)} °C)" if kind == "hi" else f"(alsó határ {fmt_thr(thr)} °C)"
             conds[key] = {
@@ -350,6 +369,7 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
             o = contact_open(snap, pink, now, skip)
             if hs is None or (o is None and hs[0]):
                 unknown.add(key)
+                stale[key] = _last_seen(snap, pink)
                 continue
             descs, stove, _ac = hs
             on = bool(o) and bool(descs)
@@ -377,6 +397,7 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
         kitchen_open = bool(kitchen_out) and bool(contact_open(snap, "7", now, skip))
         if w9 is None or (not opened and any(o is None for o in states.values()) and w9 > cfg["acMaxOpen"]["watts"]):
             unknown.add(key)
+            stale[key] = _last_seen(snap, "X9")
         else:
             limit = cfg["acMaxOpen"]["watts"]
             on = w9 > limit and bool(opened)
@@ -393,7 +414,8 @@ def evaluate(cfg: dict, snap: dict, now: datetime) -> tuple[dict, set]:
     return conds, unknown
 
 
-def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime) -> tuple[dict, list]:
+def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime,
+         stale: dict | None = None) -> tuple[dict, list]:
     """Az állapotgép egy köre. state: rule_key -> alert_state sor. Visszaad: (módosított sorok
     kulcsonként, események). Esemény: {key, kind ('fired'|'reminder'|'resolved'), title, text,
     short, send (bool), reason}. A last_sent-et csak a sikeres küldés után állítja a hívó."""
@@ -435,6 +457,19 @@ def step(cfg: dict, conds: dict, unknown: set, state: dict, now: datetime) -> tu
             row.update(active=False, since=None, last_text=c["rtext"])
         if row != old:
             changed[key] = row
+    for key in unknown:                                    # régóta adat nélkül maradt aktív riasztás: csendben lezárjuk
+        old = state.get(key)
+        if not old or not (old.get("active") or old.get("since")) or stale is None:
+            continue
+        seen = stale.get(key)
+        if seen is not None and now - seen < STALE_CLOSE:
+            continue
+        row = dict(old)
+        row.update(active=False, since=None, last_text=f"{TAG}: lezárva, az eszköz régóta nem ad adatot.")
+        changed[key] = row
+        if old.get("active"):
+            events.append({"key": key, "kind": "resolved", "title": f"{TAG}: lezárva", "short": key,
+                           "text": row["last_text"], "send": False, "reason": "nincs friss adat"})
     for key, old in state.items():
         if key in conds or key in unknown:
             continue
@@ -592,8 +627,9 @@ def run_alerts(sb: SupabaseRest, now: datetime | None = None, environ=None, send
         res["note"], res["error"] = f"Riasztások: HIBA ({e}).", True
         return res
     snap = snapshot(devs, latest)
-    conds, unknown = evaluate(cfg, snap, now)
-    changed, events = step(cfg, conds, unknown, state, now)
+    stale: dict = {}
+    conds, unknown = evaluate(cfg, snap, now, state, stale)
+    changed, events = step(cfg, conds, unknown, state, now, stale)
     channels = channels_ready(cfg, environ)
     logs = []
 
@@ -611,7 +647,17 @@ def run_alerts(sb: SupabaseRest, now: datetime | None = None, environ=None, send
                 row = changed.get(e["key"]) or dict(state.get(e["key"]) or {"rule_key": e["key"]})
                 row["last_sent"] = now.isoformat()
                 changed[e["key"]] = row
+    quiet_fail = set()
+    if to_send and channels and label == "hiba":           # minden csatorna hibás: a napló ne teljen meg 10 percenként
+        try:
+            recent = sb.select("alert_log", "rule_key", channels="eq.hiba",
+                               ts=f"gte.{(now - timedelta(minutes=cfg['cooldownMin'])).isoformat()}")
+            quiet_fail = {r.get("rule_key") for r in recent or []}
+        except SupabaseError:
+            quiet_fail = set()
     for e in events:
+        if e["send"] and label == "hiba" and e["key"] in quiet_fail:
+            continue
         ch = label if e["send"] else "visszatartva: " + e["reason"]
         logs.append({"rule_key": e["key"], "kind": "resolved" if e["kind"] == "resolved" else "fired",
                      "text": e["text"][:1000], "channels": ch[:200], "ts": now.isoformat()})

@@ -291,6 +291,37 @@ class TestRules(Base):
         self.run_at(T0 + timedelta(minutes=20), **o)
         self.assertEqual(self.run_at(T0 + timedelta(minutes=30), **o)["new"], [])
 
+    def test_hysteresis_no_flapping_at_threshold(self):
+        hot = {"3": {"va_temperature": 392}}
+        self.run_at(T0, **hot)
+        self.assertTrue(self.run_at(T0 + timedelta(minutes=10), **hot)["new"])
+        r = self.run_at(T0 + timedelta(minutes=20), **{"3": {"va_temperature": 379}})      # 0,1 fokkal a határ alatt
+        self.assertEqual(r["new"], [])
+        self.assertTrue(self.sb.db["alert_state"]["temp_hi:3"]["active"])
+        r = self.run_at(T0 + timedelta(minutes=30), **{"3": {"va_temperature": 376}})      # a sávon túl: megszűnik
+        self.assertFalse(self.sb.db["alert_state"]["temp_hi:3"]["active"])
+
+    def test_active_alert_without_data_closes_after_12h(self):
+        hot = {"3": {"va_temperature": 392}}
+        self.run_at(T0, **hot)
+        self.run_at(T0 + timedelta(minutes=10), **hot)
+        gone = {"3": {"va_temperature": 392, "age_min": 7 * 60}}
+        self.run_at(T0 + timedelta(hours=7), **gone)
+        self.assertTrue(self.sb.db["alert_state"]["temp_hi:3"]["active"])                  # még csak ismeretlen
+        gone = {"3": {"va_temperature": 392, "age_min": 13 * 60}}
+        r = self.run_at(T0 + timedelta(hours=13), **gone)
+        self.assertFalse(self.sb.db["alert_state"]["temp_hi:3"]["active"])
+        self.assertEqual(r["new"], [])                                                    # csendben
+        self.assertEqual(self.log()[-1]["channels"], "visszatartva: nincs friss adat")
+
+    def test_dead_channels_do_not_flood_the_log(self):
+        self.failing = {"push"}
+        hot = {"3": {"va_temperature": 392}}
+        self.run_at(T0, **hot)
+        for m in (10, 20, 30, 40):
+            self.run_at(T0 + timedelta(minutes=m), **hot)
+        self.assertEqual(len([x for x in self.log() if x["channels"] == "hiba"]), 1)
+
     def test_meta_scale(self):
         self.sb.db["devices"]["3"]["meta"] = {"va_temperature": {"scale": 2}}
         o = {"3": {"va_temperature": 3920}}
