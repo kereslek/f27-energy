@@ -295,7 +295,7 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
 
     # Kint, hőfokhíd, kályha-hatékonyság, holnapi várható
     wl = []
-    wx = safe(lambda: sb.select("weather_daily", "day,t_avg,hdd",
+    wx = safe(lambda: sb.select("weather_daily", "day,t_avg,hdd,hours",
                                 day=f"gte.{(today - timedelta(days=7)).isoformat()}", order="day.asc"), None)
     effs = []
     if wx:
@@ -303,12 +303,12 @@ def build_stats(sb, now: datetime, safe, archive=None) -> tuple[list[str], dict]
         w_t, w_y = wd.get(today.isoformat()), wd.get((today - timedelta(days=1)).isoformat())
         if w_t and w_t.get("t_avg") is not None:
             wl.append(f"kint ma   {_f(float(w_t['t_avg']))} °C  (tegnap {_f(float(w_y['t_avg'])) if w_y and w_y.get('t_avg') is not None else '--'})")
-            wl.append(f"hőfokhíd  {_f(float(w_t.get('hdd') or 0))} °C-nap")
+            wl.append(f"hőfokhíd  {_f(float(w_t.get('hdd') or 0))} °C-nap" + ("" if day_complete(w_t) else " (eddig)"))
         for k in range(1, 8):
             d = today - timedelta(days=k)
             r = wd.get(d.isoformat())
             v = _sum_kwh(hourly.get("X5", {}), _day_start(d), _day_start(d) + timedelta(days=1))
-            if r and v is not None and float(r.get("hdd") or 0) >= 1:
+            if r and v is not None and day_complete(r) and float(r.get("hdd") or 0) >= 1:
                 effs.append(v / float(r["hdd"]))
         if effs:
             wl.append(f"kályha    {_f(sum(effs) / len(effs), 2)} kWh/fok ({len(effs)} nap)")
@@ -418,6 +418,15 @@ def meter_rate(readings: list[dict], key: str, d0: date, d1: date):
                     best = ((vb - va) / (b - a).days, a, b)
                 break
     return best
+
+
+def day_complete(r: dict | None) -> bool:
+    """A weather_daily sor teljes napot fed-e? A mai nap csak a már eltelt órákból áll, ezért a
+    t_avg és a hőfokhíd félnapos értéke nem hasonlítható össze teljes napokkal. Az `hours` mező
+    nélküli sor (régi nézet, teszt) teljesnek számít; az óraátállításos napok 23 vagy 25 órásak."""
+    if not r or r.get("hours") is None:
+        return True
+    return int(r["hours"]) >= 23
 
 
 def yoy_lines(hourly: dict, today: date, archive, wnow: dict, meters: list[dict] | None = None) -> list[str] | None:

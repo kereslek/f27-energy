@@ -122,6 +122,23 @@ class TestDigest(unittest.TestCase):
         self.boom = None
         self.assertEqual(len(self.run_at(AT(20, 10))["new"]), 1)     # a következő kör pótolja
 
+    def test_log_failure_never_causes_resend(self):
+        # a jelölő a küldés ELŐTT íródik: ha a napló hibázik, nem megy levél (nincs kettős küldés)
+        from f27.supa import SupabaseError
+
+        class BadLog(SupabaseRest):
+            def insert(self, table, rows):
+                raise SupabaseError(500, "XX000")
+
+        self.sb.db["device_status"] = devices(AT(20, 0))
+        r = DG.run_digest(BadLog(self.sb.url, self.sb.secret), now=AT(20, 0), environ=ENV, sender=self.sender)
+        self.assertEqual(self.mails, [])
+        self.assertTrue(r["error"])
+        # sikeres küldés után a jelölő ott marad, a következő kör nem küld
+        self.assertEqual(len(self.run_at(AT(20, 0))["new"]), 1)
+        self.assertEqual([x["rule_key"] for x in self.sb.db["alert_log"]], ["digest:2026-11-08"])
+        self.assertEqual(self.run_at(AT(20, 10))["new"], [])
+
     def test_content_sections(self):
         db = self.sb.db
         db["alert_log"] += [

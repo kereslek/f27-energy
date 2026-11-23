@@ -377,17 +377,23 @@ def run_digest(sb: SupabaseRest, now: datetime | None = None, environ=None, send
     except SupabaseError as e:
         res["note"], res["error"] = f"Napi összefoglaló: hiba ({e}).", True
         return res
-    try:
-        (sender or send_email)(msg, environ)
-    except Exception as e:              # SMTP, hálózat: a szöveg címet vagy hosztot is tartalmazhatna
-        res["note"], res["error"] = f"Napi összefoglaló: hiba ({type(e).__name__}).", True
-        return res
+    # A "elküldve" jelölőt KÜLDÉS ELŐTT írjuk: ha a napló a küldés után hibázna, a következő kör
+    # nem küldene újra (10 percenként futunk). Ha a jelölőt nem sikerül felírni, nem küldünk.
+    # Ha a küldés hibázik, a jelölőt töröljük, hogy a következő kör pótolhassa.
     try:
         sb.insert("alert_log", [{"rule_key": key, "kind": "digest", "text": msg["subject"], "channels": "email",
                                  "ts": now.isoformat()}])
     except SupabaseError as e:
-        res["note"], res["error"] = f"Napi összefoglaló: elküldve, de a naplózás hibás ({e}).", True
-        res["sent"] = True
+        res["note"], res["error"] = f"Napi összefoglaló: a napló hibás, nem küldtem el ({e}).", True
+        return res
+    try:
+        (sender or send_email)(msg, environ)
+    except Exception as e:              # SMTP, hálózat: a szöveg címet vagy hosztot is tartalmazhatna
+        res["note"], res["error"] = f"Napi összefoglaló: hiba ({type(e).__name__}).", True
+        try:
+            sb.delete("alert_log", rule_key=f"eq.{key}", kind="eq.digest")
+        except SupabaseError:
+            res["note"] += " A jelölő törlése nem sikerült, ma nem próbálkozom újra."
         return res
     res["sent"] = True
     res["note"] = "Napi összefoglaló: elküldve."

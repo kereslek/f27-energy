@@ -364,6 +364,11 @@ def supa_server(secret="sb_secret_TEST", missing=(), no_tables=(), history=False
                         del db["tuya_log"][k]
                 self.send_response(204)
                 return self.end_headers()
+            if table == "alert_log":
+                assert q.get("rule_key", "").startswith("eq.")
+                db["alert_log"] = [r for r in db["alert_log"] if r["rule_key"] != q["rule_key"][3:]]
+                self.send_response(204)
+                return self.end_headers()
             if table == "device_status":
                 assert q.get("ts", "").startswith("lt.") and q.get("status->>_src") == "is.null"
                 db["device_status"] = [r for r in db["device_status"]
@@ -647,6 +652,14 @@ class TestCollect(unittest.TestCase):
         self.assertEqual(s["anomalies"], 1)
         self.assertEqual(e[("2026-11-09", "X5")]["kwh"], 0.5)
         self.assertEqual(s["energy"], 4)
+
+    def test_discover_empty_spec_keeps_old_meta(self):
+        res = D.match_devices(self.f, CFG["devices"], CFG["role_categories"])
+        before = {p: r.get("meta") for p, r in self.sb.db["devices"].items()}
+        self.assertTrue(any(before.values()))
+        D.push_devices(SupabaseRest(self.sb.url, self.sb.secret), CFG["devices"], res, {})   # a Tuya nem adott specifikációt
+        after = {p: r.get("meta") for p, r in self.sb.db["devices"].items()}
+        self.assertEqual(after, before)
 
     def test_missing_last_counter_skips_energy(self):
         sb2 = supa_server(missing=("last_counter",))

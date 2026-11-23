@@ -446,7 +446,12 @@
   // Energiaőr-tipp azonosító: eszköz + a rövid szöveg számok nélkül (a "35 perce" -> "# perce"),
   // így ugyanaz a tipp ugyanaz marad, ha közben változnak benne a számok.
   function tipKey(t) {
-    return ((t.dev || '-') + '|' + String(t.short || '').replace(/\d+([.,]\d+)?/g, '#').replace(/\s+/g, ' ').trim()).slice(0, 190);
+    var s = String(t.short || '')
+      .replace(/\d+(?:[ \u00a0]\d{3})*(?:[.,]\d+)?/g, '#')                       // számok, ezres tagolással (1 500 -> #)
+      .replace(/#(?:\s*(?:órája|perce|napja|perc|óra|nap|ó|p)(?![\wáéíóöőúüű]))+/g, '#')   // "5 perce" / "2 órája" / "3 napja" ugyanaz
+      .replace(/#(?:\s*[-–]\s*#)+/g, '#')                                          // tartomány: "20-50" -> #
+      .replace(/\s+/g, ' ').trim();
+    return ((t.dev || '-') + '|' + s).slice(0, 190);
   }
   function dayAdd(key, n) { var d = new Date(key + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
   function dayDiff(a, b) { return Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000); }
@@ -779,6 +784,9 @@
     // a kályhánál a mérés dönt (5-ös kör), a kapcsoló csak mérés híján (stoveNowOf)
     var w5 = by.k5 ? (by.k5.swOff ? 0 : by.k5.watt != null ? by.k5.watt : null) : null, sn = stoveNowOf(stage, w5);
     var ac = by.k9 && by.k9.watt != null && by.k9.watt > 100;
+    // a Wi-Fi hőmérők ritkán jelentenek: 3 óránál régebbi érték nem számít aktuálisnak a tippekben
+    var TEMP_FRESH_MS = 3 * 3600000;
+    function freshTemp(c) { return c && c.temp != null && c.online !== false && c.age != null && c.age <= TEMP_FRESH_MS ? c.temp : null; }
     var season = heatingSeason(now);
     var heating = sn.drawing || ac || season;
     var heatWhy = sn.drawing ? 'a kályha fűt' : ac ? (season ? 'a klíma fűt' : 'a klíma megy (nyáron hűt)') : 'fűtési szezon van, a gáz is megy';
@@ -797,7 +805,7 @@
       add(sn.kw >= 1.5 ? 80 : 68, sn.kw >= 1.5 ? 'red' : 'orange', 'P', 'A kályha most fűt (' + kwT + '): kb. ' + ft + ' Ft óránként',
         'A cserépkályha most ' + kwT + ' teljesítményt vesz fel' + (stage > 0 ? ' (a kapcsoló ' + stage + '/3 fokozaton)' : '') + '. Keret felett 60,9 Ft/kWh, vagyis kb. ' + ft + ' Ft óránként (egy éjszaka 10 órája kb. ' + fmtNum(ft * 10, 0) + ' Ft). Ugyanez a hő gázból vagy klímából negyed-fél áron jön.');
     } else if (sn.idleOn) {
-      var t3 = by['3'] && by['3'].online !== false ? by['3'].temp : null;
+      var t3 = freshTemp(by['3']);
       add(20, 'blue', 'P', 'A kályha be van kapcsolva, de most nem fűt',
         'A kapcsoló ' + stage + '/3 fokozaton áll, de az 5-ös kör mérése szerint a kályha most nem vesz fel áramot (' + fmtW(w5) + '), így most nem is fogyaszt.' +
         (t3 != null ? ' A kályha mögötti hőmérő ' + fmtNum(t3, 1) + ' °C' + (t3 >= 30 ? ': valószínűleg feltöltött, és a beépített szabályzója lekapcsolt; ha lehűl, magától újra tölt.' : ': ha nem melegszik, nézd meg, kap-e áramot a B kör.') : ' Valószínűleg feltöltött, és a beépített szabályzója lekapcsolt; ha lehűl, magától újra tölt.'));
@@ -805,8 +813,9 @@
     // szobahőmérséklet
     ['1', '2'].forEach(function (id) {
       var c = by[id];
-      if (!c || c.temp == null || c.online === false) return;
-      var t = c.temp, room = ROOM_NAME[id];
+      var t = freshTemp(c);
+      if (t == null) return;
+      var room = ROOM_NAME[id];
       if (t > 23) {
         var pct = Math.round((t - 22) * 6);
         add(Math.min(88, 55 + Math.round((t - 23) * 8)), 'orange', id, room + ' ' + fmtNum(t, 1) + ' °C: túlfűtve', room + ' ' + fmtNum(t, 1) + ' °C. Minden 1 °C kb. 6 % fűtési energia: 22 °C-on kb. ' + pct + ' %-kal kevesebb fogyna, a komfort még bőven megvan.');
@@ -816,7 +825,8 @@
     });
     // fürdő és bojler
     var bath = by['4'];
-    if (bath && bath.temp != null && bath.online !== false && bath.temp > 24) add(40, 'orange', '4', 'A fürdő ' + fmtNum(bath.temp, 1) + ' °C: megy a fali panel?', 'A fürdő ' + fmtNum(bath.temp, 1) + ' °C. Ha nincs vendég, a magasan lévő fali fűtőpanel lekapcsolható.');
+    var bt = freshTemp(bath);
+    if (bt != null && bt > 24) add(40, 'orange', '4', 'A fürdő ' + fmtNum(bt, 1) + ' °C: megy a fali panel?', 'A fürdő ' + fmtNum(bt, 1) + ' °C. Ha nincs vendég, a magasan lévő fali fűtőpanel lekapcsolható.');
     var boiler = by.k7;
     if (boiler && boiler.watt != null && boiler.watt > 500) add(35, 'blue', 'k7', 'A bojler most fűt (' + fmtNum(boiler.watt, 0) + ' W)', 'A bojler (7-es kör) most fűt, ' + fmtNum(boiler.watt, 0) + ' W. Üres lakásban a 7-es okos kismegszakítóval távolról lekapcsolható, érkezés előtt 2-3 órával vissza.');
     // eszközhibák a panel szabályaiból
@@ -1147,26 +1157,21 @@
         var L = Object.assign({}, L0), t = L0.t.slice();
         ['1', '2', '3', '4'].forEach(function (p, i) {
           var d = live[p];
-          if (!d) return;
-          if (d.online === false) { t[i] = 'offline'; return; }
+          if (!d || d.online === false) { t[i] = 'offline'; return; }   // hiányzó sor: soha nem a szint demó értéke
           var v = liveTemp(d.status || {}, d.meta);
           if (v != null) t[i] = fmtTemp(v);
         });
         L.t = t;
         ['k5', 'k7', 'k8', 'k9'].forEach(function (k) {
           var d = live[dbPink(k)];
-          if (!d) return;
-          var w = d.online === false ? null : livePower(d.status || {}, d.meta);
+          var w = !d || d.online === false ? null : livePower(d.status || {}, d.meta);
           L[k] = w == null ? 'offline' : Math.round(w) + ' W';
         });
-        if (live.P) {
-          var n = live.P.online === false ? null : liveStage(live.P.status || {});
-          L.stage = n == null ? 'offline' : n + '/3 kW';
-        }
-        if (live['8']) {
-          var o = liveOpen(live['8'].status || {});
-          if (o != null) L.open8 = o;
-        }
+        var n = !live.P || live.P.online === false ? null : liveStage(live.P.status || {});
+        L.stage = n == null ? 'offline' : n + '/3 kW';
+        // a 8-as nyitásérzékelő: hiányzó vagy offline sor, ismeretlen állás esetén zárt (nem a szint demó NYITVA-ja)
+        var o = !live['8'] || live['8'].online === false ? null : liveOpen(live['8'].status || {});
+        L.open8 = o === true;
         return L;
       });
     }
@@ -2145,7 +2150,7 @@
           cls: 'ov-bat' + (p < 10 ? ' red' : p < 20 ? ' orange' : ''), tip: 'Elem: ' + (c.batt || p + ' %') };
       };
       var doorRows = OV_DOORS.map(function (d, i) {
-        var c = by[d.id], x = src[d.id], open = c ? c.open : null, off = !c || !c.has || c.online === false;
+        var c = by[d.id], x = src[d.id], off = !c || !c.has || c.online === false, open = c && !off ? c.open : null;   // offline érzékelő utolsó NYITVA-ja ismeretlen, nem számít nyitottnak
         var fb = x && x.status && typeof x.status._upd === 'number' ? x.status._upd * 1000 : x && x.ts ? Date.parse(x.ts) : null;
         var mv = off ? null : lastMove(rows, d.id, open, fb);
         // pontosan: mióta (óra, perc) és mikor (nap, időpont) változott; ha az előzményben nincs váltás,

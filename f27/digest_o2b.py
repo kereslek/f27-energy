@@ -20,7 +20,7 @@ import math
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
-from .report_stats import W, _f, _ft, _pct, box, hdd, kv, meter_rate, notes, stripe
+from .report_stats import W, _f, _ft, _pct, box, day_complete, hdd, kv, meter_rate, notes, stripe
 from .site import SITE
 from . import boiler
 
@@ -162,7 +162,7 @@ class Data:
         self.logs = s(lambda: sb.select("alert_log", "ts,rule_key,kind,text,channels", ts=f"gte.{self.t0.isoformat()}", order="ts.asc", limit="200"), None)
         self.alerts = [r for r in s(lambda: sb.select("alert_state", "rule_key,active,last_text"), []) or [] if r.get("active")]
         self.bat = s(lambda: sb.select("battery_status", "*"), []) or []
-        self.wx = {str(r["day"])[:10]: r for r in s(lambda: sb.select("weather_daily", "day,t_avg,hdd", day=f"gte.{(self.today - timedelta(days=8)).isoformat()}"), []) or []}
+        self.wx = {str(r["day"])[:10]: r for r in s(lambda: sb.select("weather_daily", "day,t_avg,hdd,hours", day=f"gte.{(self.today - timedelta(days=8)).isoformat()}"), []) or []}
         self.fc = s(lambda: sb.select("weather_hourly", "ts,temp", ts=f"gte.{_day0(self.today + timedelta(days=1)).isoformat()}",
                                       order="ts.asc", limit="48"), []) or []
         self.rules = s(lambda: sb.select("control_rules", "pink,action,kind,minute,days,enabled"), []) or []
@@ -265,7 +265,8 @@ def gas_model(D: Data, archive=None) -> dict:
 
 def gas_today(D: Data, gm: dict) -> float | None:
     w = D.wx.get(D.today.isoformat())
-    if gm.get("k") and w and w.get("hdd") is not None:
+    # a mai nap hőfokhídja csak a már eltelt órákból áll: félnapos értékkel nem becslünk
+    if gm.get("k") and w and w.get("hdd") is not None and day_complete(w):
         return GAS_BASE_M3 + gm["k"] * float(w["hdd"])
     return gm.get("rate")
 
@@ -599,7 +600,7 @@ def build(sb, cfg: dict, now: datetime, safe, alert_items, archive=None) -> dict
         w = D.wx.get(D.today.isoformat())
         if w and w.get("t_avg") is not None:
             kl.append(f"kint ma    {_f(float(w['t_avg']))} °C átlag" + (f", erkély most {_f(t7)} °C" if t7 is not None else ""))
-            kl.append(f"hőfokhíd   {_f(float(w.get('hdd') or 0))} °C-nap")
+            kl.append(f"hőfokhíd   {_f(float(w.get('hdd') or 0))} °C-nap" + ("" if day_complete(w) else " (eddig)"))
             if bent is not None:
                 kl.append(f"bent-kint  {_f(bent - float(w['t_avg']))} °C különbség")
         if gm.get("k"):

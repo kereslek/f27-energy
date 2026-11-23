@@ -207,9 +207,16 @@ def push_devices(sb: SupabaseRest, config: list[dict], res: MatchResult, specs: 
         rows.append({"pink": c["pink"], "role": c["role"], "room": c.get("room"), "label": c["label"],
                      "tuya_device_id": d["id"], "updated_at": now,
                      "meta": scales_from_spec(specs.get(d["id"], {}))})
+    # Üres meta (a Tuya specifikáció lekérése hibázott vagy üres) NEM írja felül a korábbi jó skálákat:
+    # az ilyen sorok meta nélkül, külön kérésben mennek (így a meglévő meta oszlop érintetlen marad).
+    with_meta = [r for r in rows if r["meta"]]
+    no_meta = [{k: v for k, v in r.items() if k != "meta"} for r in rows if not r["meta"]]
+    kept = len(no_meta)
     try:
-        sb.upsert("devices", rows, on_conflict="pink")
-        return f"Supabase eszközlista: {len(rows)} eszköz frissítve (skálákkal)."
+        sb.upsert("devices", with_meta, on_conflict="pink")
+        sb.upsert("devices", no_meta, on_conflict="pink")
+        return (f"Supabase eszközlista: {len(rows)} eszköz frissítve (skálákkal)."
+                + (f" {kept} eszköznél nem jött specifikáció, a korábbi skálák megmaradtak." if kept else ""))
     except SupabaseError as e:
         if e.code not in ("PGRST204", "42703"):
             raise
