@@ -20,8 +20,9 @@ kulcs fér hozzá, a böngésző és a bemutató link soha. Jelszót nem tárolu
 Állapot (az adatgyűjtő minden körében): `devices` és `device_status` sorok R1, R2 jellel:
     status = {state, cleaning, battery, charging, area_m2, minutes, error, src}
 Parancs: start | pause | dock | find (egyszerre egy, utána legalább 3 mp szünet, CLAUDE.md 9. fejezet).
-A dashboard a robot_cmd sorba ír (014_robot_cmd.sql), az adatgyűjtő a körök között 10 mp-enként
-felveszi (`watch`), végrehajtja, és utána friss állapotot ír.
+A dashboard a robot_cmd sorba ír (014_robot_cmd.sql), az adatgyűjtő minden (legfeljebb 30 percenkénti) futása
+elején felveszi (`queue`), végrehajtja, és utána friss állapotot ír. A `watch` ciklust a workflow már nem futtatja
+(CLAUDE.md 20. fejezet: a GitHub Actions nem lehet folyamatos szolgáltatás).
 
 A log publikus: csak darabszám és OK / HIBA kerül bele, név, azonosító, token, e-mail soha.
 """
@@ -54,8 +55,8 @@ DREAME_PROPS = {"state": (2, 1), "error": (2, 2), "battery": (3, 1), "charging":
 DREAME_PARTS = {"main_brush": (9, 2), "side_brush": (10, 2), "filter": (11, 1)}
 DREAME_ACTIONS = {"start": (2, 1), "pause": (2, 2), "dock": (3, 1), "find": (7, 1)}   # find: "itt vagyok" hang
 COMMANDS = ("start", "pause", "dock", "find", "rooms")      # rooms: szobánkénti takarítás (015_robot_rooms.sql)
-TIMER_TTL_S = 15 * 60                                 # az időzített indítás ennyit vár a gyűjtőre (017_robot_timer.sql)
-CMD_TTL_S = 180                                       # a 3 percnél régebbi függő parancs lejár (014_robot_cmd.sql)
+TIMER_TTL_S = 45 * 60                                 # az időzített indítás ennyit vár a gyűjtőre (019: a gyűjtő 30 percenként fut)
+CMD_TTL_S = 45 * 60                                   # a 45 percnél régebbi függő parancs lejár (019_robot_cmd_slow.sql)
 # a Dreame állapotkódjai (siid 2, piid 1) -> egységes állapot
 DREAME_STATE = {1: "cleaning", 2: "idle", 3: "paused", 4: "error", 5: "returning", 6: "charging",
                 7: "mopping", 8: "drying", 9: "washing", 10: "returning", 11: "building_map", 12: "cleaning",
@@ -503,7 +504,7 @@ def run_queue(sb: SupabaseRest) -> int:
         timer = r.get("kind") == "timer"
         if _age_s(r.get("due_at") or r["created_at"]) > (TIMER_TTL_S if timer else CMD_TTL_S):
             sb.update("robot_cmd", {"status": "expired", "done_at": now_iso(),
-                                    "note": "az időzítő lejárt, a gyűjtő nem futott" if timer else "nem vette fel a gyűjtő 3 percen belül"},
+                                    "note": "az időzítő lejárt, a gyűjtő nem futott" if timer else "nem vette fel a gyűjtő 45 percen belül"},
                       id=rid, status="eq.queued")
             continue
         if not sb.update("robot_cmd", {"status": "running"}, id=rid, status="eq.queued"):
@@ -629,14 +630,11 @@ def main(argv: list[str]) -> int:
             if pink not in ROBOTS or cmd not in COMMANDS:
                 print("HIBA: ismeretlen robot vagy parancs"); return 2
             sb.insert("robot_cmd", [{"pink": pink, "cmd": cmd}])
-            print(f"Teszt: {pink} {cmd} a sorban, várom az adatgyűjtőt (legfeljebb 3 perc)...")
-            t0, st = time.time(), "queued"
-            while time.time() - t0 < 180:
-                time.sleep(5)
-                rows = sb.select("robot_cmd", "status,note,created_at", pink=f"eq.{pink}", order="id.desc", limit="1")
-                st = rows[0]["status"] if rows else "?"
-                if st not in ("queued", "running"):
-                    break
+            print(f"Teszt: {pink} {cmd} a sorban, a teszt maga hajtja végre (a gyűjtő már nem fut folyamatosan)...")
+            t0 = time.time()
+            run_queue(sb)
+            rows = sb.select("robot_cmd", "status,note,created_at", pink=f"eq.{pink}", order="id.desc", limit="1")
+            st = rows[0]["status"] if rows else "?"
             secs = int(time.time() - t0)
             note = (rows[0].get("note") or "").split(":")[0] if rows else ""
             print(f"Teszt: {pink} {cmd} -> {st} ({secs} mp){' · ' + note if note else ''}")

@@ -222,7 +222,7 @@ class RobotQueueTest(unittest.TestCase):
         self.assertEqual([c["status"] for c in sb.cmds], ["done", "done"])
 
     def test_old_command_expires_without_running(self):
-        sb = QueueSb([{"id": 1, "pink": "R2", "cmd": "start", "status": "queued", "created_at": self.now(400)}])
+        sb = QueueSb([{"id": 1, "pink": "R2", "cmd": "start", "status": "queued", "created_at": self.now(46 * 60)}])
         with mock.patch.object(robots, "command", side_effect=AssertionError("nem futhat")):
             self.assertEqual(robots.run_queue(sb), 0)
         self.assertEqual(sb.cmds[0]["status"], "expired")

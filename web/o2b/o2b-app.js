@@ -2246,7 +2246,7 @@
     if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('vtile')) { e.preventDefault(); e.target.click(); }
     if (e.key === 'Escape' && st.vp.ask) { st.vp.ask = null; overview(); list(); }
   });
-  // ---- robotporszívók vezérlése (014_robot_cmd.sql): a parancs a sorba kerül, az adatgyűjtő 10 mp-enként
+  // ---- robotporszívók vezérlése (014_robot_cmd.sql): a parancs a sorba kerül, az adatgyűjtő (legfeljebb 30 percenként)
   // felveszi és továbbítja a gyártói felhőnek (f27/robots.py watch). Csak a tulaj és a családtag küldhet.
   var RCMD = { start: 'Takarítás indul', pause: 'Szünet', dock: 'Haza a dokkba', find: 'Hol vagy? (hangjelzés)', rooms: 'Szobatakarítás' };
   // szobák a robot saját térképéről (015_robot_rooms.sql): [[szegmens, név], ...]; demóban kitalált lista
@@ -2308,7 +2308,7 @@
     }).join('') + '</div>';
   }
   // késleltetett és időzített indítás (017_robot_timer.sql; a tulaj kérése 2026.11.21): egész lakás vagy a kijelölt
-  // szobák, 1 perc és 7 nap között, robotonként legfeljebb 3; az adatgyűjtő 10 mp-en belül indítja
+  // szobák, 1 perc és 7 nap között, robotonként legfeljebb 3; az adatgyűjtő a következő körében indítja (legfeljebb kb. 30 perc csúszás)
   function tmLoad(p) {
     if (!sb || !st.user) { st.rob.tm[p] = st.rob.tm[p] || []; return; }
     if (st.rob.tmAt[p] && Date.now() - st.rob.tmAt[p] < 60000) return;
@@ -2364,7 +2364,7 @@
         (sel.length ? '<button type="button" class="btn sm" data-rob="clear" data-p="' + p + '">Kijelölés törlése</button>' : '') + '</div>');
   }
   var RST = { queued: 'elküldve, az adatgyűjtő pár másodpercen belül továbbítja…', running: 'a robot megkapta, végrehajtja…', done: 'kész',
-    error: 'nem sikerült', expired: 'lejárt (az adatgyűjtő nem vette fel 3 percen belül)' };
+    error: 'nem sikerült', expired: 'lejárt (az adatgyűjtő nem vette fel 45 percen belül)' };
   st.rob = { cmd: {}, ask: null, sel: {}, tm: {}, tmAt: {} };
   function robHas(p) { var r = st.latest[p]; return !st.user || !!(r && r.ts); }
   function robotCard(d) {
@@ -2378,7 +2378,7 @@
       (st.rob.ask === p ? '<div class="ask">Biztosan elindítod a takarítást? <button type="button" class="btn sm y" data-rob="yes" data-p="' + p + '">Igen, indulhat</button><button type="button" class="btn sm" data-rob="no" data-p="' + p + '">Mégse</button></div>' : '') +
       roomsHtml(p, pend, has) + timerHtml(p, has) + partsHtml(p) +
       (c ? '<div class="rst ' + c.status + '" role="status"><b>' + esc(RCMD[c.cmd]) + ':</b> ' + esc(RST[c.status] || c.status) + (c.note ? '<small>' + esc(c.note) + '</small>' : '') + '</div>' : '') +
-      '<div class="ctln">' + (has ? 'A parancsot az adatgyűjtő továbbítja, általában 10-20 mp alatt. Egyszerre egy parancs mehet.' : 'Ehhez a robothoz még nincs belépés (Actions: Robotok bejelentkezése).') + '</div></div>';
+      '<div class="ctln">' + (has ? 'A parancsot az adatgyűjtő a következő körében továbbítja: ez legfeljebb kb. 30 perc (a GitHub ütemezése miatt). Egyszerre egy parancs mehet; azonnal a gyártó appjából indítható.' : 'Ehhez a robothoz még nincs belépés (Actions: Robotok bejelentkezése).') + '</div></div>';
   }
   function robLocal(p, k) {
     var r = st.latest[p] = st.latest[p] || { online: true, status: {} }, s = r.status = Object.assign({}, r.status || {});

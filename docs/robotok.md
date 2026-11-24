@@ -91,3 +91,12 @@ végrehajtja, kész, hiba), utána friss robotállapotot tölt.
 
 - Kártya > Szobák: jelöld ki a szobákat, „Kijelöltek takarítása”, megerősítés. Az R1-nél (Dreame) is működik.
 - Kártya > Időzített indítás: +30 perc, +1, +2, +4 óra vagy időpont; ha előtte szobákat jelöltél ki, csak azokat takarítja.
+
+## Késés: a parancsok legfeljebb kb. 30 perc alatt érnek a robothoz (2026.11.24)
+
+A GitHub Actions nem futhat folyamatosan (CLAUDE.md 20. fejezet), ezért az adatgyűjtő 30 percenként egy rövid kört fut,
+és a dashboard robot-parancsait (indítás, szünet, haza, Hol vagy?, szobák, időzítő) a kör elején hajtja végre.
+Egy parancs tehát legfeljebb kb. 30 percet vár; a függő parancs és az időzítő 45 perc után jár le (`019_robot_cmd_slow.sql`).
+Az élő mozgás (percenkénti hely a térképen) takarítás közben szünetel. Azonnali vezérléshez a gyártó appja kell.
+Később: a parancsok a GitHubon kívül (Supabase Edge Function) futnak majd, nem visszahozott figyelőciklussal.
+A fenti, 10 mp-es és 3 perces értékek a régi, folyamatos gyűjtőre vonatkoztak.

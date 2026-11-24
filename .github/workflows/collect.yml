@@ -1,28 +1,23 @@
 name: Adatgyűjtés
 
-# 10 percenként: Tuya állapotok -> Supabase (device_status, energy_daily), az F27 és (ha be van
-# állítva) az O2B saját Supabase-projektjébe, egymás után ugyanabban a körben.
-# Óránként egyszer: időjárás (Open-Meteo) és foglaltság (Airbnb naptárexport, ha be van állítva).
-# Minden körben: riasztások kiértékelése és értesítés (ntfy push, e-mail), csak jelez, nem kapcsol.
-# Körönként szokásosan 2 Tuya API-hívás (token + eszközlista).
+# 30 percenként EGY rövid kör, utána a futás véget ér (CLAUDE.md 20. fejezet: a GitHub Actions itt csak
+# építésre, tesztre, telepítésre való; ütemezett munka legfeljebb 30 percenként, 10 percen belül, ciklus és
+# önmagát újraindító futás nélkül). Egy kör: Tuya állapotok -> Supabase (device_status, energy_daily), az F27
+# és (ha be van állítva) az O2B saját Supabase-projektjébe; óránként egyszer időjárás és foglaltság (az adatbázis
+# alapján dönt, nem futásonként); riasztások kiértékelése (csak jelez, nem kapcsol); O2B robotok: a dashboard
+# függő parancsai (legfeljebb kb. 30 perc késéssel), utána állapot.
+# A GitHub cronja kihagyhat futásokat: ezt elfogadjuk, nem pótoljuk láncolt vagy külső indítással.
 # A log publikus: csak darabszámok kerülnek bele, név, azonosító vagy érték nem.
 #
-# Ütemezés: a GitHub cron-időzítője nem megbízható (2026.11.08-án órákig egyszer sem indult el),
-# ezért egy futás kb. 1 órán át 10 percenként gyűjt, a végén pedig maga indítja a következő
-# futást (workflow_dispatch). A cron csak tartalék: ha a lánc valamiért megszakad, újraindítja.
-# Egyszerre legfeljebb egy futás megy (concurrency), a többi sorba áll.
-#
-# Szüneteltetés: Actions > Adatgyűjtés > "..." > Disable workflow (ez a láncot is megállítja).
-# Kézi indítás: Actions > Adatgyűjtés > Run workflow.
+# Szüneteltetés: Actions > Adatgyűjtés > "..." > Disable workflow. Kézi indítás: Actions > Adatgyűjtés > Run workflow.
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "7,37 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write   # a következő futás elindításához
 
 concurrency:
   group: collect
@@ -31,7 +26,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -40,7 +35,7 @@ jobs:
       - name: Robotporszívó-könyvtárak (O2B; ha nem sikerül, a gyűjtés enélkül megy)
         continue-on-error: true
         run: pip install -q python-roborock vacuum-map-parser-dreame
-      - name: Adatgyűjtés (10 percenként, kb. 1 órán át)
+      - name: Adatgyűjtés (egy kör)
         env:
           TUYA_ACCESS_ID: ${{ secrets.TUYA_ACCESS_ID }}
           TUYA_ACCESS_SECRET: ${{ secrets.TUYA_ACCESS_SECRET }}
@@ -65,36 +60,16 @@ jobs:
           O2B_SUPABASE_URL: ${{ vars.O2B_SUPABASE_URL || secrets.O2B_SUPABASE_URL }}
           O2B_SUPABASE_SECRET_KEY: ${{ secrets.O2B_SUPABASE_SECRET_KEY }}
         run: |
-          end=$(( $(date +%s) + 55 * 60 ))
-          n=0
-          while :; do
-            n=$((n + 1))
-            echo "::group::$n. kör"
-            python -m f27.collect || echo "::warning::A(z) $n. kör hibával zárult, a következő 10 perc múlva jön."
-            if [ -n "$O2B_SUPABASE_URL" ] && [ -n "$O2B_SUPABASE_SECRET_KEY" ]; then
-              echo "--- O2B ---"
-              F27_SITE_CONFIG=sites/o2b/site.json F27_STATE_FILE=/tmp/o2b-collect-state.json \
-              SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
-              AIRBNB_ICAL_URL= BOOKING_ICAL_URL= \
-                python -m f27.collect || echo "::warning::Az O2B $n. köre hibával zárult."
-              # robotporszívók (R1 Dreame lent, R2 Roborock fent): csak ha volt bejelentkezés (f27/robots.py)
-              F27_SITE_CONFIG=sites/o2b/site.json SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
-                timeout 120 python -m f27.robots status || echo "::warning::A robotok lekérése hibával zárult."
-            fi
-            echo "::endgroup::"
-            [ $(( $(date +%s) + 600 )) -lt "$end" ] || break
-            # a körök között: a dashboard robot-parancsai (014_robot_cmd.sql) 10 mp-enként; ha nem megy, sima várakozás
-            t0=$(date +%s)
-            if [ -n "$O2B_SUPABASE_URL" ] && [ -n "$O2B_SUPABASE_SECRET_KEY" ]; then
-              F27_SITE_CONFIG=sites/o2b/site.json SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
-                timeout 660 python -m f27.robots watch 600 || echo "::warning::A robot-parancsok figyelése megszakadt."
-            fi
-            rest=$(( t0 + 600 - $(date +%s) ))
-            [ "$rest" -le 0 ] || sleep "$rest"
-          done
-          echo "Körök ebben a futásban: $n"
-      - name: Következő futás indítása
-        if: ${{ !cancelled() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run collect.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}"
+          python -m f27.collect || echo "::warning::Az F27 köre hibával zárult, a következő ütemezett futás újra próbálja."
+          if [ -n "$O2B_SUPABASE_URL" ] && [ -n "$O2B_SUPABASE_SECRET_KEY" ]; then
+            echo "--- O2B ---"
+            F27_SITE_CONFIG=sites/o2b/site.json F27_STATE_FILE=/tmp/o2b-collect-state.json \
+            SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+            AIRBNB_ICAL_URL= BOOKING_ICAL_URL= \
+              python -m f27.collect || echo "::warning::Az O2B köre hibával zárult."
+            # robotporszívók (R1 Dreame lent, R2 Roborock fent): előbb a dashboard függő parancsai, utána az állapot
+            F27_SITE_CONFIG=sites/o2b/site.json SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+              timeout 120 python -m f27.robots queue || echo "::warning::A robot-parancsok végrehajtása hibával zárult."
+            F27_SITE_CONFIG=sites/o2b/site.json SUPABASE_URL="$O2B_SUPABASE_URL" SUPABASE_SECRET_KEY="$O2B_SUPABASE_SECRET_KEY" \
+              timeout 150 python -m f27.robots status || echo "::warning::A robotok lekérése hibával zárult."
+          fi

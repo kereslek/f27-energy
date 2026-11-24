@@ -5,13 +5,12 @@ name: Eszközfelderítés
 # commitolja a data/ mappába, és frissíti a Supabase public.devices táblát.
 # A log publikus, ezért a script oda csak párosítási eredményt ír.
 #
-# Havonta magától is lefut: a commit életben tartja a repót, különben a GitHub
-# 60 nap tétlenség után leállítaná az ütemezett workflow-kat (pl. az adatgyűjtőt).
+# Csak kézzel indul (2026.11.24 óta nincs havi ütemezés: ütemezett adat-commit nem lehet, CLAUDE.md 20. fejezet).
+# Ha a repóba 60 napig nem kerül commit, a GitHub leállítja az ütemezett workflow-kat; ilyenkor elég
+# az Actions fülön újra engedélyezni az Adatgyűjtést. Mesterséges "életben tartó" commit nem kell.
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 4 1 * *"   # minden hónap 1-jén 04:17 UTC
 
 permissions:
   contents: write
