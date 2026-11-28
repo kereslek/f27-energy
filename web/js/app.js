@@ -267,7 +267,7 @@
     k5: { num: '5-ös', tag: 'kályha', who: 'a cserépkályha', what: 'Cserépkályha (W)', on: 300, onT: 'fűt', offT: 'áll', idle: 'nem fűt' },
     k7: { num: '7-es', tag: 'bojler', who: 'a bojler', what: 'Bojler (Hajdu ZV120)', on: 500, onT: 'fűt', offT: 'felfűtve', idle: 'nem fűt: a víz felfűtve, a termosztátja lekapcsolt' },
     k8: { num: '8-as', tag: 'konyha', who: 'a főzőlap és a sütő', what: 'Főzőlap és sütő', on: 100, onT: 'főz', offT: 'áll', idle: 'nincs használatban' },
-    k9: { num: '9-es', tag: 'klíma', who: 'a klíma', what: 'Klíma (11)', on: 100, onT: 'fut', offT: 'áll', idle: 'áll' }
+    k9: { num: '9-es', tag: 'klíma', who: 'a klíma', what: 'Klíma (11) és a konyhai elszívó', on: 100, onT: 'fut', offT: 'áll', idle: 'áll' }
   };
   function cap1(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
   function circuitState(src, k) {
@@ -843,7 +843,7 @@
     });
     // a klíma tápja (9-es kismegszakító) lekapcsolva: télen szándékos (a tulaj döntése, 2026.11.14:
     // az alapfűtés a gázkonvektor, télen nem fűtünk klímával), csak nyáron szólunk róla
-    if (by.k9 && by.k9.swOff && !season) add(15, 'blue', 'k9', 'A klíma kismegszakítója le van kapcsolva', 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma most nem kap áramot (hűteni sem tud). Távolról a Smart Life appban kapcsolható vissza.');
+    if (by.k9 && by.k9.swOff && !season) add(15, 'blue', 'k9', 'A klíma kismegszakítója le van kapcsolva', 'A 9-es (klíma) kismegszakító le van kapcsolva: a klíma most nem kap áramot (hűteni sem tud), és ugyanezen a körön van a konyhai elszívó ventilátor is, így az sem megy. Távolról a Smart Life appban kapcsolható vissza.');
     if (by.k7 && by.k7.swOff) add(26, 'blue', 'k7', 'A bojler kismegszakítója le van kapcsolva', 'A 7-es (bojler) kismegszakító le van kapcsolva: a bojler nem fűt utána, a melegvíz fogy. Üres lakásban ez megtakarítás; vendég érkezése előtt kb. 3 órával kapcsold vissza a Smart Life appban.');
     // időjárás (csak az Élő módban, valós előrejelzésből); a kályha kapcsolása kézi, ez csak javaslat
     var safe = ' Csak javaslat: a kályha automatikus kapcsolása még nincs bekötve (előbb kontaktor kell).';
