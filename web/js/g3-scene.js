@@ -515,7 +515,7 @@ class G3Scene extends MiniDC.Component {
     add(337.6, 567.1, 0.8, 0.8, 52.4, 5, BLACK, { bias: 2 });
     add(336, 565.5, 4, 4, 57, 3.5, LSHADE, { bias: 3 });
 
-    piece('vitrine', 'Fehér vitrin, tetején a gateway (G)');
+    piece('vitrine', 'Fehér vitrin');
     add(448, 558, 24, 28, 0, 56, WHITE, { lines: seg(P(450, 586.2, 30), P(470, 586.2, 30)) + seg(P(450, 586.2, 40), P(470, 586.2, 40)), lc: '#9fb3bd', f1: faceY(586.2, 451, 459, 20, 50) + faceY(586.2, 461, 469, 20, 50), f1c: '#dcecf3' });
     add(455, 565, 10, 7, 56, 3, WHITE, { bias: 2, f1: faceY(572.2, 458, 461, 57, 58.5), f1c: '#4fc3f7', f1f: 'url(#glowF2)' });
 
@@ -874,13 +874,13 @@ class G3Scene extends MiniDC.Component {
       { id: '8', name: 'Kis szoba ablak', p: [404, 594, 48], o: [-6, 40], val: L.open8 ? 'NYITVA!' : 'zárva', show: L.open8, kind: L.open8 ? 'bad' : '', alert: L.open8 },
       { id: '9', name: 'Nagy szoba bal ablak', p: [327, 50, 100], o: [0, -30], val: 'zárva' },
       { id: '10', name: 'Nagy szoba jobb ablak', p: [432, 50, 100], o: [0, -30], val: 'zárva' },
-      { id: '11', name: 'Klíma (Gree, IR)', p: [340, 494, 98], o: [52, 4], val: 'fűt 23 °C' },
+      { id: '11', name: 'Klíma (Gree, IR; a Smart IR egység a kis szoba ajtó melletti polcán)', p: [340, 494, 98], o: [52, 4], val: 'fűt 23 °C' },
       { id: 'P', name: 'Kályhakapcsoló (LUXION), a nagy szoba felől a fürdőajtó mellett', p: [319, 324, 54], o: [8, -36], val: L.stage },
       { id: 'k5', name: 'Kör 5: cserépkályha', p: [326, 586, 40], o: [-150, 126], val: L.k5, sm: true },
       { id: 'k7', name: 'Kör 7: bojler', p: [326, 586, 40], o: [-120, 126], val: L.k7, sm: true },
       { id: 'k8', name: 'Kör 8: főzőlap és sütő', p: [326, 586, 40], o: [-90, 126], val: L.k8, sm: true },
       { id: 'k9', name: 'Kör 9: klíma', p: [326, 586, 40], o: [-60, 126], val: L.k9, sm: true },
-      { id: 'G', name: 'Zigbee + IR gateway (a vitrin tetején)', p: [460, 568, 60], o: [46, 6], val: 'online' }
+      { id: 'G', name: 'Zigbee gateway (előszoba, felső szekrény a kis szoba ajtaja mellett)', p: [330, 522, 84], o: [-48, -8], val: 'online' }
     ];
     // forgatott nézetben a felirat a tűhöz képest a világban ugyanarra néz (a hossza marad);
     // a körök (k5-k9) sora jelmagyarázat, az marad

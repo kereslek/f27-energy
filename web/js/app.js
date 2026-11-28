@@ -257,7 +257,7 @@
     'k7': { name: 'Kör 7: bojler', room: 'Elosztó', kind: 'breaker', cat: 'power' },
     'k8': { name: 'Kör 8: főzőlap és sütő', room: 'Elosztó', kind: 'breaker', cat: 'power' },
     'k9': { name: 'Kör 9: klíma', room: 'Elosztó', kind: 'breaker', cat: 'power' },
-    'G': { name: 'Zigbee + IR gateway', room: 'Kis szoba', kind: 'gateway', cat: 'other' }
+    'G': { name: 'Zigbee gateway', room: 'Előszoba', kind: 'gateway', cat: 'other' }
   };
   // Logikai kapcsolat: melyik okos kismegszakító mit táplál. A kismegszakító a pillanatnyi
   // teljesítményt méri (és a Smart Life appban visszamenőleg is látszik), így a mögötte lévő
@@ -1332,7 +1332,7 @@
         if (ir) {
           var acd = acPower(src);
           details = [{ k: 'Táp', v: '9-es okos kismegszakító (k9)', cls: '' }, { k: 'Állapot', v: acd.text, cls: '' },
-            { k: 'Vezérlés', v: 'infravörös, a gatewayen át', cls: '' }, { k: 'Visszajelzés', v: 'csak a 9-es kör méréséből', cls: '' }];
+            { k: 'Vezérlés', v: 'infravörös, a Smart IR egységen át (kis szoba, ajtó melletti polc)', cls: '' }, { k: 'Visszajelzés', v: 'csak a 9-es kör méréséből', cls: '' }];
         } else {
           var keys = Object.keys(stt).sort(function (a, b) { var fa = FRIENDLY[a] ? 0 : 1, fb = FRIENDLY[b] ? 0 : 1; if (a === '_upd') fa = 2; if (b === '_upd') fb = 2; return fa - fb || a.localeCompare(b); });
           details = keys.map(function (k) { return { k: FRIENDLY[k] || k, v: codeValue(k, stt[k], meta), cls: FRIENDLY[k] ? '' : 'raw' }; });
@@ -1354,7 +1354,7 @@
           hasBatt: !!batt, batt: batt ? (batt.label ? batt.label : batt.pct + ' %') : '', battW: batt ? batt.pct + '%' : '0%',
           battCls: 'hp ' + (!batt ? '' : batt.pct < 10 ? 'red' : batt.pct < 20 ? 'orange' : 'ok'),
           onlineCls: 'dc-dot ' + (online === false ? 'off' : online ? 'on' : 'unk'),
-          seen: ir ? 'a gatewayen át' : age != null ? 'utolsó jelzés: ' + ago(age) + (lim == null && age > 90 * 60000 ? ' · csak változáskor jelez' : '') : 'nincs jelzés',
+          seen: ir ? 'a Smart IR egységen át' : age != null ? 'utolsó jelzés: ' + ago(age) + (lim == null && age > 90 * 60000 ? ' · csak változáskor jelez' : '') : 'nincs jelzés',
           badges: badges, hasBadges: badges.length > 0, note: note,
           expanded: expanded, expandedAttr: expanded ? 'true' : 'false',
           details: details,
