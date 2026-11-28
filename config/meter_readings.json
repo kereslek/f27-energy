@@ -83,15 +83,22 @@
   "water": {
     "meter": {
       "last4": "9695",
-      "type": "Zenner ETW (melegvizes típus, T90), 2026",
-      "unit": "m3"
+      "type": "Zenner ETW, 2026; csak a hidegvizes ágon (a meleg vizet a lakás bojlere adja)",
+      "unit": "m3",
+      "contract": "2026.08.11-től saját vízmű-szerződés és saját mérő; előtte a ház közös mérőjén, a házzal szerződve"
     },
     "readings": [
+      {
+        "date": "2026-08-11",
+        "m3": null,
+        "mode": "csere",
+        "note": "a közös vízóra cseréje, a saját mérő beépítése; induló állás nem ismert (új mérőnél jellemzően 0)"
+      },
       {
         "date": "2026-11-28",
         "m3": 25.64,
         "mode": "Foto",
-        "note": "a tulaj fotója: 00025, piros 6-4; hideg vagy meleg ágon van, a tulaj erősítse meg"
+        "note": "a tulaj fotója: 00025, piros 6-4. Ha 0-ról indult: 109 nap alatt kb. 0,24 m³/nap (hideg víz, a bojleren átmenő meleg vízzel együtt)."
       }
     ]
   }
